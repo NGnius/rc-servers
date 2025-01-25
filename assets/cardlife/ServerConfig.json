@@ -1,0 +1,11 @@
+{
+	"AuthUrl": "https://live-auth.cl.ngni.us/api/",
+	"LobbyUrl": "https://live-lobby.cl.ngni.us/api/",
+	"InventoryUrl": "https://live-save.cl.ngni.us/api/",
+	"FallbackAuthUrl": "https://proxy.cl.ngni.us:8010/api/",
+    "FallbackLobbyUrl": "https://proxy.cl.ngni.us:8030/api/",
+    "FallbackInventoryUrl": "https://proxy.cl.ngni.us:8020/api/",
+	"GameServerPath": "/",
+	"GameServerExe": "/CardlifeGameServer.exe",
+	"PhotonUrl": "http://photon.cardlifegame.com"
+}
