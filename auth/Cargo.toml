@@ -1,0 +1,12 @@
+[package]
+name = "auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rocket.workspace = true
+libfj.workspace = true
+log.workspace = true
+env_logger.workspace = true
+uuid = { version = "1.12", features = [ "v4", "fast-rng" ] }
+rocket-client-addr = "0.5"
