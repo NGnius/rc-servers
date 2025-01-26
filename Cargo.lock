@@ -163,7 +163,6 @@ dependencies = [
  "libfj",
  "log",
  "rocket",
- "rocket-client-addr",
  "steamworks",
  "uuid",
 ]
@@ -1684,15 +1683,6 @@ dependencies = [
  "ubyte",
  "version_check",
  "yansi",
-]
-
-[[package]]
-name = "rocket-client-addr"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30ca3b4757605fd3fbdffd2265091d5dad0086403bc9f31d5719c8352b6fa432"
-dependencies = [
- "rocket",
 ]
 
 [[package]]

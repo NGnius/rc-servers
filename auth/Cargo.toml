@@ -13,6 +13,5 @@ libfj.workspace = true
 log.workspace = true
 env_logger.workspace = true
 uuid = { version = "1.12", features = [ "v4", "fast-rng" ] }
-rocket-client-addr = "0.5"
 steamworks = { version = "0.11", optional = true }
 hex = "0.4"

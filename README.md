@@ -14,6 +14,4 @@ To use get CardLife to use these servers, replace the ServerConfig.json file in 
 
 ## Privacy
 
-### Authentication
-
-Due to current technical limitations, CardLife authentication uses your IP address to give you a consistent login user.
+No data is collected or logged, except in dev mode. Some personal identifiers are sent but only exist ephemerally.
