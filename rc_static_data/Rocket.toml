@@ -1,0 +1,12 @@
+## defaults for _all_ profiles
+[default]
+address = "127.0.0.1"
+port = 8010
+
+## set only when compiled in debug mode, i.e, `cargo build`
+[debug]
+port = 80
+
+## set only when compiled in release mode, i.e, `cargo build --release`
+[release]
+address = "0.0.0.0"
