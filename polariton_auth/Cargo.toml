@@ -1,0 +1,12 @@
+[package]
+name = "polariton_auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log.workspace = true
+polariton.workspace = true
+num = "0.4"
+rand = "0.9"
+ring = "0.17"
+simple-rijndael = "0.3"
