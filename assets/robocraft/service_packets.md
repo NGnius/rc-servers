@@ -32,7 +32,7 @@ Connect Data 41 bytes
 0..1 =240
 1..5 current tick count
 
-### Modes
+### Operation Request & Response
 
 220 Region info (in)
 222 Friends list info (in)
@@ -59,6 +59,10 @@ Connect Data 41 bytes
 
 #### Op code always???
 221 Auth token (string)
+
+### Event
+
+14 Concurrent user check passed, i.e. this room still has space for you
 
 
 

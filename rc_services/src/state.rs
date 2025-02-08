@@ -5,7 +5,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(c: Box<Arc<dyn polariton::packet::Cryptographer>>) -> Self {
+    pub fn new(c: Box<Arc<dyn polariton::packet::Cryptographer >>) -> Self {
         Self {
             crypto: c,
         }

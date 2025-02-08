@@ -18,11 +18,15 @@ async fn main() -> std::io::Result<()> {
     log::debug!("Got cli args {:?}", args);
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
+    // memory leak, but only once (so not a big deal)
+    let redirect_static = Box::leak(Box::new(args.redirect.clone()));
+    let room_name_static = Box::leak(Box::new(args.room_name.clone()));
+
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
     loop {
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, NonZero::new(args.retries), &args.redirect, &args.room_name).await;
+        tokio::spawn(process_socket(socket, address, NonZero::new(args.retries), redirect_static, room_name_static));
     }
 }
 
@@ -37,10 +41,19 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    buf.clear();
+    let sock_state = state::State::new(enc);
+    while let Ok(packet) = receive_packet(&mut buf, &mut socket, retries, sock_state.binrw_args()).await {
+        match packet {
+            Packet::Ping(ping) => {
+                handle_ping(ping, &mut buf, &mut socket).await;
+            },
+            Packet::Packet(packet) => log::warn!("Not handling packet {:?}", packet),
+        }
+    }
 }
 
 async fn handle_ping(ping: Ping, buf: &mut Vec<u8>, socket: &mut net::TcpStream) {
+    buf.clear();
     let resp = Packet::Ping(polariton_auth::ping_pong(ping));
     resp.to_buf(buf, None).unwrap();
     let write_count = socket.write(buf).await.unwrap();
@@ -57,7 +70,7 @@ async fn read_more(buf: &mut Vec<u8>, socket: &mut net::TcpStream) -> Result<usi
     Ok(read_count)
 }
 
-async fn receive_packet(buf: &mut Vec<u8>, socket: &mut net::TcpStream, max_retries: Option<NonZero<usize>>, args: Option<Box<Arc<dyn Cryptographer>>>) -> Result<Packet, std::io::Error> {
+async fn receive_packet(buf: &mut Vec<u8>, socket: &mut net::TcpStream, max_retries: Option<NonZero<usize>>, args: Option<Box<Arc<dyn Cryptographer + 'static>>>) -> Result<Packet, std::io::Error> {
     buf.clear();
     let read_count = read_more(buf, socket).await?;
     if read_count == 0 { return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "socket did not read any bytes")); } // bad packet
