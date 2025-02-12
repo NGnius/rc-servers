@@ -1551,6 +1551,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "polariton_server"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "polariton",
+]
+
+[[package]]
 name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1756,6 +1764,21 @@ dependencies = [
  "log",
  "polariton",
  "polariton_auth",
+ "tokio",
+]
+
+[[package]]
+name = "rc_services_room"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "clap",
+ "env_logger",
+ "hex",
+ "log",
+ "polariton",
+ "polariton_auth",
+ "polariton_server",
  "tokio",
 ]
 

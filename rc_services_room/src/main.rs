@@ -1,6 +1,10 @@
 mod cli;
 mod state;
 
+mod data;
+mod events;
+mod operations;
+
 use std::num::NonZero;
 use std::sync::Arc;
 
@@ -11,37 +15,39 @@ use tokio::net;
 use polariton::packet::{Cryptographer, Data, Message, Packet, Ping, StandardMessage, StandardPacket};
 use polariton::operation::{OperationResponse, Typed};
 
+pub type UserTy = std::sync::RwLock<state::UserState>;
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
-    let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
-    // memory leak, but only once (so not a big deal)
-    let redirect_static = Box::leak(Box::new(args.redirect.clone()));
-    let room_name_static = Box::leak(Box::new(args.room_name.clone()));
+    let op_handler = Arc::new(operations::handler());
+
+    let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
     #[cfg(not(debug_assertions))]
     loop {
         let (socket, address) = listener.accept().await?;
-        tokio::spawn(process_socket(socket, address, NonZero::new(args.retries), redirect_static, room_name_static));
+        tokio::spawn(process_socket(socket, address, NonZero::new(args.retries), op_handler.clone()));
     }
     #[cfg(debug_assertions)]
     {
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, NonZero::new(args.retries), redirect_static, room_name_static).await;
+        process_socket(socket, address, NonZero::new(args.retries), op_handler.clone()).await;
         Ok(())
     }
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, retries: Option<NonZero<usize>>, game_server_url: &str, game_server_name: &str) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, retries: Option<NonZero<usize>>, op_handler: Arc<polariton_server::operations::OperationsHandler<crate::UserTy>>) {
     log::debug!("Accepting connection from address {}", address);
 
-    let mut buf = Vec::new();
-    let enc = match do_connect_handshake(&mut buf, &mut socket, retries, game_server_url, game_server_name).await {
+    let mut read_buf = Vec::new();
+    let mut write_buf = Vec::new();
+    let enc = match do_connect_handshake(&mut read_buf, &mut socket, retries).await {
         Some(x) => x,
         None => {
             log::error!("Failed to do connect handshake with {}", address);
@@ -49,12 +55,50 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
         }
     };
     let sock_state = state::State::new(enc);
-    while let Ok(packet) = receive_packet(&mut buf, &mut socket, retries, sock_state.binrw_args()).await {
+    let user_state = sock_state.user();
+    while let Ok(packet) = receive_packet(&mut read_buf, &mut socket, retries, sock_state.binrw_args()).await {
         match packet {
             Packet::Ping(ping) => {
-                handle_ping(ping, &mut buf, &mut socket).await;
+                handle_ping(ping, &mut write_buf, &mut socket).await;
             },
-            Packet::Packet(packet) => log::warn!("Not handling packet {:?}", packet),
+            Packet::Packet(packet) => {
+                // remove packet's advertised size from the buffer
+                for _ in 0..packet.header.len {
+                    read_buf.remove(0);
+                }
+                match packet.message {
+                    Message::Ping(ping) => {
+                        handle_ping(ping, &mut write_buf, &mut socket).await;
+                    },
+                    Message::Standard(msg) => {
+
+                        let is_encrypted = msg.is_encrypted();
+                        match msg.data {
+                            Data::OpReq(req) => {
+                                let resp = op_handler.handle_op(&user_state, req);
+                                let result = send_packet(
+                                    Packet::from_message(
+                                        Message::Standard(StandardMessage {
+                                            flags: 0,
+                                            data: Data::OpResp(resp),
+                                        }.encrypt(is_encrypted)),
+                                        packet.header.channel,
+                                        packet.header.is_reliable(),
+                                        sock_state.binrw_args()).unwrap(),
+                                    &mut write_buf, &mut socket, sock_state.binrw_args()).await;
+                                match result {
+                                    Ok(_) => {},
+                                    Err(e) => {
+                                        log::error!("Failed to send operation response packet: {}", e);
+                                    }
+                                }
+                            },
+                            data => log::warn!("Failed to handle packet with message data {:?}", data),
+                        }
+                    }
+                }
+            }
+            //log::warn!("Not handling packet {:?}", packet),
         }
     }
     log::debug!("Goodbye connection from address {}", address);
@@ -66,6 +110,7 @@ async fn handle_ping(ping: Ping, buf: &mut Vec<u8>, socket: &mut net::TcpStream)
     resp.to_buf(buf, None).unwrap();
     let write_count = socket.write(buf).await.unwrap();
     log::debug!("(ping) Write {} bytes to socket: {:?}", write_count, buf);
+    buf.clear();
 }
 
 fn buf_likely_valid(buf: &[u8]) -> bool {
@@ -79,16 +124,18 @@ async fn read_more(buf: &mut Vec<u8>, socket: &mut net::TcpStream) -> Result<usi
 }
 
 async fn receive_packet(buf: &mut Vec<u8>, socket: &mut net::TcpStream, max_retries: Option<NonZero<usize>>, args: Option<Box<Arc<dyn Cryptographer + 'static>>>) -> Result<Packet, std::io::Error> {
-    buf.clear();
-    let read_count = read_more(buf, socket).await?;
-    if read_count == 0 { return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "socket did not read any bytes")); } // bad packet
+    if buf.is_empty() {
+        let read_count = read_more(buf, socket).await?;
+        if read_count == 0 { return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "socket did not read any bytes")); } // bad packet
+    }
+
     let mut last_err = None;
     let mut must_succeed_next = false;
     if let Some(max_retries) = max_retries {
         for _ in 0..max_retries.get() {
             match Packet::from_buf(&buf, args.clone()) {
                 Ok(packet) => {
-                    log::debug!("(connect) Received packet {:?}", packet);
+                    log::debug!("Received packet {:?}", packet);
                     return Ok(packet);
                 },
                 Err(e) => last_err = Some(e),
@@ -103,7 +150,7 @@ async fn receive_packet(buf: &mut Vec<u8>, socket: &mut net::TcpStream, max_retr
         while buf_likely_valid(buf.as_slice()) {
             match Packet::from_buf(&buf, args.clone()) {
                 Ok(packet) => {
-                    log::debug!("(connect) Received packet {:?}", packet);
+                    log::debug!("Received packet {:?}", packet);
                     return Ok(packet);
                 },
                 Err(e) => last_err = Some(e),
@@ -138,6 +185,7 @@ async fn send_packet(packet: Packet, buf: &mut Vec<u8>, socket: &mut net::TcpStr
             }
         }
     }
+    buf.clear();
     Ok(())
 }
 
@@ -192,8 +240,6 @@ async fn do_connect_handshake(
     buf: &mut Vec<u8>,
     socket: &mut net::TcpStream,
     max_retries: Option<NonZero<usize>>,
-    game_server_url: &str,
-    game_server_name: &str,
 ) -> Option<Box<std::sync::Arc<dyn Cryptographer>>> {
     let handshake = Handshake::new(APP_ID);
     // connect
@@ -205,6 +251,7 @@ async fn do_connect_handshake(
             return None;
         }
     };
+    buf.clear();
     let (handshake, to_send) = match handshake.connect(&packet1) {
         Ok(x) => (x.handshake, x.extra),
         Err(e) => {
@@ -228,6 +275,7 @@ async fn do_connect_handshake(
             return None;
         }
     };
+    buf.clear();
     while let Packet::Ping(ping) = packet2 {
         handle_ping(ping, buf, socket).await;
         packet2 = match receive_packet(buf, socket, max_retries, None).await {
@@ -237,6 +285,7 @@ async fn do_connect_handshake(
                 return None;
             }
         };
+        buf.clear();
     }
     let (handshake, to_send, crypto) = match handshake.encrypt(&packet2) {
         Ok(x) => (x.handshake, x.extra.0, x.extra.1),
@@ -263,6 +312,7 @@ async fn do_connect_handshake(
             return None;
         }
     };
+    buf.clear();
     while let Packet::Ping(ping) = packet3 {
         handle_ping(ping, buf, socket).await;
         packet3 = match receive_packet(buf, socket, max_retries, Some(crypto.clone())).await {
@@ -272,6 +322,7 @@ async fn do_connect_handshake(
                 return None;
             }
         };
+        buf.clear();
     }
     let to_send = match handshake.authenticate(&packet3, crypto.clone()) {
         Ok(x) => x,
@@ -294,22 +345,8 @@ async fn do_connect_handshake(
         }
     }
 
-    // send CCU passed event
-    let ccu_passed_event = Packet::from_message(
-        Message::Standard(
-            StandardMessage { flags: 0,
-                data: Data::Event(polariton::operation::Event {
-                    code: 14, // CCU passed event code for Web service
-                    params: std::collections::HashMap::new().into(),
-                }),
-            }.encrypt(true)), 0, true, Some(crypto.clone())).unwrap();
-    match send_packet(ccu_passed_event, buf, socket, Some(crypto.clone())).await {
-        Ok(_) => {},
-        Err(e) => {
-            log::error!("Failed to send CCU event packet: {}", e);
-            return None;
-        }
-    }
+    // join lobby
+    log::debug!("(join lobby) Handling fourth packet");
     let mut packet_j = match receive_packet(buf, socket, max_retries, Some(crypto.clone())).await {
         Ok(x) => x,
         Err(e) => {
@@ -317,6 +354,7 @@ async fn do_connect_handshake(
             return None;
         }
     };
+    buf.clear();
     while let Packet::Ping(ping) = packet_j {
         handle_ping(ping, buf, socket).await;
         packet_j = match receive_packet(buf, socket, max_retries, Some(crypto.clone())).await {
@@ -326,15 +364,17 @@ async fn do_connect_handshake(
                 return None;
             }
         };
+        buf.clear();
     }
     if let Packet::Packet(msg) = &packet_j {
         if let Message::Standard(st) = &msg.message {
             if let Data::OpReq(req) = &st.data {
-                if req.code == 225 { // join lobby
-                    log::debug!("Max players from lobby join request: {:?}", req.params.to_owned().to_dict().get(&255));
+                if req.code == 226 { // join lobby (but for real this time)
                     let mut params = std::collections::HashMap::<u8, Typed>::new();
-                    params.insert(230 /* game server address */, Typed::Str(game_server_url.into()));
-                    params.insert(255 /* room name */, Typed::Str(game_server_name.into()));
+                    //params.insert(252 /* actors in game */, Typed::Str(game_server_url.into()));
+                    params.insert(254 /* game server address */, Typed::Int(42));
+                    params.insert(249 /* actor properties */, Typed::HashMap(Vec::new().into()));
+                    params.insert(248 /* game properties */, Typed::HashMap(Vec::new().into()));
                     let resp = Packet::from_message(
                         Message::Standard(
                             StandardMessage { flags: 0,
@@ -356,6 +396,7 @@ async fn do_connect_handshake(
             }
         }
     }
+    buf.clear();
 
     Some(crypto)
 }
