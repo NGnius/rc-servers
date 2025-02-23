@@ -12,3 +12,7 @@ pub mod cpu_limits;
 pub mod cosmetic_limits;
 pub mod taunts_config;
 pub mod customisation_info;
+pub mod garage_bay;
+pub mod custom_games;
+pub mod tech_tree;
+pub mod item_shop_bundle;

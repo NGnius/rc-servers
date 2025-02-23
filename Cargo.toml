@@ -5,7 +5,12 @@ edition = "2021"
 
 [workspace]
 members = [
-    "auth", "polariton_auth", "rc_services", "rc_static_data", "rc_services_room"
+    "auth",
+    "polariton_auth",
+    "rc_services", "rc_services_room",
+    "rc_static_data",
+    "rc_social", "rc_social_room",
+    "rc_chat", "rc_chat_room"
 ]
 
 [workspace.dependencies]

@@ -5,7 +5,7 @@ port = 8010
 
 ## set only when compiled in debug mode, i.e, `cargo build`
 [debug]
-port = 80
+port = 8010
 
 ## set only when compiled in release mode, i.e, `cargo build --release`
 [release]

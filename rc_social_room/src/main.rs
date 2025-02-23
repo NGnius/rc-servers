@@ -2,7 +2,6 @@ mod cli;
 mod state;
 
 mod data;
-mod events;
 mod operations;
 
 use std::num::NonZero;
@@ -192,7 +191,7 @@ async fn send_packet(packet: Packet, buf: &mut Vec<u8>, socket: &mut net::TcpStr
     Ok(())
 }
 
-const APP_ID: &str = "WebServicesServer";
+const APP_ID: &str = "SocialServer";
 
 struct AuthImpl;
 
