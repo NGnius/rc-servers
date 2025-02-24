@@ -4,7 +4,7 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 pub struct CliArgs {
     /// TCP port on which to accept connections
-    #[arg(short, long, default_value_t = 4535)]
+    #[arg(short, long, default_value_t = 4537)]
     pub port: u16,
 
     /// IP Address on which to accept connections

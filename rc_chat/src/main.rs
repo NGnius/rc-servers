@@ -146,7 +146,7 @@ async fn send_packet(packet: Packet, buf: &mut Vec<u8>, socket: &mut net::TcpStr
     Ok(())
 }
 
-const APP_ID: &str = "SocialServer";
+const APP_ID: &str = "ChatServer";
 
 struct AuthImpl;
 

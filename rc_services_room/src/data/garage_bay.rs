@@ -48,8 +48,8 @@ pub struct GarageSlotInfo {
     pub bay_cpu: u32,
     pub tutorial_robot: bool, // assumed to be false (when omitted)
     pub starter_robot_index: i32, // assumed to be -1 (whem omitted)
-    pub control_type: i32, // enum???
-    pub control_options: Vec<bool>,
+    pub control_type: ControlType,
+    pub control_options: ControlOptions,
     pub mastery_level: i32,
     pub bay_skin_id: String,
     pub weapon_order: Vec<i32>,
@@ -75,10 +75,14 @@ impl GarageSlotInfo {
             (Typed::Str("bayCpu".into()), Typed::Int(self.bay_cpu as i32)),
             (Typed::Str("tutorialRobot".into()), Typed::Bool(self.tutorial_robot.into())),
             (Typed::Str("starterRobotIndex".into()), Typed::Int(self.starter_robot_index)),
-            (Typed::Str("controlType".into()), Typed::Int(self.control_type)),
+            (Typed::Str("controlType".into()), Typed::Int(self.control_type as i32)),
             (Typed::Str("controlOptions".into()), Typed::Arr(Arr {
                 ty: 111, // bool
-                items: self.control_options.iter().map(|&x| Typed::Bool(x.into())).collect(),
+                items: vec![
+                    Typed::Bool(self.control_options.vertical_strafing.into()),
+                    Typed::Bool(self.control_options.sideways_driving.into()),
+                    Typed::Bool(self.control_options.tracks_turn_on_spot.into()),
+                ],
             })),
             (Typed::Str("masteryLevel".into()), Typed::Int(self.mastery_level)),
             (Typed::Str("baySkinId".into()), Typed::Str(self.bay_skin_id.clone().into())),
@@ -88,6 +92,21 @@ impl GarageSlotInfo {
             })),
         ].into())
     }
+}
+
+#[allow(dead_code)]
+#[repr(i32)]
+#[derive(Copy, Clone)]
+pub enum ControlType {
+    Camera = 0,
+    Keyboard = 1,
+    Count = 2,
+}
+
+pub struct ControlOptions {
+    pub vertical_strafing: bool,
+    pub sideways_driving: bool,
+    pub tracks_turn_on_spot: bool,
 }
 
 

@@ -9,7 +9,7 @@ pub struct CubeInfo {
     pub grey_out_in_tutorial: bool,
     pub visibility: VisibilityMode,
     pub indestructible: bool,
-    pub category: u32,
+    pub category: super::weapon_list::ItemCategory,
     pub placements: u32, // default 63
     pub protonium: bool,
     pub unlocked_by_league: bool,

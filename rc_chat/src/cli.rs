@@ -4,7 +4,7 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 pub struct CliArgs {
     /// TCP port on which to accept connections
-    #[arg(short, long, default_value_t = 4534)]
+    #[arg(short, long, default_value_t = 4536)]
     pub port: u16,
 
     /// IP Address on which to accept connections
@@ -16,7 +16,7 @@ pub struct CliArgs {
     pub retries: usize,
 
     /// Domain and port of the game server to send new connections
-    #[arg(long, default_value_t = {"127.0.0.1:4535".to_string()})]
+    #[arg(long, default_value_t = {"127.0.0.1:4537".to_string()})]
     pub redirect: String,
 
     /// Name of game server to send new connections

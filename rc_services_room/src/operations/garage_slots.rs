@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict, Arr};
+use polariton::operation::{ParameterTable, Typed, Dict};
 
 use crate::data::garage_bay::*;
 
@@ -28,8 +28,8 @@ pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(P
                     bay_cpu: 2_000,
                     tutorial_robot: false,
                     starter_robot_index: -1,
-                    control_type: 0,
-                    control_options: vec![false, false],
+                    control_type: ControlType::Camera,
+                    control_options: ControlOptions { vertical_strafing: false, sideways_driving: false, tracks_turn_on_spot: false, },
                     mastery_level: 1,
                     bay_skin_id: "".to_owned(), // TODO
                     weapon_order: vec![0],
@@ -37,10 +37,9 @@ pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(P
             ],
         }));
         params.insert(SELECTED_SLOT_PARAM_KEY, Typed::Int(0));
-        params.insert(SLOT_ORDER_PARAM_KEY, Typed::Arr(Arr {
-            ty: 105, // int
-            items: vec![Typed::Int(0)],
-        }));
+        params.insert(SLOT_ORDER_PARAM_KEY, Typed::ObjArr(vec![
+            Typed::Int(0),
+        ].into()));
         Ok(params.into())
     })
 }
