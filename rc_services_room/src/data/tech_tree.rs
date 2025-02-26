@@ -13,7 +13,7 @@ pub struct TechTreeNode {
 impl TechTreeNode {
     pub fn as_transmissible(&self) -> Typed {
         Typed::HashMap(vec![
-            (Typed::Str("mainCubeId".into()), Typed::Str(hex::encode(self.main_cube_id.to_le_bytes()).into())),
+            (Typed::Str("mainCubeId".into()), Typed::Str(hex::encode(self.main_cube_id.to_be_bytes()).into())),
             (Typed::Str("positionX".into()), Typed::Int(self.position_x)),
             (Typed::Str("positionY".into()), Typed::Int(self.position_y)),
             (Typed::Str("isUnlocked".into()), Typed::Bool(self.is_unlocked.into())),
@@ -21,8 +21,12 @@ impl TechTreeNode {
             (Typed::Str("tp".into()), Typed::Int(self.tech_points as i32)),
             (Typed::Str("neighbours".into()), Typed::Arr(Arr {
                 ty: 115, // str
-                items: self.neighbours.iter().map(|cube_id| Typed::Str(hex::encode(cube_id.to_le_bytes()).into())).collect(),
+                items: self.neighbours.iter().map(|cube_id| Typed::Str(hex::encode(cube_id.to_be_bytes()).into())).collect(),
             })),
         ].into())
+    }
+
+    pub fn as_transmissible_key_val(&self) -> (Typed, Typed) {
+        (Typed::Str(hex::encode(self.main_cube_id.to_be_bytes()).into()), self.as_transmissible())
     }
 }

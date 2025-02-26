@@ -12,15 +12,15 @@ pub(super) fn tech_tree_layout_provider() -> SimpleFunc<183, crate::UserTy, impl
             key_ty: 115, // str
             val_ty: 104, // hashmap
             items: vec![
-                (Typed::Str("1".into()), TechTreeNode {
-                    main_cube_id: 1,
+                TechTreeNode {
+                    main_cube_id: 227205318, // default cube id
                     position_x: 0,
                     position_y: 0,
                     is_unlocked: true,
                     is_unlockable: true,
                     tech_points: 1,
                     neighbours: Vec::default(),
-                }.as_transmissible())
+                }.as_transmissible_key_val(),
             ],
         }));
         Ok(params.into())
