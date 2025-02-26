@@ -51,6 +51,10 @@ impl CubeInfo {
             (Typed::Str("ignoreInWeaponsList".into()), Typed::Bool(self.ignore_in_weapon_list.into())), // optional
         ].into())
     }
+
+    pub fn as_transmissible_key_val(&self, cube_id: u32) -> (Typed, Typed) {
+        (Typed::Str(hex::encode(cube_id.to_be_bytes()).into()), self.as_transmissible())
+    }
 }
 
 #[derive(Clone, Copy)]

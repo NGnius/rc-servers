@@ -31,7 +31,7 @@ pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(P
                     control_type: ControlType::Camera,
                     control_options: ControlOptions { vertical_strafing: false, sideways_driving: false, tracks_turn_on_spot: false, },
                     mastery_level: 1,
-                    bay_skin_id: "".to_owned(), // TODO
+                    bay_skin_id: "RC_MothershipSkin_Neptune_01".to_owned(), // TODO get the rest of the names
                     weapon_order: vec![0],
                 }.as_transmissible())
             ],
