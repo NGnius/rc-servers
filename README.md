@@ -12,17 +12,14 @@ To get CardLife to use these servers, replace the `ServerConfig.json` file in th
 
 To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/serenvmulti.config) file in the game files.
 
-
-
-You may also need to add the following to your OS's `hosts` file:
-```
-127.0.0.1       robocraftstaticdata.s3.amazonaws.com
-```
-
-The `hosts` file can be found at `/etc/hosts` on Linux and `C:\Windows\system32\drivers\etc\hosts` on Windows. Usually this requires elevated permissions (root/admin) to edit.
-
 // TODO Don't expect people to run these servers on their own computer
 
 ## Privacy
 
 No data is collected or logged, except in dev mode. Some personal identifiers are sent but only exist ephemerally.
+
+## Development
+
+### Robocraft
+
+Run all of the servers using their respective `run_debug.sh` scripts and use the `dev` profile in `servenvmulti.config` to point the game to your local dev servers.

@@ -210,4 +210,8 @@ impl ItemCategory {
             ItemCategory::EnergyModule => "EnergyModule",
         }
     }
+
+    pub fn but_bigger(&self) -> i32 {
+        (*self as i32) * 100_000
+    }
 }

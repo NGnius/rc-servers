@@ -30,21 +30,21 @@ impl ItemShopBundle {
 
     fn dump(&self, writer: &mut dyn Write) -> std::io::Result<usize> {
         let sku_bytes = self.sku.as_bytes();
-        let mut total_len = writer.write(&encode_7_bit_i32(sku_bytes.len() as i32))?;
+        let mut total_len = writer.write(&super::encode_7_bit_i32(sku_bytes.len() as i32))?;
         total_len += writer.write(sku_bytes)?;
 
         let bundle_name_key_bytes = self.bundle_name_key.as_bytes();
-        total_len += writer.write(&encode_7_bit_i32(bundle_name_key_bytes.len() as i32))?;
+        total_len += writer.write(&super::encode_7_bit_i32(bundle_name_key_bytes.len() as i32))?;
         total_len += writer.write(bundle_name_key_bytes)?;
 
         let sprite_bytes = self.sprite.as_bytes();
-        total_len += writer.write(&encode_7_bit_i32(sprite_bytes.len() as i32))?;
+        total_len += writer.write(&super::encode_7_bit_i32(sprite_bytes.len() as i32))?;
         total_len += writer.write(sprite_bytes)?;
 
         total_len += writer.write(&[self.is_sprite_full_size as u8])?;
 
         let currency_bytes = self.currency.as_str().as_bytes();
-        total_len += writer.write(&encode_7_bit_i32(currency_bytes.len() as i32))?;
+        total_len += writer.write(&super::encode_7_bit_i32(currency_bytes.len() as i32))?;
         total_len += writer.write(currency_bytes)?;
 
         total_len += writer.write(&self.price.to_le_bytes())?;
@@ -107,18 +107,4 @@ impl CurrencyType {
             Self::CosmeticCredits => "CosmeticCredits",
         }
     }
-}
-
-fn encode_7_bit_i32(mut src: i32) -> Vec<u8> {
-    let mut out = Vec::with_capacity(5);
-    while src != 0 {
-        let last_7 = (src & 0x7F) as u8;
-        src = src >> 7;
-        if src != 0 {
-            out.push(last_7 | 0x80);
-        } else {
-            out.push(last_7);
-        }
-    }
-    out
 }

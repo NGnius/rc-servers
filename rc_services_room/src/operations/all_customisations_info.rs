@@ -19,9 +19,9 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
             ty: 104, // hashtable
             items: vec![
                 CustomisationData {
-                    id: "skin0".to_string(),
-                    localised_name: "Default".to_string(),
-                    skin_scene_name: "TODO_skin".to_string(),
+                    id: "RC_MothershipSkin_Neptune_01".to_string(),
+                    localised_name: "Neptune 01".to_string(),
+                    skin_scene_name: "RC_MothershipSkin_Neptune_01".to_string(),
                     simulation_prefab: "TODO_sim_prefab".to_string(),
                     preview_image_name: "TODO_preview_img".to_string(),
                     is_default: true,

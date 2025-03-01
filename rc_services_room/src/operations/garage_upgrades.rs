@@ -8,8 +8,8 @@ pub(super) fn garage_upgrades_provider() -> SimpleFunc<1, crate::UserTy, impl (F
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::HashMap(vec![
             (Typed::Str("cpuIncreaseCost".into()), Typed::Dict(Dict {
-                key_ty: 110, // int
-                val_ty: 110, // int
+                key_ty: 105, // int
+                val_ty: 105, // int
                 items: vec![
                     // (CPU limit, upgrade cost)
                     (Typed::Int(100), Typed::Int(100)),

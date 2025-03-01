@@ -50,3 +50,21 @@ pub enum ClanType {
     Open = 1,
     Closed = 2,
 }
+
+pub struct ClanInfo {
+    pub clan_name: String,
+    pub clan_description: String,
+    pub clan_type: ClanType,
+    pub clan_size: i32,
+}
+
+impl ClanInfo {
+    pub fn as_transmissible(&self) -> Typed {
+        Typed::HashMap(vec![
+            (Typed::Str("clanName".into()), Typed::Str(self.clan_name.clone().into())),
+            (Typed::Str("clanDescription".into()), Typed::Str(self.clan_description.clone().into())),
+            (Typed::Str("clanType".into()), Typed::Int(self.clan_type as i32)),
+            (Typed::Str("clanSize".into()), Typed::Int(self.clan_size)),
+        ].into())
+    }
+}

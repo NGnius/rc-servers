@@ -2,6 +2,7 @@ use polariton_server::operations::SimpleFunc;
 use polariton::operation::{ParameterTable, Typed, Dict};
 
 use crate::data::garage_bay::*;
+use crate::data::weapon_list::ItemCategory;
 
 const SLOTS_PARAM_KEY: u8 = 44;
 const SELECTED_SLOT_PARAM_KEY: u8 = 43;
@@ -15,11 +16,11 @@ pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(P
             val_ty: 104, // hashmap
             items: vec![
                 (Typed::Int(0), GarageSlotInfo {
-                    name: "Reverse-engineer great success!".to_owned(),
+                    name: "Reverse-engineer great success! slot_name".to_owned(),
                     cubes: 1,
                     crf_id: 0,
                     was_rated: false,
-                    movement_categories: vec![MovementCategory::Wheel],
+                    movement_categories: vec![ItemCategory::Wheel],
                     uuid: (2,4),
                     thumbnail_version: 0,
                     total_robot_cpu: 1,

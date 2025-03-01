@@ -43,6 +43,34 @@ mod game_event_params;
 mod garage_bay_uuid;
 mod tech_tree_data;
 mod item_shop_bundles;
+mod robot_customisations;
+mod player_data;
+mod player_robopass;
+mod weapon_upgrades;
+mod player_rank;
+mod ab_test_group;
+mod league_limits;
+mod crf_limits;
+mod robot_mastery_settings;
+mod player_started_purchase;
+mod custom_games_team;
+mod custom_games_invite;
+mod chat_settings;
+mod prebuilt_robots;
+mod prebuilt_colours;
+mod robopass_preview_items;
+mod singleplayer_campaigns;
+mod purchases;
+mod building_xp_config;
+mod weapon_rating_static;
+mod weapon_xp_static;
+mod machine;
+mod machine_colour;
+mod last_completed_campaign;
+mod daily_quests;
+mod cube_awards;
+mod robot_sanction;
+mod building_xp;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -95,5 +123,37 @@ pub fn handler() -> OperationsHandler<crate::UserTy> {
         .without_state(garage_bay_uuid::garage_id_provider())
         .without_state(tech_tree_data::tech_tree_layout_provider())
         .without_state(item_shop_bundles::item_bundle_provider())
+        .without_state(robot_customisations::bay_customisations_provider())
+        .without_state(player_data::player_data_provider())
+        .without_state(player_robopass::player_robopass_season_provider())
+        .without_state(weapon_upgrades::weapons_upgrade_provider())
+        .without_state(polariton_server::operations::Ack::<172, _>::default()) // custom game change robot tier (param 67 is tier)
+        .without_state(player_rank::rank_provider())
+        .without_state(player_rank::rank_static_provider())
+        .without_state(ab_test_group::test_group_provider())
+        .without_state(league_limits::league_battle_parameters_provider())
+        .without_state(crf_limits::robot_shop_submission_infos_provider())
+        .without_state(robot_mastery_settings::robot_mastery_settings_provider())
+        .without_state(player_started_purchase::started_purchase_provider())
+        .without_state(custom_games_team::team_setup_provider())
+        .without_state(polariton_server::operations::Ack::<152, _>::default()) // custom game player state changed (188 is desired state)
+        .without_state(custom_games_invite::pending_invite_provider())
+        .without_state(chat_settings::chat_settings_provider())
+        .without_state(prebuilt_robots::garage_robot_data_provider())
+        .without_state(prebuilt_colours::garage_colour_combo_provider())
+        .without_state(robopass_preview_items::robopass_preview_provider())
+        .without_state(singleplayer_campaigns::singleplayer_campaigns_provider())
+        .without_state(purchases::pending_purchases_provider())
+        .without_state(building_xp_config::building_xp_config_provider())
+        .without_state(weapon_rating_static::weapon_rating_provider())
+        .without_state(weapon_xp_static::weapon_xp_provider())
+        .without_state(machine::garage_machine_provider())
+        .without_state(machine_colour::garage_machine_colour_provider())
+        .without_state(last_completed_campaign::completed_campaign_provider())
+        .without_state(daily_quests::player_daily_quests_provider())
+        .without_state(tech_points::tech_points_awards_provider())
+        .without_state(cube_awards::cube_awards_provider())
+        .without_state(robot_sanction::robot_sanction_provider())
+        .without_state(building_xp::building_xp_save_provider())
         //.without_state(polariton_server::operations::Ack::<70, _>::default())
 }

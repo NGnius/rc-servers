@@ -6,7 +6,7 @@ use polariton::operation::{ParameterTable, Typed, Dict};
 use crate::data::cube_list::*;
 
 const PARAM_KEY: u8 = 1;
-// const DEFAULT_CUBE_ID: u32 = 227205318;
+const DEFAULT_CUBE_ID: u32 = 227205318;
 
 pub(super) fn cube_list_provider() -> SimpleFunc<2, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, _| {
@@ -16,7 +16,7 @@ pub(super) fn cube_list_provider() -> SimpleFunc<2, crate::UserTy, impl (Fn(Para
             val_ty: 104, // hashtable
             items: vec![
                 //(u32 in base16 aka hex, hashtable)
-                (Typed::Str("DEADBEEF".into()), CubeInfo {
+                CubeInfo {
                     cpu: 1,
                     health: 1,
                     health_boost: 1.0,
@@ -36,7 +36,7 @@ pub(super) fn cube_list_provider() -> SimpleFunc<2, crate::UserTy, impl (Fn(Para
                     cosmetic: false,
                     variant_of: "0".to_string(),
                     ignore_in_weapon_list: true,
-                }.as_transmissible()),
+                }.as_transmissible_key_val(DEFAULT_CUBE_ID),
                 CubeInfo {
                     cpu: 1,
                     health: 1,

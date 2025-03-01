@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 #[repr(u8)]
+#[derive(Copy, Clone)]
 pub enum GameMode {
     BattleArena = 0,
     SuddenDeath = 1,
@@ -26,8 +27,16 @@ impl GameMode {
 }
 
 #[repr(u8)]
+#[derive(Copy, Clone)]
 pub enum MapVisibility {
     Good = 0,
     Poor = 1,
     Bad = 2, // VeryPoor
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone)]
+pub enum CustomGameInviteCode {
+    NoInvite = 0,
+    PendingInvite = 1,
 }

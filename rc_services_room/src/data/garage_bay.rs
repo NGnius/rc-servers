@@ -1,45 +1,13 @@
 use polariton::operation::{Typed, Arr};
 
-#[allow(dead_code)]
-#[derive(Copy, Clone)]
-pub enum MovementCategory {
-    NotAFunctionalItem = 0,
-    Wheel = 1,
-    Hover = 2,
-    Wing = 3,
-    Rudder = 4,
-    Thruster = 5,
-    InsectLeg = 6,
-    MechLeg = 7,
-    Ski = 8,
-    TankTrack = 9,
-    Rotor = 10,
-    SprinterLeg = 11,
-    Propeller = 12,
-    Laser = 100,
-    Plasma = 200,
-    Mortar = 250,
-    Rail = 300,
-    Nano = 400,
-    Tesla = 500,
-    Aeroflak = 600,
-    Ion = 650,
-    Seeker = 701,
-    Chaingun = 750,
-    ShieldModule = 800,
-    GhostModule = 801,
-    BlinkModule = 802,
-    EmpModule = 803,
-    WindowmakerModule = 804,
-    EnergyModule = 900,
-}
+use super::weapon_list::ItemCategory;
 
 pub struct GarageSlotInfo {
     pub name: String,
     pub cubes: u32,
     pub crf_id: u32, // 0 means not uploaded
     pub was_rated: bool, // ignored when not on CRF
-    pub movement_categories: Vec<MovementCategory>,
+    pub movement_categories: Vec<ItemCategory>,
     pub uuid: (u32, u32),
     pub thumbnail_version: u32,
     pub total_robot_cpu: u32,
@@ -76,14 +44,7 @@ impl GarageSlotInfo {
             (Typed::Str("tutorialRobot".into()), Typed::Bool(self.tutorial_robot.into())),
             (Typed::Str("starterRobotIndex".into()), Typed::Int(self.starter_robot_index)),
             (Typed::Str("controlType".into()), Typed::Int(self.control_type as i32)),
-            (Typed::Str("controlOptions".into()), Typed::Arr(Arr {
-                ty: 111, // bool
-                items: vec![
-                    Typed::Bool(self.control_options.vertical_strafing.into()),
-                    Typed::Bool(self.control_options.sideways_driving.into()),
-                    Typed::Bool(self.control_options.tracks_turn_on_spot.into()),
-                ],
-            })),
+            (Typed::Str("controlOptions".into()), self.control_options.as_transmissible()),
             (Typed::Str("masteryLevel".into()), Typed::Int(self.mastery_level)),
             (Typed::Str("baySkinId".into()), Typed::Str(self.bay_skin_id.clone().into())),
             (Typed::Str("weaponOrder".into()), Typed::Arr(Arr {
@@ -107,6 +68,19 @@ pub struct ControlOptions {
     pub vertical_strafing: bool,
     pub sideways_driving: bool,
     pub tracks_turn_on_spot: bool,
+}
+
+impl ControlOptions {
+    pub fn as_transmissible(&self) -> Typed {
+        Typed::Arr(Arr {
+            ty: 111, // bool
+            items: vec![
+                Typed::Bool(self.vertical_strafing.into()),
+                Typed::Bool(self.sideways_driving.into()),
+                Typed::Bool(self.tracks_turn_on_spot.into()),
+            ],
+        })
+    }
 }
 
 
