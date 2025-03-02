@@ -8,7 +8,7 @@ members = [
     "auth",
     "polariton_auth",
     "rc_services", "rc_services_room",
-    "rc_static_data",
+    "rc_static_data", "rc_microtransactions",
     "rc_social", "rc_social_room",
     "rc_chat", "rc_chat_room"
 ]

@@ -1782,6 +1782,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc_microtransactions"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "libfj",
+ "log",
+ "rocket",
+]
+
+[[package]]
 name = "rc_services"
 version = "0.1.0"
 dependencies = [

@@ -17,3 +17,14 @@ pub(super) fn robot_sanction_provider() -> SimpleFunc<174, crate::UserTy, impl (
         Ok(params.into())
     })
 }
+
+pub(super) fn all_robot_sanctions_provider() -> SimpleFunc<176, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+    SimpleFunc::new(|params, _| {
+        let mut params = params.to_dict();
+        params.insert(SANCTION_JSONS_PARAM_KEY, Typed::Arr(Arr {
+            ty: 115, // str
+            items: Vec::default(),
+        }));
+        Ok(params.into())
+    })
+}

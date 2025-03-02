@@ -71,6 +71,7 @@ mod daily_quests;
 mod cube_awards;
 mod robot_sanction;
 mod building_xp;
+mod reconnect_game;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -155,5 +156,7 @@ pub fn handler() -> OperationsHandler<crate::UserTy> {
         .without_state(cube_awards::cube_awards_provider())
         .without_state(robot_sanction::robot_sanction_provider())
         .without_state(building_xp::building_xp_save_provider())
+        .without_state(robot_sanction::all_robot_sanctions_provider())
+        .without_state(reconnect_game::available_reconnect_provider())
         //.without_state(polariton_server::operations::Ack::<70, _>::default())
 }

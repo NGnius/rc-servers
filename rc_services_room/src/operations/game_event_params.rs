@@ -15,8 +15,8 @@ pub(super) fn event_system_params_provider() -> SimpleFunc<24, crate::UserTy, im
         params.insert(MAP_NAMES_PARAM_KEY, Typed::Arr(Arr {
             ty: 115, // str
             items: vec![
-                Typed::Str("Assets/Scenes/Planet_Neptune/RC_Planet_Neptune_03_BA".into()),
-                Typed::Str("Assets/Scenes/Planet_Earth/RC_Planet_Earth_01_BA".into()),
+                Typed::Str("RC_Planet_Neptune_03_BA".into()),
+                Typed::Str("RC_Planet_Earth_01_BA".into()),
             ],
         }));
         params.insert(VISIBILITY_PARAM_KEY, Typed::Arr(Arr {

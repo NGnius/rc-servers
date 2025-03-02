@@ -16,7 +16,7 @@ pub fn static_live_data() -> Json<libfj::robocraft::StaticDataRaw> {
         ErrorLogAddress: "logs.freejamgames.com:4561".into(),
         ServerErrorLogAddress: "logs.freejamgames.com:4562".into(),
         authUrl: "http://127.0.0.1:8001/".into(), // originally "https://auth-backend.freejamgames.com/"
-        paymentUrl: "https://pay.robocraftgame.com/".into(),
+        paymentUrl: "http://127.0.0.1:8011/".into(),
         enterBattleLogGenerationTimeout: "60".into(),
         GameServerConnectionTestTimeout: 10,
         AvatarCdnUrl: "https://rc-cdn-images.robocraftgame.com/customavatar/Live/".into(),
