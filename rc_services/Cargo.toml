@@ -10,3 +10,4 @@ tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io
 clap.workspace = true
 polariton.workspace = true
 polariton_auth = { version = "*", path = "../polariton_auth" }
+polariton_server.workspace = true

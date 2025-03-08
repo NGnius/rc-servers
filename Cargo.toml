@@ -19,5 +19,5 @@ libfj = { version = "0.7.5", path = "../libfj" }
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4.5", features = [ "derive" ] }
-polariton = { version = "0.1", path = "../polariton" }
-polariton_server = { version = "0.1", path = "../polariton/server" }
+polariton = { version = "0.2", path = "../polariton", features = [ "tokio-async" ] }
+polariton_server = { version = "0.2", path = "../polariton/server", features = [ "tokio-async" ] }

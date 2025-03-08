@@ -13,7 +13,7 @@ const TYPES_PARAM_KEY: u8 = 34;*/
 // params out
 const RESULTS_PARAM_KEY: u8 = 42;
 
-pub(super) fn search_clans_provider() -> SimpleFunc<32, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+pub(super) fn search_clans_provider<C: Send + Sync>() -> SimpleFunc<32, crate::UserTy, impl (Fn(ParameterTable<C>, &crate::UserTy) -> Result<ParameterTable<C>, i16>) + Sync + Sync, C> {
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         if let Some(Typed::Str(s)) = params.get(&STRING_PARAM_KEY) {
@@ -22,7 +22,7 @@ pub(super) fn search_clans_provider() -> SimpleFunc<32, crate::UserTy, impl (Fn(
             }
         }
         params.insert(RESULTS_PARAM_KEY, Typed::Arr(Arr {
-            ty: 104, // hashmap
+            ty: polariton::serdes::TypePrefix::HashMap, // hashmap
             items: vec![
                 ClanInfo {
                     clan_name: "".to_owned(),

@@ -1,3 +1,4 @@
+use polariton::serdes::TypePrefix;
 use polariton_server::operations::SimpleFunc;
 use polariton::operation::{ParameterTable, Typed, Dict};
 
@@ -12,8 +13,8 @@ pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(P
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(SLOTS_PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 105, // int
-            val_ty: 104, // hashmap
+            key_ty: TypePrefix::Int, // int
+            val_ty: TypePrefix::HashMap, // hashmap
             items: vec![
                 (Typed::Int(0), GarageSlotInfo {
                     name: "Reverse-engineer great success! slot_name".to_owned(),

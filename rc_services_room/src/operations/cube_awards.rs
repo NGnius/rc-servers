@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
+use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 const PARAM_KEY: u8 = 216;
 
@@ -7,7 +7,7 @@ pub(super) fn cube_awards_provider() -> SimpleFunc<206, crate::UserTy, impl (Fn(
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
-            ty: 115, // str
+            ty: TypePrefix::Str, // str
             items: Vec::default(),
         }));
         Ok(params.into())

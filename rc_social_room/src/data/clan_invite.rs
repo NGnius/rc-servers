@@ -10,7 +10,7 @@ pub struct ClanInviteInfo {
 }
 
 impl ClanInviteInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("userName".into()), Typed::Str(self.username.clone().into())),
             (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),

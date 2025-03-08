@@ -1,4 +1,5 @@
 use polariton::operation::{Typed, Dict, Arr};
+use polariton::serdes::TypePrefix;
 
 pub struct PlayerRankStaticInfo {
     pub sub_rank_thresholds: Vec<i32>,
@@ -7,12 +8,12 @@ pub struct PlayerRankStaticInfo {
 impl PlayerRankStaticInfo {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // obj
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: vec![
                 (Typed::Str("subRankCount".into()), Typed::Int(self.sub_rank_thresholds.len() as i32)),
                 (Typed::Str("subRankThresholds".into()), Typed::Arr(Arr {
-                    ty: 105, // int
+                    ty: TypePrefix::Int, // int
                     items: self.sub_rank_thresholds.iter().map(|x| Typed::Int(*x)).collect(),
                 })),
             ],

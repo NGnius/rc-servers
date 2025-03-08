@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::tech_tree::*;
 
@@ -9,8 +9,8 @@ pub(super) fn tech_tree_layout_provider() -> SimpleFunc<183, crate::UserTy, impl
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashmap
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashmap
             items: vec![
                 TechTreeNode {
                     main_cube_id: 227205318, // default cube id

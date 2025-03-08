@@ -1,4 +1,4 @@
-use polariton::operation::{Typed, Dict};
+use polariton::{operation::{Dict, Typed}, serdes::TypePrefix};
 
 use super::{cube_list::ItemTier, weapon_list::ItemCategory};
 
@@ -14,8 +14,8 @@ pub struct WeaponUpgradeInfo {
 impl WeaponUpgradeInfo {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // obj
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::Any, // obj
             items: vec![
                 (Typed::Str("weaponSize".into()), Typed::Int(self.tier as _)),
                 (Typed::Str("weaponType".into()), Typed::Int(self.type_ as _)),

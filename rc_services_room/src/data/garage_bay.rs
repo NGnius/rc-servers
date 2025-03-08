@@ -1,4 +1,4 @@
-use polariton::operation::{Typed, Arr};
+use polariton::{operation::{Arr, Typed}, serdes::TypePrefix};
 
 use super::weapon_list::ItemCategory;
 
@@ -31,7 +31,7 @@ impl GarageSlotInfo {
             (Typed::Str("crfId".into()), Typed::Int(self.crf_id as i32)),
             (Typed::Str("wasRated".into()), Typed::Bool(self.was_rated.into())),
             (Typed::Str("movementCategories".into()), Typed::Arr(Arr {
-                ty: 105, // int
+                ty: TypePrefix::Int, // int
                 items: self.movement_categories.iter().map(|x| Typed::Int((*x as i32) * 100_000)).collect(),
             })),
             (Typed::Str("uniqueId1".into()), Typed::Int(self.uuid.0 as i32)),
@@ -48,7 +48,7 @@ impl GarageSlotInfo {
             (Typed::Str("masteryLevel".into()), Typed::Int(self.mastery_level)),
             (Typed::Str("baySkinId".into()), Typed::Str(self.bay_skin_id.clone().into())),
             (Typed::Str("weaponOrder".into()), Typed::Arr(Arr {
-                ty: 105, // int
+                ty: TypePrefix::Int, // int
                 items: self.weapon_order.iter().map(|x| Typed::Int(*x)).collect(),
             })),
         ].into())
@@ -73,7 +73,7 @@ pub struct ControlOptions {
 impl ControlOptions {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Arr(Arr {
-            ty: 111, // bool
+            ty: TypePrefix::Bool, // bool
             items: vec![
                 Typed::Bool(self.vertical_strafing.into()),
                 Typed::Bool(self.sideways_driving.into()),

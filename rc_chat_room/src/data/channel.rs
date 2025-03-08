@@ -11,7 +11,7 @@ impl ChatChannelInfo {
         Typed::HashMap(vec![
             (Typed::Str("channelName".into()), Typed::Str(self.channel_name.clone().into())),
             (Typed::Str("members".into()), Typed::Arr(Arr {
-                ty: 104, // hashtable
+                ty: polariton::serdes::TypePrefix::HashMap, // hashtable
                 items: self.members.iter().map(|x| x.as_transmissible()).collect(),
             })),
             (Typed::Str("channelType".into()), Typed::Int(self.channel_ty as _)),

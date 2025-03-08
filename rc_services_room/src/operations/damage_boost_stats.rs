@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::damage_boost::*;
 
@@ -9,8 +9,8 @@ pub(super) fn damage_boost_provider() -> SimpleFunc<163, crate::UserTy, impl (Fn
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // obj
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::Any, // obj
             items: vec![
                 (Typed::Str("damageBoost".into()), DamageBoostData {
                     damage_map: vec![

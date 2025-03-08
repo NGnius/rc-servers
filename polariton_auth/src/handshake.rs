@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use polariton::packet::{Packet, Message, StandardMessage, Data, Cryptographer};
 use polariton::operation::{Typed, ParameterTable, OperationResponse};
 
@@ -54,7 +52,7 @@ impl <'a> Handshake<Start<'a>> {
                                 flags: 0,
                                 data: Data::InitAck ,
                             }),
-                            packet.header.channel, true, None).unwrap()
+                            packet.header.channel, true, &Default::default()).unwrap()
                     });
                 }
             }
@@ -77,7 +75,7 @@ pub enum EncryptError {
 impl Handshake<Connected> {
     const PUBLIC_KEY_PARAM_KEY: u8 = 1;
 
-    pub fn encrypt<'a>(self, packet: &'a Packet) -> Result<HandshakeAnd<Encrypted, (Packet, Box<Arc<dyn Cryptographer>>)>, HandshakeAnd<Connected, EncryptError>> {
+    pub fn encrypt<'a>(self, packet: &'a Packet) -> Result<HandshakeAnd<Encrypted, (Packet, crate::encryption::CryptoImpl)>, HandshakeAnd<Connected, EncryptError>> {
         if let Packet::Packet(packet) = &packet {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::InternalOpReq(req) = &conn.data {
@@ -96,13 +94,13 @@ impl Handshake<Connected> {
                                             return_code: 0,
                                             message: Typed::Null,
                                             params: ParameterTable::from_dict(response_params) })
-                                    }), 0, true, None).unwrap();
+                                    }), 0, true, &Default::default()).unwrap();
                             let new_self = Handshake::<Encrypted> {
                                 state: Encrypted,
                             };
                             return Ok(HandshakeAnd {
                                 handshake: new_self,
-                                extra: (resp_packet, Box::new(Arc::new(keys.enc))),
+                                extra: (resp_packet, keys.enc),
                             });
                         } else {
                             return Err(HandshakeAnd {
@@ -155,7 +153,7 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
     const AUTH_REQUEST_CODE: u8 = 230;
     const USER_ID_KEY: u8 = 225;
     const NICKNAME_KEY: u8 = 225;
-    pub fn authenticate<'a>(mut self, packet: &'a Packet, crypto: Box<Arc<dyn Cryptographer>>) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
+    pub fn authenticate<'a>(mut self, packet: &'a Packet, crypto: &dyn Cryptographer) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
         if let Packet::Packet(packet) = &packet {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::OpReq(req) = &conn.data {
@@ -174,6 +172,8 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
                             params_resp.insert(Self::USER_ID_KEY, user_id.to_owned());
                             params_resp.insert(Self::NICKNAME_KEY, user_id.to_owned());
                         }
+                        let serdes_ctx = Default::default();
+                        let serdes_ctx = polariton::packet::SerdesContext::new(&serdes_ctx, crypto);
                         return Ok(Packet::from_message(
                             Message::Standard(
                                 StandardMessage {
@@ -185,7 +185,7 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
                                         params: params_resp.into(),
                                     })
                                 }.encrypt(conn.is_encrypted())
-                            ), packet.header.channel, true, Some(crypto)).unwrap());
+                            ), packet.header.channel, true, &serdes_ctx).unwrap());
                     }
                 }
             }

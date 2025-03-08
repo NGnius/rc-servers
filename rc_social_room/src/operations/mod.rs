@@ -10,8 +10,8 @@ mod platoon_data;
 
 use polariton_server::operations::OperationsHandler;
 
-pub fn handler() -> OperationsHandler<crate::UserTy> {
-    OperationsHandler::new()
+pub fn handler() -> OperationsHandler<crate::UserTy, crate::data::custom::CustomType> {
+    OperationsHandler::<crate::UserTy, crate::data::custom::CustomType>::new()
         .without_state(more_auth::MoreLobbyAuth)
         //.without_state(polariton_server::operations::Ack::<33, _>::default()) // get user clan info (this is equivalent to not being in a clan)
         .without_state(friend_list::friends_provider()) // TODO friend object parsing Token: 0x0200169C RID: 5788

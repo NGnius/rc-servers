@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed};
+use polariton::{operation::{ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::taunts_config::*;
 
@@ -9,8 +9,8 @@ pub(super) fn taunts_config_provider() -> SimpleFunc<164, crate::UserTy, impl (F
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(polariton::operation::Dict {
-            key_ty: 115,
-            val_ty: 42,
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: vec![
                 (Typed::Str("taunts".into()), TauntsData {
                     taunts: vec![

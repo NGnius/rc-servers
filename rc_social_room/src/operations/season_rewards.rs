@@ -10,7 +10,7 @@ const CLAN_TOTAL_PARAM_KEY: u8 = 55;
 const CLAN_NAME_PARAM_KEY: u8 = 31;
 const PLAYER_XP_PARAM_KEY: u8 = 57;
 
-pub(super) fn season_rewards_provider() -> SimpleFunc<50, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+pub(super) fn season_rewards_provider<C: Send + Sync>() -> SimpleFunc<50, crate::UserTy, impl (Fn(ParameterTable<C>, &crate::UserTy) -> Result<ParameterTable<C>, i16>) + Sync + Sync, C> {
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(MONTH_PARAM_KEY, Typed::Int(02));

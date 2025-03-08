@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 const PLATFORM_CONFIG_KEY: u8 = 197;
 
@@ -7,8 +7,8 @@ pub(super) fn platform_config_provider() -> SimpleFunc<165, crate::UserTy, impl 
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PLATFORM_CONFIG_KEY, Typed::Dict(Dict {
-            key_ty: 42, // obj
-            val_ty: 42, // obj
+            key_ty: TypePrefix::Any, // obj
+            val_ty: TypePrefix::Any, // obj
             items: vec![
                 (Typed::Str("BuyPremiumAvailable".into()), Typed::Bool(false.into())),
                 (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(false.into())),

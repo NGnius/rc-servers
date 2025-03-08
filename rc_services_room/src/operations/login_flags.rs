@@ -14,11 +14,11 @@ impl UserFlagsTeller {
     const AB_GROUP_KEY: u8 = 167;
 }
 
-impl Operation for UserFlagsTeller {
+impl <C> Operation<C> for UserFlagsTeller {
     type State = ();
     type User = crate::UserTy;
 
-    fn handle(&self, _: polariton::operation::ParameterTable, _: &mut Self::State, _: &Self::User) -> polariton::operation::OperationResponse {
+    fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &mut Self::State, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = std::collections::HashMap::new();
         resp_params.insert(Self::REMOVE_OBSOLETE_CUBES_KEY, polariton::operation::Typed::Bool(false.into()));
         resp_params.insert(Self::REMOVE_UNOWNED_CUBES_KEY, polariton::operation::Typed::Bool(false.into()));

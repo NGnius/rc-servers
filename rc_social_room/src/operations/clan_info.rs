@@ -9,13 +9,13 @@ const ROBITS_CONVERSION_PARAM_KEY: u8 = 51; // out only
 const CLAN_DESCRIPTION_PARAM_KEY: u8 = 32; // out only
 const CLAN_TYPE_PARAM_KEY: u8 = 32; // out only
 
-pub(super) fn clan_info_provider() -> SimpleFunc<33, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+pub(super) fn clan_info_provider<C: Send + Sync>() -> SimpleFunc<33, crate::UserTy, impl (Fn(ParameterTable<C>, &crate::UserTy) -> Result<ParameterTable<C>, i16>) + Sync + Sync, C> {
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         if let Some(Typed::Str(clan_name)) = params.get(&CLAN_NAME_PARAM_KEY) {
             log::debug!("Requested info on clan {}", clan_name.string);
             params.insert(MEMBERS_PARAM_KEY, Typed::Arr(Arr {
-                ty: 104, // hashmap
+                ty: polariton::serdes::TypePrefix::HashMap, // hashmap
                 items: vec![
                     ClanMember {
                         username: "RE_clan_user_idk0".to_owned(),

@@ -5,11 +5,11 @@ use crate::data::clan_invite::*;
 
 const PARAM_KEY: u8 = 42;
 
-pub(super) fn clan_invites_provider() -> SimpleFunc<39, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+pub(super) fn clan_invites_provider<C: Send + Sync>() -> SimpleFunc<39, crate::UserTy, impl (Fn(ParameterTable<C>, &crate::UserTy) -> Result<ParameterTable<C>, i16>) + Sync + Sync, C> {
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Arr(Arr {
-            ty: 104, // hashmap
+        params.insert(PARAM_KEY, Typed::<C>::Arr(Arr {
+            ty: polariton::serdes::TypePrefix::HashMap, // hashmap
             items: vec![
                 ClanInviteInfo {
                     username: "RE_user1".to_owned(),

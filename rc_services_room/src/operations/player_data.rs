@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
+use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::{garage_bay::*, weapon_list::ItemCategory};
 
@@ -22,13 +22,13 @@ pub(super) fn player_data_provider() -> SimpleFunc<61, crate::UserTy, impl (Fn(P
         params.insert(CONTROL_TYPE_KEY, Typed::Int(ControlType::Camera as _));
         params.insert(CONTROL_OPTIONS_KEY, ControlOptions { vertical_strafing: false, sideways_driving: false, tracks_turn_on_spot: false, }.as_transmissible());
         params.insert(WEAPON_ORDER_KEY, Typed::Arr(Arr {
-            ty: 105, // int
+            ty: TypePrefix::Int, // int
             items: vec![
                 Typed::Int(0),
             ],
         }));
         params.insert(ITEM_CATEGORY_KEY, Typed::Arr(Arr {
-            ty: 105, // int
+            ty: TypePrefix::Int, // int
             items: vec![
                 Typed::Int(ItemCategory::Wheel.but_bigger()),
             ],

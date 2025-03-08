@@ -7,7 +7,7 @@ pub struct AvatarInfo {
 }
 
 impl AvatarInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
             (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar.into())),

@@ -1,4 +1,4 @@
-use polariton::operation::{Typed, Dict};
+use polariton::{operation::{Dict, Typed}, serdes::TypePrefix};
 
 pub struct TauntsData {
     pub taunts: Vec<TauntData>,
@@ -7,8 +7,8 @@ pub struct TauntsData {
 impl TauntsData {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115,
-            val_ty: 42,
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: self.taunts.iter().map(|t| (Typed::Str(t.group_name.clone().into()), t.as_transmissible())).collect(),
         })
     }
@@ -31,15 +31,15 @@ impl TauntData {
             (Typed::Str("defaultAnimOffsety".into()), Typed::Float(self.animation_offset_y)),
             (Typed::Str("defaultAnimOffsetz".into()), Typed::Float(self.animation_offset_z)),
             (Typed::Str("cubes".into()), Typed::Dict(Dict {
-                key_ty: 115,
-                val_ty: 42,
+                key_ty: TypePrefix::Str,
+                val_ty: TypePrefix::Any,
                 items: self.cubes.iter().enumerate().map(|(i, cube)| (Typed::Str(i.to_string().into()), cube.as_transmissible())).collect(),
             })),
         ];
         items.append(&mut self.assets.as_transmissible());
         Typed::Dict(Dict {
-            key_ty: 115,
-            val_ty: 42,
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items,
         })
     }
@@ -72,8 +72,8 @@ pub struct CubeData {
 impl CubeData {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115,
-            val_ty: 42,
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: vec![
                 (Typed::Str("cubeid".into()), Typed::Str(hex::encode((self.cube_id as i32).to_le_bytes()).into())),
                 (Typed::Str("positionx".into()), Typed::Int(self.position_x)),

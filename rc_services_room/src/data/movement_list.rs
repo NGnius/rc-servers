@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use polariton::operation::{Typed, Dict};
+use polariton::serdes::TypePrefix;
 
 use super::cube_list::ItemTier;
 
@@ -32,8 +33,8 @@ impl MovementCategoryData {
             out.push((Typed::Str(tier.as_str().into()), mov_data.as_transmissible()));
         }
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // any
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: out.into(),
         })
     }
@@ -141,8 +142,8 @@ impl MovementData {
         self.vertical_top_speed.map(|x| out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))));
         out.append(&mut self.specifics.as_transmissible());
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // any
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::Any, // any
             items: out.into(),
         })
     }

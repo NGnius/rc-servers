@@ -9,7 +9,7 @@ pub(super) fn all_channels_provider() -> SimpleFunc<11, crate::UserTy, impl (Fn(
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
-            ty: 104, // hashtable
+            ty: polariton::serdes::TypePrefix::HashMap, // hashtable
             items: vec![
                 ChatChannelInfo {
                     channel_name: "RE_public_channel0".to_owned(),

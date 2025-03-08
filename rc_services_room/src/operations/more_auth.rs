@@ -7,11 +7,11 @@ impl MoreLobbyAuth {
     const AUTH_PAYLOAD_KEY: u8 = 245;
 }
 
-impl Operation for MoreLobbyAuth {
+impl <C> Operation<C> for MoreLobbyAuth {
     type State = ();
     type User = crate::UserTy;
 
-    fn handle(&self, params: polariton::operation::ParameterTable, _: &mut Self::State, user: &Self::User) -> polariton::operation::OperationResponse {
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let params_dict = params.to_dict();
         if let Some(Typed::Str(auth_payload)) = params_dict.get(&Self::AUTH_PAYLOAD_KEY) {
             let mut write_lock = user.write().unwrap();

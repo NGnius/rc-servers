@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::client_config::*;
 
@@ -9,8 +9,8 @@ pub(super) fn client_config_provider() -> SimpleFunc<34, crate::UserTy, impl (Fn
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashtable
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 (Typed::Str("GameplaySettings".into()), GameplaySettings {
                     show_tutorial_after_date: "2025-01-01".to_owned(),

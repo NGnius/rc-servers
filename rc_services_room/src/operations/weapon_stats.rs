@@ -1,3 +1,4 @@
+use polariton::serdes::TypePrefix;
 use polariton_server::operations::SimpleFunc;
 use polariton::operation::{ParameterTable, Typed, Dict};
 
@@ -10,8 +11,8 @@ pub(super) fn weapon_config_provider() -> SimpleFunc<47, crate::UserTy, impl (Fn
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashtable
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 // (Item category, map<tier, weapon stats>)
                 (Typed::Str(ItemCategory::Laser.as_str().into()), Typed::HashMap(vec![

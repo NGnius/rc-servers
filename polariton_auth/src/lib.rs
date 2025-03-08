@@ -1,4 +1,5 @@
 mod encryption;
+pub use encryption::CryptoImpl;
 
 mod handshake;
 pub use handshake::{Handshake, AuthProvider, AuthError};

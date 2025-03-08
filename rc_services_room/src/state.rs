@@ -1,24 +1,4 @@
-use std::sync::{Arc, RwLock};
-
-pub struct State {
-    pub crypto: Box<Arc<dyn polariton::packet::Cryptographer>>,
-}
-
-impl State {
-    pub fn new(c: Box<Arc<dyn polariton::packet::Cryptographer>>) -> Self {
-        Self {
-            crypto: c,
-        }
-    }
-
-    pub fn binrw_args(&self) -> polariton::packet::WriteArgs {
-        Some(self.crypto.clone())
-    }
-
-    pub fn user(&self) -> crate::UserTy {
-        RwLock::new(UserState::default())
-    }
-}
+use std::sync::RwLock;
 
 #[derive(Default, Debug)]
 pub struct UserState {
@@ -39,5 +19,9 @@ impl UserState {
             self.refresh_token = splits[2].to_owned();
             true
         }
+    }
+
+    pub fn new() -> crate::UserTy {
+        RwLock::new(UserState::default())
     }
 }

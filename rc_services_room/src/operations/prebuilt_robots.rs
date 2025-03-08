@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::robot_data::*;
 
@@ -9,8 +9,8 @@ pub(super) fn garage_robot_data_provider() -> SimpleFunc<4, crate::UserTy, impl 
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashmap
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashmap
             items: vec![
                 (Typed::Str(format!("{}_{}", 12345, 54321).into()), PrebuiltRobotInfo {
                     name: "Reverse-engineer great success! prebuilt_name".to_owned(),

@@ -1,4 +1,4 @@
-use polariton::operation::{Typed, Dict};
+use polariton::{operation::{Dict, Typed}, serdes::TypePrefix};
 
 pub struct PremiumEffects {
     pub factor: PremiumFactor,
@@ -8,8 +8,8 @@ pub struct PremiumEffects {
 impl PremiumEffects {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashtable
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 (Typed::Str("PremiumFactor".into()), self.factor.as_transmissible()),
                 (Typed::Str("TieredMultiplayer".into()), self.multiplayer.as_transmissible()),

@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 const PARAM_KEY: u8 = 1;
 
@@ -7,8 +7,8 @@ pub(super) fn player_level_info_provider() -> SimpleFunc<3, crate::UserTy, impl 
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 105, // int
-            val_ty: 105, // int
+            key_ty: TypePrefix::Int, // int
+            val_ty: TypePrefix::Int, // int
             items: vec![
                 (Typed::Int(0), Typed::Int(99)),
                 (Typed::Int(10_000), Typed::Int(99_000)),

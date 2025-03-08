@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 const PARAM_KEY: u8 = 88;
 
@@ -8,8 +8,8 @@ pub(super) fn pending_purchases_provider() -> SimpleFunc<81, crate::UserTy, impl
         let mut params = params.to_dict();
         // TODO implement purchases system
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashtable
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashtable
             items: vec![],
         }));
         Ok(params.into())

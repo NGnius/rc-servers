@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::special_item::*;
 
@@ -9,8 +9,8 @@ pub(super) fn special_item_list_provider() -> SimpleFunc<6, crate::UserTy, impl 
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 104, // hashtable
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 //(u32 in base16 aka hex, hashtable)
                 (Typed::Str("DEADBEEF".into()), SpecialItem {

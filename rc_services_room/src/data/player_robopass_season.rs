@@ -1,4 +1,5 @@
 use polariton::operation::{Typed, Dict};
+use polariton::serdes::TypePrefix;
 
 pub struct PlayerRoboPassSeasonInfo {
     pub delta_xp_to_show: i32,
@@ -11,8 +12,8 @@ pub struct PlayerRoboPassSeasonInfo {
 impl PlayerRoboPassSeasonInfo {
     pub fn as_transmissible(&self) -> Typed {
         Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 42, // obj
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
             items: vec![
                 (Typed::Str("deltaXpToShow".into()), Typed::Int(self.delta_xp_to_show)),
                 (Typed::Str("grade".into()), Typed::Int(self.grade)),

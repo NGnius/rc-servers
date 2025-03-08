@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
+use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 const ROBOT_ID_PARAM_KEY: u8 = 54; // str (in)
 const SANCTION_JSONS_PARAM_KEY: u8 = 102; // str arr (out; list of jsons)
@@ -11,7 +11,7 @@ pub(super) fn robot_sanction_provider() -> SimpleFunc<174, crate::UserTy, impl (
             log::debug!("Got sanction check for robot {}", s.string);
         }
         params.insert(SANCTION_JSONS_PARAM_KEY, Typed::Arr(Arr {
-            ty: 115, // str
+            ty: TypePrefix::Str, // str
             items: Vec::default(),
         }));
         Ok(params.into())
@@ -22,7 +22,7 @@ pub(super) fn all_robot_sanctions_provider() -> SimpleFunc<176, crate::UserTy, i
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(SANCTION_JSONS_PARAM_KEY, Typed::Arr(Arr {
-            ty: 115, // str
+            ty: TypePrefix::Str, // str
             items: Vec::default(),
         }));
         Ok(params.into())

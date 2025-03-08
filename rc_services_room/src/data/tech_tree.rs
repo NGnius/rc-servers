@@ -1,4 +1,4 @@
-use polariton::operation::{Typed, Arr};
+use polariton::{operation::{Arr, Typed}, serdes::TypePrefix};
 
 pub struct TechTreeNode {
     pub main_cube_id: i32, // hex
@@ -20,7 +20,7 @@ impl TechTreeNode {
             (Typed::Str("isUnlockable".into()), Typed::Bool(self.is_unlockable.into())),
             (Typed::Str("tp".into()), Typed::Int(self.tech_points as i32)),
             (Typed::Str("neighbours".into()), Typed::Arr(Arr {
-                ty: 115, // str
+                ty: TypePrefix::Str, // str
                 items: self.neighbours.iter().map(|cube_id| Typed::Str(hex::encode(cube_id.to_be_bytes()).into())).collect(),
             })),
         ].into())

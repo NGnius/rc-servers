@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
+use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::custom_games::*;
 
@@ -13,28 +13,28 @@ pub(super) fn event_system_params_provider() -> SimpleFunc<24, crate::UserTy, im
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(MAP_NAMES_PARAM_KEY, Typed::Arr(Arr {
-            ty: 115, // str
+            ty: TypePrefix::Str, // str
             items: vec![
                 Typed::Str("RC_Planet_Neptune_03_BA".into()),
                 Typed::Str("RC_Planet_Earth_01_BA".into()),
             ],
         }));
         params.insert(VISIBILITY_PARAM_KEY, Typed::Arr(Arr {
-            ty: 105, // int
+            ty: TypePrefix::Int, // int
             items: vec![
                 Typed::Int(GameMode::BattleArena as _),
                 Typed::Int(GameMode::BattleArena as _),
             ],
         }));
         params.insert(MODE_PARAM_KEY, Typed::Arr(Arr {
-            ty: 105, // int
+            ty: TypePrefix::Int, // int
             items: vec![
                 Typed::Int(MapVisibility::Good as _),
                 Typed::Int(MapVisibility::Bad as _),
             ],
         }));
         params.insert(AUTO_HEAL_PARAM_KEY, Typed::Arr(Arr {
-            ty: 111, // bool
+            ty: TypePrefix::Bool, // bool
             items: vec![
                 Typed::Bool(true.into()),
                 Typed::Bool(false.into()),

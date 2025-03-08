@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::cube_list::ItemTier;
 
@@ -11,13 +11,13 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
         params.insert(PARAM_KEY, Typed::HashMap(vec![
             (Typed::Str("maxPower".into()), Typed::Int(2)),
             (Typed::Str("powerLevelsPerTier".into()), Typed::Dict(Dict {
-                key_ty: 105, // int
-                val_ty: 122, // obj arr
+                key_ty: TypePrefix::Int, // int
+                val_ty: TypePrefix::ObjArr, // obj arr
                 items: vec![
                     (Typed::Int(ItemTier::T0 as _), Typed::ObjArr(vec![
                         Typed::Dict(Dict {
-                            key_ty: 115, // str
-                            val_ty: 42, // obj
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
@@ -25,8 +25,8 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             ],
                         }),
                         Typed::Dict(Dict {
-                            key_ty: 115, // str
-                            val_ty: 42, // obj
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),

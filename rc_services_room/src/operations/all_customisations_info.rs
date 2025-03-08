@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
+use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::customisation_info::CustomisationData;
 
@@ -16,7 +16,7 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(SKINS_KEY, Typed::Arr(Arr {
-            ty: 104, // hashtable
+            ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 CustomisationData {
                     id: "RC_MothershipSkin_Neptune_01".to_string(),
@@ -29,7 +29,7 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
             ],
         }));
         params.insert(SPAWNS_KEY, Typed::Arr(Arr {
-            ty: 104, // hashtable
+            ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 CustomisationData {
                     id: "spawn0".to_string(),
@@ -42,7 +42,7 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
             ],
         }));
         params.insert(DEATHS_KEY, Typed::Arr(Arr {
-            ty: 104, // hashtable
+            ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 CustomisationData {
                     id: "death0".to_string(),

@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::custom_games::*;
 
@@ -10,8 +10,8 @@ pub(super) fn allowed_maps_provider() -> SimpleFunc<146, crate::UserTy, impl (Fn
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(MODE_MAP_PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 122, // obj arr
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::ObjArr, // obj arr
             items: vec![
                 (Typed::Str(GameMode::BattleArena.as_str().into()), Typed::ObjArr(vec![
                         Typed::Str("RC_Planet_Neptune_02_BA".into()),
@@ -30,8 +30,8 @@ pub(super) fn allowed_maps_provider() -> SimpleFunc<146, crate::UserTy, impl (Fn
             ],
         }));
         params.insert(MAP_NAMES_PARAM_KEY, Typed::Dict(Dict {
-            key_ty: 115, // str
-            val_ty: 115, // str
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::Str, // str
             items: vec![
                 (Typed::Str("RC_Planet_Neptune_02_BA".into()), Typed::Str("strCustomGameMapNameRC_Planet_Neptune_02_BA".into())),
                 (Typed::Str("RC_Planet_Neptune_01_CTF".into()), Typed::Str("strCustomGameMapNameRC_Planet_Neptune_01_CTF".into())),

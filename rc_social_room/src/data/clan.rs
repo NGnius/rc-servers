@@ -13,7 +13,7 @@ pub struct ClanMember {
 }
 
 impl ClanMember {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("userName".into()), Typed::Str(self.username.clone().into())),
             (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
@@ -59,7 +59,7 @@ pub struct ClanInfo {
 }
 
 impl ClanInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("clanName".into()), Typed::Str(self.clan_name.clone().into())),
             (Typed::Str("clanDescription".into()), Typed::Str(self.clan_description.clone().into())),
