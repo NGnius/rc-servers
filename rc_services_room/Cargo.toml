@@ -13,3 +13,5 @@ polariton_auth = { version = "*", path = "../polariton_auth" }
 polariton_server.workspace = true
 base64 = "0.22"
 hex = "0.4"
+serde.workspace = true
+serde_json.workspace = true

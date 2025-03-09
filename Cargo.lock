@@ -1781,6 +1781,8 @@ dependencies = [
  "polariton",
  "polariton_auth",
  "polariton_server",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

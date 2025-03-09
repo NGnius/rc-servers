@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use polariton::operation::Typed;
 
-pub struct CubeInfo {
+pub struct CubeInfo<C: Clone> {
     pub cpu: u32,
     pub health: u32,
     pub health_boost: f32,
@@ -14,7 +14,7 @@ pub struct CubeInfo {
     pub protonium: bool,
     pub unlocked_by_league: bool,
     pub league_unlock_index: i32,
-    pub stats: HashMap<String, Typed>,
+    pub stats: HashMap<String, Typed<C>>,
     pub description: String,
     pub size: ItemTier,
     pub type_: ItemType,
@@ -24,8 +24,8 @@ pub struct CubeInfo {
     pub ignore_in_weapon_list: bool,
 }
 
-impl CubeInfo {
-    pub fn as_transmissible(&self) -> Typed {
+impl <C: Clone> CubeInfo<C> {
+    pub fn as_transmissible(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("cpuRating".into()), Typed::Int(self.cpu as i32)),
             (Typed::Str("health".into()), Typed::Int(self.health as i32)),
@@ -39,7 +39,7 @@ impl CubeInfo {
             (Typed::Str("UnlockedByLeague".into()), Typed::Bool(self.unlocked_by_league.into())),
             (Typed::Str("LeagueUnlockIndex".into()), Typed::Int(self.league_unlock_index)),
             (Typed::Str("DisplayStats".into()), {
-                let items: Vec<(Typed, Typed)> = self.stats.iter().map(|(key, val)| (Typed::Str(key.into()), val.to_owned())).collect();
+                let items: Vec<(Typed<C>, Typed<C>)> = self.stats.iter().map(|(key, val)| (Typed::<C>::Str(key.into()), val.to_owned())).collect();
                 Typed::HashMap(items.into())
             }),
             (Typed::Str("Description".into()), Typed::Str(self.description.clone().into())),
@@ -52,7 +52,7 @@ impl CubeInfo {
         ].into())
     }
 
-    pub fn as_transmissible_key_val(&self, cube_id: u32) -> (Typed, Typed) {
+    pub fn as_transmissible_key_val(&self, cube_id: u32) -> (Typed<C>, Typed<C>) {
         (Typed::Str(hex::encode(cube_id.to_be_bytes()).into()), self.as_transmissible())
     }
 }

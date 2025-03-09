@@ -19,7 +19,7 @@ pub struct MovementCategoryData {
 }
 
 impl MovementCategoryData {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
         self.horizontal_top_speed.map(|x| out.push((Typed::Str("horizontalTopSpeed".into()), Typed::Float(x))));
         self.vertical_top_speed.map(|x| out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))));
@@ -57,7 +57,7 @@ pub enum MovementCategorySpecificData {
 }
 
 impl MovementCategorySpecificData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         match self {
             Self::Wheel => Vec::default(),
             Self::Hover(x) => x.as_transmissible(),
@@ -86,7 +86,7 @@ pub struct HoverCategoryData {
 }
 
 impl HoverCategoryData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("heightTolerance".into()), Typed::Float(self.height_tolerance)),
             (Typed::Str("forceYOffset".into()), Typed::Float(self.force_y_offset)),
@@ -105,7 +105,7 @@ pub struct MechLegCategoryData {
 }
 
 impl MechLegCategoryData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("decelerationMultiplier".into()), Typed::Float(self.deceleration_multiplier)),
         ]
@@ -118,7 +118,7 @@ pub struct RotorCategoryData {
 
 
 impl RotorCategoryData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("maxTurnRate".into()), Typed::Float(self.max_turn_rate)),
         ]
@@ -134,7 +134,7 @@ pub struct MovementData {
 }
 
 impl MovementData {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
         self.speed_boost.map(|x| out.push((Typed::Str("speedBoost".into()), Typed::Float(x))));
         self.max_carry_mass.map(|x| out.push((Typed::Str("maxCarryMass".into()), Typed::Float(x))));
@@ -164,7 +164,7 @@ pub enum MovementSpecificData {
 }
 
 impl MovementSpecificData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         match self {
             Self::Wheel(x) => x.as_transmissible(),
             Self::Hover(x) => x.as_transmissible(),
@@ -195,7 +195,7 @@ pub struct WheelData {
 }
 
 impl WheelData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("steeringSpeedLight".into()), Typed::Float(self.steering_speed_light)),
             (Typed::Str("steeringSpeedHeavy".into()), Typed::Float(self.steering_speed_heavy)),
@@ -227,7 +227,7 @@ pub struct HoverData {
 }
 
 impl HoverData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("maxHoverHeightLight".into()), Typed::Float(self.max_hover_height_light)),
             (Typed::Str("maxHoverHeightHeavy".into()), Typed::Float(self.max_hover_height_heaver)),
@@ -261,7 +261,7 @@ pub struct AerofoilData {
 }
 
 impl AerofoilData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("barrelSpeedLight".into()), Typed::Float(self.barrel_speed_light)),
             (Typed::Str("barrelSpeedHeavy".into()), Typed::Float(self.barrel_speed_heavy)),
@@ -285,7 +285,7 @@ pub struct ThrusterData {
 }
 
 impl ThrusterData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("accelerationDelayLight".into()), Typed::Float(self.acceleration_delay_light)),
             (Typed::Str("accelerationDelayHeavy".into()), Typed::Float(self.acceleration_delay_heavy)),
@@ -323,7 +323,7 @@ pub struct InsectLegData {
 }
 
 impl InsectLegData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("idealHeightLight".into()), Typed::Float(self.ideal_height_light)),
             (Typed::Str("idealHeightHeavy".into()), Typed::Float(self.ideal_height_heavy)),
@@ -373,7 +373,7 @@ pub struct MechLegData {
 }
 
 impl MechLegData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("timeGroundedAfterJumpLight".into()), Typed::Float(self.time_grounded_after_jump_light)),
             (Typed::Str("timeGroundedAfterJumpHeavy".into()), Typed::Float(self.time_grounded_after_jump_heavy)),
@@ -405,7 +405,7 @@ pub struct TankTrackData {
 }
 
 impl TankTrackData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("maxTurnRateMovingLight".into()), Typed::Float(self.max_turn_rate_moving_light)),
             (Typed::Str("maxTurnRateMovingHeavy".into()), Typed::Float(self.max_turn_rate_moving_heavy)),
@@ -434,7 +434,7 @@ pub struct RotorData {
 
 
 impl RotorData {
-    pub fn as_transmissible(&self) -> Vec<(Typed, Typed)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("heightAccelerationLight".into()), Typed::Float(self.height_acceleration_light)),
             (Typed::Str("heightAccelerationHeavy".into()), Typed::Float(self.height_acceleration_heavy)),

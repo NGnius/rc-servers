@@ -14,6 +14,10 @@ pub struct CliArgs {
     /// Socket read tries before giving up (0 to never give up)
     #[arg(long, default_value_t = 5)]
     pub retries: usize,
+
+    /// Assets root
+    #[arg(long, default_value_t = {"../assets/robocraft".to_string()})]
+    pub assets: String,
 }
 
 impl CliArgs {

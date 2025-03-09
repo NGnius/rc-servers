@@ -1,17 +1,18 @@
-use std::collections::HashMap;
+//use std::collections::HashMap;
 
-use polariton_server::operations::SimpleFunc;
-use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
+use polariton_server::operations::Immediate;
+//use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
-use crate::data::cube_list::*;
+//use crate::data::cube_list::*;
 
 const PARAM_KEY: u8 = 1;
-const DEFAULT_CUBE_ID: u32 = 227205318;
+//const DEFAULT_CUBE_ID: u32 = 227205318;
 
-pub(super) fn cube_list_provider() -> SimpleFunc<2, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Dict(Dict {
+pub(super) fn cube_list_provider(cubes: &crate::persist::config::CubeConfig) -> Immediate<2, crate::UserTy> {
+    Immediate::new(|| {
+        let mut params = std::collections::HashMap::with_capacity(2);
+        params.insert(PARAM_KEY, cubes.cube_list());
+        /*params.insert(PARAM_KEY, Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str
             val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
@@ -164,7 +165,7 @@ pub(super) fn cube_list_provider() -> SimpleFunc<2, crate::UserTy, impl (Fn(Para
                     ignore_in_weapon_list: true,
                 }.as_transmissible_key_val(3209000021),
             ].into(),
-        }));
-        Ok(params.into())
+        }));*/
+        params.into()
     })
 }

@@ -4,6 +4,7 @@ mod state;
 mod data;
 mod events;
 mod operations;
+mod persist;
 
 use polariton_auth::Handshake;
 use tokio::net;
@@ -13,13 +14,21 @@ use polariton::operation::{OperationResponse, Typed};
 
 pub type UserTy = std::sync::RwLock<state::UserState>;
 
+pub struct InitConfig {
+    pub cubes: persist::config::CubeConfig,
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let server = polariton_server::Server::new(operations::handler());
+    let init_ctx = InitConfig {
+        cubes: persist::config::CubeConfig::load(&args.assets).expect("Bad cube config data"),
+    };
+
+    let server = polariton_server::Server::new(operations::handler(&init_ctx));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 

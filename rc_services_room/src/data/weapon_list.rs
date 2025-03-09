@@ -68,7 +68,7 @@ pub struct WeaponData {
 }
 
 impl WeaponData {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
 
         self.damage_inflicted.map(|x| out.push((Typed::Str("damageInflicted".into()), Typed::Int(x))));
@@ -114,7 +114,7 @@ impl WeaponData {
         self.spin_initial_cooldown.map(|x| out.push((Typed::Str("spinInitialCooldown".into()), Typed::Float(x))));
 
         if !self.group_fire_scales.is_empty() {
-            let typed_arr: Vec<Typed> = self.group_fire_scales.iter().map(|x| Typed::Float(*x)).collect();
+            let typed_arr: Vec<Typed<C>> = self.group_fire_scales.iter().map(|x| Typed::Float(*x)).collect();
             out.push((Typed::Str("groupFireScales".into()), Typed::ObjArr(typed_arr.into())));
         }
 
@@ -156,7 +156,7 @@ pub enum ItemCategory {
     Ski = 8,
     TankTrack = 9,
     Rotor = 10,
-    SrpinterLeg = 11,
+    SprinterLeg = 11,
     Propeller = 12,
     Laser = 100,
     Plasma = 200,
@@ -190,7 +190,7 @@ impl ItemCategory {
             ItemCategory::Ski => "Ski",
             ItemCategory::TankTrack => "TankTrack",
             ItemCategory::Rotor => "Rotor",
-            ItemCategory::SrpinterLeg => "SrpinterLeg",
+            ItemCategory::SprinterLeg => "SprinterLeg",
             ItemCategory::Propeller => "Propeller",
             ItemCategory::Laser => "Laser",
             ItemCategory::Plasma => "Plasma",

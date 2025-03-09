@@ -75,7 +75,7 @@ mod reconnect_game;
 
 use polariton_server::operations::OperationsHandler;
 
-pub fn handler() -> OperationsHandler<crate::UserTy> {
+pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
         .without_state(eac::EacChallengeIgnorer)
         .without_state(more_auth::MoreLobbyAuth)
@@ -88,14 +88,14 @@ pub fn handler() -> OperationsHandler<crate::UserTy> {
         .without_state(polariton_server::operations::Ack::<131, _>::default()) // analytics updated notification
         .without_state(platform_config::platform_config_provider())
         .without_state(tier_banding::tiers_banding_provider())
-        .without_state(cube_list::cube_list_provider())
+        .without_state(cube_list::cube_list_provider(&init_ctx.cubes))
         .without_state(special_items::special_item_list_provider())
         .without_state(premium_config::premium_config_provider())
         .without_state(palette_town::kanto())
         .without_state(client_config::client_config_provider())
         .without_state(crf_config::crf_config_provider())
-        .without_state(weapon_stats::weapon_config_provider())
-        .without_state(movement_stats::movement_config_provider())
+        .without_state(weapon_stats::weapon_config_provider(&init_ctx.cubes))
+        .without_state(movement_stats::movement_config_provider(&init_ctx.cubes))
         .without_state(power_bar_stats::power_bar_provider())
         .without_state(damage_boost_stats::damage_boost_provider())
         .without_state(battle_arena_config::battle_arena_config_provider())

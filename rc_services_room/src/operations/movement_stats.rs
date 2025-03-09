@@ -1,17 +1,18 @@
-use polariton::serdes::TypePrefix;
-use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Dict};
+//use polariton::serdes::TypePrefix;
+use polariton_server::operations::Immediate;
+//use polariton::operation::{ParameterTable, Typed, Dict};
 
-use crate::data::movement_list::*;
-use crate::data::cube_list::ItemTier;
-use crate::data::weapon_list::ItemCategory;
+//use crate::data::movement_list::*;
+//use crate::data::cube_list::ItemTier;
+//use crate::data::weapon_list::ItemCategory;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn movement_config_provider() -> SimpleFunc<62, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Dict(Dict {
+pub(super) fn movement_config_provider(cubes: &crate::persist::config::CubeConfig) -> Immediate<62, crate::UserTy> {
+    Immediate::new(|| {
+        let mut params = std::collections::HashMap::with_capacity(2);
+        params.insert(PARAM_KEY, cubes.movement_list());
+        /*params.insert(PARAM_KEY, Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str
             val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
@@ -137,7 +138,7 @@ pub(super) fn movement_config_provider() -> SimpleFunc<62, crate::UserTy, impl (
                     }.as_transmissible()),
                 ].into())),
             ].into(),
-        }));
-        Ok(params.into())
+        }));*/
+        params.into()
     })
 }
