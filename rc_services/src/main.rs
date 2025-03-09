@@ -178,7 +178,7 @@ async fn do_connect_handshake(
         }
     };
     while let Packet::Ping(ping) = packet3 {
-        polariton_server::utils::handle_ping_async(ping, socket, &Default::default()).await.unwrap_or_default();
+        polariton_server::utils::handle_ping_async(ping, socket, &ctx).await.unwrap_or_default();
         packet3 = match polariton_server::utils::receive_packet_async(socket, &ctx).await {
             Ok(x) => x,
             Err(e) => {
