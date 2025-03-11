@@ -23,3 +23,9 @@ No data is collected or logged, except in dev mode. Some personal identifiers ar
 ### Robocraft
 
 Run all of the servers using their respective `run_debug.sh` scripts and use the `dev` profile in `servenvmulti.config` to point the game to your local dev servers.
+
+## Contributing
+
+If you can program, pull requests are appreciated! If you can't and don't like learning, reporting issues is also welcome.
+
+If you'd like to discuss, contact NGnius on Signal `rfc.1149` or email `ngniusness@gmail.com`. I'll make a Signal group chat if there's enough interest.
