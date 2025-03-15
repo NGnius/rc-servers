@@ -72,6 +72,10 @@ mod cube_awards;
 mod robot_sanction;
 mod building_xp;
 mod reconnect_game;
+mod regen_config;
+mod pageantry;
+mod signup_time;
+mod validate_machine;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -161,4 +165,9 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(machine::garage_machine_save_provider())
         .without_state(polariton_server::operations::Ack::<32, _>::default()) // TODO handle SaveMachineColorRequest instead of ignoring it
         .without_state(polariton_server::operations::Ack::<45, _>::default()) // TODO handle UpdateThumbnailVersionRequest instead of ignoring it
+        .without_state(machine::weapon_order_provider())
+        .without_state(regen_config::auto_regen_config_provider(&init_ctx.cubes))
+        .without_state(pageantry::after_battle_vote_thresholds_provider(&init_ctx.cubes))
+        .without_state(signup_time::user_signup_date_provider())
+        .without_state(validate_machine::validate_robot_provider())
 }

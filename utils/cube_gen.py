@@ -2,6 +2,8 @@
 
 import sys
 import json
+import argparse
+import re
 
 # weapon required data
 WEAPONS = {
@@ -203,6 +205,16 @@ def guess_type(category: str) -> str:
     else:
         return "NotAFunctionalItem"
 
+TIERS = [
+    "NoTier",
+    "T0",
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+]
+
 def guess_tier(name: str, sprite: str) -> str:
     if guess_category(name, sprite) == "NotAFunctionalItem" and "medium" in name.lower(): # Medium cube variants
         return "NoTier"
@@ -288,19 +300,134 @@ def is_variant_guess(name: str, sprite: str) -> bool:
             return True
     return False
 
-def main():
-    print(sys.argv)
-    filename_in = sys.argv[1]
-    with open(filename_in) as f:
+FIELD_NAME_EXCEPTIONS = {
+    "verticalTopSpeed": "max_vertical_velocity",
+}
+
+def rename_field(original: str) -> str:
+    if original in FIELD_NAME_EXCEPTIONS:
+        return FIELD_NAME_EXCEPTIONS[original]
+    else:
+        return camel_to_snake_case(original)
+
+SEEN_MOVEMENTS = {}
+
+SEEN_WEAPONS = {}
+
+EXCLUDED_FIELDS = [
+    "T0",
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+]
+
+def apply_entry_overrides(entry: dict, cubes_data: dict, weapons_data: dict, movement_data: dict):
+    if cubes_data is not None:
+        if entry["hexId"] in cubes_data:
+            cube_data = cubes_data[entry["hexId"]]
+            entry["info"]["description"] = cube_data["Description"]
+            entry["info"]["health"] = cube_data["health"]
+            entry["info"]["cpu"] = cube_data["cpuRating"]
+            entry["info"]["visibility"] = cube_data["buildVisibility"]
+            entry["info"]["ranking"] = cube_data["robotRanking"]
+            if "ItemSize" in cube_data:
+                entry["info"]["size"] = cube_data["ItemSize"]
+            if "ItemType" in cube_data:
+                entry["info"]["type"] = cube_data["ItemType"]
+            if "ItemCategory" in cube_data:
+                entry["info"]["category"] = cube_data["ItemCategory"]
+            if "PlacementFaces" in cube_data:
+                entry["info"]["placements"] = cube_data["PlacementFaces"]
+    if movement_data is not None and not entry["isVariant"]:
+        if entry["info"]["category"] in movement_data["Movements"]:
+            if entry["info"]["size"] in movement_data["Movements"][entry["info"]["category"]]:
+                if entry["info"]["category"] not in SEEN_MOVEMENTS:
+                    SEEN_MOVEMENTS[entry["info"]["category"]] = dict()
+                SEEN_MOVEMENTS[entry["info"]["category"]][entry["info"]["size"]] = True
+                specific_data = movement_data["Movements"][entry["info"]["category"]][entry["info"]["size"]]
+                if "movement" not in entry:
+                    entry["movement"] = dict()
+                for (key, val) in specific_data.items():
+                    entry["movement"][rename_field(key)] = specific_data[key]
+                entry["movement"]["movement_enum_variant"] = entry["info"]["category"]
+    if weapons_data is not None and not entry["isVariant"]:
+        weapon_key = entry["info"]["size"] + "_" + entry["info"]["category"]
+        if weapon_key in weapons_data:
+            if weapon_key in SEEN_WEAPONS:
+                print("WARN: Already seen weapon key", weapon_key)
+            SEEN_WEAPONS[weapon_key] = True
+            if "weapon" not in entry:
+                entry["weapon"] = dict()
+            for (key, val) in weapons_data[weapon_key].items():
+                entry["weapon"][rename_field(key)] = val
+
+def apply_global_overrides(conf: dict, cubes_data: dict, weapons_data: dict, movement_data: dict):
+    if movement_data is not None:
+        if "movement" not in conf:
+            conf["movement"] = dict()
+        for (category, cat_setting) in movement_data["Movements"].items():
+            if category not in conf["movement"]:
+                conf["movement"][category] = dict()
+            for (field, setting) in cat_setting.items():
+                if field not in EXCLUDED_FIELDS:
+                    conf["movement"][category][rename_field(field)] = setting
+            conf["movement"][category]["movement_enum_variant"] = category
+
+def load_or_none(file_json):
+    if file_json is None:
+        return None
+    else:
+        with open(file_json) as f:
+            return json.load(f)
+
+CAMEL_TO_SNAKE_PATTERN = re.compile(r'(?<!^)(?=[A-Z])')
+
+def camel_to_snake_case(s: str) -> str:
+    return CAMEL_TO_SNAKE_PATTERN.sub('_', s).lower()
+
+def main(asset_in, cubes=None, weapons=None, movement=None):
+    cubes_data = load_or_none(cubes)
+    weapons_data = load_or_none(weapons)
+    movement_data = load_or_none(movement)
+    with open(asset_in) as f:
         cubes_asset = json.load(f)
+
     name = cubes_asset["0 MonoBehaviour Base"]["1 string m_Name"]
     print(f"found name (expected to be empty): `{name}`")
     cubes = cubes_asset["0 MonoBehaviour Base"]["0 CubeTypeData cubeTypes"]["0 Array Array"]
     print(f"found {len(cubes)} cubes to process")
-    cubes_out = {
+    conf_out = {
         "cubes": dict(),
         "movement": dict(),
-        "lerp_value": 10.0,
+        "lerp_value": 0.1,
+        "battle": {
+            "regen": {
+                "wait_for_heal_s": 5.0,
+                "wait_full_heal_s": 5.0,
+                "sound_start_s": 2.5,
+                "auto_heal": True,
+            },
+            "votes": {
+                "BestPlayed": [
+                    {
+                        "name": "Best Played",
+                        "localised_name": "strBestPlayed",
+                        "color": "0000ff",
+                        "votes_required": 1,
+                    }
+                ],
+                "BestLooking": [
+                    {
+                        "name": "Best Looking",
+                        "localised_name": "strBestLooking",
+                        "color": "ff0000",
+                        "votes_required": 2,
+                    }
+                ],
+            }
+        }
     }
     last_tech_tree_id = 0
     tech_tree_index = 0
@@ -346,6 +473,7 @@ def main():
             "nameStrKey": cube["1 string nameStrKey"],
             "mirrorCubeId": cube["0 PersistentCubeData cubeData"]["1 string mirrorCubeId"],
             "hexId": str(cube["1 string itemCode"]),
+            "isVariant": is_variant_guess(cube["1 string nameStrKey"], cube["1 string spriteName"]),
         }
         if "protonium" in name.lower():
             new_entry["info"]["protonium"] = True
@@ -364,7 +492,7 @@ def main():
         else:
             new_entry["info"]["description"] += " (" + str(cube["0 unsigned int itemCodeValue"]) + "_10|" + str(cube["1 string itemCode"]) + "_16)"
 
-        is_original = not is_variant_guess(cube["1 string nameStrKey"], cube["1 string spriteName"])
+        is_original = not new_entry["isVariant"]
         # weapons
         if new_entry["info"]["type"] == "Weapon":
             if is_original and "module" not in new_entry["info"]["category"].lower(): # ignore variants and modules
@@ -410,11 +538,36 @@ def main():
             }
             tech_tree_specials_index += 1
 
+        # overrides
+        apply_entry_overrides(new_entry, cubes_data, weapons_data, movement_data)
+
         print(f"processed cube {i} into {new_entry}")
-        cubes_out["cubes"][new_key] = new_entry
-    with open("../assets/robocraft/cubes.json", "w") as f:
-        json.dump(cubes_out, f, indent=4)
+        conf_out["cubes"][new_key] = new_entry
+    # more overrides
+    apply_global_overrides(conf_out, cubes_data, weapons_data, movement_data)
+    with open("../assets/robocraft/config.json", "w") as f:
+        json.dump(conf_out, f, indent=4)
     print(f"processed {len(cubes)} cubes")
+    if movement_data is not None:
+        for category in CATEGORIES[1:13]:
+            if category not in SEEN_MOVEMENTS:
+                print("Missed movement category", category)
+            else:
+                if len(SEEN_MOVEMENTS[category]) != len(TIERS) - 1:
+                    print("Only found", len(SEEN_MOVEMENTS[category]), "of", len(TIERS) - 1, "tiers for movement category", category)
+                '''for tier in TIERS[1:]:
+                    if tier not in SEEN_MOVEMENTS[category] or SEEN_MOVEMENTS[category][tier] == False:
+                        print("Missed movement tier", tier, "in category", category)'''
+    if weapons_data is not None:
+        if len(weapons_data) != len(SEEN_WEAPONS):
+            print("Only found", len(SEEN_WEAPONS), "of", len(weapons_data), "weapon entries in reference")
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("asset_json")
+    parser.add_argument("--cubes")
+    parser.add_argument("--weapons")
+    parser.add_argument("--movement")
+    args = parser.parse_args()
+    main(args.asset_json, cubes=args.cubes, weapons=args.weapons, movement=args.movement)

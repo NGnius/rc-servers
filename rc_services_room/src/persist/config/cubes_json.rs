@@ -5,15 +5,16 @@ use serde::{Serialize, Deserialize};
 use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig};
 
-const CUBE_CONFIG_FILENAME: &str = "cubes.json";
+const CUBE_CONFIG_FILENAME: &str = "config.json";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CubeConfig {
     cubes: HashMap<String, Cube>,
     movement: HashMap<ItemCategory, MovementCategoryData>,
     lerp_value: f32,
+    battle: BattleConfig,
 }
 
 impl CubeConfig {
@@ -152,5 +153,28 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
 
     fn ids(&self) -> Vec<u32> {
         self.cubes.values().map(|cube| cube.id).collect()
+    }
+
+    fn regen_config(&self) -> Typed<C> {
+        let regen_data: crate::data::auto_regen::AutoRegenHealthConfig = self.battle.regen.clone().into();
+        regen_data.as_transmissible()
+    }
+
+    fn after_battle_vote_config(&self) -> Typed<C> {
+        let mut vote_data = Vec::with_capacity(self.battle.votes.len()); // probably len() == 2
+        for (key, val) in self.battle.votes.iter() {
+            let key_data: crate::data::voting::Vote = key.to_owned().into();
+            let mut val_data = Vec::with_capacity(val.len());
+            for item in val {
+                let vote_data: crate::data::voting::VoteThresholdData = item.to_owned().into();
+                val_data.push(vote_data.as_transmissible());
+            }
+            vote_data.push((Typed::Str(key_data.as_str().into()), Typed::ObjArr(val_data.into())));
+        }
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::Any,
+            items: vote_data,
+        })
     }
 }

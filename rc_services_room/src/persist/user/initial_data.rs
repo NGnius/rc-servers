@@ -60,7 +60,7 @@ fn default_garage_slots() -> Vec<crate::persist::GarageSlot> {
             control_options: crate::persist::GarageControls { vertical_strafing: false, sideways_driving: false, tracks_turn_on_spot: false, },
             mastery_level: 1,
             bay_skin_id: "RC_MothershipSkin_Neptune_01".to_owned(), // TODO get the rest of the names
-            weapon_order: vec![0],
+            weapon_order: vec![],
             robot_data: vec![0; 4],
             colour_data: vec![0; 4],
         }

@@ -142,10 +142,10 @@ impl <C: Clone> super::User<C> for UserData {
                     data: polariton::operation::Typed::Bytes(slot.robot_data.into()),
                     colour_data: polariton::operation::Typed::Bytes(slot.colour_data.into()),
                     cube_count: polariton::operation::Typed::Int(slot.cubes as _),
-                    weapon_order: polariton::operation::Typed::IntArr(vec![0].into()), // TODO
+                    weapon_order: polariton::operation::Typed::IntArr(slot.weapon_order.clone().into()),
                     movement_categories: polariton::operation::Typed::IntArr(slot.movement_categories.into_iter().map(|cat| {
                         let cat: crate::data::weapon_list::ItemCategory = cat.into();
-                        cat as i32
+                        cat.but_bigger()
                     }).collect::<Vec<_>>().into()),
                     control_type: polariton::operation::Typed::Int(control_ty as _),
                     control_options: control_options.as_transmissible(),
@@ -169,12 +169,34 @@ impl <C: Clone> super::User<C> for UserData {
         existing_data.robot_data = vehicle.robot_data;
         existing_data.colour_data = vehicle.colour_data;
         log::debug!("weapon order: {:?}", vehicle.weapon_order);
+        existing_data.weapon_order = vehicle.weapon_order;
         self.save_garage(&existing_data).map_err(|e| {
             log::error!("Failed to save vehicle {}: {}", id, e);
             DATABASE_ERR
         })?;
         Ok(())
     }
+
+    fn signup_date(&self) -> i64 {
+        match self.root.metadata() {
+            Ok(meta) => {
+                match meta.created() {
+                    Ok(created) => {
+                        match created.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+                            Ok(dur) => {
+                                return super::since_windows_epoch(dur.as_secs() as i64);
+                            },
+                            Err(e) => log::error!("could not get duration since unix epoch of {}: {}", self.root.display(), e),
+                        }
+                    },
+                    Err(e) => log::error!("could not read creation time of {}: {}", self.root.display(), e),
+                }
+            },
+            Err(e) => log::error!("could not retrieve metadata of {}: {}", self.root.display(), e),
+        }
+        super::since_windows_epoch(0)
+    }
+
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

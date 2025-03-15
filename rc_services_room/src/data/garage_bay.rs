@@ -32,7 +32,7 @@ impl GarageSlotInfo {
             (Typed::Str("wasRated".into()), Typed::Bool(self.was_rated.into())),
             (Typed::Str("movementCategories".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Int, // int
-                items: self.movement_categories.iter().map(|x| Typed::Int((*x as i32) * 100_000)).collect(),
+                items: self.movement_categories.iter().map(|x| Typed::Int(x.but_bigger() as i32)).collect(),
             })),
             (Typed::Str("uniqueId1".into()), Typed::Int(self.uuid.0 as i32)),
             (Typed::Str("uniqueId2".into()), Typed::Int(self.uuid.1 as i32)),

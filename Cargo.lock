@@ -1774,6 +1774,7 @@ name = "rc_services_room"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "clap",
  "env_logger",
  "hex",

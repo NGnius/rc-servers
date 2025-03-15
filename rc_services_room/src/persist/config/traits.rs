@@ -7,4 +7,6 @@ pub trait ConfigProvider<C> {
     fn weapon_upgrade_list(&self) -> Typed<C>;
     fn tech_tree_nodes(&self, unlocked_cubes: &std::collections::HashSet<u32>) -> Typed<C>;
     fn ids(&self) -> Vec<u32>;
+    fn regen_config(&self) -> Typed<C>;
+    fn after_battle_vote_config(&self) -> Typed<C>;
 }

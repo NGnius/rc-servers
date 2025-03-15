@@ -11,6 +11,7 @@ pub struct MovementCategoryData {
     pub max_hover_height: Option<f32>,
     pub light_machine_mass: Option<f32>,
     pub heavy_machine_mass: Option<f32>,
+    #[serde(flatten)]
     pub specifics: MovementCategorySpecificData,
 }
 
@@ -31,6 +32,7 @@ impl MovementCategoryData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(tag = "movement_enum_variant")]
 pub enum MovementCategorySpecificData {
     #[default]
     Wheel,
@@ -44,6 +46,7 @@ pub enum MovementCategorySpecificData {
     SprinterLeg(MechLegCategoryData), // same as mech leg
     TankTrack,
     Rotor(RotorCategoryData),
+    Ski,
 }
 
 impl std::convert::Into<crate::data::movement_list::MovementCategorySpecificData> for MovementCategorySpecificData {
@@ -60,6 +63,7 @@ impl std::convert::Into<crate::data::movement_list::MovementCategorySpecificData
             Self::SprinterLeg(x) => crate::data::movement_list::MovementCategorySpecificData::SprinterLeg(x.into()),
             Self::TankTrack => crate::data::movement_list::MovementCategorySpecificData::TankTrack,
             Self::Rotor(x) => crate::data::movement_list::MovementCategorySpecificData::Rotor(x.into()),
+            Self::Ski => crate::data::movement_list::MovementCategorySpecificData::Ski,
         }
     }
 }
@@ -123,6 +127,7 @@ pub struct MovementData {
     pub max_carry_mass: Option<f32>,
     pub horizontal_top_speed: Option<f32>,
     pub vertical_top_speed: Option<f32>,
+    #[serde(flatten)]
     pub specifics: MovementSpecificData,
 }
 
@@ -139,6 +144,7 @@ impl std::convert::Into<crate::data::movement_list::MovementData> for MovementDa
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "movement_enum_variant")]
 pub enum MovementSpecificData {
     Wheel(WheelData),
     Hover(HoverData),
@@ -151,6 +157,7 @@ pub enum MovementSpecificData {
     SprinterLeg(MechLegData), // same as mech leg
     TankTrack(TankTrackData),
     Rotor(RotorData),
+    Ski,
 }
 
 impl std::convert::Into<crate::data::movement_list::MovementSpecificData> for MovementSpecificData {
@@ -167,6 +174,7 @@ impl std::convert::Into<crate::data::movement_list::MovementSpecificData> for Mo
             Self::SprinterLeg(x) => crate::data::movement_list::MovementSpecificData::SprinterLeg(x.into()),
             Self::TankTrack(x) => crate::data::movement_list::MovementSpecificData::TankTrack(x.into()),
             Self::Rotor(x) => crate::data::movement_list::MovementSpecificData::Rotor(x.into()),
+            Self::Ski=> crate::data::movement_list::MovementSpecificData::Ski,
         }
     }
 }
@@ -205,7 +213,7 @@ impl std::convert::Into<crate::data::movement_list::WheelData> for WheelData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct HoverData {
     pub max_hover_height_light: f32,
-    pub max_hover_height_heaver: f32,
+    pub max_hover_height_heavy: f32,
     pub height_change_speed_light: f32,
     pub height_change_speed_heavy: f32,
     pub turn_torque_light: f32,
@@ -222,7 +230,7 @@ impl std::convert::Into<crate::data::movement_list::HoverData> for HoverData {
     fn into(self) -> crate::data::movement_list::HoverData {
         crate::data::movement_list::HoverData {
             max_hover_height_light: self.max_hover_height_light,
-            max_hover_height_heaver: self.max_hover_height_heaver,
+            max_hover_height_heavy: self.max_hover_height_heavy,
             height_change_speed_light: self.height_change_speed_light,
             height_change_speed_heavy: self.height_change_speed_heavy,
             turn_torque_light: self.turn_torque_light,
@@ -360,8 +368,8 @@ pub struct MechLegData {
     pub turn_acceleration_heavy: f32,
     pub legacy_turn_acceleration_light: f32,
     pub legacy_turn_acceleration_heavy: f32,
-    pub long_jump_speec_scale_light: f32,
-    pub long_jump_speec_scale_heavy: f32,
+    pub long_jump_speed_scale_light: f32,
+    pub long_jump_speed_scale_heavy: f32,
     pub max_lateral_force_light: f32,
     pub max_lateral_force_heavy: f32,
     pub max_damping_force_light: f32,
@@ -379,8 +387,8 @@ impl std::convert::Into<crate::data::movement_list::MechLegData> for MechLegData
             turn_acceleration_heavy: self.turn_acceleration_heavy,
             legacy_turn_acceleration_light: self.legacy_turn_acceleration_light,
             legacy_turn_acceleration_heavy: self.legacy_turn_acceleration_heavy,
-            long_jump_speec_scale_light: self.long_jump_speec_scale_light,
-            long_jump_speec_scale_heavy: self.long_jump_speec_scale_heavy,
+            long_jump_speed_scale_light: self.long_jump_speed_scale_light,
+            long_jump_speed_scale_heavy: self.long_jump_speed_scale_heavy,
             max_lateral_force_light: self.max_lateral_force_light,
             max_lateral_force_heavy: self.max_lateral_force_heavy,
             max_damping_force_light: self.max_damping_force_light,

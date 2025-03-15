@@ -24,3 +24,11 @@ fn __must_impl<T: UserProvider<()>>() {}
 fn __test_impl() {
     __must_impl::<UserImpl>();
 }
+
+pub fn since_windows_epoch(since_unix_epoch: i64) -> i64 {
+    use chrono::TimeZone;
+    let windows_epoch = chrono::Utc.from_utc_datetime(&chrono::NaiveDateTime::parse_from_str("1601-01-01 00:00:00", "%Y-%m-%d %H:%M:%S").unwrap());
+    let time_in = chrono::DateTime::<chrono::Utc>::from_timestamp(since_unix_epoch, 0).unwrap();
+    //let time_in = chrono::Utc.from_utc_datetime(&chrono::NaiveDateTime::from_timestamp(since_unix_epoch, 0));
+    time_in.signed_duration_since(windows_epoch).num_milliseconds() * 10_000
+}

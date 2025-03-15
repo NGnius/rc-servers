@@ -21,6 +21,7 @@ pub trait User<C> {
     fn all_slots_by_id(&self) -> UserSlots<C>;
     fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
     fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
+    fn signup_date(&self) -> i64;
 }
 
 pub struct UserSlots<C> {

@@ -14,7 +14,7 @@ pub(super) fn taunts_config_provider() -> SimpleFunc<164, crate::UserTy, impl (F
             items: vec![
                 (Typed::Str("taunts".into()), TauntsData {
                     taunts: vec![
-                        TauntData {
+                        /*TauntData {
                             group_name: "totally_real_group_name".to_string(),
                             assets: AssetData {
                                 idle_effect: "tbd".to_string(),
@@ -33,7 +33,7 @@ pub(super) fn taunts_config_provider() -> SimpleFunc<164, crate::UserTy, impl (F
                                     rotation: 0,
                                 }
                             ]
-                        }
+                        }*/
                     ]
                 }.as_transmissible())
             ]

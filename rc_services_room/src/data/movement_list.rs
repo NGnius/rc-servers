@@ -54,6 +54,7 @@ pub enum MovementCategorySpecificData {
     SprinterLeg(MechLegCategoryData), // same as mech leg
     TankTrack,
     Rotor(RotorCategoryData),
+    Ski,
 }
 
 impl MovementCategorySpecificData {
@@ -70,6 +71,7 @@ impl MovementCategorySpecificData {
             Self::SprinterLeg(x) => x.as_transmissible(),
             Self::TankTrack => Vec::default(),
             Self::Rotor(x) => x.as_transmissible(),
+            Self::Ski => Vec::default(),
         }
     }
 }
@@ -161,6 +163,7 @@ pub enum MovementSpecificData {
     SprinterLeg(MechLegData), // same as mech leg
     TankTrack(TankTrackData),
     Rotor(RotorData),
+    Ski,
 }
 
 impl MovementSpecificData {
@@ -177,6 +180,7 @@ impl MovementSpecificData {
             Self::SprinterLeg(x) => x.as_transmissible(),
             Self::TankTrack(x) => x.as_transmissible(),
             Self::Rotor(x) => x.as_transmissible(),
+            Self::Ski => Vec::default(),
         }
     }
 }
@@ -213,7 +217,7 @@ impl WheelData {
 
 pub struct HoverData {
     pub max_hover_height_light: f32,
-    pub max_hover_height_heaver: f32,
+    pub max_hover_height_heavy: f32,
     pub height_change_speed_light: f32,
     pub height_change_speed_heavy: f32,
     pub turn_torque_light: f32,
@@ -230,7 +234,7 @@ impl HoverData {
     pub fn as_transmissible<C>(&self) -> Vec<(Typed<C>, Typed<C>)> {
         vec![
             (Typed::Str("maxHoverHeightLight".into()), Typed::Float(self.max_hover_height_light)),
-            (Typed::Str("maxHoverHeightHeavy".into()), Typed::Float(self.max_hover_height_heaver)),
+            (Typed::Str("maxHoverHeightHeavy".into()), Typed::Float(self.max_hover_height_heavy)),
             (Typed::Str("heightChangeSpeedLight".into()), Typed::Float(self.height_change_speed_light)),
             (Typed::Str("heightChangeSpeedHeavy".into()), Typed::Float(self.height_change_speed_heavy)),
             (Typed::Str("turnTorqueLight".into()), Typed::Float(self.turn_torque_light)),
@@ -364,8 +368,8 @@ pub struct MechLegData {
     pub turn_acceleration_heavy: f32,
     pub legacy_turn_acceleration_light: f32,
     pub legacy_turn_acceleration_heavy: f32,
-    pub long_jump_speec_scale_light: f32,
-    pub long_jump_speec_scale_heavy: f32,
+    pub long_jump_speed_scale_light: f32,
+    pub long_jump_speed_scale_heavy: f32,
     pub max_lateral_force_light: f32,
     pub max_lateral_force_heavy: f32,
     pub max_damping_force_light: f32,
@@ -383,8 +387,8 @@ impl MechLegData {
             (Typed::Str("turnAccelerationHeavy".into()), Typed::Float(self.turn_acceleration_heavy)),
             (Typed::Str("legacyTurnAccelerationLight".into()), Typed::Float(self.legacy_turn_acceleration_light)),
             (Typed::Str("legacyTurnAccelerationHeavy".into()), Typed::Float(self.legacy_turn_acceleration_heavy)),
-            (Typed::Str("longJumpSpeedScaleLight".into()), Typed::Float(self.long_jump_speec_scale_light)),
-            (Typed::Str("longJumpSpeedScaleHeavy".into()), Typed::Float(self.long_jump_speec_scale_heavy)),
+            (Typed::Str("longJumpSpeedScaleLight".into()), Typed::Float(self.long_jump_speed_scale_light)),
+            (Typed::Str("longJumpSpeedScaleHeavy".into()), Typed::Float(self.long_jump_speed_scale_heavy)),
             (Typed::Str("maxLateralForceLight".into()), Typed::Float(self.max_lateral_force_light)),
             (Typed::Str("maxLateralForceHeavy".into()), Typed::Float(self.max_lateral_force_heavy)),
             (Typed::Str("maxDampingForceLight".into()), Typed::Float(self.max_damping_force_light)),

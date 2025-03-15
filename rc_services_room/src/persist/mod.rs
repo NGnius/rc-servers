@@ -16,3 +16,6 @@ pub use weapon::{WeaponData, WeaponUpgradeInfo};
 
 mod tech_tree;
 pub use tech_tree::TechTreeData;
+
+mod combat;
+pub use combat::BattleConfig;

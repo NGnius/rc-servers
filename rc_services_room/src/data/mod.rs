@@ -21,6 +21,10 @@ pub mod weapon_upgrade;
 pub mod player_rank;
 pub mod robot_data;
 pub mod quest;
+pub mod auto_regen;
+pub mod voting;
+pub mod lobby;
+pub mod error_codes;
 
 pub(self) fn encode_7_bit_i32(mut src: i32) -> Vec<u8> {
     let mut out = Vec::with_capacity(5);

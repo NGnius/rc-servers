@@ -22,7 +22,7 @@ pub struct CubeInfo {
     pub cpu: u32,
     #[serde(default = "default_1")]
     pub health: u32,
-    #[serde(default = "default_1_0")]
+    #[serde(default)]
     pub health_boost: f32,
     #[serde(default)]
     pub grey_out_in_tutorial: bool,
@@ -57,10 +57,6 @@ pub struct CubeInfo {
 
 fn default_1() -> u32 {
     1
-}
-
-fn default_1_0() -> f32 {
-    1.0
 }
 
 fn default_63() -> u32 {
@@ -113,8 +109,8 @@ impl <C: Clone> std::convert::Into<crate::data::cube_list::CubeInfo<C>> for Cube
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default)]
 pub enum VisibilityMode {
-    Mothership,
     #[default]
+    Mothership,
     All,
     Tutorial,
     None,

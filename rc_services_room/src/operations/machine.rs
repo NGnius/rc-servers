@@ -76,3 +76,16 @@ pub(super) fn garage_machine_save_provider() -> SimpleFunc<41, crate::UserTy, im
     })
 }
 
+pub const DEFAULT_WEAPON_ORDER_PARAM_KEY: u8 = 138;
+
+pub(super) fn weapon_order_provider() -> SimpleFunc<118, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+    SimpleFunc::new(|params, user: &crate::UserTy| {
+        let mut params = params.to_dict();
+        let lock = user.read().unwrap();
+        let user_info = lock.user()?;
+        let weapon_order = user_info.slot_by_id(user_info.selected_garage_slot() as i32)?.weapon_order;
+        params.insert(DEFAULT_WEAPON_ORDER_PARAM_KEY, weapon_order);
+        Ok(params.into())
+    })
+}
+

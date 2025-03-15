@@ -11,5 +11,6 @@ pub fn handler() -> OperationsHandler<crate::UserTy> {
         .without_state(chat_ignores::ignores_provider())
         .without_state(pending_sanctions::pending_sanctions_checker())
         .without_state(all_joined_channels::all_channels_provider())
+        .without_state(polariton_server::operations::Ack::<12, _>::default())
         //.without_state(polariton_server::operations::Ack::<00000, _>::default())
 }
