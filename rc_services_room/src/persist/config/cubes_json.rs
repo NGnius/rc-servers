@@ -1,0 +1,156 @@
+use std::collections::HashMap;
+
+use serde::{Serialize, Deserialize};
+
+use polariton::operation::{Typed, Dict};
+use polariton::serdes::TypePrefix;
+
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier};
+
+const CUBE_CONFIG_FILENAME: &str = "cubes.json";
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CubeConfig {
+    cubes: HashMap<String, Cube>,
+    movement: HashMap<ItemCategory, MovementCategoryData>,
+    lerp_value: f32,
+}
+
+impl CubeConfig {
+    pub fn load(root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+        let file = std::fs::File::open(root.as_ref().join(CUBE_CONFIG_FILENAME))?;
+        let buffered = std::io::BufReader::new(file);
+        let result = serde_json::from_reader(buffered)?;
+        Ok(result)
+    }
+}
+
+impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
+    fn cube_list(&self) -> Typed<C> {
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: self.cubes.values().map(|cube| {
+                let cube_d: crate::data::cube_list::CubeInfo<C> = cube.info.clone().into();
+                cube_d.as_transmissible_key_val(cube.id)
+            }).collect(),
+        })
+    }
+
+    fn movement_list(&self) -> Typed<C> {
+        let mut movements_stats = HashMap::<ItemCategory, HashMap<ItemTier, MovementData>>::new();
+        for cube in self.cubes.values() {
+            if let Some(movement_data) = &cube.movement {
+                let category_map = if let Some(x) = movements_stats.get_mut(&cube.info.category) {
+                    x
+                } else {
+                    movements_stats.insert(cube.info.category, HashMap::new());
+                    movements_stats.get_mut(&cube.info.category).unwrap()
+                };
+                category_map.insert(cube.info.size, movement_data.to_owned());
+            }
+        }
+        let mut movement_cat_stats = Vec::with_capacity(self.movement.len());
+        for (k, v) in self.movement.iter() {
+            let stats: Vec<_> = if let Some(stats) = movements_stats.get(&k) {
+                stats.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
+            } else {
+                Vec::default()
+            };
+            let key: crate::data::weapon_list::ItemCategory = k.to_owned().into();
+            let key_typed = Typed::<C>::Str(key.as_str().into());
+
+            let value_data = v.to_owned().into_data(stats);
+            movement_cat_stats.push((key_typed, value_data.as_transmissible()));
+        }
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: vec![
+                (Typed::Str("Global".into()), Typed::HashMap(vec![
+                    (Typed::Str("lerpValue".into()), Typed::Float(self.lerp_value)),
+                ].into())),
+                (Typed::Str("Movements".into()), Typed::HashMap(movement_cat_stats.into())),
+            ],
+        })
+    }
+
+    fn weapon_list(&self) -> Typed<C> {
+        let mut weapon_stats = HashMap::new();
+        for cube in self.cubes.values() {
+            if let Some(weapon_data) = &cube.weapon {
+                let category_map = if let Some(x) = weapon_stats.get_mut(&cube.info.category) {
+                    x
+                } else {
+                    weapon_stats.insert(cube.info.category, HashMap::new());
+                    weapon_stats.get_mut(&cube.info.category).unwrap()
+                };
+                category_map.insert(cube.info.size, weapon_data.to_owned());
+            }
+        }
+        let mut weapons_vec: Vec<(Typed<C>, Typed<C>)> = Vec::with_capacity(weapon_stats.len());
+        for (k, v) in weapon_stats {
+            let cat_data: crate::data::weapon_list::ItemCategory = k.into();
+            let mut tiers_vec = Vec::with_capacity(v.len());
+            for (k, v) in v {
+                let tier_data: crate::data::cube_list::ItemTier = k.into();
+                let val_data: crate::data::weapon_list::WeaponData = v.into();
+                tiers_vec.push((Typed::Str(tier_data.as_str().into()), val_data.as_transmissible()));
+            }
+            weapons_vec.push((Typed::Str(cat_data.as_str().into()), Typed::HashMap(tiers_vec.into())));
+        }
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: weapons_vec,
+        })
+    }
+
+    fn weapon_upgrade_list(&self) -> Typed<C> {
+        let mut seen_keys = std::collections::HashSet::new();
+        let mut weapon_upgrades = Vec::new();
+        for cube in self.cubes.values() {
+            if let Some(weapon_up) = &cube.weapon_upgrade {
+                let key = (cube.info.category, cube.info.size);
+                if seen_keys.contains(&key) {
+                    log::warn!("Weapon upgrade info for {:?} already exists, skipping", key);
+                } else {
+                    seen_keys.insert(key);
+                    let weapon_upgrade_data = weapon_up.to_owned().into_data(cube.info.size, cube.info.category);
+                    weapon_upgrades.push(weapon_upgrade_data.as_transmissible());
+                }
+            }
+        }
+        Typed::ObjArr(weapon_upgrades.into())
+    }
+
+    fn tech_tree_nodes(&self, unlocked_cubes: &std::collections::HashSet<u32>) -> Typed<C> {
+        let mut seen_cubes = std::collections::HashSet::with_capacity(self.cubes.len());
+        let mut needed_cubes = std::collections::HashSet::with_capacity(self.cubes.len());
+        let mut typed_nodes = Vec::new();
+        for cube in self.cubes.values() {
+            if let Some(tree_data) = &cube.tree {
+                let is_unlocked = unlocked_cubes.contains(&cube.id);
+                let is_unlockable = tree_data.requires.iter().all(|id| unlocked_cubes.contains(id));
+                tree_data.neighbours.iter().for_each(|id| { needed_cubes.insert(*id); });
+                seen_cubes.insert(cube.id);
+                let node_data = tree_data.to_owned().into_data(cube.id, is_unlocked, is_unlockable);
+                typed_nodes.push(node_data.as_transmissible_key_val());
+            }
+        }
+        for needed_cube_id in needed_cubes {
+            if !seen_cubes.contains(&needed_cube_id) {
+                log::warn!("Tech tree needs cube {} but it doesn't have tree info", needed_cube_id);
+            }
+        }
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: typed_nodes,
+        })
+    }
+
+    fn ids(&self) -> Vec<u32> {
+        self.cubes.values().map(|cube| cube.id).collect()
+    }
+}

@@ -34,6 +34,106 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             ],
                         }),
                     ].into())),
+                    (Typed::Int(ItemTier::T1 as _), Typed::ObjArr(vec![
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(1_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(1_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                            ],
+                        }),
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(2_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(2_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                            ],
+                        }),
+                    ].into())),
+                    (Typed::Int(ItemTier::T2 as _), Typed::ObjArr(vec![
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(1_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(1_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                            ],
+                        }),
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(2_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(2_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                            ],
+                        }),
+                    ].into())),
+                    (Typed::Int(ItemTier::T3 as _), Typed::ObjArr(vec![
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(1_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(1_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                            ],
+                        }),
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(2_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(2_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                            ],
+                        }),
+                    ].into())),
+                    (Typed::Int(ItemTier::T4 as _), Typed::ObjArr(vec![
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(1_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(1_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                            ],
+                        }),
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(2_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(2_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                            ],
+                        }),
+                    ].into())),
+                    (Typed::Int(ItemTier::T5 as _), Typed::ObjArr(vec![
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(1_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(1_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                            ],
+                        }),
+                        Typed::Dict(Dict {
+                            key_ty: TypePrefix::Str,
+                            val_ty: TypePrefix::Any,
+                            items: vec![
+                                (Typed::Str("xp".into()), Typed::Int(2_000)),
+                                (Typed::Str("costRobits".into()), Typed::Int(2_000)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                            ],
+                        }),
+                    ].into())),
                 ],
             })),
         ].into()));

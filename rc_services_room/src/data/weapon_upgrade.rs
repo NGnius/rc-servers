@@ -12,7 +12,7 @@ pub struct WeaponUpgradeInfo {
 }
 
 impl WeaponUpgradeInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str
             val_ty: TypePrefix::Any, // obj

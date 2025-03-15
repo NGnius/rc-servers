@@ -1,0 +1,135 @@
+use serde::{Serialize, Deserialize};
+
+use super::ItemCategory;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GarageSlot {
+    #[serde(default)]
+    pub slot: u32,
+    pub name: String,
+    #[serde(default)]
+    pub cubes: u32,
+    #[serde(default)]
+    pub crf_id: u32, // 0 means not uploaded
+    #[serde(default = "default_false")]
+    pub was_rated: bool,
+    #[serde(default)]
+    pub movement_categories: Vec<ItemCategory>,
+    #[serde(default)]
+    pub uuid: (u32, u32),
+    pub thumbnail_version: u32,
+    #[serde(default)]
+    pub total_robot_cpu: u32,
+    #[serde(default)]
+    pub total_cosmetic_cpu: u32,
+    #[serde(default)]
+    pub total_robot_ranking: u32,
+    #[serde(default)]
+    pub bay_cpu: u32,
+    #[serde(default = "default_false")]
+    pub tutorial_robot: bool,
+    #[serde(default = "default_neg_1")]
+    pub starter_robot_index: i32,
+    #[serde(default)]
+    pub control_type: ControlType,
+    #[serde(default)]
+    pub control_options: GarageControls,
+    #[serde(default)]
+    pub mastery_level: i32,
+    #[serde(default)]
+    pub bay_skin_id: String,
+    #[serde(default)]
+    pub weapon_order: Vec<i32>,
+    #[serde(default = "default_robot_bytes")]
+    pub robot_data: Vec<u8>,
+    #[serde(default = "default_robot_bytes")]
+    pub colour_data: Vec<u8>,
+}
+
+fn default_false() -> bool {
+    false
+}
+
+fn default_neg_1() -> i32 {
+    -1
+}
+
+fn default_robot_bytes() -> Vec<u8> {
+    vec![0u8, 0u8, 0u8, 0u8]
+}
+
+impl GarageSlot {
+    pub fn load(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+        let file = std::fs::File::open(filepath)?;
+        let buffered = std::io::BufReader::new(file);
+        let result = serde_json::from_reader(buffered)?;
+        Ok(result)
+    }
+
+    pub fn save(&self, filepath: impl AsRef<std::path::Path>) -> std::io::Result<()> {
+        let file = std::fs::File::create(filepath)?;
+        let buffered = std::io::BufWriter::new(file);
+        serde_json::to_writer_pretty(buffered, self)?;
+        Ok(())
+    }
+}
+
+impl std::convert::Into<crate::data::garage_bay::GarageSlotInfo> for GarageSlot {
+    fn into(self) -> crate::data::garage_bay::GarageSlotInfo {
+        crate::data::garage_bay::GarageSlotInfo {
+            name: self.name,
+            cubes: self.cubes,
+            crf_id: self.crf_id,
+            was_rated: self.was_rated,
+            movement_categories: self.movement_categories.into_iter().map(|x| x.into()).collect(),
+            uuid: self.uuid,
+            thumbnail_version: self.thumbnail_version,
+            total_robot_cpu: self.total_robot_cpu,
+            total_cosmetic_cpu: self.total_cosmetic_cpu,
+            total_robot_ranking: self.total_robot_ranking,
+            bay_cpu: self.bay_cpu,
+            tutorial_robot: self.tutorial_robot,
+            starter_robot_index: self.starter_robot_index,
+            control_type: self.control_type.into(),
+            control_options: self.control_options.into(),
+            mastery_level: self.mastery_level,
+            bay_skin_id: self.bay_skin_id,
+            weapon_order: self.weapon_order,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Default)]
+pub enum ControlType {
+    #[default]
+    Camera,
+    Keyboard,
+    Count,
+}
+
+impl std::convert::Into<crate::data::garage_bay::ControlType> for ControlType {
+    fn into(self) -> crate::data::garage_bay::ControlType {
+        match self {
+            Self::Camera => crate::data::garage_bay::ControlType::Camera,
+            Self::Keyboard => crate::data::garage_bay::ControlType::Keyboard,
+            Self::Count => crate::data::garage_bay::ControlType::Count,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct GarageControls {
+    pub vertical_strafing: bool,
+    pub sideways_driving: bool,
+    pub tracks_turn_on_spot: bool,
+}
+
+impl std::convert::Into<crate::data::garage_bay::ControlOptions> for GarageControls {
+    fn into(self) -> crate::data::garage_bay::ControlOptions {
+        crate::data::garage_bay::ControlOptions {
+            vertical_strafing: self.vertical_strafing,
+            sideways_driving: self.sideways_driving,
+            tracks_turn_on_spot: self.tracks_turn_on_spot,
+        }
+    }
+}

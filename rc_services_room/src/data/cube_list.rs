@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::collections::HashMap;
-use polariton::operation::Typed;
+use polariton::operation::{Dict, Typed};
 
 pub struct CubeInfo<C: Clone> {
     pub cpu: u32,
@@ -40,7 +40,12 @@ impl <C: Clone> CubeInfo<C> {
             (Typed::Str("LeagueUnlockIndex".into()), Typed::Int(self.league_unlock_index)),
             (Typed::Str("DisplayStats".into()), {
                 let items: Vec<(Typed<C>, Typed<C>)> = self.stats.iter().map(|(key, val)| (Typed::<C>::Str(key.into()), val.to_owned())).collect();
-                Typed::HashMap(items.into())
+                //Typed::HashMap(items.into())
+                Typed::Dict(Dict {
+                    key_ty: polariton::serdes::TypePrefix::Str,
+                    val_ty: polariton::serdes::TypePrefix::Any,
+                    items,
+                })
             }),
             (Typed::Str("Description".into()), Typed::Str(self.description.clone().into())),
             (Typed::Str("ItemSize".into()), Typed::Int(self.size as i32)),

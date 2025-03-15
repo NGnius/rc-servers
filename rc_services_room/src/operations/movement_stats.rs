@@ -1,14 +1,10 @@
 //use polariton::serdes::TypePrefix;
 use polariton_server::operations::Immediate;
-//use polariton::operation::{ParameterTable, Typed, Dict};
-
-//use crate::data::movement_list::*;
-//use crate::data::cube_list::ItemTier;
-//use crate::data::weapon_list::ItemCategory;
+use crate::persist::config::ConfigProvider;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn movement_config_provider(cubes: &crate::persist::config::CubeConfig) -> Immediate<62, crate::UserTy> {
+pub(super) fn movement_config_provider(cubes: &crate::persist::config::ConfigImpl) -> Immediate<62, crate::UserTy> {
     Immediate::new(|| {
         let mut params = std::collections::HashMap::with_capacity(2);
         params.insert(PARAM_KEY, cubes.movement_list());

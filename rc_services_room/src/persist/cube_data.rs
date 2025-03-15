@@ -2,115 +2,18 @@ use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
 
-use polariton::operation::{Typed, Dict};
-use polariton::serdes::TypePrefix;
+use polariton::operation::Typed;
 
-use super::{MovementCategoryData, MovementData, WeaponData};
-
-const CUBE_CONFIG_FILENAME: &str = "cubes.json";
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CubeConfig {
-    cubes: HashMap<String, Cube>,
-    movement: HashMap<ItemCategory, MovementCategoryData>,
-    lerp_value: f32,
-}
-
-impl CubeConfig {
-    pub fn load(root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
-        let file = std::fs::File::open(root.as_ref().join(CUBE_CONFIG_FILENAME))?;
-        let buffered = std::io::BufReader::new(file);
-        let result = serde_json::from_reader(buffered)?;
-        Ok(result)
-    }
-
-    pub fn cube_list<C: Clone>(&self) -> Typed<C> {
-        Typed::Dict(Dict {
-            key_ty: TypePrefix::Str,
-            val_ty: TypePrefix::HashMap,
-            items: self.cubes.values().map(|cube| {
-                let cube_d: crate::data::cube_list::CubeInfo<C> = cube.info.clone().into();
-                cube_d.as_transmissible_key_val(cube.id)
-            }).collect(),
-        })
-    }
-
-    pub fn movement_list<C: Clone>(&self) -> Typed<C> {
-        let mut movements_stats = HashMap::<ItemCategory, HashMap<ItemTier, MovementData>>::new();
-        for cube in self.cubes.values() {
-            if let Some(movement_data) = &cube.movement {
-                let category_map = if let Some(x) = movements_stats.get_mut(&cube.info.category) {
-                    x
-                } else {
-                    movements_stats.insert(cube.info.category, HashMap::new());
-                    movements_stats.get_mut(&cube.info.category).unwrap()
-                };
-                category_map.insert(cube.info.size, movement_data.to_owned());
-            }
-        }
-        let mut movement_cat_stats = Vec::with_capacity(self.movement.len());
-        for (k, v) in self.movement.iter() {
-            let stats: Vec<_> = if let Some(stats) = movements_stats.get(&k) {
-                stats.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
-            } else {
-                Vec::default()
-            };
-            let key: crate::data::weapon_list::ItemCategory = k.to_owned().into();
-            let key_typed = Typed::<C>::Str(key.as_str().into());
-
-            let value_data = v.to_owned().into_data(stats);
-            movement_cat_stats.push((key_typed, value_data.as_transmissible()));
-        }
-        Typed::Dict(Dict {
-            key_ty: TypePrefix::Str,
-            val_ty: TypePrefix::HashMap,
-            items: vec![
-                (Typed::Str("Global".into()), Typed::HashMap(vec![
-                    (Typed::Str("lerpValue".into()), Typed::Float(self.lerp_value)),
-                ].into())),
-                (Typed::Str("Movements".into()), Typed::HashMap(movement_cat_stats.into())),
-            ],
-        })
-    }
-
-    pub fn weapon_list<C: Clone>(&self) -> Typed<C> {
-        let mut weapon_stats = HashMap::new();
-        for cube in self.cubes.values() {
-            if let Some(weapon_data) = &cube.weapon {
-                let category_map = if let Some(x) = weapon_stats.get_mut(&cube.info.category) {
-                    x
-                } else {
-                    weapon_stats.insert(cube.info.category, HashMap::new());
-                    weapon_stats.get_mut(&cube.info.category).unwrap()
-                };
-                category_map.insert(cube.info.size, weapon_data.to_owned());
-            }
-        }
-        let mut weapons_vec: Vec<(Typed<C>, Typed<C>)> = Vec::with_capacity(weapon_stats.len());
-        for (k, v) in weapon_stats {
-            let cat_data: crate::data::weapon_list::ItemCategory = k.into();
-            let mut tiers_vec = Vec::with_capacity(v.len());
-            for (k, v) in v {
-                let tier_data: crate::data::cube_list::ItemTier = k.into();
-                let val_data: crate::data::weapon_list::WeaponData = v.into();
-                tiers_vec.push((Typed::Str(tier_data.as_str().into()), val_data.as_transmissible()));
-            }
-            weapons_vec.push((Typed::Str(cat_data.as_str().into()), Typed::HashMap(tiers_vec.into())));
-        }
-        Typed::Dict(Dict {
-            key_ty: TypePrefix::Str,
-            val_ty: TypePrefix::HashMap,
-            items: weapons_vec,
-        })
-    }
-}
+use super::{WeaponData, WeaponUpgradeInfo, TechTreeData, MovementData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Cube {
     pub id: u32,
     pub info: CubeInfo,
     pub weapon: Option<WeaponData>,
+    pub weapon_upgrade: Option<WeaponUpgradeInfo>,
     pub movement: Option<MovementData>,
+    pub tree: Option<TechTreeData>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -193,7 +96,7 @@ impl <C: Clone> std::convert::Into<crate::data::cube_list::CubeInfo<C>> for Cube
                         panic!("Invalid json number")
                     },
                     serde_json::Value::String(s) => Typed::Str(s.into()),
-                    _ => Typed::Null, // TODO is support for Object/Array/Null necessary?
+                    _ => panic!("Unsupported stats type"), // TODO is support for Object/Array/Null necessary?
                 };
                 (k, new_v)
             }).collect(),

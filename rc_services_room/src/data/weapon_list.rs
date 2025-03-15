@@ -115,7 +115,10 @@ impl WeaponData {
 
         if !self.group_fire_scales.is_empty() {
             let typed_arr: Vec<Typed<C>> = self.group_fire_scales.iter().map(|x| Typed::Float(*x)).collect();
-            out.push((Typed::Str("groupFireScales".into()), Typed::ObjArr(typed_arr.into())));
+            out.push((Typed::Str("groupFireScales".into()), Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Float,
+                items: typed_arr,
+            })));
         }
 
         self.mana_cost.map(|x| out.push((Typed::Str("manaCost".into()), Typed::Float(x))));

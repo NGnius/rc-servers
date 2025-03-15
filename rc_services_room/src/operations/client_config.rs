@@ -21,8 +21,8 @@ pub(super) fn client_config_provider() -> SimpleFunc<34, crate::UserTy, impl (Fn
                     shield_hps: 2_000,
                     request_review_level: 10_000,
                     critical_ratio: 10.0,
-                    cross_promo_image: "https://git.ngni.us/TODO".to_owned(), // TODO
-                    cross_promo_link: "https://git.ngni.us/OpenJam/servers".to_owned(),
+                    cross_promo_image: "https://git.ngram.ca/assets/img/logo.png".to_owned(),
+                    cross_promo_link: "https://git.ngram.ca/OpenJam/servers".to_owned(),
                 }.as_transmissible())
             ].into(),
         }));

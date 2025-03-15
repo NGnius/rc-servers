@@ -44,6 +44,7 @@ pub struct WeaponData {
     pub spin_up_time: Option<f32>,
     pub spin_down_time: Option<f32>,
     pub spin_initial_cooldown: Option<f32>,
+    #[serde(default = "group_fire_scales_default")]
     pub group_fire_scales: Vec<f32>,
     pub mana_cost: Option<f32>,
     pub lock_time: Option<f32>,
@@ -65,6 +66,10 @@ pub struct WeaponData {
     pub stun_time: Option<f32>,
     pub stun_radius: Option<f32>,
     pub effect_duration: Option<f32>,
+}
+
+fn group_fire_scales_default() -> Vec<f32> {
+    vec![1.0]
 }
 
 impl std::convert::Into<crate::data::weapon_list::WeaponData> for WeaponData {
@@ -132,6 +137,27 @@ impl std::convert::Into<crate::data::weapon_list::WeaponData> for WeaponData {
             stun_time: self.stun_time,
             stun_radius: self.stun_radius,
             effect_duration: self.effect_duration,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct WeaponUpgradeInfo {
+    pub xp: f64,
+    pub rating: i32,
+    pub rank: i32,
+    pub power: i32,
+}
+
+impl WeaponUpgradeInfo {
+    pub fn into_data(self, tier: super::ItemTier, type_: super::ItemCategory) -> crate::data::weapon_upgrade::WeaponUpgradeInfo {
+        crate::data::weapon_upgrade::WeaponUpgradeInfo {
+            tier: tier.into(),
+            type_: type_.into(),
+            xp: self.xp,
+            rating: self.rating,
+            rank: self.rank,
+            power: self.power,
         }
     }
 }

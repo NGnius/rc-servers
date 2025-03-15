@@ -12,10 +12,11 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = std::sync::RwLock<state::UserState>;
+pub type UserTy = std::sync::RwLock<state::UserState<()>>;
 
 pub struct InitConfig {
-    pub cubes: persist::config::CubeConfig,
+    pub cubes: persist::config::ConfigImpl,
+    pub users: std::sync::Arc<persist::user::UserImpl>,
 }
 
 #[tokio::main]
@@ -24,8 +25,11 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
+    let cubes = persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
     let init_ctx = InitConfig {
-        cubes: persist::config::CubeConfig::load(&args.assets).expect("Bad cube config data"),
+        cubes,
+        users,
     };
 
     let server = polariton_server::Server::new(operations::handler(&init_ctx));
@@ -37,17 +41,17 @@ async fn main() -> std::io::Result<()> {
     #[cfg(not(debug_assertions))]
     loop {
         let (socket, address) = listener.accept().await?;
-        tokio::spawn(process_socket(socket, address, &server));
+        tokio::spawn(process_socket(socket, address, &server, &init_ctx));
     }
     #[cfg(debug_assertions)]
     {
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, &server).await;
+        process_socket(socket, address, &server, &init_ctx).await;
         Ok(())
     }
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: &polariton_server::Server<crate::UserTy>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: &polariton_server::Server<crate::UserTy>, init_ctx: &InitConfig) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -56,7 +60,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    let user_state = state::UserState::new();
+    let user_state = std::sync::RwLock::new(state::UserState::<()>::new(init_ctx.users.clone()));
     server.handle_async(socket, user_state, enc, Default::default()).await;
     log::debug!("Goodbye connection from address {}", address);
 }

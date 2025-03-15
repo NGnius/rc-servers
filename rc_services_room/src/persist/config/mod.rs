@@ -1,9 +1,13 @@
-mod cubes;
-pub use cubes::{CubeConfig, ItemTier};
-//pub use cubes::{Cube, ItemCategory, VisibilityMode, ItemType};
+mod cubes_json;
+pub use cubes_json::CubeConfig;
 
-mod movement;
-pub use movement::{MovementCategoryData, MovementData};
+mod traits;
+pub use traits::ConfigProvider;
 
-mod weapon;
-pub use weapon::WeaponData;
+pub type ConfigImpl = CubeConfig;
+
+fn __must_impl<T: ConfigProvider<()>>() {}
+
+fn __test_impl() {
+    __must_impl::<ConfigImpl>();
+}

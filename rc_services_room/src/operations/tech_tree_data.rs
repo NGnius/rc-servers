@@ -1,14 +1,17 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
-
-use crate::data::tech_tree::*;
+use polariton_server::operations::Immediate;
+use crate::persist::config::ConfigProvider;
 
 const PARAM_KEY: u8 = 210;
 
-pub(super) fn tech_tree_layout_provider() -> SimpleFunc<183, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Dict(Dict {
+pub(super) fn tech_tree_layout_provider(cubes: &crate::persist::config::ConfigImpl) -> Immediate<183, crate::UserTy> {
+    Immediate::new(|| {
+        let mut params = std::collections::HashMap::with_capacity(2);
+        params.insert(PARAM_KEY, cubes.tech_tree_nodes(&vec![
+            227205318,
+            227917916,
+            1931676396,
+        ].into_iter().collect()));
+        /*params.insert(PARAM_KEY, Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str
             val_ty: TypePrefix::HashMap, // hashmap
             items: vec![
@@ -17,12 +20,12 @@ pub(super) fn tech_tree_layout_provider() -> SimpleFunc<183, crate::UserTy, impl
                     position_x: 0,
                     position_y: 0,
                     is_unlocked: true,
-                    is_unlockable: true,
+                    is_unlockable: false,
                     tech_points: 1,
                     neighbours: Vec::default(),
                 }.as_transmissible_key_val(),
             ],
-        }));
-        Ok(params.into())
+        }));*/
+        params.into()
     })
 }

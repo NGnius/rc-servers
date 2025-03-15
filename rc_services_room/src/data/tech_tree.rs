@@ -11,7 +11,7 @@ pub struct TechTreeNode {
 }
 
 impl TechTreeNode {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("mainCubeId".into()), Typed::Str(hex::encode(self.main_cube_id.to_be_bytes()).into())),
             (Typed::Str("positionX".into()), Typed::Int(self.position_x)),
@@ -26,7 +26,7 @@ impl TechTreeNode {
         ].into())
     }
 
-    pub fn as_transmissible_key_val(&self) -> (Typed, Typed) {
+    pub fn as_transmissible_key_val<C>(&self) -> (Typed<C>, Typed<C>) {
         (Typed::Str(hex::encode(self.main_cube_id.to_be_bytes()).into()), self.as_transmissible())
     }
 }

@@ -104,7 +104,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(taunts_config::taunts_config_provider())
         .without_state(all_customisations_info::all_customisations_provider())
         .without_state(tech_points::tech_points_provider())
-        .without_state(cube_inventory::cube_inv_provider())
+        .without_state(cube_inventory::cube_inv_provider(&init_ctx.cubes))
         .without_state(player_level::player_level_info_provider())
         .without_state(balance_info::balance_wallet_provider())
         .without_state(premium_duration::premium_remaining_provider())
@@ -122,12 +122,12 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(garage_upgrades::garage_upgrades_provider())
         .without_state(game_event_params::event_system_params_provider())
         .without_state(garage_bay_uuid::garage_id_provider())
-        .without_state(tech_tree_data::tech_tree_layout_provider())
+        .without_state(tech_tree_data::tech_tree_layout_provider(&init_ctx.cubes))
         .without_state(item_shop_bundles::item_bundle_provider())
         .without_state(robot_customisations::bay_customisations_provider())
         .without_state(player_data::player_data_provider())
         .without_state(player_robopass::player_robopass_season_provider())
-        .without_state(weapon_upgrades::weapons_upgrade_provider())
+        .without_state(weapon_upgrades::weapons_upgrade_provider(&init_ctx.cubes))
         .without_state(polariton_server::operations::Ack::<172, _>::default()) // custom game change robot tier (param 67 is tier)
         .without_state(player_rank::rank_provider())
         .without_state(player_rank::rank_static_provider())
@@ -158,5 +158,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(building_xp::building_xp_save_provider())
         .without_state(robot_sanction::all_robot_sanctions_provider())
         .without_state(reconnect_game::available_reconnect_provider())
-        //.without_state(polariton_server::operations::Ack::<70, _>::default())
+        .without_state(machine::garage_machine_save_provider())
+        .without_state(polariton_server::operations::Ack::<32, _>::default()) // TODO handle SaveMachineColorRequest instead of ignoring it
+        .without_state(polariton_server::operations::Ack::<45, _>::default()) // TODO handle UpdateThumbnailVersionRequest instead of ignoring it
 }

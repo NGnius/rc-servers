@@ -24,7 +24,7 @@ pub struct GarageSlotInfo {
 }
 
 impl GarageSlotInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
             (Typed::Str("numberCubes".into()), Typed::Int(self.cubes as i32)),
@@ -71,7 +71,7 @@ pub struct ControlOptions {
 }
 
 impl ControlOptions {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::Arr(Arr {
             ty: TypePrefix::Bool, // bool
             items: vec![
