@@ -11,9 +11,9 @@ pub struct CliArgs {
     #[arg(long, default_value_t = {"127.0.0.1".to_string()})]
     pub ip: String,
 
-    /// Socket read tries before giving up (0 to never give up)
-    #[arg(long, default_value_t = 5)]
-    pub retries: usize,
+    /// Handle one connection and then exit
+    #[arg(short = '1', long)]
+    pub once: bool,
 }
 
 impl CliArgs {

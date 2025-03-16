@@ -21,16 +21,16 @@ async fn main() -> std::io::Result<()> {
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
-    #[cfg(not(debug_assertions))]
-    loop {
-        let (socket, address) = listener.accept().await?;
-        tokio::spawn(process_socket(socket, address, op_handler.clone(), redirect_static, room_name_static));
-    }
-    #[cfg(debug_assertions)]
-    {
+    if args.once {
+        log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
         process_socket(socket, address, redirect_static, room_name_static).await;
         Ok(())
+    } else {
+        loop {
+            let (socket, address) = listener.accept().await?;
+            tokio::spawn(process_socket(socket, address, redirect_static, room_name_static));
+        }
     }
 }
 

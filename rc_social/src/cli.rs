@@ -11,10 +11,6 @@ pub struct CliArgs {
     #[arg(long, default_value_t = {"127.0.0.1".to_string()})]
     pub ip: String,
 
-    /// Socket read tries before giving up (0 to never give up)
-    #[arg(long, default_value_t = 5)]
-    pub retries: usize,
-
     /// Domain and port of the game server to send new connections
     #[arg(long, default_value_t = {"127.0.0.1:4535".to_string()})]
     pub redirect: String,
@@ -22,6 +18,10 @@ pub struct CliArgs {
     /// Name of game server to send new connections
     #[arg(long, default_value_t = {"ngram_is_ngnius".to_string()})]
     pub room_name: String,
+
+    /// Handle one connection and then exit
+    #[arg(short = '1', long)]
+    pub once: bool,
 }
 
 impl CliArgs {

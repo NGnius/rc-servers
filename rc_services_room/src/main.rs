@@ -27,31 +27,31 @@ async fn main() -> std::io::Result<()> {
 
     let cubes = persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
-    let init_ctx = InitConfig {
+    let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,
-    };
+    });
 
-    let server = polariton_server::Server::new(operations::handler(&init_ctx));
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx)));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
-    #[cfg(not(debug_assertions))]
-    loop {
+    if args.once {
+        log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        tokio::spawn(process_socket(socket, address, &server, &init_ctx));
-    }
-    #[cfg(debug_assertions)]
-    {
-        let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, &server, &init_ctx).await;
+        process_socket(socket, address, server, init_ctx).await;
         Ok(())
+    } else {
+        loop {
+            let (socket, address) = listener.accept().await?;
+            tokio::spawn(process_socket(socket, address, server.clone(), init_ctx.clone()));
+        }
     }
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: &polariton_server::Server<crate::UserTy>, init_ctx: &InitConfig) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, init_ctx: std::sync::Arc<InitConfig>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,

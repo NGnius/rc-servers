@@ -18,26 +18,26 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let server = polariton_server::Server::new(operations::handler());
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler()));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
-    #[cfg(not(debug_assertions))]
-    loop {
+    if args.once {
+        log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        tokio::spawn(process_socket(socket, address, &server));
-    }
-    #[cfg(debug_assertions)]
-    {
-        let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, &server).await;
+        process_socket(socket, address, server).await;
         Ok(())
+    } else {
+        loop {
+            let (socket, address) = listener.accept().await?;
+            tokio::spawn(process_socket(socket, address, server.clone()));
+        }
     }
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: &polariton_server::Server<crate::UserTy>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
