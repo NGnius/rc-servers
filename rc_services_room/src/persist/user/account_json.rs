@@ -150,6 +150,9 @@ impl <C: Clone> super::User<C> for UserData {
                     control_type: polariton::operation::Typed::Int(control_ty as _),
                     control_options: control_options.as_transmissible(),
                     mastery_level: polariton::operation::Typed::Int(0), // TODO
+                    robot_rank: polariton::operation::Typed::Int(slot.total_robot_ranking as _),
+                    cpu: polariton::operation::Typed::Int(slot.total_robot_cpu as _),
+                    cosmetic_cpu: polariton::operation::Typed::Int(slot.total_cosmetic_cpu as _),
                 })
             },
             Err(e) => {

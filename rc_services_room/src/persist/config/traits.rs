@@ -9,4 +9,5 @@ pub trait ConfigProvider<C> {
     fn ids(&self) -> Vec<u32>;
     fn regen_config(&self) -> Typed<C>;
     fn after_battle_vote_config(&self) -> Typed<C>;
+    fn game_mode_config(&self) -> Typed<C>;
 }

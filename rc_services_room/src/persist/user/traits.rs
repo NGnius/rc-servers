@@ -38,6 +38,9 @@ pub struct UserSlotData<C> {
     pub control_type: polariton::operation::Typed<C>,
     pub control_options: polariton::operation::Typed<C>,
     pub mastery_level: polariton::operation::Typed<C>,
+    pub robot_rank: polariton::operation::Typed<C>,
+    pub cpu: polariton::operation::Typed<C>,
+    pub cosmetic_cpu: polariton::operation::Typed<C>,
 }
 
 pub struct VehicleData {

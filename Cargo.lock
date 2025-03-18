@@ -1788,6 +1788,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc_singleplayer"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "polariton",
+ "polariton_auth",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "rc_singleplayer_room"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "polariton",
+ "polariton_auth",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
 name = "rc_social"
 version = "0.1.0"
 dependencies = [

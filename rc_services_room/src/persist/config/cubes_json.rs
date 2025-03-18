@@ -177,4 +177,9 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             items: vote_data,
         })
     }
+
+    fn game_mode_config(&self) -> Typed<C> {
+        let game_mode_data: crate::data::game_mode::GameModeConfigs = self.battle.games.into();
+        game_mode_data.as_transmissible()
+    }
 }

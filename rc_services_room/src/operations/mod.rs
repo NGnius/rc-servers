@@ -76,6 +76,9 @@ mod regen_config;
 mod pageantry;
 mod signup_time;
 mod validate_machine;
+mod game_mode_config;
+mod score_multipliers_config;
+mod player_robot_rank;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -170,4 +173,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(pageantry::after_battle_vote_thresholds_provider(&init_ctx.cubes))
         .without_state(signup_time::user_signup_date_provider())
         .without_state(validate_machine::validate_robot_provider())
+        .without_state(game_mode_config::game_mode_config_provider(&init_ctx.cubes))
+        .without_state(score_multipliers_config::tdm_ai_score_config_provider())
+        .without_state(player_robot_rank::player_robot_rank_provider())
 }
