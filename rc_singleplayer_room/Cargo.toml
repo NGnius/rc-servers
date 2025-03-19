@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 log.workspace = true
 env_logger.workspace = true
-tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util" ] }
+tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util", "time"] }
 clap.workspace = true
 polariton.workspace = true
 polariton_auth = { version = "*", path = "../polariton_auth" }

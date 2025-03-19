@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler()));
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
@@ -27,14 +27,16 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server).await;
-        Ok(())
+        process_socket(socket, address, server.clone()).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
             tokio::spawn(process_socket(socket, address, server.clone()));
         }
     }
+    server.join();
+    server.join_async().await;
+    Ok(())
 }
 
 async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy, crate::data::custom::CustomType>>) {
@@ -46,9 +48,11 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
+    let (socket_r, socket_w) = socket.into_split();
     let user_state = state::UserState::new();
     let op_ctx = polariton::serdes::SerdesContext::<crate::data::custom::CustomType, crate::data::custom::CustomTypeSerdes>::default_const();
-    server.handle_async(socket, user_state, enc, op_ctx).await;
+    let ctx = polariton::packet::SerdesContext::from_boxed(op_ctx, enc);
+    server.handle_async(socket_r, socket_w, user_state, ctx).await;
     log::debug!("Goodbye connection from address {}", address);
 }
 
@@ -101,7 +105,7 @@ impl polariton_auth::AuthProvider<AuthError> for AuthImpl {
 
 async fn do_connect_handshake(
     socket: &mut net::TcpStream,
-) -> Option<polariton_auth::CryptoImpl> {
+) -> Option<Box<dyn polariton::packet::Cryptographer>> {
     let handshake = Handshake::new(APP_ID);
     // connect
     log::debug!("(connect) Handling first packet");
@@ -162,7 +166,7 @@ async fn do_connect_handshake(
     // pre-auth
     let handshake = handshake.with_auth(AuthImpl);
     let op_ctx = polariton::serdes::SerdesContext::default();
-    let ctx = polariton::packet::SerdesContext::new(&op_ctx, &crypto);
+    let ctx = polariton::packet::SerdesContext::new(op_ctx, crypto);
     // authenticate
     log::debug!("(connect) Handling third packet");
     let mut packet3 = match polariton_server::utils::receive_packet_async(socket, &ctx).await {
@@ -182,7 +186,7 @@ async fn do_connect_handshake(
             }
         };
     }
-    let to_send = match handshake.authenticate(&packet3, &crypto) {
+    let to_send = match handshake.authenticate(&packet3, &ctx) {
         Ok(x) => x,
         Err(h) => match h.extra {
             polariton_auth::AuthError::Validation(e) => {
@@ -253,5 +257,5 @@ async fn do_connect_handshake(
         }
     }
 
-    Some(crypto)
+    Some(ctx.into_crypto())
 }

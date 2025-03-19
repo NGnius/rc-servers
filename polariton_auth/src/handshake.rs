@@ -1,4 +1,4 @@
-use polariton::packet::{Packet, Message, StandardMessage, Data, Cryptographer};
+use polariton::packet::{Packet, Message, StandardMessage, Data};
 use polariton::operation::{Typed, ParameterTable, OperationResponse};
 
 #[derive(Debug)]
@@ -153,7 +153,7 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
     const AUTH_REQUEST_CODE: u8 = 230;
     const USER_ID_KEY: u8 = 225;
     const NICKNAME_KEY: u8 = 225;
-    pub fn authenticate<'a>(mut self, packet: &'a Packet, crypto: &dyn Cryptographer) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
+    pub fn authenticate<'a>(mut self, packet: &'a Packet, serdes_ctx: &polariton::packet::SerdesContext<(), polariton::serdes::NoCustomSerdes>) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
         if let Packet::Packet(packet) = &packet {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::OpReq(req) = &conn.data {
@@ -172,8 +172,6 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
                             params_resp.insert(Self::USER_ID_KEY, user_id.to_owned());
                             params_resp.insert(Self::NICKNAME_KEY, user_id.to_owned());
                         }
-                        let serdes_ctx = Default::default();
-                        let serdes_ctx = polariton::packet::SerdesContext::new(&serdes_ctx, crypto);
                         return Ok(Packet::from_message(
                             Message::Standard(
                                 StandardMessage {
@@ -185,7 +183,7 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
                                         params: params_resp.into(),
                                     })
                                 }.encrypt(conn.is_encrypted())
-                            ), packet.header.channel, true, &serdes_ctx).unwrap());
+                            ), packet.header.channel, true, serdes_ctx).unwrap());
                     }
                 }
             }

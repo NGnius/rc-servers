@@ -1,5 +1,4 @@
 mod cli;
-mod state;
 
 use polariton_auth::Handshake;
 use tokio::net;
@@ -43,11 +42,11 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    let sock_state = state::State::new(enc);
-    while let Ok(packet) = polariton_server::utils::receive_packet_async(&mut socket, &sock_state.serdes_ctx()).await {
+    let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
+    while let Ok(packet) = polariton_server::utils::receive_packet_async(&mut socket, &ctx).await {
         match packet {
             Packet::Ping(ping) => {
-                polariton_server::utils::handle_ping_async(ping, &mut socket, &sock_state.serdes_ctx()).await.unwrap_or_default();
+                polariton_server::utils::handle_ping_async(ping, &mut socket, &ctx).await.unwrap_or_default();
             },
             Packet::Packet(packet) => log::warn!("Not handling packet {:?}", packet),
         }
@@ -106,7 +105,7 @@ async fn do_connect_handshake(
     socket: &mut net::TcpStream,
     game_server_url: &str,
     game_server_name: &str,
-) -> Option<polariton_auth::CryptoImpl> {
+) -> Option<Box<dyn polariton::packet::Cryptographer>> {
     let handshake = Handshake::new(APP_ID);
     // connect
     log::debug!("(connect) Handling first packet");
@@ -167,7 +166,7 @@ async fn do_connect_handshake(
     // pre-auth
     let handshake = handshake.with_auth(AuthImpl);
     let op_ctx = polariton::serdes::SerdesContext::default();
-    let ctx = polariton::packet::SerdesContext::new(&op_ctx, &crypto);
+    let ctx = polariton::packet::SerdesContext::new(op_ctx, crypto);
     // authenticate
     log::debug!("(connect) Handling third packet");
     let mut packet3 = match polariton_server::utils::receive_packet_async(socket, &ctx).await {
@@ -187,7 +186,7 @@ async fn do_connect_handshake(
             }
         };
     }
-    let to_send = match handshake.authenticate(&packet3, &crypto) {
+    let to_send = match handshake.authenticate(&packet3, &ctx) {
         Ok(x) => x,
         Err(h) => match h.extra {
             polariton_auth::AuthError::Validation(e) => {
@@ -271,5 +270,5 @@ async fn do_connect_handshake(
         }
     }
 
-    Some(crypto)
+    Some(ctx.into_crypto())
 }

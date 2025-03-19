@@ -1,5 +1,5 @@
 use polariton_server::operations::SimpleFunc;
-use polariton::operation::ParameterTable;
+use polariton::operation::{ParameterTable, Typed};
 
 use crate::data::player_data::*;
 
@@ -785,7 +785,7 @@ const VALID_COLOUR: &[u8] = &[64,
 
 pub(super) fn tdm_machines_provider() -> SimpleFunc<1, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, user: &crate::UserTy| {
-        let ulock = user.read().unwrap();
+        let ulock = user.auth.read().unwrap();
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, PlayerDatas {
             players: vec![
@@ -838,7 +838,7 @@ pub(super) fn tdm_machines_provider() -> SimpleFunc<1, crate::UserTy, impl (Fn(P
                     robot_map: VALID_ROBOT.iter().map(|x| *x).collect(),
                     team: 1,
                     has_premium: false,
-                    robot_uuid: "1_1".to_owned(),
+                    robot_uuid: "12_12".to_owned(),
                     cpu: 0,
                     weapon_order: vec![20000200, 0, 0],
                     colour_map: VALID_COLOUR.iter().map(|x| *x).collect(),
@@ -850,6 +850,30 @@ pub(super) fn tdm_machines_provider() -> SimpleFunc<1, crate::UserTy, impl (Fn(P
                 },*/
             ]
         }.as_transmissible());
+        let event_tx = user.event_tx.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+            log::debug!("Sending singleplayer events");
+            let mut spawn_params = std::collections::HashMap::with_capacity(4);
+            spawn_params.insert(2 /* robot GUID */, Typed::Str("12_12".into()));
+            spawn_params.insert(3 /* machine model */, Typed::Bytes(VALID_ROBOT.iter().map(|x| *x).collect::<Vec<_>>().into()));
+            spawn_params.insert(4 /* robot name */, Typed::Str("RE_robot_spawn_name0".into()));
+            spawn_params.insert(7 /* color model */, Typed::Bytes(VALID_COLOUR.iter().map(|x| *x).collect::<Vec<_>>().into()));
+            event_tx.send(polariton_server::ToSend::Data {
+                data: polariton::packet::Data::Event(polariton::operation::Event { code: 3, params: spawn_params.into() }),
+                encrypt: true,
+                channel: 0,
+                reliable: true,
+            }).unwrap();
+            let mut update_params = std::collections::HashMap::with_capacity(1);
+            update_params.insert(6 /* ??? */, Typed::Int(5));
+            event_tx.send(polariton_server::ToSend::Data {
+                data: polariton::packet::Data::Event(polariton::operation::Event { code: 5, params: update_params.into() }),
+                encrypt: true,
+                channel: 0,
+                reliable: true,
+            }).unwrap();
+        });
         Ok(params.into())
     })
 }
