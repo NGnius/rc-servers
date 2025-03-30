@@ -1,5 +1,6 @@
 pub mod auto_regen;
 pub mod campaign;
+pub mod client_config;
 pub mod cube_list;
 pub mod game_mode;
 pub mod garage_bay;

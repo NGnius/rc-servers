@@ -14415,5 +14415,65 @@
                 }
             ]
         }
+    },
+    "settings": {
+        "banners": [
+            {
+                "message": "No jam was harmed in the reverse-engineering of this game",
+                "duration": 20
+            },
+            {
+                "message": "Struggling to open jars since 2013",
+                "duration": 20
+            },
+            {
+                "message": "If you can read this, you've benefitted from an education department!",
+                "duration": 20
+            },
+            {
+                "message": "Support your local minorities",
+                "duration": 20
+            },
+            {
+                "message": "\u0421\u043b\u0430\u0432\u0430 \u0423\u043a\u0440\u0430\u0457\u043d\u0456! Slava Ukraini!",
+                "duration": 20
+            },
+            {
+                "message": "Now with more poutine",
+                "duration": 20
+            },
+            {
+                "message": "Free Palestine!",
+                "duration": 20
+            },
+            {
+                "message": "Hacker free",
+                "duration": 20
+            },
+            {
+                "message": "Hey cutie",
+                "duration": 20
+            },
+            {
+                "message": "Tesla Coils are the only useful Teslas",
+                "duration": 20
+            },
+            {
+                "message": "Welcome to OpenJam's servers",
+                "duration": 20
+            },
+            {
+                "message": "Made in sovereign Canada",
+                "duration": 20
+            },
+            {
+                "message": "Finally, how to craft Robo",
+                "duration": 20
+            },
+            {
+                "message": "Warning, live without warning\nI say, warning, live without warning\nWithout, all right",
+                "duration": 20
+            }
+        ]
     }
 }

@@ -14,7 +14,7 @@ pub struct GameplaySettings {
 }
 
 impl GameplaySettings {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             // TODO
             (Typed::Str("showTutorialAfterDate".into()), Typed::Str(self.show_tutorial_after_date.clone().into())),

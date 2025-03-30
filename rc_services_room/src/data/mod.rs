@@ -2,7 +2,7 @@ pub use rc_core::data::cube_list;
 pub mod special_item;
 pub mod premium_config;
 pub mod palette;
-pub mod client_config;
+//pub mod client_config;
 pub mod crf_config;
 pub use rc_core::data::weapon_list;
 //pub use rc_core::data::movement_list;

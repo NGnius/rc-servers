@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
 
@@ -15,6 +15,7 @@ pub struct CubeConfig {
     movement: HashMap<ItemCategory, MovementCategoryData>,
     lerp_value: f32,
     battle: BattleConfig,
+    settings: Settings,
 }
 
 impl CubeConfig {
@@ -230,5 +231,20 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             map.insert(campaign.id.clone(), difficulty_map);
         }
         super::CompleteCampaignProvider::new(map)
+    }
+
+    fn client_config(&self) -> Typed<C> {
+        let conf_data: crate::data::client_config::GameplaySettings = self.settings.gameplay.clone().into();
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: vec![
+                (Typed::Str("GameplaySettings".into()), conf_data.as_transmissible()),
+            ].into(),
+        })
+    }
+
+    fn login_messages(&self) -> super::DevMessageProvider<C> {
+        super::DevMessageProvider::new(self.settings.banners.iter().map(|msg| (msg.message.clone(), msg.duration as i32)).collect())
     }
 }

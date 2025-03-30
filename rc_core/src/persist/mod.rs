@@ -23,7 +23,11 @@ pub use combat::BattleConfig;
 mod singleplayer;
 pub use singleplayer::{Campaigns, Campaign, CampaignDifficulty, CampaignCompletion, CampaignType, Wave, WaveRobot};
 
-// TODO put this in core lib
+mod client_config;
+pub use client_config::GameplaySettings;
+
+mod settings;
+pub use settings::Settings;
 
 pub(self) const VALID_ROBOT: &[u8] = &[64,
     0,

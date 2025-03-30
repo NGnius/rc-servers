@@ -174,6 +174,23 @@ CATEGORIES_PLACEMENTS = {
     "EnergyModule": ALL_FACES,
 }
 
+LOGIN_MESSAGES = [
+    "No jam was harmed in the reverse-engineering of this game",
+    "Struggling to open jars since 2013",
+    "If you can read this, you've benefitted from an education department!",
+    "Support your local minorities",
+    "Слава Україні! Slava Ukraini!",
+    "Now with more poutine",
+    "Free Palestine!",
+    "Hacker free",
+    "Hey cutie",
+    "Tesla Coils are the only useful Teslas",
+    "Welcome to OpenJam's servers",
+    "Made in sovereign Canada",
+    "Finally, how to craft Robo",
+    "Warning, live without warning\nI say, warning, live without warning\nWithout, all right",
+]
+
 def guess_category(name: str, sprite: str) -> str:
     name = name.lower()
     sprite = sprite.lower()
@@ -427,7 +444,13 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                     }
                 ],
             },
-        }
+        },
+        "settings":  {
+            "banners": [{
+                "message": msg,
+                "duration": 20,
+            } for msg in LOGIN_MESSAGES],
+        },
     }
     last_tech_tree_id = 0
     tech_tree_index = 0

@@ -1,6 +1,6 @@
 use polariton::operation::Typed;
 
-pub trait ConfigProvider<C> {
+pub trait ConfigProvider<C: Clone> {
     fn cube_list(&self) -> Typed<C>;
     fn movement_list(&self) -> Typed<C>;
     fn weapon_list(&self) -> Typed<C>;
@@ -15,6 +15,8 @@ pub trait ConfigProvider<C> {
     fn campaign_waves(&self) -> Typed<C>;
     fn campaign_version(&self) -> Typed<C>;
     fn campaign_details(&self) -> CompleteCampaignProvider;
+    fn client_config(&self) -> Typed<C>;
+    fn login_messages(&self) -> DevMessageProvider<C>;
 }
 
 pub struct CompleteCampaignProvider {
@@ -39,4 +41,44 @@ impl CompleteCampaignProvider {
             Err(crate::data::error_codes::WebServicesError::DatabaseError as i16)
         }
     }
+}
+
+pub struct DevMessageProvider<C: Clone> {
+    messages: Vec<TypedDevMessage<C>>,
+}
+
+impl <C: Clone> DevMessageProvider<C> {
+    pub fn new(messages: Vec<(String, i32)>) -> Self {
+        Self {
+            messages: messages.into_iter().map(|(msg, time)| {
+                let bytes: Vec<u8> = msg.as_bytes().into();
+                TypedDevMessage {
+                    message: Typed::Bytes(bytes.into()),
+                    display_time: Typed::Int(time),
+                }
+            }
+            ).collect(),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> TypedDevMessage<C> {
+        // TODO maybe make this less obtuse -- it works for random, but isn't really obvious for anything else
+        if self.messages.is_empty() {
+            TypedDevMessage {
+                message: Typed::Bytes(Vec::default().into()),
+                display_time: Typed::Int(-1),
+            }
+        } else if self.messages.len() == 1 {
+            self.messages[0].clone()
+        } else {
+            let actual_index = index % self.messages.len(); // guarantees index is within allowed range of messages
+            self.messages[actual_index].clone()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedDevMessage<C> {
+    pub message: Typed<C>,
+    pub display_time: Typed<C>,
 }
