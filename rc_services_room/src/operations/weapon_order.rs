@@ -1,10 +1,10 @@
 use polariton_server::operations::Immediate;
 
-use crate::persist::config::ConfigProvider;
+use rc_core::ConfigProvider;
 
 pub const DEFAULT_WEAPON_ORDER_PARAM_KEY: u8 = 138;
 
-pub(super) fn weapon_order_provider(conf: &crate::persist::config::ConfigImpl) -> Immediate<118, crate::UserTy> {
+pub(super) fn weapon_order_provider(conf: &rc_core::ConfigImpl) -> Immediate<118, crate::UserTy> {
     let weapon_orders = conf.weapon_keys();
     Immediate::new(|| {
         let mut params = std::collections::HashMap::with_capacity(1);

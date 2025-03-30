@@ -1,9 +1,9 @@
 use polariton_server::operations::Immediate;
-use crate::persist::config::ConfigProvider;
+use rc_core::ConfigProvider;
 
 const PARAM_KEY: u8 = 57;
 
-pub(super) fn weapon_config_provider(cubes: &crate::persist::config::ConfigImpl) -> Immediate<47, crate::UserTy> {
+pub(super) fn weapon_config_provider(cubes: &rc_core::ConfigImpl) -> Immediate<47, crate::UserTy> {
     Immediate::new(|| {
         let mut params = std::collections::HashMap::with_capacity(2);
         params.insert(PARAM_KEY, cubes.weapon_list());

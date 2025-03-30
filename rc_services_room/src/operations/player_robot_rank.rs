@@ -8,8 +8,7 @@ const COSMETIC_CPU_PARAM_KEY: u8 = 176; // out; int
 
 pub(super) fn player_robot_rank_provider() -> SimpleFunc<79, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, user: &crate::UserTy| {
-        let lock = user.read().unwrap();
-        let user = lock.user()?;
+        let user = user.user()?;
         let mut params = params.to_dict();
         if let Some(Typed::Str(username)) = params.get(&USERNAME_PARAM_KEY) {
             log::debug!("Get robot rank for user {}", username.string);

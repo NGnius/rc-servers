@@ -13,8 +13,7 @@ const MASTERY_LEVEL_PARAM_KEY: u8 = 18; // int
 pub(super) fn garage_machine_provider() -> SimpleFunc<43, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, user: &crate::UserTy| {
         let mut params = params.to_dict();
-        let lock = user.read().unwrap();
-        let user_info = lock.user()?;
+        let user_info = user.user()?;
         if let Some(Typed::Int(garage_slot)) = params.get(&SLOT_PARAM_KEY) {
             log::debug!("Got machine request for slot {:?}", garage_slot);
             let machine = user_info.slot_by_id(*garage_slot)?;
@@ -48,9 +47,8 @@ pub(super) fn garage_machine_save_provider() -> SimpleFunc<41, crate::UserTy, im
                 if let Some(Typed::Bytes(colour_data)) = params.remove(&COMPRESSED_COLOUR_DATA_PARAM_KEY) {
                     if let Some(Typed::Arr(weapon_order)) = params.remove(&WEAPON_ORDER_PARAM_KEY) {
                         let weapon_order_filtered: Vec<_> = weapon_order.items.into_iter().filter_map(|ty| if let Typed::Int(i) = ty { Some(i) } else { None }).collect();
-                        let lock = user.read().unwrap();
-                        let user_info = lock.user()?;
-                        let vehicle_data = crate::persist::user::VehicleData {
+                        let user_info = user.user()?;
+                        let vehicle_data = rc_core::persist::user::VehicleData {
                             id: slot_index,
                             robot_data: robot_data.vec,
                             colour_data: colour_data.vec,

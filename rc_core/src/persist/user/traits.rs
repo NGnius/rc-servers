@@ -22,6 +22,7 @@ pub trait User<C> {
     fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
     fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
+    fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
 }
 
 pub struct UserSlots<C> {
@@ -41,6 +42,7 @@ pub struct UserSlotData<C> {
     pub robot_rank: polariton::operation::Typed<C>,
     pub cpu: polariton::operation::Typed<C>,
     pub cosmetic_cpu: polariton::operation::Typed<C>,
+    pub uuid: polariton::operation::Typed<C>,
 }
 
 pub struct VehicleData {

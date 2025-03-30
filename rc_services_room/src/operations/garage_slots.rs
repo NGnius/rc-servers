@@ -7,8 +7,7 @@ const SLOT_ORDER_PARAM_KEY: u8 = 58;
 
 pub(super) fn garage_slot_provider() -> SimpleFunc<40, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, user: &crate::UserTy| {
-        let lock = user.read().unwrap();
-        let user_info = lock.user()?;
+        let user_info = user.user()?;
         let mut params = params.to_dict();
         let all_slots = user_info.all_slots_by_id();
         params.insert(SLOTS_PARAM_KEY, all_slots.slot_info);

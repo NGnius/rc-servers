@@ -1,12 +1,15 @@
 use crate::persist::user::UserProvider;
+use polariton_server::ToSend;
 
-pub struct UserState<C: Clone> {
-    state: InitState<C>,
+pub struct UserState<C: Clone = ()> {
+    state: std::sync::RwLock<InitState<C>>,
+    event_tx: tokio::sync::mpsc::UnboundedSender<ToSend<C>>,
 }
 
 impl <C: Clone> UserState<C> {
-    pub fn update_with_auth(&mut self, auth_str: &str) -> bool {
-        match &self.state {
+    pub fn update_with_auth(&self, auth_str: &str) -> bool {
+        let mut lock = self.state.write().unwrap();
+        match &*lock {
             InitState::Unauthenticated(auth) => {
                 let splits: Vec<&str> = auth_str.split(';').collect();
                 if splits.len() != 3 {
@@ -20,7 +23,7 @@ impl <C: Clone> UserState<C> {
                     };
                     match auth.authenticate(token) {
                         Ok(user) => {
-                            self.state = InitState::Authenticated(user);
+                            *lock = InitState::Authenticated(std::sync::Arc::new(user));
                             true
                         },
                         Err(e) => {
@@ -38,21 +41,31 @@ impl <C: Clone> UserState<C> {
 
     }
 
-    pub fn new(provider: std::sync::Arc<crate::persist::user::UserImpl>) -> Self {
+    pub fn new(provider: std::sync::Arc<crate::persist::user::UserImpl>, event_tx: tokio::sync::mpsc::UnboundedSender<ToSend<C>>) -> Self {
         Self {
-            state: InitState::Unauthenticated(provider),
+            state: std::sync::RwLock::new(InitState::Unauthenticated(provider)),
+            event_tx,
         }
     }
 
-    pub fn user(&self) -> Result<&dyn crate::persist::user::User<C>, i16> {
-        match &self.state {
+    pub fn user(&self) -> Result<std::sync::Arc<Box<dyn crate::persist::user::User<C> + Send + Sync>>, i16> {
+        let lock = self.state.read().unwrap();
+        match &*lock {
             InitState::Unauthenticated(_) => Err(120),
-            InitState::Authenticated(user) => Ok(user.as_ref()),
+            InitState::Authenticated(user) => Ok(user.clone()),
         }
+    }
+
+    pub fn event(&self, event_data: ToSend<C>) {
+        self.event_tx.send(event_data).unwrap()
+    }
+
+    pub fn event_sender(&self) -> tokio::sync::mpsc::UnboundedSender<ToSend<C>> {
+        self.event_tx.clone()
     }
 }
 
 enum InitState<C> {
     Unauthenticated(std::sync::Arc<crate::persist::user::UserImpl>),
-    Authenticated(Box<dyn crate::persist::user::User<C> + Send + Sync>),
+    Authenticated(std::sync::Arc<Box<dyn crate::persist::user::User<C> + Send + Sync>>),
 }

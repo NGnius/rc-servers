@@ -1743,6 +1743,21 @@ dependencies = [
  "polariton",
  "polariton_auth",
  "polariton_server",
+ "rc_core",
+ "tokio",
+]
+
+[[package]]
+name = "rc_core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "log",
+ "polariton",
+ "polariton_server",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
@@ -1782,6 +1797,7 @@ dependencies = [
  "polariton",
  "polariton_auth",
  "polariton_server",
+ "rc_core",
  "serde",
  "serde_json",
  "tokio",
@@ -1810,6 +1826,7 @@ dependencies = [
  "polariton",
  "polariton_auth",
  "polariton_server",
+ "rc_core",
  "tokio",
 ]
 
@@ -1836,6 +1853,7 @@ dependencies = [
  "polariton",
  "polariton_auth",
  "polariton_server",
+ "rc_core",
  "tokio",
 ]
 

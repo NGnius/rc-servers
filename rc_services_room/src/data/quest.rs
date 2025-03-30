@@ -43,9 +43,9 @@ pub struct QuestInfo {
 
 impl QuestInfo {
     fn dump(&self, writer: &mut dyn Write) -> std::io::Result<usize> {
-        let mut total_len = super::write_str_for_binreader(&self.id, writer)?;
-        total_len += super::write_str_for_binreader(&self.name, writer)?;
-        total_len += super::write_str_for_binreader(&self.description, writer)?;
+        let mut total_len = rc_core::data::write_str_for_binreader(&self.id, writer)?;
+        total_len += rc_core::data::write_str_for_binreader(&self.name, writer)?;
+        total_len += rc_core::data::write_str_for_binreader(&self.description, writer)?;
         total_len += writer.write(&self.xp.to_le_bytes())?;
         total_len += writer.write(&self.premium_xp.to_le_bytes())?;
         total_len += writer.write(&self.robits.to_le_bytes())?;

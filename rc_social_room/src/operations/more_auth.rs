@@ -14,9 +14,8 @@ impl <C> Operation<C> for MoreLobbyAuth {
     fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let params_dict = params.to_dict();
         if let Some(Typed::Str(auth_payload)) = params_dict.get(&Self::AUTH_PAYLOAD_KEY) {
-            let mut write_lock = user.write().unwrap();
-            if write_lock.update_with_auth(&auth_payload.string) {
-                let mut resp_params = std::collections::HashMap::new();
+            if user.update_with_auth(&auth_payload.string) {
+                let mut resp_params = std::collections::HashMap::with_capacity(1);
                 resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
                 return polariton::operation::OperationResponse {
                     code: 230,

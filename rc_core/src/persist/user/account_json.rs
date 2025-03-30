@@ -153,6 +153,7 @@ impl <C: Clone> super::User<C> for UserData {
                     robot_rank: polariton::operation::Typed::Int(slot.total_robot_ranking as _),
                     cpu: polariton::operation::Typed::Int(slot.total_robot_cpu as _),
                     cosmetic_cpu: polariton::operation::Typed::Int(slot.total_cosmetic_cpu as _),
+                    uuid: polariton::operation::Typed::Str(format!("{}_{}", slot.uuid.0, slot.uuid.1).into()),
                 })
             },
             Err(e) => {
@@ -198,6 +199,37 @@ impl <C: Clone> super::User<C> for UserData {
             Err(e) => log::error!("could not retrieve metadata of {}: {}", self.root.display(), e),
         }
         super::since_windows_epoch(0)
+    }
+
+    fn singleplayer_robots(&self) ->  Result<polariton::operation::Typed<C>, i16> {
+        let current_slot = self.load_garage_by_id(self.account.garage.slot).map_err(|e| {
+            log::error!("Failed to load current vehicle: {}", e);
+            INVALID_ROBOT_ERR
+        })?;
+        let user_uuid = self.token.uuid.clone();
+        Ok(crate::data::player_data::PlayerDatas {
+            players: vec![
+                crate::data::player_data::PlayerData {
+                    name: user_uuid.clone(),
+                    display_name: user_uuid,
+                    mastery: current_slot.mastery_level,
+                    tier: 1, // FIXME
+                    robot_name: current_slot.name,
+                    robot_map: current_slot.robot_data,
+                    team: 0,
+                    has_premium: true, // FIXME
+                    robot_uuid: format!("{}_{}", current_slot.uuid.0, current_slot.uuid.1),
+                    cpu: current_slot.total_robot_cpu as i32,
+                    weapon_order: current_slot.weapon_order.clone(),
+                    colour_map: current_slot.colour_data,
+                    is_ai: false,
+                    spawn_effect: "Spawn_Warp".to_owned(), // FIXME
+                    death_effect: "Explosion_Warp".to_owned(), // FIXME
+                    player_rank: 1, // FIXME
+                    weapon_rank: current_slot.weapon_order.into_iter().map(|x| (x, if x == 0 { 0 } else { 1 })).collect(),
+                }
+            ],
+        }.as_transmissible())
     }
 
 }

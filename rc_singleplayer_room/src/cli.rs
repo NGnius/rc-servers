@@ -11,6 +11,14 @@ pub struct CliArgs {
     #[arg(long, default_value_t = {"127.0.0.1".to_string()})]
     pub ip: String,
 
+    /// Assets root
+    #[arg(long, default_value_t = {"../assets/robocraft".to_string()})]
+    pub assets: String,
+
+    /// User data root
+    #[arg(long, default_value_t = {"../data/robocraft".to_string()})]
+    pub data: String,
+
     /// Handle one connection and then exit
     #[arg(short = '1', long)]
     pub once: bool,

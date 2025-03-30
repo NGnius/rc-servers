@@ -11,7 +11,7 @@ members = [
     "rc_static_data", "rc_microtransactions",
     "rc_social", "rc_social_room",
     "rc_chat", "rc_chat_room",
-    "rc_singleplayer", "rc_singleplayer_room",
+    "rc_singleplayer", "rc_singleplayer_room", "rc_core",
 ]
 
 [workspace.dependencies]

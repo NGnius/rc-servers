@@ -1,5 +1,4 @@
 mod cli;
-mod state;
 
 mod data;
 mod operations;
@@ -10,13 +9,16 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = std::sync::RwLock<state::UserState>;
+pub type UserTy = rc_core::UserState;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
+
+    let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
 
@@ -27,11 +29,11 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server.clone()).await;
+        process_socket(socket, address, server.clone(), users.clone()).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
-            tokio::spawn(process_socket(socket, address, server.clone()));
+            tokio::spawn(process_socket(socket, address, server.clone(), users.clone()));
         }
     }
     server.join();
@@ -39,7 +41,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<rc_core::persist::user::UserImpl>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -48,9 +50,10 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    let user_state = state::UserState::new();
+    let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
+    let user_state = rc_core::UserState::<()>::new(users, chann_tx.clone());
     let (socket_r, socket_w) = socket.into_split();
-    let _packet_chann = server.handle_async(socket_r, socket_w, user_state, polariton::packet::SerdesContext::from_boxed(Default::default(), enc)).await;
+    server.handle_async_with_channel(socket_r, socket_w, user_state, polariton::packet::SerdesContext::from_boxed(Default::default(), enc), chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
 }
 

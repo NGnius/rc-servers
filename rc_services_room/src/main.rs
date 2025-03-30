@@ -1,10 +1,8 @@
 mod cli;
-mod state;
 
 mod data;
 mod events;
 mod operations;
-mod persist;
 
 use polariton_auth::Handshake;
 use tokio::net;
@@ -12,11 +10,11 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = std::sync::RwLock<state::UserState<()>>;
+pub type UserTy = rc_core::UserState<()>;
 
 pub struct InitConfig {
-    pub cubes: persist::config::ConfigImpl,
-    pub users: std::sync::Arc<persist::user::UserImpl>,
+    pub cubes: rc_core::persist::config::ConfigImpl,
+    pub users: std::sync::Arc<rc_core::persist::user::UserImpl>,
 }
 
 #[tokio::main]
@@ -25,8 +23,8 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let cubes = persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
-    let users = std::sync::Arc::new(persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
+    let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,
@@ -63,9 +61,10 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
         }
     };
     let (socket_r, socket_w) = socket.into_split();
-    let user_state = std::sync::RwLock::new(state::UserState::<()>::new(init_ctx.users.clone()));
+    let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
+    let user_state = rc_core::UserState::<()>::new(init_ctx.users.clone(), chann_tx.clone());
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
-    server.handle_async(socket_r, socket_w, user_state, ctx).await;
+    server.handle_async_with_channel(socket_r, socket_w, user_state, ctx, chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
 }
 

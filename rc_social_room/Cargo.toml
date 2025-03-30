@@ -11,3 +11,4 @@ clap.workspace = true
 polariton.workspace = true
 polariton_auth = { version = "*", path = "../polariton_auth" }
 polariton_server.workspace = true
+rc_core = { version = "*", path = "../rc_core" }
