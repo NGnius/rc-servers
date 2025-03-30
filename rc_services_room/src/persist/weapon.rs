@@ -10,18 +10,28 @@ pub struct WeaponData {
     pub base_inaccuracy: Option<f32>,
     pub base_air_inaccuracy: Option<f32>,
     pub movement_inaccuracy: Option<f32>,
+    #[serde(alias="movement_max_threshold_speed")]
     pub movement_max_speed: Option<f32>,
+    #[serde(alias="movement_min_threshold_speed")]
     pub movement_min_speed: Option<f32>,
+    #[serde(alias="gun_rotation_threshold_slow")]
     pub gun_rotation_slow: Option<f32>,
+    #[serde(alias="movement_inaccuracy_decay_time")]
     pub movement_inaccuracy_decay: Option<f32>,
+    #[serde(alias="slow_rotation_inaccuracy_decay_time")]
     pub slow_rotation_decay: Option<f32>,
+    #[serde(alias="quick_rotation_inaccuracy_decay_time")]
     pub quick_rotation_decay: Option<f32>,
+    #[serde(alias="movement_inaccuracy_recovery_time")]
     pub movement_inaccuracy_recovery: Option<f32>,
     pub repeat_fire_inaccuracy_total_degrees: Option<f32>,
+    #[serde(alias="repeat_fire_inaccuracy_decay_time")]
     pub repeat_fire_inaccuracy_decay: Option<f32>,
+    #[serde(alias="repeat_fire_inaccuracy_recovery_time")]
     pub repeat_fire_innaccuracy_recovery: Option<f32>,
     pub fire_instant_accuracy_decay: Option<f32>, // degrees
     pub accuracy_non_recover_time: Option<f32>,
+    #[serde(alias="accuracy_decay_time")]
     pub accuracy_decay: Option<f32>,
     pub damage_radius: Option<f32>,
     pub plasma_time_to_full_damage: Option<f32>,
@@ -36,9 +46,12 @@ pub struct WeaponData {
     pub aeroflak_ground_clearance: Option<f32>,
     pub aeroflak_max_stacks: Option<i32>,
     pub aeroflak_damage_per_stack: Option<i32>,
+    #[serde(alias="aeroflak_buff_time_to_expire")]
     pub aeroflak_stack_expire: Option<f32>,
+    #[serde(alias="cooldown_between_shots")]
     pub shot_cooldown: Option<f32>,
     pub smart_rotation_cooldown: Option<f32>,
+    #[serde(alias="smart_rotation_extra_cooldown_time")]
     pub smart_rotation_cooldown_extra: Option<f32>,
     pub smart_rotation_max_stacks: Option<f32>,
     pub spin_up_time: Option<f32>,

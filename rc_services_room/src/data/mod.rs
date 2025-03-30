@@ -27,6 +27,7 @@ pub mod lobby;
 pub mod error_codes;
 pub mod game_mode;
 pub mod score_multipliers;
+pub mod campaign;
 
 pub(self) fn encode_7_bit_i32(mut src: i32) -> Vec<u8> {
     if src == 0 { return vec![0] }
@@ -48,4 +49,8 @@ pub(self) fn write_str_for_binreader(s: &str, writer: &mut dyn std::io::Write) -
     let mut total_len = writer.write(&encode_7_bit_i32(s_bytes.len() as i32))?;
     total_len += writer.write(s_bytes)?;
     Ok(total_len)
+}
+
+pub(self) fn cube_id_to_str(id: u32) -> String {
+    hex::encode(id.to_be_bytes()).into()
 }

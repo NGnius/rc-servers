@@ -14,6 +14,7 @@ pub struct ScoreMultipliersData {
 impl ScoreMultipliersData {
     fn dump(&self, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
         writer.write_all(&self.max_cpu.to_le_bytes())?;
+        writer.write_all(&(self.stat_multipliers.len() as i32).to_le_bytes())?;
         for (key, val) in self.stat_multipliers.iter() {
             writer.write_all(&(*key as u32).to_le_bytes())?;
             writer.write_all(&val.base.to_le_bytes())?;
@@ -25,7 +26,7 @@ impl ScoreMultipliersData {
         writer.write_all(&self.defeat_score.to_le_bytes())?;
         writer.write_all(&self.victory_score.to_le_bytes())?;
         writer.write_all(&self.max_score_ratio.to_le_bytes())?;
-        Ok(28 + (12 * self.stat_multipliers.len()))
+        Ok(32 + (12 * self.stat_multipliers.len()))
     }
 
     pub fn as_transmissible<C>(&self) -> Typed<C> {

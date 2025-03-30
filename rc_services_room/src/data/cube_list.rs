@@ -127,3 +127,7 @@ impl ItemType {
         }
     }
 }
+
+pub fn item_key(category: super::weapon_list::ItemCategory, tier: ItemTier) -> i32 {
+    category.but_bigger() + (tier as i32)
+}

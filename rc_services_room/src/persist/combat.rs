@@ -8,6 +8,8 @@ pub struct BattleConfig {
     pub votes: HashMap<Vote, Vec<VoteThreshold>>,
     #[serde(default = "default_game_modes")]
     pub games: GameModes,
+    #[serde(default = "default_campaigns")]
+    pub singleplayer: super::Campaigns,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -127,5 +129,74 @@ fn default_game_modes() -> GameModes {
             kill_limit: 10,
             game_time_m: 10,
         },
+    }
+}
+
+fn default_campaigns() -> super::Campaigns {
+    super::Campaigns {
+        campaigns: vec![
+            super::Campaign {
+                id: "strCampaignModeBattle".to_owned(),
+                excluded_cubes: Vec::default(),
+                categories: vec![super::ItemCategory::Wheel],
+                min_cpu: 0,
+                max_cpu: 2_000,
+                name: "strCampaignModeBattle".to_owned(),
+                description: "strCampaignsDesc".to_owned(),
+                image: "RE_singleplayer_campaign_image_asset_TODO".to_owned(),
+                rules: Vec::default(),
+                parameters: Vec::default(),
+                difficulties: vec![
+                    super::CampaignDifficulty {
+                        level: 0,
+                        lives: 5,
+                        auto_heal: true,
+                        single_wave_bonus: 1_000,
+                        initial_health_boost: 0.0,
+                        health_boost_wave_increase: 0.0,
+                        initial_damage_boost: 0.0,
+                        damage_boost_wave_increase: 0.0,
+                    }
+                ],
+                completed: vec![
+                    super::CampaignCompletion {
+                        wave: 0,
+                        difficulty: false,
+                    }
+                ],
+                map: "RC_Planet_Neptune_03_BA".to_owned(),
+                campaign_type: super::CampaignType::Elimination,
+                waves: vec![
+                    super::Wave {
+                        player_spawn_location: 0,
+                        robots_in_wave: vec![
+                            super::WaveRobot {
+                                name: "strCampaignAnimalName".to_owned(),
+                                weapon: "strT5PlasmaGoldenName".to_owned(),
+                                movement: "strT5SteeringWheelGoldenName".to_owned(),
+                                rank: "strT0".to_owned(),
+                                count: 5,
+                                robot_data: super::VALID_ROBOT.into(),
+                                colour_data: super::VALID_COLOUR.into(),
+                                time_to_spawn: 1,
+                                kills_to_spawn: 0,
+                                time_to_despawn: 60,
+                                kills_to_despawn: 1,
+                                initial_robot_amount: 0,
+                                periodic_robot_amount: 3,
+                                spawn_interval: 1,
+                                min_robot_amount: 1,
+                                max_robot_amount: 5,
+                                is_boss: false,
+                                is_kill_requirement: true,
+                            }
+                        ],
+                        kill_target: 1,
+                        time_min: 1,
+                        time_max: 1 * 60,
+                    }
+                ],
+            }
+        ]
     }
 }

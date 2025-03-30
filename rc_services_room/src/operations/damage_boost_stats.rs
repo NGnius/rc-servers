@@ -14,9 +14,9 @@ pub(super) fn damage_boost_provider() -> SimpleFunc<163, crate::UserTy, impl (Fn
             items: vec![
                 (Typed::Str("damageBoost".into()), DamageBoostData {
                     damage_map: vec![
-                        (100, 1000.0),
-                        (1000, 100.0),
+                        (0, 1.0),
                         (2000, 1.0),
+                        (10_000, 1.0),
                     ],
                 }.as_transmissible())
             ],

@@ -12,8 +12,8 @@ pub(super) fn cpu_config_provider() -> SimpleFunc<75, crate::UserTy, impl (Fn(Pa
             premium_for_life_cosmetic_gpu: 12,
             premium_cosmetic_cpu: 6,
             no_premium_cosmetic_cpu: 3,
-            max_regular_health: 2_000_000,
-            max_megabot_health: 200_000_000,
+            max_regular_health: 200_000_000,
+            max_megabot_health: 2_000_000_000,
         }.as_transmissible());
         Ok(params.into())
     })

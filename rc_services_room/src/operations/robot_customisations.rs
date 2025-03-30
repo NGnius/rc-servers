@@ -10,8 +10,8 @@ pub(super) fn bay_customisations_provider() -> SimpleFunc<218, crate::UserTy, im
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(BAY_SKIN_KEY, Typed::Str("RC_MothershipSkin_Neptune_01".into()));
-        params.insert(SPAWN_EFFECT_KEY, Typed::Str("RE_todo_spawn_effect".into()));
-        params.insert(DEATH_EFFECT_KEY, Typed::Str("RE_todo_death_effect".into()));
+        params.insert(SPAWN_EFFECT_KEY, Typed::Str("Spawn_Warp".into()));
+        params.insert(DEATH_EFFECT_KEY, Typed::Str("Explosion_Warp".into()));
         Ok(params.into())
     })
 }

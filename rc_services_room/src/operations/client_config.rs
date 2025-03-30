@@ -13,14 +13,14 @@ pub(super) fn client_config_provider() -> SimpleFunc<34, crate::UserTy, impl (Fn
             val_ty: TypePrefix::HashMap, // hashtable
             items: vec![
                 (Typed::Str("GameplaySettings".into()), GameplaySettings {
-                    show_tutorial_after_date: "2025-01-01".to_owned(),
-                    health_threshold: 10.0,
+                    show_tutorial_after_date: "2030-01-01".to_owned(),
+                    health_threshold: 0.20,
                     microbot_sphere: 10.0,
-                    misfire_angle: 20.0,
+                    misfire_angle: 10.0,
                     shield_dps: 100,
                     shield_hps: 2_000,
                     request_review_level: 10_000,
-                    critical_ratio: 10.0,
+                    critical_ratio: 5.0,
                     cross_promo_image: "https://git.ngram.ca/assets/img/logo.png".to_owned(),
                     cross_promo_link: "https://git.ngram.ca/OpenJam/servers".to_owned(),
                 }.as_transmissible())

@@ -28,3 +28,19 @@ pub(super) fn validate_robot_provider() -> SimpleFunc<102, crate::UserTy, impl (
         Ok(params.into())
     })
 }
+
+const CAMPAIGN_ID_PARAM_KEY: u8 = 22;
+
+pub(super) fn validate_campaign_robot_provider() -> SimpleFunc<59, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+    SimpleFunc::new(|params, _user: &crate::UserTy| {
+        let mut params = params.to_dict();
+        if let Some(Typed::Str(campaign_id)) = params.get(&CAMPAIGN_ID_PARAM_KEY) {
+            log::info!("Got campaign id {}", campaign_id.string);
+        }
+        // let lock = user.read().unwrap();
+        // let user_info = lock.user()?;
+        // TODO actually validate the vehicle
+        params.insert(VALIDATE_ROBOT_RESULT_PARAM_KEY, Typed::Int(ValidateMachineResult::Ok as _)); // this is ignored
+        Ok(params.into())
+    })
+}

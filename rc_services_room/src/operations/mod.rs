@@ -79,6 +79,7 @@ mod validate_machine;
 mod game_mode_config;
 mod score_multipliers_config;
 mod player_robot_rank;
+mod weapon_order;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -150,7 +151,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(prebuilt_robots::garage_robot_data_provider())
         .without_state(prebuilt_colours::garage_colour_combo_provider())
         .without_state(robopass_preview_items::robopass_preview_provider())
-        .without_state(singleplayer_campaigns::singleplayer_campaigns_provider())
+        .without_state(singleplayer_campaigns::singleplayer_campaigns_provider(&init_ctx.cubes))
         .without_state(purchases::pending_purchases_provider())
         .without_state(building_xp_config::building_xp_config_provider())
         .without_state(weapon_rating_static::weapon_rating_provider())
@@ -168,7 +169,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(machine::garage_machine_save_provider())
         .without_state(polariton_server::operations::Ack::<32, _>::default()) // TODO handle SaveMachineColorRequest instead of ignoring it
         .without_state(polariton_server::operations::Ack::<45, _>::default()) // TODO handle UpdateThumbnailVersionRequest instead of ignoring it
-        .without_state(machine::weapon_order_provider())
+        .without_state(weapon_order::weapon_order_provider(&init_ctx.cubes))
         .without_state(regen_config::auto_regen_config_provider(&init_ctx.cubes))
         .without_state(pageantry::after_battle_vote_thresholds_provider(&init_ctx.cubes))
         .without_state(signup_time::user_signup_date_provider())
@@ -176,4 +177,8 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .without_state(game_mode_config::game_mode_config_provider(&init_ctx.cubes))
         .without_state(score_multipliers_config::tdm_ai_score_config_provider())
         .without_state(player_robot_rank::player_robot_rank_provider())
+        .without_state(validate_machine::validate_campaign_robot_provider())
+        .without_state(singleplayer_campaigns::singleplayer_complete_campaign_provider(&init_ctx.cubes))
+        .without_state(polariton_server::operations::Ack::<78, _>::default()) // TODO handle SaveCampaignGameAwardsRequest instead of ignoring it
+        .without_state(singleplayer_campaigns::singleplayer_save_complete_campaign_provider()) // TODO handle UpdatePlayerCompletedCampaignWaveRequest saving
 }

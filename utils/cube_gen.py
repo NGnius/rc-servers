@@ -426,7 +426,7 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                         "votes_required": 2,
                     }
                 ],
-            }
+            },
         }
     }
     last_tech_tree_id = 0
