@@ -28,6 +28,8 @@ fn default_user_data() -> super::AccountInfo {
         is_mod: false,
         is_admin: false,
         is_dev: false,
+        steam_id: None,
+        password: None,
         inventory: super::UnlockedParts {
             unlocked: vec![],
             override_: super::inventory::UnlockOverride::Normal,

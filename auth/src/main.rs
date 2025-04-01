@@ -13,8 +13,10 @@ fn index() -> &'static str {
 #[rocket::launch]
 fn rocket() -> _ {
     env_logger::init();
+    let args = common::cli::CliArgs::get();
     #[allow(unused_mut)]
-    let mut builder = rocket::build().mount("/", rocket::routes![index]);
+    let mut builder = rocket::build().mount("/", rocket::routes![index])
+        .manage(args.preloaded());
 
     #[cfg(feature = "cardlife")]
     {builder = builder.attach(cardlife::stage());}

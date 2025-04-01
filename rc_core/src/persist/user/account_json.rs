@@ -1,3 +1,4 @@
+use argon2::PasswordVerifier;
 use serde::{Serialize, Deserialize};
 
 use crate::persist::config::ConfigProvider;
@@ -5,15 +6,29 @@ use crate::persist::config::ConfigProvider;
 pub struct AccountProvider {
     root: std::path::PathBuf,
     cubes: std::sync::Arc<Vec<u32>>,
+    secret: Vec<u8>,
 }
 
 impl AccountProvider {
     pub fn load(root: impl AsRef<std::path::Path>, cubes: &crate::persist::config::ConfigImpl) -> std::io::Result<Self> {
+        let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
         let root = root.as_ref().join(super::USERS_DIR);
         std::fs::create_dir_all(&root)?;
         Ok(Self {
             root,
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(cubes)),
+            secret: std::fs::read(&token_path)?,
+        })
+    }
+
+    pub fn load_for_auth(root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+        let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
+        let root = root.as_ref().join(super::USERS_DIR);
+        std::fs::create_dir_all(&root)?;
+        Ok(Self {
+            root,
+            cubes: std::sync::Arc::new(Vec::default()),
+            secret: std::fs::read(&token_path)?,
         })
     }
 }
@@ -21,11 +36,10 @@ impl AccountProvider {
 impl <C: Clone> super::UserProvider<C> for AccountProvider {
     fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
         let new_root = self.root.join(&token.uuid);
-        if !new_root.exists() {
-            std::fs::create_dir(&new_root).map_err(|e| e.to_string())?;
-            log::info!("New user {}", token.uuid);
-            super::setup_directory(&new_root).map_err(|e| e.to_string())?;
-        }
+        let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
+        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+        validation.set_required_spec_claims::<&str>(&[]);
+        jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| e.to_string())?;
         let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
         Ok(Box::new(UserData {
             root: new_root,
@@ -34,6 +48,73 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             cubes: self.cubes.clone(),
         }))
         //Err("Unable to authenticate".to_string())
+    }
+}
+impl super::UserAuthenticator for AccountProvider {
+    fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, String> {
+        let new_root = self.root.join(&info.payload.public_id);
+        let is_new_user = !new_root.exists();
+        if is_new_user {
+            std::fs::create_dir(&new_root).map_err(|e| e.to_string())?;
+            log::info!("New user {}", info.payload.public_id);
+            super::setup_directory(&new_root).map_err(|e| e.to_string())?;
+        }
+        let mut account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
+        let is_new_user = is_new_user || (account_info.password.is_none() && account_info.steam_id.is_none()); // migration
+        match info.extra {
+            super::ExtraUserInfo::Steam { id } => {
+                if is_new_user {
+                    account_info.steam_id = Some(id);
+                }
+                if let Some(expected_steam_id) = account_info.steam_id {
+                    if expected_steam_id != id {
+                        return Err("SteamID does not match".to_owned())
+                    }
+                } else {
+                    return Err("SteamID not supported for this user".to_owned());
+                }
+            },
+            super::ExtraUserInfo::Standalone { password } => {
+                use argon2::password_hash::PasswordHasher;
+                let argon2_algo = argon2::Argon2::default();
+                if is_new_user {
+                    let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+                    let password_hash = argon2_algo.hash_password(password.as_bytes(), &salt).map_err(|e| e.to_string())?.to_string();
+                    account_info.password = Some(password_hash);
+                }
+                if let Some(expected_password) = &account_info.password {
+                    let expected = argon2::password_hash::PasswordHash::new(expected_password).map_err(|e| e.to_string())?;
+                    argon2_algo.verify_password(password.as_bytes(), &expected).map_err(|e| e.to_string())?;
+                } else {
+                    return Err("Password not supported for this user".to_owned())
+                }
+            }
+        }
+        // authentication has now definitely succeeded
+        if is_new_user {
+            account_info.save(new_root).map_err(|e| e.to_string())?;
+        }
+        // build token
+        let header = jsonwebtoken::Header {
+            typ: Some("JWT".to_string()),
+            alg: jsonwebtoken::Algorithm::HS256,
+            ..Default::default()
+        };
+        let secret = jsonwebtoken::EncodingKey::from_secret(&self.secret);
+        let token = jsonwebtoken::encode(&header, &info.payload, &secret)
+            .unwrap_or_else(|e| {
+                log::error!("Failed to encode JWT: {}", e);
+                libfj::robocraft::DEFAULT_TOKEN.to_owned()
+            });
+
+        Ok(super::UserLoginInfo {
+            response: libfj::robocraft::AuthenticationResponseInfo {
+                token,
+                refresh_token: "qwertyuiop".to_string(), // TODO
+                refresh_token_expiry: "0".to_string(), // TODO (seems like this isn't actually considered by the client)
+            },
+            is_new: is_new_user,
+        })
     }
 }
 
@@ -239,6 +320,8 @@ pub struct AccountInfo {
     pub is_mod: bool,
     pub is_admin: bool,
     pub is_dev: bool,
+    pub password: Option<String>,
+    pub steam_id: Option<u64>,
     pub inventory: super::UnlockedParts,
     pub garage: super::SelectedGarage,
 }

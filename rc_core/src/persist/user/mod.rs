@@ -11,7 +11,9 @@ mod inventory;
 pub use inventory::UnlockedParts;
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator};
+
+pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 
 pub const USERS_DIR: &str = "accounts";
 pub const USER_FILE: &str = "user.json";

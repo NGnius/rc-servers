@@ -1,35 +1,27 @@
-use rocket::{post, routes, serde::json::Json, http::Status};
+use rc_core::UserAuthenticator;
+use rocket::{post, routes, serde::json::Json, http::Status, State};
 
-fn generate_token(user_auth: &libfj::robocraft::EmailUserAuthenticationPayload) -> String {
-    let header = jsonwebtoken::Header {
-        typ: Some("JWT".to_string()),
-        alg: jsonwebtoken::Algorithm::HS256,
-        ..Default::default()
-    };
+#[post("/authenticate/robocraft/game", data = "<body>")]
+pub fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
+    log::info!("Authenticating {} user {}", body.target, body.display_name);
     let payload = libfj::robocraft::TokenPayload {
-        public_id: user_auth.display_name.to_owned(),
-        display_name: user_auth.display_name.to_owned(),
-        robocraft_name: user_auth.display_name.to_owned(),
-        email_address: user_auth.email_address.to_owned(),
+        public_id: body.display_name.clone(),
+        display_name: body.display_name.clone(),
+        robocraft_name: body.display_name.clone(),
+        email_address: body.email_address.clone(),
         email_verified: true,
         flags: Vec::new(),
     };
-    let secret = jsonwebtoken::EncodingKey::from_secret(user_auth.password.as_bytes()); // FIXME use an actually secret secret
-    jsonwebtoken::encode(&header, &payload, &secret)
-        .unwrap_or_else(|e| {
-            log::error!("Failed to encode JWT: {}", e);
-            libfj::robocraft::DEFAULT_TOKEN.to_owned()
-        })
-}
-
-#[post("/authenticate/robocraft/game", data = "<body>")]
-pub fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
-    log::info!("Authenticating {} user {}", body.target, body.display_name);
-    Ok(Json(libfj::robocraft::AuthenticationResponseInfo {
-        token: generate_token(&body),
-        refresh_token: "qwertyuiop".to_string(), // TODO
-        refresh_token_expiry: "0".to_string(), // TODO (seems like this isn't actually considered by the client)
-    }))
+    let user_info = rc_core::persist::user::UserInfo {
+        payload,
+        extra: rc_core::persist::user::ExtraUserInfo::Standalone { password: body.password.clone() },
+    };
+    let response = config.robocraft.account_provider.login(user_info)
+        .map_err(|e| {
+            log::error!("Failed to authenticate {} user {}: {}", body.target, body.display_name, e);
+            Status { code: 401 }
+        })?;
+    Ok(Json(response.response))
 }
 
 pub fn stage() -> rocket::fairing::AdHoc {

@@ -6,8 +6,31 @@ pub struct UserToken {
     pub refresh_token: String,
 }
 
+pub struct UserInfo {
+    pub payload: libfj::robocraft::TokenPayload,
+    pub extra: ExtraUserInfo,
+}
+
+pub enum ExtraUserInfo {
+    Steam {
+        id: u64,
+    },
+    Standalone {
+        password: String,
+    }
+}
+
+pub struct UserLoginInfo {
+    pub response: libfj::robocraft::AuthenticationResponseInfo,
+    pub is_new: bool,
+}
+
 pub trait UserProvider<C> {
     fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+}
+
+pub trait UserAuthenticator {
+    fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
 }
 
 pub trait User<C> {
