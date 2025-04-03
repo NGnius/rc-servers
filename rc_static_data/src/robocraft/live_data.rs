@@ -1,7 +1,7 @@
-use rocket::{get, routes, serde::json::Json};
+use rocket::{get, routes, serde::json::Json, State};
 
 #[get("/live/data.json")]
-pub fn static_live_data() -> Json<libfj::robocraft::StaticDataRaw> {
+pub fn static_live_data(cli: &State<crate::cli::CliArgs>) -> Json<libfj::robocraft::StaticDataRaw> {
     Json(libfj::robocraft::StaticDataRaw {
         MaintenanceMode: "false".into(),
         MaintenanceRegex: "".into(),
@@ -15,8 +15,8 @@ pub fn static_live_data() -> Json<libfj::robocraft::StaticDataRaw> {
         PhotonLobbyServer: "rc-backend.servers.robocraftgame.com:4540".into(),
         ErrorLogAddress: "logs.freejamgames.com:4561".into(),
         ServerErrorLogAddress: "logs.freejamgames.com:4562".into(),
-        authUrl: "http://127.0.0.1:8001/".into(), // originally "https://auth-backend.freejamgames.com/"
-        paymentUrl: "http://127.0.0.1:8011/".into(),
+        authUrl: cli.auth.clone(), // originally "https://auth-backend.freejamgames.com/"
+        paymentUrl: cli.pay.clone(),
         enterBattleLogGenerationTimeout: "60".into(),
         GameServerConnectionTestTimeout: 10,
         AvatarCdnUrl: "https://rc-cdn-images.robocraftgame.com/customavatar/Live/".into(),

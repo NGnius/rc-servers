@@ -6,8 +6,13 @@ mod cardlife;
 mod robocraft;
 
 #[rocket::get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+fn index() -> String {
+    let name = env!("CARGO_PKG_NAME");
+    let version = env!("CARGO_PKG_VERSION");
+    let authors = env!("CARGO_PKG_AUTHORS");
+    let license = env!("CARGO_PKG_LICENSE");
+    let repo = env!("CARGO_PKG_REPOSITORY");
+    format!("{} {} by [{}]\n{}\n{}", name, version, authors, license, repo)
 }
 
 #[rocket::launch]

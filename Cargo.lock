@@ -1954,6 +1954,7 @@ dependencies = [
 name = "rc_static_data"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "env_logger",
  "libfj",
  "log",

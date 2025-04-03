@@ -21,7 +21,7 @@ In most cases, these means no data is collected or logged except some debug log 
 Some personal identifiers are sent but only exist ephemerally.
 The exception is Robocraft servers, which store the minimum account info possible on disk.
 This includes a unique user identifier, username, vehicle data, and user configuration data.
-The current PC's MAC address is also sent to the server (this is a Robocraft client """feature""", it is not recorded by any server).
+The current PC's MAC address is also sent to the server (this is a Robocraft client feature, it is not recorded by any server).
 
 ## Development
 
@@ -36,3 +36,10 @@ It is possible to remove the obfuscation from the Robocraft's `Assembly-CSharp.d
 If you can program or are learning Rust, pull requests are appreciated! If you can't and would prefer not to learn, reporting issues is also welcome.
 
 If you'd like to discuss, contact NGnius on Signal `rfc.1149` or email `ngniusness@gmail.com`. I'll make a Signal group chat if there's enough interest.
+
+# Acknowledgements
+
+A big thanks to the RC15 team for their work on deobfuscating Robocraft .NET assemblies and specifically to RandomScientist for hooking me up with a deobfuscated assembly. Without them, progress would have been too slow and frustrating.
+
+Thanks for the moral support from community members who reached out and the few IRL people who I went into unnecessary detail with.
+

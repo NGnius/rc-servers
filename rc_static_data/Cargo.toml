@@ -1,10 +1,15 @@
 [package]
 name = "rc_static_data"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
 
 [dependencies]
 rocket.workspace = true
 libfj.workspace = true
 log.workspace = true
 env_logger.workspace = true
+clap.workspace = true

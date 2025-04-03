@@ -1,7 +1,15 @@
 [package]
 name = "servers"
+version.workspace = true
+edition.workspace = true
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
+repository = "https://git.ngram.ca/OpenJam/servers"
+license = "GPLv3"
+authors = ["NGnius <ngniusness@gmail.com>"]
+readme = "README.md"
 
 [workspace]
 members = [
