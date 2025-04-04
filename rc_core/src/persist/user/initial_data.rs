@@ -32,7 +32,7 @@ fn default_user_data() -> super::AccountInfo {
         password: None,
         inventory: super::UnlockedParts {
             unlocked: vec![],
-            override_: super::inventory::UnlockOverride::Normal,
+            override_: super::inventory::UnlockOverride::UnlockAll,
         },
         garage: super::SelectedGarage {
             uuid: (0, 0),
@@ -45,7 +45,7 @@ fn default_garage_slots() -> Vec<crate::persist::GarageSlot> {
     vec![
         crate::persist::GarageSlot {
             slot: 0,
-            name: "Reverse-engineer great success! slot_name".to_owned(),
+            name: "Bay 1".to_owned(),
             cubes: 1,
             crf_id: 0,
             was_rated: false,
