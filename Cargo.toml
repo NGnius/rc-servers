@@ -4,8 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [workspace.package]
-version = "0.1.0"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 repository = "https://git.ngram.ca/OpenJam/servers"
 license = "GPLv3"
 authors = ["NGnius <ngniusness@gmail.com>"]

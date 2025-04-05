@@ -1,15 +1,14 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::operation::ParameterTable;
+use polariton_server::operations::Immediate;
 
 use rc_core::ConfigProvider;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn game_mode_config_provider(conf: &rc_core::ConfigImpl) -> SimpleFunc<113, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
+pub(super) fn game_mode_config_provider(conf: &rc_core::ConfigImpl) -> Immediate<113, crate::UserTy> {
     let game_config = conf.game_mode_config();
-    SimpleFunc::new(move |params, _| {
-        let mut params = params.to_dict();
+    Immediate::new(move || {
+        let mut params = std::collections::HashMap::with_capacity(1);
         params.insert(PARAM_KEY, game_config.clone());
-        Ok(params.into())
+        params.into()
     })
 }

@@ -1,4 +1,5 @@
 use polariton_server::operations::{Immediate, SimpleFunc};
+use polariton_server::operations::{Operation, OperationCode};
 use polariton::operation::{ParameterTable, Typed};
 
 use rc_core::ConfigProvider;
@@ -29,19 +30,53 @@ const CAMPAIGN_ID_PARAM_KEY: u8 = 22; // string; in
 const CAMPAIGN_DIFFICULTY_PARAM_KEY: u8 = 23; // i32; in
 const CAMPAIGN_WAVES_PARAM_KEY: u8 = 75; // bytes; out
 
-pub(super) fn singleplayer_complete_campaign_provider(conf: &rc_core::ConfigImpl) -> SimpleFunc<64, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    let campaign_details = <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::campaign_details(conf);
-    SimpleFunc::new(move |params, _| {
+pub struct SingleplayerCompleteCampaignProvider {
+    campaign_details: rc_core::persist::config::CompleteCampaignProvider,
+}
+
+impl <C> Operation<C> for SingleplayerCompleteCampaignProvider {
+    type State = ();
+    type User = crate::UserTy;
+
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut params = params.to_dict();
         if let Some(Typed::Str(campaign_id)) = params.get(&CAMPAIGN_ID_PARAM_KEY) {
             if let Some(Typed::Int(campaign_difficulty)) = params.get(&CAMPAIGN_DIFFICULTY_PARAM_KEY) {
-                let complete_campaign = campaign_details.get(&campaign_id.string, campaign_difficulty)?;
-                params.clear();
-                params.insert(CAMPAIGN_WAVES_PARAM_KEY, complete_campaign);
+                match self.campaign_details.get(&campaign_id.string, campaign_difficulty) {
+                    Ok(complete_campaign) => {
+                        params.clear();
+                        params.insert(CAMPAIGN_WAVES_PARAM_KEY, complete_campaign);
+                    },
+                    Err(e) => {
+                        return polariton::operation::OperationResponse {
+                            code: Self::op_code(),
+                            return_code: e,
+                            message: polariton::operation::Typed::Null,
+                            params: std::collections::HashMap::default().into(),
+                        }
+                    }
+                };
+
             }
         }
-        Ok(params.into())
-    })
+        polariton::operation::OperationResponse {
+            code: Self::op_code(),
+            return_code: 0,
+            message: polariton::operation::Typed::Null,
+            params: params.into(),
+        }
+    }
+}
+
+impl OperationCode for SingleplayerCompleteCampaignProvider {
+    fn op_code() -> u8 {
+        16
+    }
+}
+
+pub(super) fn singleplayer_complete_campaign_provider(conf: &rc_core::ConfigImpl) -> SingleplayerCompleteCampaignProvider {
+    let campaign_details: rc_core::persist::config::CompleteCampaignProvider = <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::campaign_details(conf);
+    SingleplayerCompleteCampaignProvider { campaign_details }
 }
 
 const CAMPAIGN_WAVE_NUMBER_PARAM_KEYL: u8 = 73;

@@ -1,17 +1,39 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
+use polariton_server::operations::{Operation, OperationCode};
+use polariton::{operation::{Dict, Typed}, serdes::TypePrefix};
 use rc_core::ConfigProvider;
 
 const PARAM_KEY: u8 = 16;
 
-pub(super) fn cube_inv_provider(cubes: &rc_core::ConfigImpl) -> SimpleFunc<16, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    let cube_ids = <rc_core::ConfigImpl as ConfigProvider<()>>::ids(cubes);
-    SimpleFunc::new(move |params, _| {
+pub struct CubeInventoryProvider {
+    cube_ids: Vec<u32>,
+}
+
+impl <C> Operation<C> for CubeInventoryProvider {
+    type State = ();
+    type User = crate::UserTy;
+
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
             key_ty: TypePrefix::Int, // int
             val_ty: TypePrefix::Int, // int
-            items: cube_ids.iter().map(|id| (Typed::Int(*id as _), Typed::Int(1))).collect()}));
-        Ok(params.into())
-    })
+            items: self.cube_ids.iter().map(|id| (Typed::Int(*id as _), Typed::Int(1))).collect()}));
+        polariton::operation::OperationResponse {
+            code: Self::op_code(),
+            return_code: 0,
+            message: polariton::operation::Typed::Null,
+            params: params.into(),
+        }
+    }
+}
+
+impl OperationCode for CubeInventoryProvider {
+    fn op_code() -> u8 {
+        16
+    }
+}
+
+pub(super) fn cube_inv_provider<'a>(cubes: &'a rc_core::ConfigImpl) -> CubeInventoryProvider {
+    let cube_ids = <rc_core::ConfigImpl as ConfigProvider<()>>::ids(cubes);
+    CubeInventoryProvider { cube_ids }
 }

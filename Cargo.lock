@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "auth"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1593,7 +1593,7 @@ dependencies = [
 
 [[package]]
 name = "polariton_auth"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "log",
  "num",
@@ -1811,7 +1811,7 @@ dependencies = [
 
 [[package]]
 name = "rc_chat"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1824,7 +1824,7 @@ dependencies = [
 
 [[package]]
 name = "rc_chat_room"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "rc_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argon2",
  "chrono",
@@ -1855,7 +1855,7 @@ dependencies = [
 
 [[package]]
 name = "rc_microtransactions"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "env_logger",
  "libfj",
@@ -1865,7 +1865,7 @@ dependencies = [
 
 [[package]]
 name = "rc_services"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1878,7 +1878,7 @@ dependencies = [
 
 [[package]]
 name = "rc_services_room"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1898,7 +1898,7 @@ dependencies = [
 
 [[package]]
 name = "rc_singleplayer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1911,7 +1911,7 @@ dependencies = [
 
 [[package]]
 name = "rc_singleplayer_room"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1925,7 +1925,7 @@ dependencies = [
 
 [[package]]
 name = "rc_social"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1938,7 +1938,7 @@ dependencies = [
 
 [[package]]
 name = "rc_social_room"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1952,7 +1952,7 @@ dependencies = [
 
 [[package]]
 name = "rc_static_data"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2331,7 +2331,7 @@ dependencies = [
 
 [[package]]
 name = "servers"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "sharded-slab"
