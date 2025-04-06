@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 mod cli;
 
 use polariton_auth::Handshake;
