@@ -7,11 +7,10 @@ impl NoAnalytics {
     const ANALYTICS_DICT_KEY: u8 = 83;
 }
 
-impl <C> Operation<C> for NoAnalytics {
-    type State = ();
+impl <C: Send + 'static> Operation<C> for NoAnalytics {
     type User = crate::UserTy;
 
-    fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &mut Self::State, _: &Self::User) -> polariton::operation::OperationResponse<C> {
+    fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = std::collections::HashMap::new();
         resp_params.insert(Self::ANALYTICS_DICT_KEY, polariton::operation::Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str

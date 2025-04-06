@@ -8,11 +8,10 @@ pub struct CubeInventoryProvider {
     cube_ids: Vec<u32>,
 }
 
-impl <C> Operation<C> for CubeInventoryProvider {
-    type State = ();
+impl <C: Send + 'static> Operation<C> for CubeInventoryProvider {
     type User = crate::UserTy;
 
-    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Dict(Dict {
             key_ty: TypePrefix::Int, // int

@@ -9,11 +9,10 @@ pub struct DevMessageProvider<C: Clone> {
     messages: rc_core::persist::config::DevMessageProvider<C>,
 }
 
-impl <C: Clone + Send + Sync> Operation<C> for DevMessageProvider<C> {
-    type State = ();
+impl <C: Clone + Send + Sync + 'static> Operation<C> for DevMessageProvider<C> {
     type User = crate::UserTy;
 
-    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut params = params.to_dict();
         let index = rand::rng().random::<u32>();
         let dev_msg = self.messages.get(index as _);
@@ -30,7 +29,7 @@ impl <C: Clone + Send + Sync> Operation<C> for DevMessageProvider<C> {
 
 impl <C: Clone> OperationCode for DevMessageProvider<C> {
     fn op_code() -> u8 {
-        16
+        8
     }
 }
 

@@ -34,11 +34,10 @@ pub struct SingleplayerCompleteCampaignProvider {
     campaign_details: rc_core::persist::config::CompleteCampaignProvider,
 }
 
-impl <C> Operation<C> for SingleplayerCompleteCampaignProvider {
-    type State = ();
+impl <C: Send + 'static> Operation<C> for SingleplayerCompleteCampaignProvider {
     type User = crate::UserTy;
 
-    fn handle(&self, params: polariton::operation::ParameterTable<C>, _: &mut Self::State, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
+    fn handle(&self, params: polariton::operation::ParameterTable<C>, _user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut params = params.to_dict();
         if let Some(Typed::Str(campaign_id)) = params.get(&CAMPAIGN_ID_PARAM_KEY) {
             if let Some(Typed::Int(campaign_difficulty)) = params.get(&CAMPAIGN_DIFFICULTY_PARAM_KEY) {
@@ -70,7 +69,7 @@ impl <C> Operation<C> for SingleplayerCompleteCampaignProvider {
 
 impl OperationCode for SingleplayerCompleteCampaignProvider {
     fn op_code() -> u8 {
-        16
+        64
     }
 }
 

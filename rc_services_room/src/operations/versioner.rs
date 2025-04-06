@@ -7,11 +7,10 @@ impl VersionTeller {
     const LATEST_VERSION: i32 = 2855;
 }
 
-impl <C> Operation<C> for VersionTeller {
-    type State = ();
+impl <C: Send + 'static> Operation<C> for VersionTeller {
     type User = crate::UserTy;
 
-    fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &mut Self::State, _: &Self::User) -> polariton::operation::OperationResponse<C> {
+    fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = std::collections::HashMap::new();
         resp_params.insert(Self::VERSION_NUMBER_KEY, polariton::operation::Typed::Int(Self::LATEST_VERSION));
         polariton::operation::OperationResponse {

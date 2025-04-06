@@ -5,11 +5,10 @@ use polariton_server::operations::{Operation, OperationCode};
 
 pub struct QualityConfigTeller;
 
-impl <C> Operation<C> for QualityConfigTeller {
-    type State = ();
+impl <C: Send + 'static> Operation<C> for QualityConfigTeller {
     type User = crate::UserTy;
 
-    fn handle(&self, _: ParameterTable<C>, _: &mut Self::State, _: &Self::User) -> OperationResponse<C> {
+    fn handle(&self, _: ParameterTable<C>, _: &Self::User) -> OperationResponse<C> {
         let quality_levels = Typed::HashMap(vec![
             (Typed::Str("extremLow".into()), Typed::Dict(Dict {
                 key_ty: TypePrefix::Str,
