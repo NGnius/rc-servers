@@ -29,6 +29,9 @@ pub use client_config::GameplaySettings;
 mod settings;
 pub use settings::Settings;
 
+mod chat;
+pub use chat::ChatConfig;
+
 pub(self) const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

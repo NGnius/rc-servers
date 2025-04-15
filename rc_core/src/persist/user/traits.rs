@@ -26,7 +26,7 @@ pub struct UserLoginInfo {
 }
 
 pub trait UserProvider<C> {
-    fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+    fn authenticate(&self, user: UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn User<C> + Send + Sync>, String>;
 }
 
 pub trait UserAuthenticator {
@@ -34,6 +34,7 @@ pub trait UserAuthenticator {
 }
 
 pub trait User<C> {
+    fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)>;
     fn token(&self) -> &'_ super::UserToken;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;

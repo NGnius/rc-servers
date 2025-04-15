@@ -44,7 +44,7 @@ impl ChatChannelMember {
 
 #[allow(dead_code)]
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ChatChannelType {
     None = 0,
     Public = 1,
@@ -55,6 +55,23 @@ pub enum ChatChannelType {
     Clan = 6,
     Private = 7,
     CustomGame = 8,
+}
+
+impl ChatChannelType {
+    pub fn from_u8(num: u8) -> Result<Self, i16> {
+        match num {
+            0 => Ok(Self::None),
+            1 => Ok(Self::Public),
+            2 => Ok(Self::Battle),
+            3 => Ok(Self::BattleTeam),
+            4 => Ok(Self::Platoon),
+            5 => Ok(Self::Custom),
+            6 => Ok(Self::Clan),
+            7 => Ok(Self::Private),
+            8 => Ok(Self::CustomGame),
+            _ => Err(rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16)
+        }
+    }
 }
 
 #[allow(dead_code)]

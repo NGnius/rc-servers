@@ -445,6 +445,13 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                 ],
             },
         },
+        "chat": {
+            "public_channels": [
+                "main",
+                "sys",
+                "jam_club",
+            ],
+        },
         "settings":  {
             "banners": [{
                 "message": msg,

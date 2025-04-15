@@ -34,7 +34,7 @@ impl AccountProvider {
 }
 
 impl <C: Clone> super::UserProvider<C> for AccountProvider {
-    fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
+    fn authenticate(&self, token: super::UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
         let new_root = self.root.join(&token.uuid);
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
@@ -46,6 +46,7 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             token,
             account: account_info,
             cubes: self.cubes.clone(),
+            extensions: ext,
         }))
         //Err("Unable to authenticate".to_string())
     }
@@ -124,6 +125,7 @@ struct UserData {
     token: super::UserToken,
     account: AccountInfo,
     cubes: std::sync::Arc<Vec<u32>>,
+    extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
 }
 
 impl UserData {
@@ -159,6 +161,10 @@ const INVALID_ROBOT_ERR: i16 = 140;
 const DATABASE_ERR: i16 = 8;
 
 impl <C: Clone> super::User<C> for UserData {
+    fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)> {
+        self.extensions.get(&ty).map(|x| x.as_ref())
+    }
+
     fn token(&self) -> &'_ super::UserToken {
         &self.token
     }
@@ -312,7 +318,6 @@ impl <C: Clone> super::User<C> for UserData {
             ],
         }.as_transmissible())
     }
-
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

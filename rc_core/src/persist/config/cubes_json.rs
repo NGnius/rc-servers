@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
 
@@ -15,6 +15,7 @@ pub struct CubeConfig {
     movement: HashMap<ItemCategory, MovementCategoryData>,
     lerp_value: f32,
     battle: BattleConfig,
+    chat: ChatConfig,
     settings: Settings,
 }
 
@@ -246,5 +247,12 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
 
     fn login_messages(&self) -> super::DevMessageProvider<C> {
         super::DevMessageProvider::new(self.settings.banners.iter().map(|msg| (msg.message.clone(), msg.duration as i32)).collect())
+    }
+
+    fn public_channels(&self) -> Typed<C> {
+        Typed::Arr(polariton::operation::Arr {
+            ty: TypePrefix::Str,
+            items: self.chat.public_channels.iter().map(|s| Typed::Str(s.into())).collect(),
+        })
     }
 }

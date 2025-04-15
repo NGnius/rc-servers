@@ -1,14 +1,17 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed, Arr};
-
-use crate::data::channel::*;
+use crate::SimpleChatFunc;
+use crate::persist::chat_user::ChatUser;
+use polariton::operation::ParameterTable;
 
 const PARAM_KEY: u8 = 18;
 
-pub(super) fn all_channels_provider() -> SimpleFunc<11, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
+pub(super) fn all_channels_provider(chat_system: crate::state::ChatImpl) -> SimpleChatFunc<11, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy, &crate::state::ChatImpl) -> Result<ParameterTable, i16>) + Sync + Sync> {
+    SimpleChatFunc::new(|params, user: &crate::UserTy, _chat_system: &crate::state::ChatImpl| {
         let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Arr(Arr {
+        let user_trait = user.user()?;
+        let chat_user = super::get_chat_user(user_trait.as_ref().as_ref());
+        //let chat_user: &ChatUserImpl = user_trait.ext(std::any::TypeId::of::<ChatUserImpl>()).unwrap().downcast_ref().unwrap();
+        params.insert(PARAM_KEY, chat_user.subscribed_channels());
+        /*params.insert(PARAM_KEY, Typed::Arr(Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashtable
             items: vec![
                 ChatChannelInfo {
@@ -52,7 +55,7 @@ pub(super) fn all_channels_provider() -> SimpleFunc<11, crate::UserTy, impl (Fn(
                     channel_ty: ChatChannelType::Custom,
                 }.as_transmissible(),
             ],
-        }));
+        }));*/
         Ok(params.into())
-    })
+    }, chat_system)
 }

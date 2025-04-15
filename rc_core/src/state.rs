@@ -8,6 +8,10 @@ pub struct UserState<C: Clone = ()> {
 
 impl <C: Clone> UserState<C> {
     pub fn update_with_auth(&self, auth_str: &str) -> bool {
+        self.update_with_auth_ext(auth_str, |_| Some(Default::default()))
+    }
+
+    pub fn update_with_auth_ext<F: FnOnce(&crate::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>>>(&self, auth_str: &str, ext_f: F) -> bool {
         let mut lock = self.state.write().unwrap();
         match &*lock {
             InitState::Unauthenticated(auth) => {
@@ -21,7 +25,12 @@ impl <C: Clone> UserState<C> {
                         token: splits[1].to_owned(),
                         refresh_token: splits[2].to_owned(),
                     };
-                    match auth.authenticate(token) {
+                    let ext = if let Some(ext) = ext_f(&token) {
+                        ext
+                    } else {
+                        return false;
+                    };
+                    match auth.authenticate(token, ext) {
                         Ok(user) => {
                             *lock = InitState::Authenticated(std::sync::Arc::new(user));
                             true

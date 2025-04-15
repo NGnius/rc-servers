@@ -1834,6 +1834,9 @@ dependencies = [
  "polariton_auth",
  "polariton_server",
  "rc_core",
+ "regex",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

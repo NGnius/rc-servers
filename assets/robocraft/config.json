@@ -14416,6 +14416,13 @@
             ]
         }
     },
+    "chat": {
+        "public_channels": [
+            "main",
+            "sys",
+            "jam_club"
+        ]
+    },
     "settings": {
         "banners": [
             {

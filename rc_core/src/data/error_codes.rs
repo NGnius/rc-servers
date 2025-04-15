@@ -36,3 +36,27 @@ pub enum WebServicesError {
     UsernameTooShort = 206,
     SaleEnded = 207
 }
+
+#[repr(i16)]
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum ChatErrorCodes {
+    None = 0,
+    UnexpectedError = 1,
+    Flood = 2,
+    Muted = 3,
+    NotOnline = 4,
+    DoesNotExist = 5,
+    NoConnection = 6,
+    ModeratorsOnly = 7,
+    AdminsOnly = 8,
+    SanctionAlreadyExists = 9,
+    AlreadyWarned = 10,
+    NoSanctionExists = 11,
+    MaintenanceMode = 12,
+    ChannelExists = 13,
+    IncorrectPassword = 14,
+    ChannelNotExists = 15,
+    PasswordRequired = 16,
+    ChannelExpired = 17,
+}

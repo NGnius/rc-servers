@@ -17,6 +17,7 @@ pub trait ConfigProvider<C: Clone> {
     fn campaign_details(&self) -> CompleteCampaignProvider;
     fn client_config(&self) -> Typed<C>;
     fn login_messages(&self) -> DevMessageProvider<C>;
+    fn public_channels(&self) -> Typed<C>;
 }
 
 pub struct CompleteCampaignProvider {

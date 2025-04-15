@@ -1,8 +1,13 @@
 #![forbid(unsafe_code)]
 mod cli;
+mod state;
+mod persist;
+mod op_handler;
+pub use op_handler::SimpleChatFunc;
 
 mod data;
 mod operations;
+mod events;
 
 use polariton_auth::Handshake;
 use tokio::net;
@@ -21,7 +26,9 @@ async fn main() -> std::io::Result<()> {
     let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
 
-    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
+    let chat_system = state::chat::ChatImpl::new(&args.assets, &args.data).expect("Bad chat config data");
+
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(chat_system, &args.data, &cubes), polariton_server::events::EventsHandler::new()));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
