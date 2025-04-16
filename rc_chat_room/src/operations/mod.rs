@@ -11,6 +11,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler(chat_system: crate::state::chat::ChatImpl, data_root: impl AsRef<std::path::Path>, conf: &rc_core::persist::config::ConfigImpl) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
+        .modify(rc_core::polariton::OpIdCopy)
         .add(more_auth::MoreLobbyAuth::new(chat_system.clone(), data_root))
         .add(chat_ignores::ignores_provider())
         .add(pending_sanctions::pending_sanctions_checker())
