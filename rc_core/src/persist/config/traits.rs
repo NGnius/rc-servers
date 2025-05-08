@@ -18,6 +18,7 @@ pub trait ConfigProvider<C: Clone> {
     fn client_config(&self) -> Typed<C>;
     fn login_messages(&self) -> DevMessageProvider<C>;
     fn public_channels(&self) -> Typed<C>;
+    fn server_config(&self) -> ServerConfig;
 }
 
 pub struct CompleteCampaignProvider {
@@ -82,4 +83,8 @@ impl <C: Clone> DevMessageProvider<C> {
 pub struct TypedDevMessage<C> {
     pub message: Typed<C>,
     pub display_time: Typed<C>,
+}
+
+pub struct ServerConfig {
+    pub database: String,
 }

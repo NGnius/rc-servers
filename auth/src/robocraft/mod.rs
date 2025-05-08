@@ -18,9 +18,10 @@ pub struct RcConfig {
 }
 
 impl RcConfig {
-    pub fn from_args(args: &crate::common::cli::CliArgs) -> Self {
+    pub async fn from_args(args: &crate::common::cli::CliArgs) -> Self {
+        let conf = rc_core::persist::config::ConfigImpl::load(&args.assets_robocraft).expect("Bad config data");
         Self {
-            account_provider: rc_core::UserImpl::load_for_auth(&args.data_robocraft).expect("Invalid Robocraft user data"),
+            account_provider: rc_core::UserImpl::load(&args.data_robocraft, &conf).await.expect("Invalid Robocraft user data"),
             root: args.data_robocraft.clone().into(),
         }
     }

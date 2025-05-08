@@ -217,4 +217,43 @@ impl ItemCategory {
     pub fn but_bigger(&self) -> i32 {
         (*self as i32) * 100_000
     }
+
+    pub fn from_bigger(num: i32) -> Option<Self> {
+        Self::from_smaller(num / 100_000)
+    }
+
+    pub fn from_smaller(num: i32) -> Option<Self> {
+        match num {
+            0 => Some(Self::NoFunction),
+            1 => Some(Self::Wheel),
+            2 => Some(Self::Hover),
+            3 => Some(Self::Wing),
+            4 => Some(Self::Rudder),
+            5 => Some(Self::Thruster),
+            6 => Some(Self::InsectLeg),
+            7 => Some(Self::MechLeg),
+            8 => Some(Self::Ski),
+            9 => Some(Self::TankTrack),
+            10 => Some(Self::Rotor),
+            11 => Some(Self::SprinterLeg),
+            12 => Some(Self::Propeller),
+            100 => Some(Self::Laser),
+            200 => Some(Self::Plasma),
+            250 => Some(Self::Mortar),
+            300 => Some(Self::Rail),
+            400 => Some(Self::Nano),
+            500 => Some(Self::Tesla),
+            600 => Some(Self::Aeroflak),
+            650 => Some(Self::Ion),
+            701 => Some(Self::Seeker),
+            750 => Some(Self::Chaingun),
+            800 => Some(Self::ShieldModule),
+            801 => Some(Self::GhostModule),
+            802 => Some(Self::BlinkModule),
+            803 => Some(Self::EmpModule),
+            804 => Some(Self::WindowmakerModule),
+            900 => Some(Self::EnergyModule),
+            _ => None,
+        }
+    }
 }

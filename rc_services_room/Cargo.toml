@@ -22,3 +22,4 @@ serde_json.workspace = true
 chrono = "0.4"
 rc_core = { version = "*", path = "../rc_core" }
 rand = "0.9"
+async-trait.workspace = true

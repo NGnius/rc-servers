@@ -2,7 +2,7 @@ mod cubes_json;
 pub use cubes_json::CubeConfig;
 
 mod traits;
-pub use traits::{ConfigProvider, CompleteCampaignProvider, DevMessageProvider};
+pub use traits::{ConfigProvider, CompleteCampaignProvider, DevMessageProvider, ServerConfig};
 
 pub type ConfigImpl = CubeConfig;
 

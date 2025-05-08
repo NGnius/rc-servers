@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
     log::debug!("Got cli args {:?}", args);
 
     let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
-    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).expect("Bad user data"));
+    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,

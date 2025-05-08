@@ -25,28 +25,30 @@ pub struct UserLoginInfo {
     pub is_new: bool,
 }
 
+#[async_trait::async_trait]
 pub trait UserProvider<C> {
-    fn authenticate(&self, user: UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+    async fn authenticate(&self, user: UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn User<C> + Send + Sync>, String>;
 }
 
+#[async_trait::async_trait]
 pub trait UserAuthenticator {
-    fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
+    async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
 }
 
+#[async_trait::async_trait]
 pub trait User<C> {
     fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)>;
     fn token(&self) -> &'_ super::UserToken;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
-    fn unlocked_parts(&self) -> Vec<u32>;
-    fn selected_garage_uuid(&self) -> String;
-    fn selected_garage_slot(&self) -> u32;
-    fn all_slots_by_id(&self) -> UserSlots<C>;
-    fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
-    fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
+    async fn unlocked_parts(&self) -> Vec<u32>;
+    async fn selected_garage(&self) -> (String, u32);
+    async fn all_slots_by_id(&self) -> UserSlots<C>;
+    async fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
+    async fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
-    fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
 }
 
 pub struct UserSlots<C> {
@@ -70,7 +72,7 @@ pub struct UserSlotData<C> {
 }
 
 pub struct VehicleData {
-    pub id: i32,
+    pub slot: i32,
     pub robot_data: Vec<u8>,
     pub colour_data: Vec<u8>,
     pub weapon_order: Vec<i32>,

@@ -6,6 +6,8 @@ pub struct Settings {
     pub gameplay: super::GameplaySettings,
     #[serde(default = "default_dev_messages")]
     pub banners: Vec<BannerMessage>,
+    #[serde(default = "default_server_conf")]
+    pub server: ServerSettings,
 }
 
 fn default_gameplay_settings() -> super::GameplaySettings {
@@ -31,4 +33,20 @@ pub struct BannerMessage {
 
 fn default_dev_messages() -> Vec<BannerMessage> {
     Vec::default()
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ServerSettings {
+    #[serde(default = "default_db_conn")]
+    pub database: String,
+}
+
+fn default_db_conn() -> String {
+    "sqlite:../data/robocraft/accounts.sqlite.db?mode=rwc".to_owned()
+}
+
+fn default_server_conf() -> ServerSettings {
+    ServerSettings {
+        database: default_db_conn(),
+    }
 }

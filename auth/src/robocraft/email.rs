@@ -2,7 +2,7 @@ use rc_core::UserAuthenticator;
 use rocket::{post, routes, serde::json::Json, http::Status, State};
 
 #[post("/authenticate/robocraft/game", data = "<body>")]
-pub fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
+pub async fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
     log::info!("Authenticating {} user {}", body.target, body.display_name);
     let payload = libfj::robocraft::TokenPayload {
         public_id: body.display_name.clone(),
@@ -16,7 +16,7 @@ pub fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationP
         payload,
         extra: rc_core::persist::user::ExtraUserInfo::Standalone { password: body.password.clone() },
     };
-    let response = config.robocraft.account_provider.login(user_info)
+    let response = config.robocraft.account_provider.login(user_info).await
         .map_err(|e| {
             log::error!("Failed to authenticate {} user {}: {}", body.target, body.display_name, e);
             Status { code: 401 }

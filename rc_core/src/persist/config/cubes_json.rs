@@ -255,4 +255,10 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             items: self.chat.public_channels.iter().map(|s| Typed::Str(s.into())).collect(),
         })
     }
+
+    fn server_config(&self) -> super::ServerConfig {
+        super::ServerConfig {
+            database: self.settings.server.database.clone(),
+        }
+    }
 }

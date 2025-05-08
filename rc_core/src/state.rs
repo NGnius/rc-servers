@@ -7,13 +7,14 @@ pub struct UserState<C: Clone = ()> {
 }
 
 impl <C: Clone> UserState<C> {
-    pub fn update_with_auth(&self, auth_str: &str) -> bool {
-        self.update_with_auth_ext(auth_str, |_| Some(Default::default()))
+    pub async fn update_with_auth(&self, auth_str: &str) -> bool {
+        self.update_with_auth_ext(auth_str, |_| Some(Default::default())).await
     }
 
-    pub fn update_with_auth_ext<F: FnOnce(&crate::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>>>(&self, auth_str: &str, ext_f: F) -> bool {
-        let mut lock = self.state.write().unwrap();
-        match &*lock {
+    pub async fn update_with_auth_ext<F: FnOnce(&crate::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>>>(&self, auth_str: &str, ext_f: F) -> bool {
+        //let mut lock = self.state.write().unwrap();
+        let init_state_clone = self.state.write().unwrap().clone();
+        match init_state_clone {
             InitState::Unauthenticated(auth) => {
                 let splits: Vec<&str> = auth_str.split(';').collect();
                 if splits.len() != 3 {
@@ -30,8 +31,9 @@ impl <C: Clone> UserState<C> {
                     } else {
                         return false;
                     };
-                    match auth.authenticate(token, ext) {
+                    match auth.authenticate(token, ext).await {
                         Ok(user) => {
+                            let mut lock = self.state.write().unwrap();
                             *lock = InitState::Authenticated(std::sync::Arc::new(user));
                             true
                         },
@@ -74,6 +76,7 @@ impl <C: Clone> UserState<C> {
     }
 }
 
+#[derive(Clone)]
 enum InitState<C> {
     Unauthenticated(std::sync::Arc<crate::persist::user::UserImpl>),
     Authenticated(std::sync::Arc<Box<dyn crate::persist::user::User<C> + Send + Sync>>),

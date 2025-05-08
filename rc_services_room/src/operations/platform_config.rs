@@ -21,7 +21,7 @@ pub(super) fn platform_config_provider() -> SimpleFunc<165, crate::UserTy, impl 
                 (Typed::Str("UseDecimalSystem".into()), Typed::Bool(false.into())),
                 (Typed::Str("FeedbackURL".into()), Typed::Str("https://mstdn.ca/@ngram".into())),
                 (Typed::Str("SupportURL".into()), Typed::Str("https://git.ngni.us/OpenJam/servers".into())),
-                (Typed::Str("WikiURL".into()), Typed::Str("https://docs.rs/libfj/latest/libfj/".into())),
+                (Typed::Str("WikiURL".into()), Typed::Str("https://git.ngram.ca/OpenJam/servers/wiki".into())),
             ].into(),
         }));
         Ok(params.into())

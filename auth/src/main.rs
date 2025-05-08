@@ -17,12 +17,12 @@ fn index() -> String {
 }
 
 #[rocket::launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     env_logger::init();
     let args = common::cli::CliArgs::get();
     #[allow(unused_mut)]
     let mut builder = rocket::build().mount("/", rocket::routes![index])
-        .manage(args.preloaded());
+        .manage(args.preloaded().await);
 
     #[cfg(feature = "cardlife")]
     {builder = builder.attach(cardlife::stage());}

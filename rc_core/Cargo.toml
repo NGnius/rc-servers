@@ -16,8 +16,11 @@ serde_json.workspace = true
 chrono = "0.4"
 polariton_server.workspace = true
 tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util", "time" ] }
+async-trait.workspace = true
 
 # auth
 libfj.workspace = true
 jsonwebtoken = "9"
 argon2 = { version = "0.5", features = [ "std" ] }
+
+rc_database = { version = "0.2", path = "../rc_database" }

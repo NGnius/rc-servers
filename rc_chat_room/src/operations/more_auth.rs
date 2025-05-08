@@ -31,9 +31,9 @@ impl MoreLobbyAuth {
         Some(map)
     }
 
-    fn do_auth<C>(&self, params: std::collections::HashMap<u8, Typed<C>>, user: &crate::UserTy) -> Result<polariton::operation::ParameterTable<C>, i16> {
+    async fn do_auth<C>(&self, params: std::collections::HashMap<u8, Typed<C>>, user: &crate::UserTy) -> Result<polariton::operation::ParameterTable<C>, i16> {
         if let Some(Typed::Str(auth_payload)) = params.get(&Self::AUTH_PAYLOAD_KEY) {
-            if user.update_with_auth_ext(&auth_payload.string, |t| self.build_ext_map(t)) {
+            if user.update_with_auth_ext(&auth_payload.string, |t| self.build_ext_map(t)).await {
                 let user_impl = user.user()?;
                 let name = user_impl.token().uuid.clone();
                 let chat_user = super::get_chat_user(user_impl.as_ref().as_ref());
@@ -49,12 +49,13 @@ impl MoreLobbyAuth {
     }
 }
 
+#[async_trait::async_trait]
 impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
     type User = crate::UserTy;
 
-    fn handle(&self, params: polariton::operation::ParameterTable<C>, user: &Self::User) -> polariton::operation::OperationResponse<C> {
+    async fn handle_async(&self, params: polariton::operation::ParameterTable<C>, user: &Self::User) -> polariton::operation::OperationResponse<C> {
         let params_dict = params.to_dict();
-        match self.do_auth(params_dict, user) {
+        match self.do_auth(params_dict, user).await {
             Ok(params) => {
                 polariton::operation::OperationResponse {
                     code: Self::op_code(),

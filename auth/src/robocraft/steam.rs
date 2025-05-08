@@ -2,7 +2,7 @@ use rc_core::UserAuthenticator;
 use rocket::{http::Status, post, routes, serde::json::Json, State};
 
 #[post("/authenticate/steam/game", data = "<body>")]
-pub fn steam_auth(body: Json<libfj::robocraft::SteamAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
+pub async fn steam_auth(body: Json<libfj::robocraft::SteamAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
     let steam_id = crate::common::steam_utils::authenticate_steam_ticket(&body.steam_ticket)
         .map_err(|_| Status { code: 401 })?;
     log::info!("Authenticating {} steam user {}", body.target, steam_id);
@@ -18,7 +18,7 @@ pub fn steam_auth(body: Json<libfj::robocraft::SteamAuthenticationPayload>, conf
         payload,
         extra: rc_core::persist::user::ExtraUserInfo::Steam { id: steam_id },
     };
-    let response = config.robocraft.account_provider.login(user_info)
+    let response = config.robocraft.account_provider.login(user_info).await
         .map_err(|e| {
             log::error!("Failed to authenticate {} steam user {}: {}", body.target, steam_id, e);
             Status { code: 401 }

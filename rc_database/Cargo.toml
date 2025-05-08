@@ -1,0 +1,20 @@
+[package]
+name = "rc_database"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[features]
+all_databases = ["mysql", "postgres", "sqlite"]
+mysql = [ "sea-orm/sqlx-mysql" ]
+postgres = [ "sea-orm/sqlx-postgres" ]
+sqlite = [ "sea-orm/sqlx-sqlite" ]
+default = [ "all_databases" ]
+
+[dependencies]
+sea-orm = { version = "1.1.10", features = [ "runtime-tokio-rustls", "macros" ] }
+sea-orm-migration = "1.1.10"
+itertools = "0.14"

@@ -1,74 +1,81 @@
 use argon2::PasswordVerifier;
-use serde::{Serialize, Deserialize};
 
 use crate::persist::config::ConfigProvider;
 
 pub struct AccountProvider {
-    root: std::path::PathBuf,
     cubes: std::sync::Arc<Vec<u32>>,
     secret: Vec<u8>,
+    db: std::sync::Arc<rc_database::Database>,
 }
 
 impl AccountProvider {
-    pub fn load(root: impl AsRef<std::path::Path>, cubes: &crate::persist::config::ConfigImpl) -> std::io::Result<Self> {
+    pub async fn load(root: impl AsRef<std::path::Path>, conf: &crate::persist::config::ConfigImpl) -> std::io::Result<Self> {
         let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
+        let database_uri = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf).database;
+        log::debug!("Connecting to user database URI: {}", database_uri);
+        let db = rc_database::Database::init(&database_uri).await
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
         let root = root.as_ref().join(super::USERS_DIR);
         std::fs::create_dir_all(&root)?;
         Ok(Self {
-            root,
-            cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(cubes)),
+            cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             secret: std::fs::read(&token_path)?,
-        })
-    }
-
-    pub fn load_for_auth(root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
-        let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
-        let root = root.as_ref().join(super::USERS_DIR);
-        std::fs::create_dir_all(&root)?;
-        Ok(Self {
-            root,
-            cubes: std::sync::Arc::new(Vec::default()),
-            secret: std::fs::read(&token_path)?,
+            db: std::sync::Arc::new(db),
         })
     }
 }
 
+#[async_trait::async_trait]
 impl <C: Clone> super::UserProvider<C> for AccountProvider {
-    fn authenticate(&self, token: super::UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
-        let new_root = self.root.join(&token.uuid);
+    async fn authenticate(&self, token: super::UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
+        //let new_root = self.root.join(&token.uuid);
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
         jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| e.to_string())?;
-        let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
+        let user_info = if let Some(user_info) = self.db.user_by_public_id(token.uuid.clone()).await.map_err(|e| e.to_string())? {
+            user_info
+        } else {
+            return Err("User not found".to_owned());
+        };
+        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| e.to_string())? {
+            user_perms
+        } else {
+            return Err("User permissions not found".to_owned());
+        };
+        //let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
         Ok(Box::new(UserData {
-            root: new_root,
             token,
-            account: account_info,
+            account: user_info,
+            perms: user_perms,
             cubes: self.cubes.clone(),
             extensions: ext,
+            db: self.db.clone(),
         }))
         //Err("Unable to authenticate".to_string())
     }
 }
+
+#[async_trait::async_trait]
 impl super::UserAuthenticator for AccountProvider {
-    fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, String> {
-        let new_root = self.root.join(&info.payload.public_id);
-        let is_new_user = !new_root.exists();
-        if is_new_user {
-            std::fs::create_dir(&new_root).map_err(|e| e.to_string())?;
+    async fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, String> {
+        //let new_root = self.root.join(&info.payload.public_id);
+        let is_new_user;
+        let mut user_info = if let Some(user_info) = self.db.user_by_public_id(info.payload.public_id.clone()).await.map_err(|e| e.to_string())? {
+            is_new_user = false;
+            user_info
+        } else {
+            is_new_user = true;
             log::info!("New user {}", info.payload.public_id);
-            super::setup_directory(&new_root).map_err(|e| e.to_string())?;
-        }
-        let mut account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
-        let is_new_user = is_new_user || (account_info.password.is_none() && account_info.steam_id.is_none()); // migration
+            super::setup_new_user(&info, &self.db).await.map_err(|e| e.to_string())?;
+            self.db.user_by_public_id(info.payload.public_id.clone()).await.map_err(|e| e.to_string())?.unwrap()
+        };
+        let override_password = user_info.password.is_empty() && user_info.steam_id.is_none();
         match info.extra {
             super::ExtraUserInfo::Steam { id } => {
-                if is_new_user {
-                    account_info.steam_id = Some(id);
-                }
-                if let Some(expected_steam_id) = account_info.steam_id {
-                    if expected_steam_id != id {
+                let id_str = id.to_string();
+                if let Some(expected_steam_id) = user_info.steam_id {
+                    if expected_steam_id != id_str {
                         return Err("SteamID does not match".to_owned())
                     }
                 } else {
@@ -78,13 +85,13 @@ impl super::UserAuthenticator for AccountProvider {
             super::ExtraUserInfo::Standalone { password } => {
                 use argon2::password_hash::PasswordHasher;
                 let argon2_algo = argon2::Argon2::default();
-                if is_new_user {
+                if override_password {
                     let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
                     let password_hash = argon2_algo.hash_password(password.as_bytes(), &salt).map_err(|e| e.to_string())?.to_string();
-                    account_info.password = Some(password_hash);
+                    user_info.password = password_hash;
                 }
-                if let Some(expected_password) = &account_info.password {
-                    let expected = argon2::password_hash::PasswordHash::new(expected_password).map_err(|e| e.to_string())?;
+                if !user_info.password.is_empty() {
+                    let expected = argon2::password_hash::PasswordHash::new(&user_info.password).map_err(|e| e.to_string())?;
                     argon2_algo.verify_password(password.as_bytes(), &expected).map_err(|e| e.to_string())?;
                 } else {
                     return Err("Password not supported for this user".to_owned())
@@ -92,9 +99,6 @@ impl super::UserAuthenticator for AccountProvider {
             }
         }
         // authentication has now definitely succeeded
-        if is_new_user {
-            account_info.save(new_root).map_err(|e| e.to_string())?;
-        }
         // build token
         let header = jsonwebtoken::Header {
             typ: Some("JWT".to_string()),
@@ -121,45 +125,35 @@ impl super::UserAuthenticator for AccountProvider {
 
 #[allow(dead_code)]
 struct UserData {
-    root: std::path::PathBuf,
     token: super::UserToken,
-    account: AccountInfo,
+    account: rc_database::schema::user::Model,
+    perms: rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
     extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
+    db: std::sync::Arc<rc_database::Database>,
 }
 
 impl UserData {
-    fn load_garage_by_id(&self, id: u32) -> std::io::Result<crate::persist::GarageSlot> {
-        let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", id));
-        crate::persist::GarageSlot::load(&path)
+    async fn load_garage_by_slot(&self, slot: u32) -> Result<Option<rc_database::schema::garage::Model>, rc_database::sea_orm::DbErr> {
+        //let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", id));
+        //crate::persist::GarageSlot::load(&path)
+        self.db.garage_by_user_id_and_slot(self.account.id, slot).await
     }
 
-    fn save_garage(&self, slot: &crate::persist::GarageSlot) -> std::io::Result<()> {
-        let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", slot.slot));
-        slot.save(path)
+    async fn save_garage_by_slot(&self, data: rc_database::schema::garage::ActiveModel, slot: u32) -> Result<(), rc_database::sea_orm::DbErr> {
+        self.db.update_garage_by_user_id_and_slot(data, self.account.id, slot).await?;
+        Ok(())
     }
 
-    fn all_vehicles(&self) -> std::io::Result<Vec<crate::persist::GarageSlot>> {
-        let path = self.root.join(super::GARAGE_DIR);
-        let mut slots = Vec::new();
-        for entry in std::fs::read_dir(path)? {
-            let entry = entry?;
-            let filepath = entry.path();
-            if filepath.is_file() {
-                let slot = crate::persist::GarageSlot::load(&filepath)?;
-                slots.push(slot);
-            } else {
-                log::warn!("Ignoring non-file {} in {} dir", filepath.display(), super::GARAGE_DIR);
-            }
-        }
-        slots.sort_by_key(|slot| slot.slot);
-        Ok(slots)
+    async fn all_vehicles(&self) -> Result<Vec<rc_database::schema::garage::Model>, rc_database::sea_orm::DbErr> {
+        self.db.garages_by_user_id(self.account.id).await
     }
 }
 
-const INVALID_ROBOT_ERR: i16 = 140;
-const DATABASE_ERR: i16 = 8;
+const INVALID_ROBOT_ERR: i16 = crate::data::error_codes::WebServicesError::InvalidRobot as i16; // 140
+const DATABASE_ERR: i16 = crate::data::error_codes::WebServicesError::DatabaseError as i16; // 8
 
+#[async_trait::async_trait]
 impl <C: Clone> super::User<C> for UserData {
     fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)> {
         self.extensions.get(&ty).map(|x| x.as_ref())
@@ -170,35 +164,58 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     fn is_mod(&self) -> bool {
-        self.account.is_mod
+        self.perms.moderator
     }
 
     fn is_admin(&self) -> bool {
-        self.account.is_admin
+        self.perms.administrator
     }
 
     fn is_dev(&self) -> bool {
-        self.account.is_dev
+        self.perms.developer
     }
 
-    fn unlocked_parts(&self) -> Vec<u32> {
-        match self.account.inventory.override_ {
-            super::inventory::UnlockOverride::Normal => self.account.inventory.unlocked.clone(),
-            super::inventory::UnlockOverride::UnlockNone => Vec::default(),
-            super::inventory::UnlockOverride::UnlockAll => self.cubes.as_ref().to_owned(),
+    async fn unlocked_parts(&self) -> Vec<u32> {
+        match self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
+            Ok(Some(parts)) => {
+                match serde_json::from_str::<super::inventory::UnlockedParts>(&parts.data) {
+                    Ok(json) => {
+                        match json.override_ {
+                            super::inventory::UnlockOverride::Normal => json.unlocked.clone(),
+                            super::inventory::UnlockOverride::UnlockNone => Vec::default(),
+                            super::inventory::UnlockOverride::UnlockAll => self.cubes.as_ref().to_owned(),
+                        }
+                    },
+                    Err(e) => {
+                        log::error!("Failed to deserialize Descriptor::UnlockedParts for user_id {}: {}", self.account.id, e);
+                        Vec::default()
+                    }
+                }
+            },
+            Ok(None) => Vec::default(),
+            Err(e) => {
+                log::error!("Failed to retrieve Descriptor::UnlockedParts for user_id {}: {}", self.account.id, e);
+                Vec::default()
+            }
         }
     }
 
-    fn selected_garage_uuid(&self) -> String {
-        self.account.garage.uuid_str()
+    async fn selected_garage(&self) -> (String, u32) {
+        match self.db.garage_selected(self.account.id).await {
+            Ok(Some(selected)) => (super::i64_as_uuid_str(selected.uuid), selected.slot),
+            Ok(None) => {
+                log::warn!("User {} does not have a selected garage", self.account.id);
+                ("0_0".to_owned(), 0)
+            },
+            Err(e) => {
+                log::error!("Failed to retrieve selected garage for user_id {}: {}", self.account.id, e);
+                ("0_0".to_owned(), 0)
+            }
+        }
     }
 
-    fn selected_garage_slot(&self) -> u32 {
-        self.account.garage.slot
-    }
-
-    fn all_slots_by_id(&self) -> super::UserSlots<C> {
-        let slots = match self.all_vehicles() {
+    async fn all_slots_by_id(&self) -> super::UserSlots<C> {
+        let slots = match self.all_vehicles().await {
             Ok(slots) => slots,
             Err(e) => {
                 log::error!("Failed to load all vehicles: {}", e);
@@ -211,7 +228,7 @@ impl <C: Clone> super::User<C> for UserData {
             val_ty: polariton::serdes:: TypePrefix::HashMap,
             items: slots.into_iter().map(|slot| {
                 let slot_index = slot.slot;
-                let garage_data: crate::data::garage_bay::GarageSlotInfo = slot.into();
+                let garage_data: crate::data::garage_bay::GarageSlotInfo = crate::persist::garage::db_into_data(slot);
                 (polariton::operation::Typed::Int(slot_index as _), garage_data.as_transmissible())
             }).collect(),
         });
@@ -220,77 +237,67 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 
-    fn slot_by_id(&self, id: i32) -> Result<crate::persist::user::UserSlotData<C>, i16> {
-        match self.load_garage_by_id(id as _) {
-            Ok(slot) => {
-                let control_ty: crate::data::garage_bay::ControlType = slot.control_type.into();
-                let control_options: crate::data::garage_bay::ControlOptions = slot.control_options.into();
+    async fn slot_by_id(&self, id: i32) -> Result<crate::persist::user::UserSlotData<C>, i16> {
+        match self.load_garage_by_slot(id as _).await {
+            Ok(Some(slot)) => {
+                let cube_count = slot.cube_count() as i32;
+                let control_ty: crate::data::garage_bay::ControlType = crate::persist::garage::control_ty_into_data(slot.control_type);
+                let control_options = crate::data::garage_bay::ControlOptions {
+                    vertical_strafing: slot.vertical_strafing,
+                    sideways_driving: slot.sideways_driving,
+                    tracks_turn_on_spot: slot.tracks_turn_on_spot,
+                };
                 Ok(crate::persist::user::UserSlotData {
                     data: polariton::operation::Typed::Bytes(slot.robot_data.into()),
                     colour_data: polariton::operation::Typed::Bytes(slot.colour_data.into()),
-                    cube_count: polariton::operation::Typed::Int(slot.cubes as _),
-                    weapon_order: polariton::operation::Typed::IntArr(slot.weapon_order.clone().into()),
-                    movement_categories: polariton::operation::Typed::IntArr(slot.movement_categories.into_iter().map(|cat| {
-                        let cat: crate::data::weapon_list::ItemCategory = cat.into();
-                        cat.but_bigger()
-                    }).collect::<Vec<_>>().into()),
+                    cube_count: polariton::operation::Typed::Int(cube_count),
+                    weapon_order: polariton::operation::Typed::IntArr(rc_database::schema::parse_int_csv(&slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
+                    movement_categories: polariton::operation::Typed::IntArr(rc_database::schema::parse_int_csv(&slot.movement_categories).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
                     control_type: polariton::operation::Typed::Int(control_ty as _),
                     control_options: control_options.as_transmissible(),
-                    mastery_level: polariton::operation::Typed::Int(0), // TODO
+                    mastery_level: polariton::operation::Typed::Int(slot.mastery_level as i32),
                     robot_rank: polariton::operation::Typed::Int(slot.total_robot_ranking as _),
                     cpu: polariton::operation::Typed::Int(slot.total_robot_cpu as _),
                     cosmetic_cpu: polariton::operation::Typed::Int(slot.total_cosmetic_cpu as _),
-                    uuid: polariton::operation::Typed::Str(format!("{}_{}", slot.uuid.0, slot.uuid.1).into()),
+                    uuid: polariton::operation::Typed::Str(super::i64_as_uuid_str(slot.uuid).into()),
                 })
             },
+            Ok(None) => {
+                log::error!("Failed to find vehicle slot {} for user_id {}", id, self.account.id);
+                Err(DATABASE_ERR)
+            }
             Err(e) => {
-                log::error!("Failed to load vehicle {}: {}", id, e);
+                log::error!("Failed to retrieve vehicle {} for user_id {}: {}", id, self.account.id, e);
                 Err(INVALID_ROBOT_ERR)
             }
         }
     }
 
-    fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
-        let id = vehicle.id as u32;
-        let mut existing_data = self.load_garage_by_id(id).map_err(|e| {
-            log::error!("Failed to load vehicle {}: {}", id, e);
-            INVALID_ROBOT_ERR
-        })?;
-        existing_data.slot = id;
-        existing_data.robot_data = vehicle.robot_data;
-        existing_data.colour_data = vehicle.colour_data;
-        log::debug!("weapon order: {:?}", vehicle.weapon_order);
-        existing_data.weapon_order = vehicle.weapon_order;
-        self.save_garage(&existing_data).map_err(|e| {
-            log::error!("Failed to save vehicle {}: {}", id, e);
+    async fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
+        let entity = rc_database::schema::garage::ActiveModel {
+            robot_data: rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
+            colour_data: rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
+            weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
+            ..Default::default()
+        };
+        self.save_garage_by_slot(entity, vehicle.slot as u32).await.map_err(|e| {
+            log::error!("Failed to save vehicle slot {} for user_id {}: {}", vehicle.slot, self.account.id, e);
             DATABASE_ERR
         })?;
         Ok(())
     }
 
     fn signup_date(&self) -> i64 {
-        match self.root.metadata() {
-            Ok(meta) => {
-                match meta.created() {
-                    Ok(created) => {
-                        match created.duration_since(std::time::SystemTime::UNIX_EPOCH) {
-                            Ok(dur) => {
-                                return super::since_windows_epoch(dur.as_secs() as i64);
-                            },
-                            Err(e) => log::error!("could not get duration since unix epoch of {}: {}", self.root.display(), e),
-                        }
-                    },
-                    Err(e) => log::error!("could not read creation time of {}: {}", self.root.display(), e),
-                }
-            },
-            Err(e) => log::error!("could not retrieve metadata of {}: {}", self.root.display(), e),
-        }
-        super::since_windows_epoch(0)
+        super::since_windows_epoch(self.account.creation_time)
     }
 
-    fn singleplayer_robots(&self) ->  Result<polariton::operation::Typed<C>, i16> {
-        let current_slot = self.load_garage_by_id(self.account.garage.slot).map_err(|e| {
-            log::error!("Failed to load current vehicle: {}", e);
+    async fn singleplayer_robots(&self) ->  Result<polariton::operation::Typed<C>, i16> {
+        let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
+            log::error!("Failed to retrieve selected vehicle for user_id {} (singleplayer_robots): {}", self.account.id, e);
+            DATABASE_ERR
+        })?
+        .ok_or_else(|| {
+            log::error!("Failed to find selected vehicle for user_id {} (singleplayer_robots)", self.account.id);
             INVALID_ROBOT_ERR
         })?;
         let user_uuid = self.token.uuid.clone();
@@ -298,52 +305,24 @@ impl <C: Clone> super::User<C> for UserData {
             players: vec![
                 crate::data::player_data::PlayerData {
                     name: user_uuid.clone(),
-                    display_name: user_uuid,
-                    mastery: current_slot.mastery_level,
+                    display_name: self.account.display_name.clone(),
+                    mastery: current_slot.mastery_level as i32,
                     tier: 1, // FIXME
                     robot_name: current_slot.name,
                     robot_map: current_slot.robot_data,
                     team: 0,
                     has_premium: true, // FIXME
-                    robot_uuid: format!("{}_{}", current_slot.uuid.0, current_slot.uuid.1),
+                    robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
                     cpu: current_slot.total_robot_cpu as i32,
-                    weapon_order: current_slot.weapon_order.clone(),
+                    weapon_order: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
                     colour_map: current_slot.colour_data,
                     is_ai: false,
                     spawn_effect: "Spawn_Warp".to_owned(), // FIXME
                     death_effect: "Explosion_Warp".to_owned(), // FIXME
                     player_rank: 1, // FIXME
-                    weapon_rank: current_slot.weapon_order.into_iter().map(|x| (x, if x == 0 { 0 } else { 1 })).collect(),
+                    weapon_rank: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
                 }
             ],
         }.as_transmissible())
     }
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AccountInfo {
-    pub is_mod: bool,
-    pub is_admin: bool,
-    pub is_dev: bool,
-    pub password: Option<String>,
-    pub steam_id: Option<u64>,
-    pub inventory: super::UnlockedParts,
-    pub garage: super::SelectedGarage,
-}
-
-impl AccountInfo {
-    fn load(root: impl AsRef<std::path::Path>) -> std::io::Result<AccountInfo> {
-        let file = std::fs::File::open(root.as_ref().join(super::USER_FILE))?;
-        let buffered = std::io::BufReader::new(file);
-        let result = serde_json::from_reader(buffered)?;
-        Ok(result)
-    }
-
-    pub fn save(&self, root: impl AsRef<std::path::Path>) -> std::io::Result<()> {
-        let file = std::fs::File::create(root.as_ref().join(super::USER_FILE))?;
-        let buffered = std::io::BufWriter::new(file);
-        serde_json::to_writer_pretty(buffered, self)?;
-        Ok(())
-    }
-}
-
