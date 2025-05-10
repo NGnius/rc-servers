@@ -39,4 +39,5 @@ pub enum Descriptor {
     UserRank, // u32
     UserFreeCurrency, // u64
     UserPaidCurrency, // u64
+    GarageSlotOrder, // Vec<u32>,
 }

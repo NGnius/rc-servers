@@ -13,7 +13,7 @@ pub(super) fn garage_slot_provider() -> GarageSlotsProvider {
 async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
     let user_info = user.user()?;
     let mut params = params.to_dict();
-    let all_slots = user_info.all_slots_by_id().await;
+    let all_slots = user_info.all_slots().await;
     params.insert(SLOTS_PARAM_KEY, all_slots.slot_info);
     params.insert(SELECTED_SLOT_PARAM_KEY, Typed::Int(user_info.selected_garage().await.1 as _));
     params.insert(SLOT_ORDER_PARAM_KEY, all_slots.slot_order);

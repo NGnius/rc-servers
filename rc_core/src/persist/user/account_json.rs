@@ -15,8 +15,6 @@ impl AccountProvider {
         log::debug!("Connecting to user database URI: {}", database_uri);
         let db = rc_database::Database::init(&database_uri).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
-        let root = root.as_ref().join(super::USERS_DIR);
-        std::fs::create_dir_all(&root)?;
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             secret: std::fs::read(&token_path)?,
@@ -214,7 +212,14 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 
-    async fn all_slots_by_id(&self) -> super::UserSlots<C> {
+    async fn select_garage(&self, slot: i32) -> Result<(), i16> {
+        self.db.update_garage_selected_by_user_id_and_slot(self.account.id, slot as u32).await.map_err(|e| {
+            log::error!("Failed to select vehicle slot {} user_id {}: {}", slot, self.account.id, e);
+            DATABASE_ERR
+        })
+    }
+
+    async fn all_slots(&self) -> super::UserSlots<C> {
         let slots = match self.all_vehicles().await {
             Ok(slots) => slots,
             Err(e) => {
@@ -222,7 +227,21 @@ impl <C: Clone> super::User<C> for UserData {
                 Vec::default()
             }
         };
-        let slot_order = polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(slot.slot as _)).collect::<Vec<_>>().into());
+        let slot_order = match self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await{
+            Ok(Some(slot_order_db)) => {
+                let slots = serde_json::from_str::<Vec<u32>>(&slot_order_db.data).unwrap_or_default();
+                polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(*slot as _)).collect::<Vec<_>>().into())
+            },
+            Ok(None) => {
+                log::error!("No vehicle slot order for user_id {}", self.account.id);
+                polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(slot.slot as _)).collect::<Vec<_>>().into())
+            },
+            Err(e) => {
+                log::error!("Failed to get vehicle slot order for user_id {}: {}", self.account.id, e);
+                polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(slot.slot as _)).collect::<Vec<_>>().into())
+            },
+        };
+        //let slot_order = polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(slot.slot as _)).collect::<Vec<_>>().into());
         let slot_info = polariton::operation::Typed::Dict(polariton::operation::Dict {
             key_ty: polariton::serdes::TypePrefix::Int,
             val_ty: polariton::serdes:: TypePrefix::HashMap,
@@ -275,9 +294,9 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
         let entity = rc_database::schema::garage::ActiveModel {
+            weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
             robot_data: rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
             colour_data: rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
-            weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
             ..Default::default()
         };
         self.save_garage_by_slot(entity, vehicle.slot as u32).await.map_err(|e| {
@@ -285,6 +304,54 @@ impl <C: Clone> super::User<C> for UserData {
             DATABASE_ERR
         })?;
         Ok(())
+    }
+
+    async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16> {
+        let slots: Vec<u32> = slots.into_iter().map(|x| x as u32).collect();
+        let entity = rc_database::schema::user_aux::ActiveModel {
+            data: rc_database::sea_orm::ActiveValue::Set(serde_json::to_string_pretty(&slots).unwrap()),
+            ..Default::default()
+        };
+        self.db.update_user_aux_by_user_id_and_descriptor(entity, self.account.id, rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await.map_err(|e| {
+            log::error!("Failed to update garage slot order for user_id {}: {}", self.account.id, e);
+            DATABASE_ERR
+        })?;
+        Ok(())
+    }
+
+    async fn new_slot(&self, reset_slot: Option<i32>) -> Result<super::NewSlotData<C>, i16> {
+        let model = if let Some(slot) = reset_slot {
+            let new_data = super::initial_data::default_reset_slot();
+            if let Some(reset_g) = self.db.update_garage_by_user_id_and_slot(new_data, self.account.id, slot as u32).await.map_err(|e| {
+                log::error!("Failed to reset vehicle slot {} for user_id {}: {}", slot, self.account.id, e);
+                DATABASE_ERR
+            })? {
+                reset_g
+            } else {
+                log::warn!("No vehicle slot {} to reset for user_id {}, creating new slot", slot, self.account.id);
+                return self.new_slot(None).await;
+            }
+        } else {
+            let max_slot = self.db.garage_max_slot_by_user_id(self.account.id).await.map_err(|e| {
+                log::error!("Failed to get max slot for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?;
+            let next_slot = max_slot + 1;
+            let new_data = super::initial_data::default_new_slot(self.account.id, next_slot, 2_000);
+            self.db.insert_garage(new_data).await.map_err(|e| {
+                log::error!("Failed to create new vehicle slot {} for user_id {}: {}", next_slot, self.account.id, e);
+                DATABASE_ERR
+            })?
+        };
+        let split_uuid = super::i64_split(model.uuid);
+        Ok(super::NewSlotData {
+            name: polariton::operation::Typed::Str(model.name.into()),
+            uuid_0: polariton::operation::Typed::Str(split_uuid.0.to_string().into()), // yes, seriously
+            uuid_1: polariton::operation::Typed::Str(split_uuid.1.to_string().into()), // also yes, seriously
+            slot: polariton::operation::Typed::Int(model.slot as _),
+            bay_cpu: polariton::operation::Typed::Int(model.bay_cpu as _),
+            mastery_level: polariton::operation::Typed::Int(model.mastery_level as _),
+        })
     }
 
     fn signup_date(&self) -> i64 {

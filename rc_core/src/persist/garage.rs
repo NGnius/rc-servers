@@ -100,13 +100,14 @@ impl std::convert::Into<crate::data::garage_bay::GarageSlotInfo> for GarageSlot 
 }
 
 pub fn db_into_data(garage: rc_database::schema::garage::Model) -> crate::data::garage_bay::GarageSlotInfo {
+    let cube_count = garage.cube_count();
     crate::data::garage_bay::GarageSlotInfo {
         name: garage.name,
-        cubes: 0, // TODO garage.cubes,
+        cubes: cube_count,
         crf_id: garage.crf_id.unwrap_or(0),
         was_rated: garage.was_rated,
         movement_categories: movement_category_into_data(&garage.movement_categories),
-        uuid: i64_split(garage.uuid),
+        uuid: super::user::i64_split(garage.uuid),
         thumbnail_version: garage.thumbnail_version,
         total_robot_cpu: garage.total_robot_cpu,
         total_cosmetic_cpu: garage.total_cosmetic_cpu,
@@ -131,23 +132,6 @@ fn movement_category_into_data(mov_cat: &str) -> Vec<crate::data::weapon_list::I
         .into_iter()
         .filter_map(|num| crate::data::weapon_list::ItemCategory::from_bigger(num as _))
         .collect()
-}
-
-pub fn i64_split(num: i64) -> (u32, u32) {
-    let bytes = (num as u64).to_le_bytes();
-    (
-        u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
-        u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]])
-    )
-}
-
-#[allow(dead_code)]
-pub fn u64_join(uuid: (u32, u32)) -> u64 {
-    let bytes = (uuid.0.to_le_bytes(), uuid.1.to_le_bytes());
-    u64::from_le_bytes(
-        [bytes.0[0], bytes.0[1], bytes.0[2], bytes.0[3],
-        bytes.1[0], bytes.1[1], bytes.1[2], bytes.1[3]]
-    )
 }
 
 pub fn control_ty_into_data(control_ty: rc_database::schema::garage::ControlType) -> crate::data::garage_bay::ControlType {

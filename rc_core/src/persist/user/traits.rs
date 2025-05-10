@@ -44,9 +44,12 @@ pub trait User<C> {
     fn is_dev(&self) -> bool;
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn selected_garage(&self) -> (String, u32);
-    async fn all_slots_by_id(&self) -> UserSlots<C>;
+    async fn select_garage(&self, slot: i32) -> Result<(), i16>;
+    async fn all_slots(&self) -> UserSlots<C>;
     async fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
     async fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
+    async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
+    async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
 }
@@ -69,6 +72,15 @@ pub struct UserSlotData<C> {
     pub cpu: polariton::operation::Typed<C>,
     pub cosmetic_cpu: polariton::operation::Typed<C>,
     pub uuid: polariton::operation::Typed<C>,
+}
+
+pub struct NewSlotData<C> {
+    pub name: polariton::operation::Typed<C>,
+    pub uuid_0: polariton::operation::Typed<C>,
+    pub uuid_1: polariton::operation::Typed<C>,
+    pub slot: polariton::operation::Typed<C>,
+    pub bay_cpu: polariton::operation::Typed<C>,
+    pub mastery_level: polariton::operation::Typed<C>,
 }
 
 pub struct VehicleData {

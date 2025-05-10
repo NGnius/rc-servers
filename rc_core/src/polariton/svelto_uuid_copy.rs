@@ -8,8 +8,11 @@ impl OpIdCopy {
 
 impl <C: Clone + Send + Sync + 'static> OperationModifier<C> for OpIdCopy {
     fn after(&self, req: &mut polariton::operation::OperationRequest<C>, resp: &mut polariton::operation::OperationResponse<C>) {
-        if let Some(svelto_service_id) = req.params.get(&Self::SERVICE_MAPPING_KEY) {
-            resp.params.insert(Self::SERVICE_MAPPING_KEY, svelto_service_id.to_owned());
+        if resp.params.get(&Self::SERVICE_MAPPING_KEY).is_none() {
+            if let Some(svelto_service_id) = req.params.get(&Self::SERVICE_MAPPING_KEY) {
+                resp.params.insert(Self::SERVICE_MAPPING_KEY, svelto_service_id.to_owned());
+            }
         }
+
     }
 }

@@ -133,6 +133,13 @@ r#"{
             creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserPaidCurrency),
             data: rc_database::sea_orm::ActiveValue::Set("1000".to_owned()),
+        },
+        rc_database::schema::user_aux::ActiveModel {
+            id: Default::default(),
+            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::GarageSlotOrder),
+            data: rc_database::sea_orm::ActiveValue::Set("[0]".to_owned()),
         }
     ]
 }
@@ -149,6 +156,69 @@ fn default_user_perms(user_id: u32) -> rc_database::schema::permissions::ActiveM
     }
 }
 
+pub fn default_new_slot(user_id: u32, slot: u32, bay_cpu: u32) -> rc_database::schema::garage::ActiveModel {
+    let current_time = current_unix_time();
+    rc_database::schema::garage::ActiveModel {
+        id: Default::default(),
+        user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
+        creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
+        slot: rc_database::sea_orm::ActiveValue::Set(slot),
+        name: rc_database::sea_orm::ActiveValue::Set(format!("Bay {}", slot)),
+        crf_id: rc_database::sea_orm::ActiveValue::Set(None),
+        was_rated: rc_database::sea_orm::ActiveValue::Set(false),
+        movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        uuid: rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
+        thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
+        total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_ranking: rc_database::sea_orm::ActiveValue::Set(0),
+        bay_cpu: rc_database::sea_orm::ActiveValue::Set(bay_cpu),
+        tutorial_robot: rc_database::sea_orm::ActiveValue::Set(false),
+        starter_robot_index: rc_database::sea_orm::ActiveValue::Set(None),
+        control_type: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::garage::ControlType::Camera),
+        vertical_strafing: rc_database::sea_orm::ActiveValue::Set(false),
+        sideways_driving: rc_database::sea_orm::ActiveValue::Set(false),
+        tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(false),
+        mastery_level: rc_database::sea_orm::ActiveValue::Set(1),
+        bay_skin_id: rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
+        weapon_order: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        robot_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        colour_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        selected: rc_database::sea_orm::ActiveValue::Set(false),
+    }
+}
+
+pub fn default_reset_slot() -> rc_database::schema::garage::ActiveModel {
+    rc_database::schema::garage::ActiveModel {
+        id: Default::default(),
+        user_id: Default::default(),
+        creation_time: Default::default(),
+        slot: Default::default(),
+        name: Default::default(),
+        crf_id: rc_database::sea_orm::ActiveValue::Set(None),
+        was_rated: rc_database::sea_orm::ActiveValue::Set(false),
+        movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        uuid: Default::default(),
+        thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
+        total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_ranking: rc_database::sea_orm::ActiveValue::Set(0),
+        bay_cpu: Default::default(),
+        tutorial_robot: rc_database::sea_orm::ActiveValue::Set(false),
+        starter_robot_index: rc_database::sea_orm::ActiveValue::Set(None),
+        control_type: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::garage::ControlType::Camera),
+        vertical_strafing: rc_database::sea_orm::ActiveValue::Set(false),
+        sideways_driving: rc_database::sea_orm::ActiveValue::Set(false),
+        tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(false),
+        mastery_level: Default::default(),
+        bay_skin_id: rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
+        weapon_order: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        robot_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        colour_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        selected: Default::default(),
+    }
+}
+
 fn default_garage_slots(user_id: u32) -> Vec<rc_database::schema::garage::ActiveModel> {
     let current_time = current_unix_time();
     vec![
@@ -161,7 +231,7 @@ fn default_garage_slots(user_id: u32) -> Vec<rc_database::schema::garage::Active
             crf_id: rc_database::sea_orm::ActiveValue::Set(None),
             was_rated: rc_database::sea_orm::ActiveValue::Set(false),
             movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-            uuid: rc_database::sea_orm::ActiveValue::Set(current_time),
+            uuid: rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
             thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
             total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
             total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
