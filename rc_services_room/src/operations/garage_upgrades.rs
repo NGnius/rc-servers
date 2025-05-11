@@ -1,25 +1,39 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
+use polariton::operation::{ParameterTable, OperationResponse};
+use rc_core::ConfigProvider;
+
+const CODE: u8 = 1;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn garage_upgrades_provider() -> SimpleFunc<1, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
+pub(super) fn garage_upgrades_provider(conf: &rc_core::ConfigImpl) -> GarageUpgradesProvider {
+    GarageUpgradesProvider {
+        upgrades: <rc_core::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf),
+    }
+}
+
+pub struct GarageUpgradesProvider {
+    upgrades: rc_core::persist::config::GarageUpgrades,
+}
+
+impl GarageUpgradesProvider {
+    async fn do_handling(&self, params: ParameterTable) -> Result<ParameterTable, i16> {
         let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::HashMap(vec![
-            (Typed::Str("cpuIncreaseCost".into()), Typed::Dict(Dict {
-                key_ty: TypePrefix::Int, // int
-                val_ty: TypePrefix::Int, // int
-                items: vec![
-                    // (CPU limit, upgrade cost)
-                    (Typed::Int(100), Typed::Int(100)),
-                    (Typed::Int(200), Typed::Int(200)),
-                    (Typed::Int(1_000), Typed::Int(1_000)),
-                    (Typed::Int(2_000), Typed::Int(2_000)), // max regular bot CPU
-                    (Typed::Int(10_000), Typed::Int(10_000)), // max mega bot cpu
-                ],
-            }))
-        ].into()));
+        params.insert(PARAM_KEY, self.upgrades.slot_upgrades());
         Ok(params.into())
-    })
+    }
+}
+
+#[async_trait::async_trait]
+impl polariton_server::operations::Operation<()> for GarageUpgradesProvider {
+    type User = crate::UserTy;
+
+    async fn handle_async(&self, params: ParameterTable<()>, _user: &Self::User) -> OperationResponse<()> {
+        polariton_server::operations::result_to_op_resp::<CODE, ()>(self.do_handling(params).await)
+    }
+}
+
+impl polariton_server::operations::OperationCode for GarageUpgradesProvider {
+    fn op_code() -> u8 {
+        CODE
+    }
 }

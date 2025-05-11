@@ -11,7 +11,7 @@ pub(super) fn garage_slot_order_provider() -> GarageSlotsOrderProvider {
 async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     if let Some(Typed::Arr(order)) = params.remove(&SLOT_ORDER_PARAM_KEY) {
-        log::info!("Slot order is {}", order);
+        //log::info!("Slot order is {}", order);
         let mut order_i32 = Vec::with_capacity(order.items.len());
         for item in order.items.iter() {
             if let Typed::Int(item) = item {

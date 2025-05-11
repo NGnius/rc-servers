@@ -261,4 +261,13 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             database: self.settings.server.database.clone(),
         }
     }
+
+    fn garage_upgrades(&self) -> super::GarageUpgrades {
+        super::GarageUpgrades {
+            increments: self.settings.garage_upgrades.iter().map(|inc| super::GarageUpgradeIncrement {
+                cpu: inc.cpu,
+                cost: inc.cost,
+            }).collect(),
+        }
+    }
 }

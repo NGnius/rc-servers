@@ -6,6 +6,8 @@ pub struct Settings {
     pub gameplay: super::GameplaySettings,
     #[serde(default = "default_dev_messages")]
     pub banners: Vec<BannerMessage>,
+    #[serde(default = "default_slot_upgrades")]
+    pub garage_upgrades: Vec<GarageSlotUpgrade>,
     #[serde(default = "default_server_conf")]
     pub server: ServerSettings,
 }
@@ -33,6 +35,37 @@ pub struct BannerMessage {
 
 fn default_dev_messages() -> Vec<BannerMessage> {
     Vec::default()
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GarageSlotUpgrade {
+    pub cpu: u32,
+    pub cost: u32,
+}
+
+fn default_slot_upgrades() -> Vec<GarageSlotUpgrade> {
+    vec![
+        GarageSlotUpgrade {
+            cpu: 100,
+            cost: 100,
+        },
+        GarageSlotUpgrade {
+            cpu: 200,
+            cost: 200,
+        },
+        GarageSlotUpgrade {
+            cpu: 1_000,
+            cost: 1_000,
+        },
+        GarageSlotUpgrade {
+            cpu: 2_000,
+            cost: 2_000,
+        },
+        GarageSlotUpgrade {
+            cpu: 10_000,
+            cost: 10_000,
+        },
+    ]
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

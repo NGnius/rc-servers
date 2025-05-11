@@ -50,6 +50,7 @@ pub trait User<C> {
     async fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
     async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
+    async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16>;
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
 }

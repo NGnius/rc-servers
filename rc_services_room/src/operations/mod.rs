@@ -84,6 +84,8 @@ mod garage_slot_limit;
 mod garage_slot_add;
 mod garage_slots_order;
 mod garage_slot_select;
+mod garage_slot_dismantle;
+mod garage_slot_upgrade;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -132,7 +134,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(avatar_info::get_avatar_provider())
         .add(custom_game_session::get_custom_session_provider())
         .add(user_xp::get_user_xp_provider())
-        .add(garage_upgrades::garage_upgrades_provider())
+        .add(garage_upgrades::garage_upgrades_provider(&init_ctx.cubes))
         .add(game_event_params::event_system_params_provider())
         .add(garage_bay_uuid::garage_id_provider())
         .add(tech_tree_data::tech_tree_layout_provider(&init_ctx.cubes))
@@ -190,4 +192,6 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(garage_slot_add::garage_slot_add_provider())
         .add(garage_slots_order::garage_slot_order_provider())
         .add(garage_slot_select::garage_slot_selector())
+        .add(garage_slot_dismantle::garage_slot_dismantler())
+        .add(garage_slot_upgrade::garage_slot_upgrage_provider())
 }

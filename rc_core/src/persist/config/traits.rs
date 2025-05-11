@@ -19,6 +19,7 @@ pub trait ConfigProvider<C: Clone> {
     fn login_messages(&self) -> DevMessageProvider<C>;
     fn public_channels(&self) -> Typed<C>;
     fn server_config(&self) -> ServerConfig;
+    fn garage_upgrades(&self) -> GarageUpgrades;
 }
 
 pub struct CompleteCampaignProvider {
@@ -87,4 +88,28 @@ pub struct TypedDevMessage<C> {
 
 pub struct ServerConfig {
     pub database: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GarageUpgrades {
+    pub increments: Vec<GarageUpgradeIncrement>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GarageUpgradeIncrement {
+    pub cpu: u32,
+    pub cost: u32,
+}
+
+impl GarageUpgrades {
+    pub fn slot_upgrades<C>(&self) -> Typed<C> {
+        Typed::HashMap(vec![
+            (Typed::Str("cpuIncreaseCost".into()), Typed::Dict(polariton::operation::Dict {
+                key_ty: polariton::serdes::TypePrefix::Int, // int
+                val_ty: polariton::serdes::TypePrefix::Int, // int
+                // (CPU limit, upgrade cost)
+                items: self.increments.iter().map(|inc| (Typed::Int(inc.cpu as _), Typed::Int(inc.cost as _))).collect(),
+            }))
+        ].into())
+    }
 }

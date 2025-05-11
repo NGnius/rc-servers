@@ -4,6 +4,7 @@ use crate::persist::config::ConfigProvider;
 
 pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
+    garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     secret: Vec<u8>,
     db: std::sync::Arc<rc_database::Database>,
 }
@@ -17,6 +18,7 @@ impl AccountProvider {
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
+            garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
             secret: std::fs::read(&token_path)?,
             db: std::sync::Arc::new(db),
         })
@@ -47,6 +49,7 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             account: user_info,
             perms: user_perms,
             cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
             extensions: ext,
             db: self.db.clone(),
         }))
@@ -127,6 +130,7 @@ struct UserData {
     account: rc_database::schema::user::Model,
     perms: rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
+    garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
     db: std::sync::Arc<rc_database::Database>,
 }
@@ -352,6 +356,45 @@ impl <C: Clone> super::User<C> for UserData {
             bay_cpu: polariton::operation::Typed::Int(model.bay_cpu as _),
             mastery_level: polariton::operation::Typed::Int(model.mastery_level as _),
         })
+    }
+
+    async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16> {
+        if increments <= 0 {
+            // no-op
+            return Ok(polariton::operation::Typed::Bool(true));
+        }
+        let selected_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
+            log::error!("Failed to retrieve selected vehicle slot for user_id {}: {}", self.account.id, e);
+            DATABASE_ERR
+        })?.ok_or_else(|| {
+            log::error!("No selected vehicle slot for user_id {}", self.account.id);
+            DATABASE_ERR
+        })?;
+        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu).last();
+        if let Some((i, _)) = inc_opt {
+            let max_upgrade = self.garage_upgrades.increments.len() - 1;
+            let upgrade_to = i + (increments as usize);
+            if upgrade_to > max_upgrade {
+                // over-upgraded
+                Ok(polariton::operation::Typed::Bool(false))
+            } else {
+                let upgrade_to_cpu = self.garage_upgrades.increments[upgrade_to].cpu;
+                let entity = rc_database::schema::garage::ActiveModel {
+                    bay_cpu: rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu),
+                    ..Default::default()
+                };
+                self.db.update_garage_by_user_id_and_slot(entity, self.account.id, selected_slot.slot).await.map_err(|e| {
+                    log::error!("Failed to upgrade selected vehicle slot to bay cpu of {} for user_id {}: {}", upgrade_to_cpu, self.account.id, e);
+                    DATABASE_ERR
+                })?;
+                // TODO subtract upgrade cost from user free currency total
+                Ok(polariton::operation::Typed::Bool(true))
+            }
+        } else {
+            // probably a bad/changed garage update config
+            log::warn!("No vehicle slot upgrade found for bay CPU {} for user_id {}", selected_slot.bay_cpu, self.account.id);
+            Ok(polariton::operation::Typed::Bool(false))
+        }
     }
 
     fn signup_date(&self) -> i64 {
