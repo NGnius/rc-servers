@@ -32,7 +32,7 @@ pub async fn setup_new_user(user: &super::UserInfo, db: &rc_database::Database) 
 }
 
 fn default_user_data(user: &super::UserInfo) -> rc_database::schema::user::ActiveModel {
-    let password = if let super::ExtraUserInfo::Standalone { password } = &user.extra {
+    let password = if let super::ExtraUserInfo::Email { password } | super::ExtraUserInfo::Username { password } = &user.extra {
         //password.to_owned()
         use argon2::password_hash::PasswordHasher;
         let argon2_algo = argon2::Argon2::default();

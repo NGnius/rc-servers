@@ -1,8 +1,8 @@
 use rc_core::UserAuthenticator;
 use rocket::{post, routes, serde::json::Json, http::Status, State};
 
-#[post("/authenticate/robocraft/game", data = "<body>")]
-pub async fn user_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
+#[post("/authenticate/email/game", data = "<body>")]
+pub async fn email_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: &State<crate::common::cli::Config>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, Status> {
     log::info!("Authenticating {} user {}", body.target, body.display_name);
     let payload = libfj::robocraft::TokenPayload {
         public_id: body.display_name.clone(),
@@ -14,7 +14,7 @@ pub async fn user_password_auth(body: Json<libfj::robocraft::EmailUserAuthentica
     };
     let user_info = rc_core::persist::user::UserInfo {
         payload,
-        extra: rc_core::persist::user::ExtraUserInfo::Username { password: body.password.clone() },
+        extra: rc_core::persist::user::ExtraUserInfo::Email { password: body.password.clone() },
     };
     let response = config.robocraft.account_provider.login(user_info).await
         .map_err(|e| {
@@ -26,6 +26,6 @@ pub async fn user_password_auth(body: Json<libfj::robocraft::EmailUserAuthentica
 
 pub fn stage() -> rocket::fairing::AdHoc {
     rocket::fairing::AdHoc::on_ignite("Robocraft Username/Password", |rocket| async {
-        rocket.mount("/", routes![user_password_auth])
+        rocket.mount("/", routes![email_password_auth])
     })
 }

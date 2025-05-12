@@ -33,7 +33,7 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
         jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| e.to_string())?;
-        let user_info = if let Some(user_info) = self.db.user_by_public_id(token.uuid.clone()).await.map_err(|e| e.to_string())? {
+        let user_info = if let Some(user_info) = self.db.user_by_any_unique_id(token.uuid.clone()).await.map_err(|e| e.to_string())? {
             user_info
         } else {
             return Err("User not found".to_owned());
@@ -62,14 +62,19 @@ impl super::UserAuthenticator for AccountProvider {
     async fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, String> {
         //let new_root = self.root.join(&info.payload.public_id);
         let is_new_user;
-        let mut user_info = if let Some(user_info) = self.db.user_by_public_id(info.payload.public_id.clone()).await.map_err(|e| e.to_string())? {
+        let user_opt = match &info.extra {
+            super::ExtraUserInfo::Steam { id } => self.db.user_by_steam_id(*id).await,
+            super::ExtraUserInfo::Email { .. } => self.db.user_by_email(info.payload.email_address.clone()).await,
+            super::ExtraUserInfo::Username { .. } => self.db.user_by_display_name(info.payload.display_name.clone()).await,
+        }.map_err(|e| e.to_string())?;
+        let mut user_info = if let Some(user_info) = user_opt {
             is_new_user = false;
             user_info
         } else {
             is_new_user = true;
             log::info!("New user {}", info.payload.public_id);
             super::setup_new_user(&info, &self.db).await.map_err(|e| e.to_string())?;
-            self.db.user_by_public_id(info.payload.public_id.clone()).await.map_err(|e| e.to_string())?.unwrap()
+            self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| e.to_string())?.unwrap()
         };
         let override_password = user_info.password.is_empty() && user_info.steam_id.is_none();
         match info.extra {
@@ -83,7 +88,8 @@ impl super::UserAuthenticator for AccountProvider {
                     return Err("SteamID not supported for this user".to_owned());
                 }
             },
-            super::ExtraUserInfo::Standalone { password } => {
+            super::ExtraUserInfo::Email { password }
+            | super::ExtraUserInfo::Username { password } => {
                 use argon2::password_hash::PasswordHasher;
                 let argon2_algo = argon2::Argon2::default();
                 if override_password {

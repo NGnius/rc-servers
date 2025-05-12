@@ -15,11 +15,39 @@ impl Database {
         })
     }
 
-    pub async fn user_by_public_id(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+    pub async fn user_by_display_name(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
-            .filter(crate::schema::user::Column::PublicId.eq(public_id))
+            .filter(crate::schema::user::Column::DisplayName.eq(public_id))
             .one(&self.orm)
             .await
+    }
+
+    pub async fn user_by_steam_id(&self, steam_id: u64) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .filter(crate::schema::user::Column::SteamId.eq(Some(steam_id)))
+            .one(&self.orm)
+            .await
+    }
+
+    pub async fn user_by_email(&self, email: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .filter(crate::schema::user::Column::Email.eq(email))
+            .one(&self.orm)
+            .await
+    }
+
+    pub async fn user_by_any_unique_id(&self, id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        if let Ok(steam_id) = id.parse::<u64>() {
+            if let Some(res) = self.user_by_steam_id(steam_id).await? {
+                return Ok(Some(res));
+            }
+        }
+        if id.contains('@') {
+            if let Some(res) = self.user_by_email(id.clone()).await? {
+                return Ok(Some(res));
+            }
+        }
+        self.user_by_display_name(id.clone()).await
     }
 
     pub async fn insert_user(&self, entity: crate::schema::user::ActiveModel) -> Result<crate::schema::user::Model, sea_orm::DbErr> {

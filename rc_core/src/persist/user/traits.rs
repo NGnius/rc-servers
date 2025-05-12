@@ -15,7 +15,10 @@ pub enum ExtraUserInfo {
     Steam {
         id: u64,
     },
-    Standalone {
+    Username {
+        password: String,
+    },
+    Email {
         password: String,
     }
 }
