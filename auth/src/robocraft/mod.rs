@@ -2,6 +2,7 @@ mod debug;
 mod username;
 mod steam;
 mod email;
+mod registration;
 
 pub fn stage() -> rocket::fairing::AdHoc {
     rocket::fairing::AdHoc::on_ignite("robocraft", |rocket| async {
@@ -9,6 +10,7 @@ pub fn stage() -> rocket::fairing::AdHoc {
             .attach(email::stage())
             .attach(steam::stage())
             .attach(debug::stage())
+            .attach(registration::stage())
             .register("/", rocket::catchers![unauthorized])
     })
 }

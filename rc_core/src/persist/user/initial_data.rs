@@ -5,17 +5,17 @@ fn current_unix_time() -> i64 {
 }
 
 async fn build_new_account_data(user: &super::UserInfo, db: &rc_database::Database) -> Result<(), rc_database::sea_orm::DbErr> {
-    //std::fs::create_dir(&root)?;
-    //let garage_dir = root.as_ref().join(super::GARAGE_DIR);
-    //std::fs::create_dir(&garage_dir)?;
-    let user_data = db.insert_user(default_user_data(user)).await?;
-    db.insert_perms(default_user_perms(user_data.id)).await?;
-    db.insert_user_aux(default_user_aux_data(user_data.id)).await?;
-    db.insert_garages(default_garage_slots(user_data.id)).await?;
-    /*for slot in default_garage_slots() {
-        let filepath = garage_dir.join(format!("{}.json", slot.slot));
-        slot.save(filepath)?;
-    }*/
+    let reg_info = super::RegistrationInfo {
+        display_name: user.payload.display_name.clone(),
+        password: if let super::ExtraUserInfo::Email { password } | super::ExtraUserInfo::Username { password } = &user.extra {
+            password.to_owned()
+        } else {
+            "".to_owned()
+        },
+        email: None,
+        steam_id: if let super::ExtraUserInfo::Steam { id } = &user.extra { Some(*id) } else { None },
+    };
+    register_new_user(&reg_info, db).await?;
     Ok(())
 }
 
@@ -31,23 +31,28 @@ pub async fn setup_new_user(user: &super::UserInfo, db: &rc_database::Database) 
     Ok(())
 }
 
-fn default_user_data(user: &super::UserInfo) -> rc_database::schema::user::ActiveModel {
-    let password = if let super::ExtraUserInfo::Email { password } | super::ExtraUserInfo::Username { password } = &user.extra {
-        //password.to_owned()
+pub async fn register_new_user(info: &super::RegistrationInfo, db: &rc_database::Database) -> Result<u32, rc_database::sea_orm::DbErr> {
+    let user_data = db.insert_user(default_user_data(info)).await?;
+    db.insert_perms(default_user_perms(user_data.id)).await?;
+    db.insert_user_aux(default_user_aux_data(user_data.id)).await?;
+    db.insert_garages(default_garage_slots(user_data.id)).await?;
+    Ok(user_data.id)
+}
+
+fn default_user_data(info: &super::RegistrationInfo) -> rc_database::schema::user::ActiveModel {
+    let password = {
         use argon2::password_hash::PasswordHasher;
         let argon2_algo = argon2::Argon2::default();
         let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
-        match argon2_algo.hash_password(password.as_bytes(), &salt) {
+        match argon2_algo.hash_password(info.password.as_bytes(), &salt) {
             Err(e) => {
-                log::error!("Failed to hash password for user {}/{}: {}", user.payload.public_id, user.payload.display_name, e);
+                log::error!("Failed to hash password for user {}: {}", info.display_name, e);
                 "".to_owned()
             },
             Ok(password) => password.to_string(),
         }
-    } else {
-        Default::default()
     };
-    let steam_id = if let super::ExtraUserInfo::Steam { id } = &user.extra {
+    let steam_id = if let Some(id) = info.steam_id {
         Some(id.to_string())
     } else {
         None
@@ -55,28 +60,12 @@ fn default_user_data(user: &super::UserInfo) -> rc_database::schema::user::Activ
     rc_database::schema::user::ActiveModel {
         id: Default::default(),
         creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
-        public_id: rc_database::sea_orm::ActiveValue::Set(user.payload.public_id.clone()),
-        display_name: rc_database::sea_orm::ActiveValue::Set(user.payload.display_name.clone()),
+        public_id: rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
+        display_name: rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
         password: rc_database::sea_orm::ActiveValue::Set(password),
-        email: rc_database::sea_orm::ActiveValue::Set("//TODO".to_owned()),
+        email: rc_database::sea_orm::ActiveValue::Set(info.email.clone().unwrap_or_else(|| "".to_owned())),
         steam_id: rc_database::sea_orm::ActiveValue::Set(steam_id),
     }
-
-    /*super::AccountInfo {
-        is_mod: false,
-        is_admin: false,
-        is_dev: false,
-        steam_id: None,
-        password: None,
-        inventory: super::UnlockedParts {
-            unlocked: vec![],
-            override_: super::inventory::UnlockOverride::UnlockAll,
-        },
-        garage: super::SelectedGarage {
-            uuid: (0, 0),
-            slot: 0,
-        },
-    }*/
 }
 
 fn default_user_aux_data(user_id: u32) -> Vec<rc_database::schema::user_aux::ActiveModel> {

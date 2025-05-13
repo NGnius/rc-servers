@@ -88,6 +88,7 @@ pub struct TypedDevMessage<C> {
 
 pub struct ServerConfig {
     pub database: String,
+    pub auto_signup: bool,
 }
 
 #[derive(Clone, Debug)]

@@ -23,9 +23,22 @@ pub enum ExtraUserInfo {
     }
 }
 
+pub enum UserId {
+    SteamId(u64),
+    Email(String),
+    Username(String),
+}
+
 pub struct UserLoginInfo {
     pub response: libfj::robocraft::AuthenticationResponseInfo,
     pub is_new: bool,
+}
+
+pub struct RegistrationInfo {
+    pub display_name: String,
+    pub password: String,
+    pub email: Option<String>,
+    pub steam_id: Option<u64>,
 }
 
 #[async_trait::async_trait]
@@ -36,6 +49,8 @@ pub trait UserProvider<C> {
 #[async_trait::async_trait]
 pub trait UserAuthenticator {
     async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
+    async fn user_exists(&self, user: UserId) -> Result<bool, String>;
+    async fn register(&self, info: RegistrationInfo) -> Result<u32, String>;
 }
 
 #[async_trait::async_trait]

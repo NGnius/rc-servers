@@ -259,6 +259,7 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
     fn server_config(&self) -> super::ServerConfig {
         super::ServerConfig {
             database: self.settings.server.database.clone(),
+            auto_signup: self.settings.server.auto_signup,
         }
     }
 

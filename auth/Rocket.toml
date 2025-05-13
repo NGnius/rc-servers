@@ -2,6 +2,7 @@
 [default]
 address = "127.0.0.1"
 port = 8001
+template_dir = "../assets/templates/"
 
 ## set only when compiled in debug mode, i.e, `cargo build`
 [debug]

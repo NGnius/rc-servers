@@ -1,0 +1,100 @@
+<html>
+<head>
+  <title>OpenJam Success</title>
+  <style>
+    body {
+      background-color: lightgrey;
+      padding: 0;
+      margin: 0;
+    }
+    .form-stripe {
+      position: relative;
+      min-width: 300px;
+      max-width: 500px;
+      height: auto;
+      min-height: 100%;
+      margin: 0 auto;
+      background-color: grey;
+      padding: 25px 0;
+      box-shadow: 0px 0px 50px 5px grey;
+    }
+    .form-banner {
+      position: relative;
+      min-width: 300px;
+      max-width: 500px;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: dimgrey;
+      color: black;
+      padding: 25px;
+    }
+    .form-padded {
+      padding: 0 25px;
+    }
+    h1, h2, h3, h4, h5 {
+      text-align: center;
+    }
+    a { text-decoration-line: none; }
+    a:link { color: darkgrey; }
+    a:hover { color: white; }
+    a:visited { color: lightgrey; }
+    a:active { color: white; }
+    footer {
+      position: relative;
+      min-width: 300px;
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: black;
+    }
+    .footer {
+      width: 95%;
+      color: lightgrey;
+      box-sizing: border-box;
+      padding: 25px;
+    }
+    .display-name { display: inline-block; }
+    .display-name:hover {
+      /* Place silly things in here */
+      animation: rotate-clk 1s linear infinite;
+      -webkit-animation: rotate-clk 1s linear infinite;
+    }
+    @keyframes rotate-clk {
+      0% {
+        transform: rotate(0);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+    .display-id { display: inline-block; }
+    .display-id:hover {
+      /* Place silly things in here */
+      animation: rotate-cclk .1s linear infinite;
+      -webkit-animation: rotate-cclk .1s linear infinite;
+    }
+    @keyframes rotate-cclk {
+      0% {
+        transform: rotate(0);
+      }
+      100% {
+        transform: rotate(-360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-stripe">
+    <h1 class="form-padded">Account '<span class="display-name">{{display_name}}</span>' created!</h1>
+    <h3 class="form-padded">Welcome user #<span class="display-id">{{id}}</span> to Robocraft!</h3>
+    <h5 class="form-padded" style="padding-bottom:250px;">Let the FOSS flow through you...</h5>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

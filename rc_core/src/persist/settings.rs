@@ -72,6 +72,8 @@ fn default_slot_upgrades() -> Vec<GarageSlotUpgrade> {
 pub struct ServerSettings {
     #[serde(default = "default_db_conn")]
     pub database: String,
+    #[serde(default)]
+    pub auto_signup: bool,
 }
 
 fn default_db_conn() -> String {
@@ -81,5 +83,6 @@ fn default_db_conn() -> String {
 fn default_server_conf() -> ServerSettings {
     ServerSettings {
         database: default_db_conn(),
+        auto_signup: false,
     }
 }

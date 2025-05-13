@@ -5,13 +5,13 @@ mod garage_data;
 pub use garage_data::SelectedGarage;
 
 mod initial_data;
-pub use initial_data::setup_new_user;
+pub use initial_data::{setup_new_user, register_new_user};
 
 mod inventory;
 pub use inventory::UnlockedParts;
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo};
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 

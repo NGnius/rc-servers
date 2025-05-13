@@ -15,6 +15,7 @@ default = ["robocraft", "cardlife"]
 
 [dependencies]
 rocket.workspace = true
+rocket_dyn_templates = { version = "0.2", features = [ "handlebars" ] }
 libfj.workspace = true
 log.workspace = true
 env_logger.workspace = true
@@ -24,3 +25,4 @@ hex = "0.4"
 jsonwebtoken = "9"
 clap.workspace = true
 rc_core = { version = "*", optional = true, path = "../rc_core" }
+serde.workspace = true

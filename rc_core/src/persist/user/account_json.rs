@@ -5,6 +5,7 @@ use crate::persist::config::ConfigProvider;
 pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
+    auto_signups: bool,
     secret: Vec<u8>,
     db: std::sync::Arc<rc_database::Database>,
 }
@@ -12,13 +13,15 @@ pub struct AccountProvider {
 impl AccountProvider {
     pub async fn load(root: impl AsRef<std::path::Path>, conf: &crate::persist::config::ConfigImpl) -> std::io::Result<Self> {
         let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
-        let database_uri = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf).database;
+        let server_settings = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf);
+        let database_uri = server_settings.database;
         log::debug!("Connecting to user database URI: {}", database_uri);
         let db = rc_database::Database::init(&database_uri).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
+            auto_signups: server_settings.auto_signup,
             secret: std::fs::read(&token_path)?,
             db: std::sync::Arc::new(db),
         })
@@ -72,9 +75,14 @@ impl super::UserAuthenticator for AccountProvider {
             user_info
         } else {
             is_new_user = true;
-            log::info!("New user {}", info.payload.public_id);
-            super::setup_new_user(&info, &self.db).await.map_err(|e| e.to_string())?;
-            self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| e.to_string())?.unwrap()
+            if self.auto_signups {
+                log::info!("New user {}", info.payload.public_id);
+                super::setup_new_user(&info, &self.db).await.map_err(|e| e.to_string())?;
+                self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| e.to_string())?.unwrap()
+            } else {
+                log::info!("Rejecting user sign-in for `{}` (set settings.server.auto_signup=true to disable this behaviour)", info.payload.public_id);
+                return Err(format!("User does not exist"));
+            }
         };
         let override_password = user_info.password.is_empty() && user_info.steam_id.is_none();
         match info.extra {
@@ -127,6 +135,24 @@ impl super::UserAuthenticator for AccountProvider {
             },
             is_new: is_new_user,
         })
+    }
+
+    async fn user_exists(&self, user: super::UserId) -> Result<bool, String> {
+        Ok(match user {
+            super::UserId::SteamId(steam_id) => {
+                self.db.user_by_steam_id(steam_id).await.map_err(|e| e.to_string())?.is_some()
+            },
+            super::UserId::Email(email) => {
+                self.db.user_by_email(email).await.map_err(|e| e.to_string())?.is_some()
+            },
+            super::UserId::Username(display_name) => {
+                self.db.user_by_display_name(display_name).await.map_err(|e| e.to_string())?.is_some()
+            },
+        })
+    }
+
+    async fn register(&self, info: super::RegistrationInfo) -> Result<u32, String> {
+        super::register_new_user(&info, &self.db).await.map_err(|e| e.to_string())
     }
 }
 
