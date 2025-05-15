@@ -12,7 +12,7 @@ To get CardLife to use these servers, replace the `ServerConfig.json` file in th
 
 To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
 
-// TODO Don't expect people to run these servers on their own computer
+// TODO Document how to run the servers yourself
 
 ## Privacy
 
@@ -27,9 +27,26 @@ The current PC's MAC address is also sent to the server (this is a Robocraft cli
 
 ### Robocraft
 
+#### Extra crates
+
+There are two crates that are expected to be in the same folder parent folder as this project, since they may change as a result of OpenJam server development.
+
+- https://git.ngram.ca/OpenJam/libfj (Public-facing FreeJam API and data structures)
+- https://git.ngram.ca/OpenJam/polariton (Photon Unity Network packet and server)
+
+#### Running
+
 Run all of the servers using their respective `run_debug.sh` scripts and use the `dev` profile in `servenvmulti.config` to point the game to your local dev servers.
+The debug scripts will tell each non-HTTP server\* to run in single connection mode which makes them shut down when an unrecognised request is received or the client quits.
+The default configuration will place data in `data/robocraft` and use the assets in `assets/robocraft` (relative to the project root).
+When running for the first time, you will need to create the file `data/robocraft/token_secret.key`, otherwise most servers will crash on startup.
+The key may contain any data, but I'd recommend against leaving it empty since it is used for cryptography.
+By default, account data will be stored in a sqlite database at `data/robocraft/accounts.sqlite.db` (created automatically).
+That is good enough for most development tasks, but a real database (MySQL or Postgres) is expected to be used in production.
 
 It is possible to remove the obfuscation from the Robocraft's `Assembly-CSharp.dll` if you need to figure out how it expects the server to behave.
+
+\* non-HTTP servers use the Photon Unity Network (PUN) packet system to communicate. These are `rc_chat`, `rc_services`, `rc_singleplayer`, `rc_social`, and their respective `_room` variants.
 
 ## Contributing
 
