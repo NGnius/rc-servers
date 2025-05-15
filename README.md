@@ -10,7 +10,7 @@ To get CardLife to use these servers, replace the `ServerConfig.json` file in th
 
 ### Robocraft
 
-To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/serenvmulti.config) file in the game files.
+To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
 
 // TODO Don't expect people to run these servers on their own computer
 
