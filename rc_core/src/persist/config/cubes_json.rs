@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
 
@@ -16,6 +16,7 @@ pub struct CubeConfig {
     lerp_value: f32,
     battle: BattleConfig,
     chat: ChatConfig,
+    factory: FactoryConfig,
     settings: Settings,
 }
 
@@ -28,6 +29,7 @@ impl CubeConfig {
     }
 }
 
+#[async_trait::async_trait]
 impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
     fn cube_list(&self) -> Typed<C> {
         Typed::Dict(Dict {
@@ -270,5 +272,9 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
                 cost: inc.cost,
             }).collect(),
         }
+    }
+
+    async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>> {
+        crate::factory::Factory::from_config(&self.factory).await
     }
 }

@@ -1,0 +1,16 @@
+[package]
+name = "rc_factory"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[dependencies]
+sea-orm = { version = "1.1.10", features = [ "runtime-tokio-rustls", "macros" ] }
+async-trait.workspace = true
+libfj.workspace = true
+chrono.workspace = true
+log.workspace = true
+base64 = "0.22"

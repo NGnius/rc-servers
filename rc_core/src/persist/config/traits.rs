@@ -1,5 +1,6 @@
 use polariton::operation::Typed;
 
+#[async_trait::async_trait]
 pub trait ConfigProvider<C: Clone> {
     fn cube_list(&self) -> Typed<C>;
     fn movement_list(&self) -> Typed<C>;
@@ -20,6 +21,7 @@ pub trait ConfigProvider<C: Clone> {
     fn public_channels(&self) -> Typed<C>;
     fn server_config(&self) -> ServerConfig;
     fn garage_upgrades(&self) -> GarageUpgrades;
+    async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
 }
 
 pub struct CompleteCampaignProvider {

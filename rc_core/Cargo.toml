@@ -24,3 +24,4 @@ jsonwebtoken = "9"
 argon2 = { version = "0.5", features = [ "std" ] }
 
 rc_database = { version = "0.2", path = "../rc_database" }
+rc_factory = { version = "0.2", path = "../rc_factory" }

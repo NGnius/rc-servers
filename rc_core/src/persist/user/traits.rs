@@ -100,6 +100,7 @@ pub struct NewSlotData<C> {
     pub slot: polariton::operation::Typed<C>,
     pub bay_cpu: polariton::operation::Typed<C>,
     pub mastery_level: polariton::operation::Typed<C>,
+    pub slot_i: i32,
 }
 
 pub struct VehicleData {

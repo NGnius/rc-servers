@@ -1,0 +1,69 @@
+use polariton::operation::{ParameterTable, Typed, OperationResponse};
+use rc_factory::VehicleFactoryAdapter;
+
+const CODE: u8 = 166;
+
+const SLOT_PARAM_KEY: u8 = 43; // in; int
+//const FREE_CURRENCY_COST_PARAM_KEY: u8 = 5; // in; int
+//const PREMIUM_CURRENCY_COST_PARAM_KEY: u8 = 6; // in; int
+const FACTORY_ID_PARAM_KEY: u8 = 94; // in; int
+
+
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
+    let mut params = params.to_dict();
+    let user_info = user.user()?;
+    let slot = if let Some(Typed::Int(slot)) = params.remove(&SLOT_PARAM_KEY) {
+        user_info.new_slot(Some(slot)).await?;
+        slot
+    } else {
+        user_info.new_slot(None).await?.slot_i
+    };
+    if let Some(Typed::Int(factory_id)) = params.remove(&FACTORY_ID_PARAM_KEY) {
+        // TODO charge for robot?
+        let vehicle_to_copy = factory.vehicle(factory_id as _).await.map_err(|e| {
+            log::error!("Failed to retrieve vehicle {} (for copy-construct) from factory: {}", factory_id, e);
+            rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+        })?;
+        if let Some(vehicle_to_copy) = vehicle_to_copy {
+            let to_save = rc_core::persist::user::VehicleData {
+                slot,
+                robot_data: vehicle_to_copy.cube_data,
+                colour_data: vehicle_to_copy.colour_data,
+                weapon_order: Vec::default(), // FIXME calculate this somehow? Or maybe get the factory adapter to calculate this
+            };
+            user_info.save_slot(to_save).await?;
+        } else {
+            log::warn!("Failed to retrieve (for copy-construct) non-existent factory vehicle {}", factory_id);
+            return Err(rc_core::data::error_codes::WebServicesError::DatabaseError as i16);
+        }
+
+    }
+
+    Ok(params.into())
+}
+
+pub struct CrfItemPurchaseProvider {
+    factory: std::sync::Arc<rc_core::factory::Factory>,
+}
+
+#[async_trait::async_trait]
+impl polariton_server::operations::Operation<()> for CrfItemPurchaseProvider {
+    type User = crate::UserTy;
+
+    async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
+        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_handling(params, user, &self.factory).await)
+    }
+}
+
+impl polariton_server::operations::OperationCode for CrfItemPurchaseProvider {
+    fn op_code() -> u8 {
+        CODE
+    }
+}
+
+
+pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<rc_core::factory::Factory>) -> CrfItemPurchaseProvider {
+    CrfItemPurchaseProvider {
+        factory: factory.to_owned(),
+    }
+}

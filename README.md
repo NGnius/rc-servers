@@ -29,7 +29,7 @@ The current PC's MAC address is also sent to the server (this is a Robocraft cli
 
 #### Extra crates
 
-There are two crates that are expected to be in the same folder parent folder as this project, since they may change as a result of OpenJam server development.
+There are two crates that are expected to be in the same parent folder as this project, since they may change as a result of OpenJam server development.
 
 - https://git.ngram.ca/OpenJam/libfj (Public-facing FreeJam API and data structures)
 - https://git.ngram.ca/OpenJam/polariton (Photon Unity Network packet and server)

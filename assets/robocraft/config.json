@@ -14423,6 +14423,12 @@
             "jam_club"
         ]
     },
+    "factory": {
+        "adapter": {
+            "variant": "Arc",
+            "uri": "sqlite:../../arc/rc_archive.db?mode=ro"
+        }
+    },
     "settings": {
         "banners": [
             {

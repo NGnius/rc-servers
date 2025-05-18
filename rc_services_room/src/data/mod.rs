@@ -28,3 +28,4 @@ pub use rc_core::data::error_codes;
 //pub use rc_core::data::game_mode;
 pub mod score_multipliers;
 //pub use rc_core::data::campaign;
+pub mod crf;

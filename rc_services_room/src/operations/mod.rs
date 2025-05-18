@@ -86,6 +86,10 @@ mod garage_slots_order;
 mod garage_slot_select;
 mod garage_slot_dismantle;
 mod garage_slot_upgrade;
+mod crf_earnings;
+mod crf_list_query;
+mod crf_vehicle_data;
+mod crf_purchase;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -194,4 +198,8 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(garage_slot_select::garage_slot_selector())
         .add(garage_slot_dismantle::garage_slot_dismantler())
         .add(garage_slot_upgrade::garage_slot_upgrage_provider())
+        .add(crf_earnings::robot_shop_user_earnings_provider())
+        .add(crf_list_query::crf_item_list_query_provider(&init_ctx.factory))
+        .add(crf_vehicle_data::crf_item_data_provider(&init_ctx.factory))
+        .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory))
 }

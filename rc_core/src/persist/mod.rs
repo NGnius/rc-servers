@@ -32,6 +32,9 @@ pub use settings::Settings;
 mod chat;
 pub use chat::ChatConfig;
 
+mod vehicle_factory;
+pub use vehicle_factory::{FactoryConfig, AdapterSettings, ArcFactorySettings};
+
 pub(self) const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

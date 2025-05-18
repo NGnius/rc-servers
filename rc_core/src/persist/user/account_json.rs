@@ -387,6 +387,7 @@ impl <C: Clone> super::User<C> for UserData {
             slot: polariton::operation::Typed::Int(model.slot as _),
             bay_cpu: polariton::operation::Typed::Int(model.bay_cpu as _),
             mastery_level: polariton::operation::Typed::Int(model.mastery_level as _),
+            slot_i: model.slot as _,
         })
     }
 

@@ -19,7 +19,9 @@ base64 = "0.22"
 hex = "0.4"
 serde.workspace = true
 serde_json.workspace = true
-chrono = "0.4"
+chrono.workspace = true
 rc_core = { version = "*", path = "../rc_core" }
+rc_factory = { version = "*", path = "../rc_factory" }
 rand = "0.9"
 async-trait.workspace = true
+libfj.workspace = true
