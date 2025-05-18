@@ -73,10 +73,12 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<Par
                     let weapon_order_filtered: Vec<_> = weapon_order.items.into_iter().filter_map(|ty| if let Typed::Int(i) = ty { Some(i) } else { None }).collect();
                     let user_info = user.user()?;
                     let vehicle_data = rc_core::persist::user::VehicleData {
+                        name: None,
                         slot: slot_index,
                         robot_data: robot_data.vec,
                         colour_data: colour_data.vec,
                         weapon_order: weapon_order_filtered,
+                        crf_id: None,
                     };
                     user_info.save_slot(vehicle_data).await?;
                     let mut params_out = std::collections::HashMap::with_capacity(1);

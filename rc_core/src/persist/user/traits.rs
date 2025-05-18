@@ -104,8 +104,10 @@ pub struct NewSlotData<C> {
 }
 
 pub struct VehicleData {
+    pub name: Option<String>,
     pub slot: i32,
     pub robot_data: Vec<u8>,
     pub colour_data: Vec<u8>,
     pub weapon_order: Vec<i32>,
+    pub crf_id: Option<i32>,
 }

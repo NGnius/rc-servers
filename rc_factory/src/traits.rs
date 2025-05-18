@@ -1,6 +1,6 @@
 #[async_trait::async_trait]
 pub trait VehicleFactoryAdapter: Send + Sync + 'static {
-    async fn vehicle(&self, id: u32) -> Result<Option<VehicleInfo>, Box<dyn std::error::Error>>;
+    async fn vehicle(&self, id: u32) -> Result<Option<(VehicleInfo, VehicleQueryInfo)>, Box<dyn std::error::Error>>;
     async fn list(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<VehicleQueryInfo>, Box<dyn std::error::Error>>;
 }
 

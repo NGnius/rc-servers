@@ -15,7 +15,7 @@ async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory:
             rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
         if let Some(vehicle) = vehicle {
-            let vehicle_data = crate::data::crf::ItemData::from(vehicle);
+            let vehicle_data = crate::data::crf::ItemData::from(vehicle.0);
             params.insert(DATA_PARAM_KEY, vehicle_data.as_transmissible());
         } else {
             log::warn!("Failed to retrieve non-existent factory vehicle {}", id);

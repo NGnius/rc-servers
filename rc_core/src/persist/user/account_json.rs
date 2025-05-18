@@ -333,6 +333,8 @@ impl <C: Clone> super::User<C> for UserData {
             weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
             robot_data: rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
             colour_data: rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
+            crf_id: if let Some(crf_id) = vehicle.crf_id { rc_database::sea_orm::ActiveValue::Set(Some(crf_id as u32)) } else { Default::default() },
+            name: if let Some(new_name) = vehicle.name { rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
             ..Default::default()
         };
         self.save_garage_by_slot(entity, vehicle.slot as u32).await.map_err(|e| {

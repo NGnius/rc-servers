@@ -20,16 +20,18 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
     };
     if let Some(Typed::Int(factory_id)) = params.remove(&FACTORY_ID_PARAM_KEY) {
         // TODO charge for robot?
-        let vehicle_to_copy = factory.vehicle(factory_id as _).await.map_err(|e| {
+        let vehicle = factory.vehicle(factory_id as _).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle {} (for copy-construct) from factory: {}", factory_id, e);
             rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
-        if let Some(vehicle_to_copy) = vehicle_to_copy {
+        if let Some((vehicle_to_copy, vehicle_meta)) = vehicle {
             let to_save = rc_core::persist::user::VehicleData {
+                name: Some(vehicle_meta.name),
                 slot,
                 robot_data: vehicle_to_copy.cube_data,
                 colour_data: vehicle_to_copy.colour_data,
                 weapon_order: Vec::default(), // FIXME calculate this somehow? Or maybe get the factory adapter to calculate this
+                crf_id: Some(factory_id),
             };
             user_info.save_slot(to_save).await?;
         } else {

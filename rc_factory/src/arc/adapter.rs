@@ -23,16 +23,43 @@ impl ArcAdapter {
 
 #[async_trait::async_trait]
 impl crate::VehicleFactoryAdapter for ArcAdapter {
-    async fn vehicle(&self, id: u32) -> Result<Option<crate::VehicleInfo>, Box<dyn std::error::Error>> {
-        log::debug!("Get vehicle id {}", id);
-        let cubes = super::entities::robot_cubes::Entity::find_by_id(id).one(&self.orm).await?;
-        if let Some(cubes) = cubes {
+    async fn vehicle(&self, id: u32) -> Result<Option<(crate::VehicleInfo, crate::VehicleQueryInfo)>, Box<dyn std::error::Error>> {
+        log::debug!("Get vehicle by id {}", id);
+        let cubes = super::entities::robot_cubes::Entity::find_by_id(id).one(&self.orm);
+        let meta = super::entities::robot_metadata::Entity::find_by_id(id).one(&self.orm);
+        let cubes = cubes.await?;
+        let meta = meta.await?;
+        if let (Some(cubes), Some(meta)) = (cubes, meta) {
             use base64::Engine;
-            Ok(Some(crate::VehicleInfo {
-                id: id as _,
-                cube_data: base64::prelude::BASE64_STANDARD.decode(cubes.cube_data.as_bytes()).unwrap_or_default(),
-                colour_data: base64::prelude::BASE64_STANDARD.decode(cubes.colour_data.as_bytes()).unwrap_or_default(),
-            }))
+            Ok(Some((
+                crate::VehicleInfo {
+                    id: id as _,
+                    cube_data: base64::prelude::BASE64_STANDARD.decode(cubes.cube_data.as_bytes()).unwrap_or_default(),
+                    colour_data: base64::prelude::BASE64_STANDARD.decode(cubes.colour_data.as_bytes()).unwrap_or_default(),
+                },
+                crate::VehicleQueryInfo {
+                    id: meta.id as _,
+                    name: meta.name,
+                    description: meta.description,
+                    thumbnail: meta.thumbnail,
+                    added_by: meta.added_by,
+                    added_by_display_name: meta.added_by_display_name,
+                    added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
+                    expiry_date: if self.ignore_expiry { chrono::Utc::now() + chrono::Duration::weeks(2) } else {  crate::traits::parse_rc_date(&meta.expiry_date).unwrap_or_default() },
+                    cpu: meta.cpu as _,
+                    total_robot_ranking: meta.total_robot_ranking as _,
+                    rent_count: meta.rent_count as _,
+                    buy_count: meta.buy_count as _,
+                    buyable: meta.buyable != 0,
+                    removed_date: Default::default(),
+                    ban_date: Default::default(),
+                    featured: meta.featured != 0,
+                    banner_message: Default::default(),
+                    combat_rating: meta.combat_rating,
+                    cosmetic_rating: meta.cosmetic_rating,
+                    cube_amounts: Default::default(),
+                }
+            )))
         } else {
             Ok(None)
         }
