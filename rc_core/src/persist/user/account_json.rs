@@ -470,4 +470,26 @@ impl <C: Clone> super::User<C> for UserData {
             ],
         }.as_transmissible())
     }
+
+    async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16> {
+        let slot = self.load_garage_by_slot(vehicle.slot as u32).await.map_err(|e| {
+            log::error!("Failed to retrieve vehicle slot {} for user_id {} (prepare_factory_upload): {}", vehicle.slot, self.account.id, e);
+            DATABASE_ERR
+        })?.ok_or_else(|| {
+            log::error!("Failed to find vehicle slot {} for user_id {} (prepare_factory_upload)", vehicle.slot, self.account.id);
+            INVALID_ROBOT_ERR
+        })?;
+        Ok(rc_factory::VehicleUploadInfo {
+            name: vehicle.name,
+            description: vehicle.description,
+            thumbnail: vehicle.thumbnail,
+            added_by: self.account.public_id.clone(),
+            added_by_display_name: self.account.display_name.clone(),
+            cpu: slot.total_robot_cpu,
+            total_robot_ranking: slot.total_robot_ranking,
+            build_version: vehicle.version,
+            cube_data: slot.robot_data,
+            colour_data: slot.colour_data,
+        })
+    }
 }

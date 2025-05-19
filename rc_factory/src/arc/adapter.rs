@@ -146,4 +146,9 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         log::debug!("Search vehicles returned {} results", infos.len());
         Ok(infos)
     }
+
+    async fn upload(&self, _vehicle: crate::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
+        log::info!("Arc adapter does not support uploading factory vehicles");
+        Ok(false)
+    }
 }

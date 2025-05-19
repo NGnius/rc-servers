@@ -21,6 +21,14 @@ impl rc_factory::VehicleFactoryAdapter for Factory {
             Self::None => Ok(Vec::default()),
         }
     }
+
+    async fn upload(&self, vehicle: rc_factory::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.upload(vehicle).await,
+            Self::Custom(x) => x.upload(vehicle).await,
+            Self::None => Ok(false),
+        }
+    }
 }
 
 impl Factory {

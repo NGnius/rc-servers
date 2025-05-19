@@ -28,15 +28,15 @@ impl ShopItemListFilters {
             page_size: read_u32(r)?,
             weapon_filter: read_i32(r)?,
             movement_filter: read_i32(r)?,
-            weapon_groups: rc_core::data::read_str_for_binwriter(r)?,
-            movement_groups: rc_core::data::read_str_for_binwriter(r)?,
+            weapon_groups: super::read_str_for_binwriter(r)?,
+            movement_groups: super::read_str_for_binwriter(r)?,
             player: read_bool(r)?,
             sort_mode: read_i32(r)?,
             min_cpu: read_i32(r)?,
             max_cpu: read_i32(r)?,
             min_robot_ranking: read_i32(r)?,
             max_robot_ranking: read_i32(r)?,
-            text: rc_core::data::read_str_for_binwriter(r)?,
+            text: super::read_str_for_binwriter(r)?,
             text_search_field: read_i32(r)?,
             show_featured: read_bool(r)?,
             show_hidden: read_bool(r)?,
@@ -94,22 +94,22 @@ pub struct ItemResult {
 impl ItemResult {
     pub fn dump(&self, w: &mut dyn std::io::Write) -> std::io::Result<usize> {
         let mut total_len = write_i32(w, self.id)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.name, w)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.description, w)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.thumbnail, w)?;
+        total_len += super::write_str_for_binreader(&self.name, w)?;
+        total_len += super::write_str_for_binreader(&self.description, w)?;
+        total_len += super::write_str_for_binreader(&self.thumbnail, w)?;
         total_len += write_f64(w, self.style_rating)?;
         total_len += write_f64(w, self.combat_rating)?;
         total_len += write_i32(w, self.cpu)?;
         total_len += write_i32(w, self.total_robot_ranking)?;
         total_len += write_i64(w, self.expiry_date)?;
         total_len += write_bool(w, self.buyable)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.added_by, w)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.added_by_display_name, w)?;
+        total_len += super::write_str_for_binreader(&self.added_by, w)?;
+        total_len += super::write_str_for_binreader(&self.added_by_display_name, w)?;
         total_len += write_i64(w, self.added_date)?;
         total_len += write_i32(w, self.rent_count)?;
         total_len += write_i32(w, self.buy_count)?;
         total_len += write_bool(w, self.featured)?;
-        total_len += rc_core::data::write_str_for_binreader(&self.banner_message, w)?;
+        total_len += super::write_str_for_binreader(&self.banner_message, w)?;
         total_len += write_i32(w, self.cube_counts.len() as i32)?;
         for (key, val) in self.cube_counts.iter() {
             total_len += write_u32(w, *key)?;
@@ -192,6 +192,69 @@ impl std::convert::From<rc_factory::VehicleInfo> for ItemData {
     }
 }
 
+pub struct UploadData {
+    pub version: String,
+    pub slot: i32,
+    pub name: String,
+    pub description: String,
+    pub thumbnail: Vec<u8>,
+}
+
+impl UploadData {
+    pub fn from_transmissibles<C>(build_version: String, mut data: polariton::operation::Dict<C>) -> Result<Self, i16> {
+        if let Some(slot_i) = data.items.iter().position(|(key, _)| typed_is_str(key, "SlotId")) {
+            if let (_, polariton::operation::Typed::Int(slot)) = data.items.swap_remove(slot_i) {
+                if let Some(name_i) = data.items.iter().position(|(key, _)| typed_is_str(key, "Name")) {
+                    if let (_, polariton::operation::Typed::Str(name)) = data.items.swap_remove(name_i) {
+                        if let Some(description_i) = data.items.iter().position(|(key, _)| typed_is_str(key, "Description")) {
+                            if let (_, polariton::operation::Typed::Str(description)) = data.items.swap_remove(description_i) {
+                                if let Some(thumb_i) = data.items.iter().position(|(key, _)| typed_is_str(key, "Thumbnail")) {
+                                    if let (_, polariton::operation::Typed::Bytes(thumb)) = data.items.swap_remove(thumb_i) {
+                                        return Ok(Self {
+                                            version: build_version,
+                                            slot,
+                                            name: name.string,
+                                            description: description.string,
+                                            thumbnail: thumb.vec,
+                                        });
+                                    } else {
+                                        log::warn!("Factory upload data Thumbnail is not Bytes");
+                                    }
+                                } else {
+                                    log::warn!("Factory upload data is missing Thumbnail");
+                                }
+                            } else {
+                                log::warn!("Factory upload data Description is not Str");
+                            }
+                        } else {
+                            log::warn!("Factory upload data is missing Description");
+                        }
+                    } else {
+                        log::warn!("Factory upload data Name is not Str");
+                    }
+                } else {
+                    log::warn!("Factory upload data is missing Name");
+                }
+            } else {
+                log::warn!("Factory upload data SlotId is not Int")
+            }
+        } else {
+            log::warn!("Factory upload data is missing SlotId")
+        }
+        Err(crate::data::error_codes::WebServicesError::UnexpectedError as i16)
+    }
+
+    pub fn into_core(self) -> crate::persist::user::VehicleUploadData {
+        crate::persist::user::VehicleUploadData {
+            version: self.version,
+            slot: self.slot,
+            name: self.name,
+            description: self.description,
+            thumbnail: self.thumbnail,
+        }
+    }
+}
+
 #[inline]
 fn read_i32(r: &mut dyn std::io::Read) -> std::io::Result<i32> {
     let mut buf = [0u8; 4];
@@ -246,4 +309,12 @@ fn write_bool(w: &mut dyn std::io::Write, b: bool) -> std::io::Result<usize> {
 #[inline]
 fn split_u32(s: &str) -> Vec<u32> {
     s.split(',').filter_map(|x| x.parse().ok()).collect()
+}
+
+fn typed_is_str<C>(ty: &polariton::operation::Typed<C>, s: &str) -> bool {
+    if let polariton::operation::Typed::Str(ty_s) = ty {
+        ty_s.string == s
+    } else {
+        false
+    }
 }

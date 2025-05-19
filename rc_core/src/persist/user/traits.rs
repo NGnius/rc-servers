@@ -71,6 +71,7 @@ pub trait User<C> {
     async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16>;
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
 }
 
 pub struct UserSlots<C> {
@@ -110,4 +111,12 @@ pub struct VehicleData {
     pub colour_data: Vec<u8>,
     pub weapon_order: Vec<i32>,
     pub crf_id: Option<i32>,
+}
+
+pub struct VehicleUploadData {
+    pub version: String,
+    pub slot: i32,
+    pub name: String,
+    pub description: String,
+    pub thumbnail: Vec<u8>,
 }
