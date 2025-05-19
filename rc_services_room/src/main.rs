@@ -17,6 +17,7 @@ pub struct InitConfig {
     pub cubes: rc_core::persist::config::ConfigImpl,
     pub users: std::sync::Arc<rc_core::persist::user::UserImpl>,
     pub factory: std::sync::Arc<rc_core::factory::Factory>,
+    pub parsers: rc_core::cubes::CubeParsers,
 }
 
 #[tokio::main]
@@ -28,10 +29,12 @@ async fn main() -> std::io::Result<()> {
     let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
     let factory = std::sync::Arc::new(<rc_core::persist::config::ConfigImpl as rc_core::ConfigProvider<()>>::factory::<'_, '_>(&cubes).await.expect("Bad vehicle factory (CRF) config"));
+    let parsers = rc_core::cubes::CubeParsers::new(&cubes);
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,
         factory,
+        parsers,
     });
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));

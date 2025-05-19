@@ -9,7 +9,7 @@ const SLOT_PARAM_KEY: u8 = 43; // in; int
 const FACTORY_ID_PARAM_KEY: u8 = 94; // in; int
 
 
-async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>, weapon_order: &std::sync::Arc<rc_core::cubes::WeaponListParser>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     let user_info = user.user()?;
     let slot = if let Some(Typed::Int(slot)) = params.remove(&SLOT_PARAM_KEY) {
@@ -25,12 +25,16 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
             rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
         if let Some((vehicle_to_copy, vehicle_meta)) = vehicle {
+            // parse cube data for weapon order
+            let mut cursor = std::io::Cursor::new(&vehicle_to_copy.cube_data);
+            let weapons = weapon_order.guess_weapons(&mut cursor);
+            // save to database
             let to_save = rc_core::persist::user::VehicleData {
                 name: Some(vehicle_meta.name),
                 slot,
                 robot_data: vehicle_to_copy.cube_data,
                 colour_data: vehicle_to_copy.colour_data,
-                weapon_order: Vec::default(), // FIXME calculate this somehow? Or maybe get the factory adapter to calculate this
+                weapon_order: weapons,
                 crf_id: Some(factory_id),
             };
             user_info.save_slot(to_save).await?;
@@ -46,6 +50,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
 
 pub struct CrfItemPurchaseProvider {
     factory: std::sync::Arc<rc_core::factory::Factory>,
+    weapon_order: std::sync::Arc<rc_core::cubes::WeaponListParser>,
 }
 
 #[async_trait::async_trait]
@@ -53,7 +58,7 @@ impl polariton_server::operations::Operation<()> for CrfItemPurchaseProvider {
     type User = crate::UserTy;
 
     async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
-        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_handling(params, user, &self.factory).await)
+        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_handling(params, user, &self.factory, &self.weapon_order).await)
     }
 }
 
@@ -64,8 +69,9 @@ impl polariton_server::operations::OperationCode for CrfItemPurchaseProvider {
 }
 
 
-pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<rc_core::factory::Factory>) -> CrfItemPurchaseProvider {
+pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<rc_core::factory::Factory>, weapon_order: std::sync::Arc<rc_core::cubes::WeaponListParser>) -> CrfItemPurchaseProvider {
     CrfItemPurchaseProvider {
         factory: factory.to_owned(),
+        weapon_order,
     }
 }

@@ -11,3 +11,5 @@ pub use persist::config::{ConfigImpl, ConfigProvider};
 pub mod polariton;
 
 pub mod factory;
+
+pub mod cubes;

@@ -2,7 +2,7 @@ pub mod config;
 pub mod user;
 
 mod cube_data;
-pub use cube_data::{Cube, ItemTier, ItemCategory};
+pub use cube_data::{Cube, ItemTier, ItemCategory, ItemType};
 //pub use cube_data::{VisibilityMode, ItemType};
 
 mod garage;

@@ -22,6 +22,7 @@ pub trait ConfigProvider<C: Clone> {
     fn server_config(&self) -> ServerConfig;
     fn garage_upgrades(&self) -> GarageUpgrades;
     async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
+    fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
 }
 
 pub struct CompleteCampaignProvider {

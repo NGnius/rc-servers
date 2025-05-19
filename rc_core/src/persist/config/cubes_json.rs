@@ -277,4 +277,8 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
     async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>> {
         crate::factory::Factory::from_config(&self.factory).await
     }
+
+    fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube> {
+        &self.cubes
+    }
 }

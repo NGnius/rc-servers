@@ -201,5 +201,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(crf_earnings::robot_shop_user_earnings_provider())
         .add(crf_list_query::crf_item_list_query_provider(&init_ctx.factory))
         .add(crf_vehicle_data::crf_item_data_provider(&init_ctx.factory))
-        .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory))
+        .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory, init_ctx.parsers.weapon_order()))
 }
