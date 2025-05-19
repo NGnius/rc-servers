@@ -146,14 +146,14 @@ CATEGORIES_PLACEMENTS = {
     "NotAFunctionalItem": ALL_FACES,
     "Wheel": 0b00001100,
     "Hover": 0b00111100,
-    "Wing": 0b00111100,
-    "Rudder": 0b00111100,
+    "Wing": ALL_FACES, #0b00111100,
+    "Rudder": ALL_FACES, #0b00111100,
     "Thruster": ALL_FACES,
     "InsectLeg": 0b00111100,
     "MechLeg": 0b00000011,
     "Ski": 0b00000011,
     "TankTrack": 0b00111100,
-    "Rotor": 0b00111100,
+    "Rotor": ALL_FACES, #0b00111100,
     "SprinterLeg": 0b00000011,
     "Propeller": ALL_FACES,
     "Laser": None,
@@ -452,6 +452,12 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                 "jam_club",
             ],
         },
+        "factory": {
+            "adapter": {
+                "variant": "Arc",
+                "uri": "sqlite:../../arc/rc_archive.db?mode=ro"
+            }
+        },
         "settings":  {
             "banners": [{
                 "message": msg,
@@ -505,8 +511,10 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
             "hexId": str(cube["1 string itemCode"]),
             "isVariant": is_variant_guess(cube["1 string nameStrKey"], cube["1 string spriteName"]),
         }
-        if "protonium" in name.lower():
+        if "protoniumcrystal" in name.lower():
             new_entry["info"]["protonium"] = True
+        if "fusion" in name.lower() or "equalizer" in name.lower() or "protonium" in name.lower():
+            new_entry["info"]["visibility"] = "None"
         if "CPU LOAD" in stats:
             new_entry["info"]["cpu"] = int(stats["CPU LOAD"].strip().split(" ")[0].strip())
         if "ARMOR" in stats:
@@ -541,7 +549,7 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
             if new_entry["info"]["category"] in WEAPONS:
                 if new_entry["info"]["size"] in WEAPONS[new_entry["info"]["category"]]:
                     new_entry["weapon"] = WEAPONS[new_entry["info"]["category"]][new_entry["info"]["size"]]
-        new_entry["info"]["ignore_in_weapon_list"] = new_entry["info"]["type"] != "Weapon"
+        new_entry["info"]["ignore_in_weapon_list"] = new_entry["info"]["type"] not in ["Weapon", "Module"]
 
         # tech tree
         if new_entry["info"]["category"] != "NotAFunctionalItem" and is_original:

@@ -4240,7 +4240,7 @@
             "id": 3947193935,
             "info": {
                 "category": "Rotor",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strMass": "12.5 [strKilograms]",
                     "strCPU": "31 [strPFlops]S",
@@ -4293,7 +4293,7 @@
             "id": 3789940851,
             "info": {
                 "category": "Rotor",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strMass": "17.5 [strKilograms]",
                     "strCPU": "34 [strPFlops]S",
@@ -4346,7 +4346,7 @@
             "id": 1802864184,
             "info": {
                 "category": "Rotor",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strMass": "22.5 [strKilograms]",
                     "strCPU": "36 [strPFlops]S",
@@ -4399,7 +4399,7 @@
             "id": 3980928804,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "23[strPFlops]S",
                     "strRobotRanking": "453.00",
@@ -4455,7 +4455,7 @@
             "id": 2205394221,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "25 [strPFlops]S",
                     "strRobotRanking": "3,587.00",
@@ -4511,7 +4511,7 @@
             "id": 2312317713,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "27 [strPFlops]S",
                     "strRobotRanking": "28,243.00",
@@ -4567,7 +4567,7 @@
             "id": 2865954846,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "27 [strPFlops]S",
                     "strRobotRanking": "28,243.00",
@@ -4603,7 +4603,7 @@
             "id": 2464192350,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "29 [strPFlops]S",
                     "strRobotRanking": "221,142.00",
@@ -4659,7 +4659,7 @@
             "id": 2863842421,
             "info": {
                 "category": "Wing",
-                "placements": 60,
+                "placements": 63,
                 "stats": {},
                 "description": "strWingBatDesc",
                 "size": "T5",
@@ -4690,7 +4690,7 @@
             "id": 2369778644,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "20 [strPFlops]S",
                     "strRobotRanking": "394.00",
@@ -4746,7 +4746,7 @@
             "id": 3808719325,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "22 [strPFlops]S",
                     "strRobotRanking": "3,157.00",
@@ -4802,7 +4802,7 @@
             "id": 3919904737,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "24 [strPFlops]S",
                     "strRobotRanking": "25,105.00",
@@ -4858,7 +4858,7 @@
             "id": 2404311559,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "24 [strPFlops]S",
                     "strRobotRanking": "25,105.00",
@@ -4894,7 +4894,7 @@
             "id": 2608683011,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {
                     "strCPU": "26 [strPFlops]S",
                     "strRobotRanking": "198,266.00",
@@ -4950,7 +4950,7 @@
             "id": 2928920064,
             "info": {
                 "category": "Rudder",
-                "placements": 60,
+                "placements": 63,
                 "stats": {},
                 "description": "strRudderBatDesc",
                 "size": "T5",
@@ -8196,7 +8196,7 @@
                 "type": "Module",
                 "active": true,
                 "cpu": 150,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 123750,
                 "visibility": "Mothership",
                 "ranking": 15000
@@ -8232,7 +8232,7 @@
                 "size": "T5",
                 "type": "Module",
                 "active": true,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 169125,
                 "cpu": 205,
                 "visibility": "Mothership",
@@ -8272,7 +8272,7 @@
                 "size": "T5",
                 "type": "Module",
                 "active": true,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 165000,
                 "cpu": 200,
                 "visibility": "Mothership",
@@ -8314,7 +8314,7 @@
                 "size": "T5",
                 "type": "Module",
                 "active": true,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 189750,
                 "cpu": 230,
                 "visibility": "Mothership",
@@ -8354,7 +8354,7 @@
                 "size": "T5",
                 "type": "Module",
                 "active": true,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 144375,
                 "cpu": 175,
                 "visibility": "Mothership",
@@ -8395,7 +8395,7 @@
                 "size": "T5",
                 "type": "Module",
                 "active": true,
-                "ignore_in_weapon_list": true,
+                "ignore_in_weapon_list": false,
                 "health": 180000,
                 "cpu": 100,
                 "visibility": "Mothership",
@@ -9187,11 +9187,10 @@
                 "size": "NoTier",
                 "type": "Cosmetic",
                 "active": true,
-                "protonium": true,
+                "visibility": "Mothership",
                 "ignore_in_weapon_list": true,
                 "health": 1,
                 "cpu": 1,
-                "visibility": "Mothership",
                 "ranking": 1
             },
             "spriteName": "Protonium_League_Badge",
@@ -9210,11 +9209,10 @@
                 "size": "NoTier",
                 "type": "Cosmetic",
                 "active": true,
-                "protonium": true,
+                "visibility": "Mothership",
                 "ignore_in_weapon_list": true,
                 "health": 1,
                 "cpu": 1,
-                "visibility": "Mothership",
                 "ranking": 1
             },
             "spriteName": "Protonium_League_Five_Stars_Badge",
@@ -12271,6 +12269,7 @@
                 "type": "NotAFunctionalItem",
                 "active": true,
                 "protonium": true,
+                "visibility": "None",
                 "ignore_in_weapon_list": true
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
@@ -12289,6 +12288,7 @@
                 "size": "NoTier",
                 "type": "NotAFunctionalItem",
                 "active": true,
+                "visibility": "None",
                 "ignore_in_weapon_list": true
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
@@ -12307,7 +12307,7 @@
                 "size": "NoTier",
                 "type": "NotAFunctionalItem",
                 "active": true,
-                "protonium": true,
+                "visibility": "None",
                 "ignore_in_weapon_list": true
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
@@ -12326,6 +12326,7 @@
                 "size": "NoTier",
                 "type": "NotAFunctionalItem",
                 "active": true,
+                "visibility": "None",
                 "ignore_in_weapon_list": true
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
