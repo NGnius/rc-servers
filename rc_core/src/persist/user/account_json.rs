@@ -492,4 +492,38 @@ impl <C: Clone> super::User<C> for UserData {
             colour_data: slot.colour_data,
         })
     }
+
+    async fn last_seen(&self) -> Result<u64, i16> {
+        let last_seen_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::LastSeen).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?;
+        let now = chrono::Utc::now().timestamp();
+        if let Some(last_seen) = last_seen_aux_opt {
+            let to_update = rc_database::schema::user_aux::ActiveModel {
+                data: rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
+                ..Default::default()
+            };
+            self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, rc_database::schema::user_aux::Descriptor::LastSeen).await
+                .map_err(|e| {
+                    log::error!("Failed to update LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
+                    DATABASE_ERR
+                })?;
+            Ok(last_seen.data.parse().unwrap_or_default())
+        } else {
+            let to_insert = rc_database::schema::user_aux::ActiveModel {
+                user_id: rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                creation_time: rc_database::sea_orm::ActiveValue::Set(now),
+                descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::LastSeen),
+                data: rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
+                ..Default::default()
+            };
+            self.db.insert_user_aux(vec![to_insert]).await.map_err(|e| {
+                log::error!("Failed to insert LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?;
+            Ok(0)
+        }
+    }
 }

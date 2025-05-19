@@ -70,15 +70,19 @@ impl <C: Clone> DevMessageProvider<C> {
     pub fn get(&self, index: usize) -> TypedDevMessage<C> {
         // TODO maybe make this less obtuse -- it works for random, but isn't really obvious for anything else
         if self.messages.is_empty() {
-            TypedDevMessage {
-                message: Typed::Bytes(Vec::default().into()),
-                display_time: Typed::Int(-1),
-            }
+            self.get_empty()
         } else if self.messages.len() == 1 {
             self.messages[0].clone()
         } else {
             let actual_index = index % self.messages.len(); // guarantees index is within allowed range of messages
             self.messages[actual_index].clone()
+        }
+    }
+
+    pub fn get_empty(&self) -> TypedDevMessage<C> {
+        TypedDevMessage {
+            message: Typed::Bytes(Vec::default().into()),
+            display_time: Typed::Int(-1),
         }
     }
 }

@@ -72,6 +72,7 @@ pub trait User<C> {
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
+    async fn last_seen(&self) -> Result<u64, i16>;
 }
 
 pub struct UserSlots<C> {

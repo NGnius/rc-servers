@@ -40,4 +40,5 @@ pub enum Descriptor {
     UserFreeCurrency, // u64
     UserPaidCurrency, // u64
     GarageSlotOrder, // Vec<u32>,
+    LastSeen, // u64, seconds since Unix epoch
 }
