@@ -1,0 +1,32 @@
+name: Pull Request
+about: Request your change be pulled into the codebase
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What does this change accomplish?
+      placeholder: 'This changes the sky from blue to red and fixes issue #42'
+    validations:
+      required: true
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      multiple: true
+      options:
+        - Cardlife
+        - Robocraft
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Please confirm
+      options:
+        - label: I am the legal owner or represent the owner of all work submitted
+          required: true
+        - label: I consent to my submission being added to this FOSS project
+          required: true
+        - label: This PR used LLMs to generate some or all of the code changes
+          required: false
