@@ -1264,13 +1264,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227205318
             },
             "spriteName": "Cube_with_C6_Logo",
             "nameStrKey": "strCubewithC6LogoName",
             "mirrorCubeId": "",
             "hexId": "c8b8331b",
-            "isVariant": false
+            "isVariant": true
         },
         "CubewithCARBONLetters hexCode:8e9d1f83 intCode:2392661891": {
             "id": 2392661891,
@@ -1286,13 +1287,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227205318
             },
             "spriteName": "Cube_with_CARBON_Letters",
             "nameStrKey": "strCubewithCARBONLettersName",
             "mirrorCubeId": "",
             "hexId": "8e9d1f83",
-            "isVariant": false
+            "isVariant": true
         },
         "MediumCubeCardLife hexCode:7bd98d90 intCode:2077855120": {
             "id": 2077855120,
@@ -1308,7 +1310,8 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227205318
             },
             "spriteName": "Medium_Cube_Cardlife",
             "nameStrKey": "strMediumCubeCardLifeName",
@@ -1339,7 +1342,8 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227917916
             },
             "spriteName": "Medium_Edge_Cardlife",
             "nameStrKey": "strMediumEdgeCardLifeName",
@@ -2413,7 +2417,8 @@
                 "health": 113500,
                 "cpu": 50,
                 "visibility": "Mothership",
-                "ranking": 50000
+                "ranking": 50000,
+                "variant_of": 345048522
             },
             "spriteName": "T4_Wheel_Cardlife",
             "nameStrKey": "strT4SteeringWheelCardLifeName",
@@ -2444,7 +2449,8 @@
                 "health": 113500,
                 "cpu": 50,
                 "visibility": "Mothership",
-                "ranking": 50000
+                "ranking": 50000,
+                "variant_of": 1223384335
             },
             "spriteName": "T4_Wheel_Cardlife",
             "nameStrKey": "strT4WheelCardLifeName",
@@ -3226,7 +3232,8 @@
                 "health": 186200,
                 "cpu": 98,
                 "visibility": "Mothership",
-                "ranking": 98000
+                "ranking": 98000,
+                "variant_of": 1169080311
             },
             "spriteName": "Sprinter_Leg_Large_Carbon_6",
             "nameStrKey": "strT4SprinterLegCarbon6Name",
@@ -3332,13 +3339,14 @@
                 "ignore_in_weapon_list": true,
                 "cpu": 34,
                 "visibility": "Mothership",
-                "ranking": 3400
+                "ranking": 3400,
+                "variant_of": 127661231
             },
             "spriteName": "Insect_Leg_Large_Overwolf",
             "nameStrKey": "strT3InsectLegBladedName",
             "mirrorCubeId": "",
             "hexId": "9f3a3d02",
-            "isVariant": false,
+            "isVariant": true,
             "tree": {
                 "position_x": 10,
                 "position_y": 1,
@@ -3349,36 +3357,6 @@
                 "requires": [
                     127661231
                 ]
-            },
-            "movement": {
-                "ideal_height_light": 1,
-                "ideal_height_heavy": 1,
-                "ideal_crouching_height_light": 0.1,
-                "ideal_crouching_height_heavy": 0.1,
-                "ideal_height_range_light": 0.4,
-                "ideal_height_range_heavy": 0.4,
-                "jump_height_light": 20,
-                "jump_height_heavy": 11,
-                "max_upwards_force_light": 35,
-                "max_upwards_force_heavy": 25,
-                "max_lateral_force_light": 80,
-                "max_lateral_force_heavy": 30,
-                "max_turning_force_light": 75,
-                "max_turning_force_heavy": 25,
-                "max_damping_force_light": 25,
-                "max_damping_force_heavy": 15,
-                "max_stopped_force_light": 75,
-                "max_stopped_force_heavy": 20,
-                "max_new_stopped_force_light": 25,
-                "max_new_stopped_force_heavy": 10,
-                "upwards_damping_force_light": 10,
-                "upwards_damping_force_heavy": 10,
-                "lateral_damp_force_light": 10,
-                "lateral_damp_force_heavy": 10,
-                "swagger_force_light": 2.5,
-                "swagger_force_heavy": 2.5,
-                "speed_boost": 0.02,
-                "movement_enum_variant": "InsectLeg"
             }
         },
         "T4InsectLeg hexCode:637741e5 intCode:1668760037": {
@@ -3464,7 +3442,8 @@
                 "health": 132000,
                 "cpu": 44,
                 "visibility": "Mothership",
-                "ranking": 44000
+                "ranking": 44000,
+                "variant_of": 1668760037
             },
             "spriteName": "Insect_Leg_Huge_Spider",
             "nameStrKey": "strT4InsectLegSpiderName",
@@ -4141,7 +4120,8 @@
                 "health": 19800,
                 "cpu": 18,
                 "visibility": "Mothership",
-                "ranking": 180000
+                "ranking": 180000,
+                "variant_of": 2969949587
             },
             "spriteName": "Thruster_Huge_Carbon_6",
             "nameStrKey": "strT5ThrusterCarbon6Name",
@@ -4582,7 +4562,8 @@
                 "health": 27300,
                 "ignore_in_weapon_list": true,
                 "visibility": "Mothership",
-                "ranking": 26000
+                "ranking": 26000,
+                "variant_of": 2312317713
             },
             "spriteName": "Bat_Wing",
             "nameStrKey": "strT4WingBatName",
@@ -4669,7 +4650,8 @@
                 "health": 33600,
                 "cpu": 28,
                 "visibility": "Mothership",
-                "ranking": 280000
+                "ranking": 280000,
+                "variant_of": 2464192350
             },
             "spriteName": "Vampire_Bat_Wing",
             "nameStrKey": "strT5WingBatName",
@@ -4873,7 +4855,8 @@
                 "health": 21850,
                 "ignore_in_weapon_list": true,
                 "visibility": "Mothership",
-                "ranking": 23000
+                "ranking": 23000,
+                "variant_of": 3919904737
             },
             "spriteName": "Bat_Rudder",
             "nameStrKey": "strT4RudderBatName",
@@ -4960,7 +4943,8 @@
                 "health": 27500,
                 "cpu": 25,
                 "visibility": "Mothership",
-                "ranking": 250000
+                "ranking": 250000,
+                "variant_of": 2608683011
             },
             "spriteName": "Vampire_Bat_Rudder",
             "nameStrKey": "strT5RudderBatName",
@@ -5761,7 +5745,8 @@
                 "health": 250000,
                 "cpu": 250,
                 "visibility": "Mothership",
-                "ranking": 2500000
+                "ranking": 2500000,
+                "variant_of": 3209000021
             },
             "spriteName": "Mega_Laser_Golden",
             "nameStrKey": "strT5LaserGoldenName",
@@ -5824,7 +5809,8 @@
                 "health": 26000,
                 "cpu": 26,
                 "visibility": "Mothership",
-                "ranking": 26000
+                "ranking": 26000,
+                "variant_of": 2088248713
             },
             "spriteName": "Top_Laser_Huge_Carbon_6",
             "nameStrKey": "strT4LaserCarbon6Name",
@@ -5975,7 +5961,8 @@
                 "health": 250000,
                 "ignore_in_weapon_list": false,
                 "visibility": "Mothership",
-                "ranking": 2500000
+                "ranking": 2500000,
+                "variant_of": 3209000021
             },
             "spriteName": "Mega_Laser_Carbon_6",
             "nameStrKey": "strT5LaserCarbon6Name",
@@ -6456,7 +6443,8 @@
                 "health": 30000,
                 "cpu": 30,
                 "visibility": "Mothership",
-                "ranking": 30000
+                "ranking": 30000,
+                "variant_of": 929526033
             },
             "spriteName": "Plasma_Huge_Carbon_6",
             "nameStrKey": "strT4PlasmaCarbon6Name",
@@ -6569,7 +6557,8 @@
                 "health": 300000,
                 "cpu": 300,
                 "visibility": "Mothership",
-                "ranking": 3000000
+                "ranking": 3000000,
+                "variant_of": 171448327
             },
             "spriteName": "Mega_Plasma_Carbon_6",
             "nameStrKey": "strT5PlasmaCarbon6Name",
@@ -7766,7 +7755,8 @@
                 "health": 240000,
                 "cpu": 240,
                 "visibility": "Mothership",
-                "ranking": 2400000
+                "ranking": 2400000,
+                "variant_of": 1184153980
             },
             "spriteName": "T5_Ion_Cardlife",
             "nameStrKey": "strT5IonCardLifeName",
@@ -8662,13 +8652,14 @@
                 "ignore_in_weapon_list": true,
                 "cpu": 36,
                 "visibility": "Mothership",
-                "ranking": 3600
+                "ranking": 3600,
+                "variant_of": 2536292021
             },
             "spriteName": "Football_Plate_Left",
             "nameStrKey": "strT3ElectroShieldDLFootballName",
             "mirrorCubeId": "bbe6109c",
             "hexId": "c19d8fec",
-            "isVariant": false
+            "isVariant": true
         },
         "T3ElectroShieldDRFootball hexCode:bbe6109c intCode:3152416924": {
             "id": 3152416924,
@@ -8689,13 +8680,14 @@
                 "ignore_in_weapon_list": true,
                 "cpu": 36,
                 "visibility": "Mothership",
-                "ranking": 3600
+                "ranking": 3600,
+                "variant_of": 2536292021
             },
             "spriteName": "Football_Plate_Right",
             "nameStrKey": "strT3ElectroShieldDRFootballName",
             "mirrorCubeId": "c19d8fec",
             "hexId": "bbe6109c",
-            "isVariant": false
+            "isVariant": true
         },
         "T3ElectroShieldDLSpiked hexCode:2b50eede intCode:726724318": {
             "id": 726724318,
@@ -8716,13 +8708,14 @@
                 "ignore_in_weapon_list": true,
                 "cpu": 36,
                 "visibility": "Mothership",
-                "ranking": 3600
+                "ranking": 3600,
+                "variant_of": 2536292021
             },
             "spriteName": "Spiked_Plate_Left",
             "nameStrKey": "strT3ElectroShieldDLSpikedName",
             "mirrorCubeId": "512b71ae",
             "hexId": "2b50eede",
-            "isVariant": false
+            "isVariant": true
         },
         "T3ElectroShieldDRSpiked hexCode:512b71ae intCode:1361801646": {
             "id": 1361801646,
@@ -8743,13 +8736,14 @@
                 "ignore_in_weapon_list": true,
                 "cpu": 36,
                 "visibility": "Mothership",
-                "ranking": 3600
+                "ranking": 3600,
+                "variant_of": 2536292021
             },
             "spriteName": "Spiked_Plate_Right",
             "nameStrKey": "strT3ElectroShieldDRSpikedName",
             "mirrorCubeId": "2b50eede",
             "hexId": "512b71ae",
-            "isVariant": false
+            "isVariant": true
         },
         "ElectroshieldEL hexCode:4e0afdb8 intCode:1309343160": {
             "id": 1309343160,
@@ -12723,7 +12717,8 @@
                 "health": 240000,
                 "cpu": 100,
                 "visibility": "Mothership",
-                "ranking": 1000000
+                "ranking": 1000000,
+                "variant_of": 48208435
             },
             "spriteName": "T5_Wheel_Gold",
             "nameStrKey": "strT5SteeringWheelGoldenName",
@@ -12754,7 +12749,8 @@
                 "health": 240000,
                 "cpu": 100,
                 "visibility": "Mothership",
-                "ranking": 1000000
+                "ranking": 1000000,
+                "variant_of": 3301162279
             },
             "spriteName": "T5_Wheel_Gold",
             "nameStrKey": "strT5WheelGoldenName",
@@ -12785,7 +12781,8 @@
                 "health": 533000,
                 "cpu": 205,
                 "visibility": "Mothership",
-                "ranking": 2050000
+                "ranking": 2050000,
+                "variant_of": 4140335767
             },
             "spriteName": "T5_Mech_Leg_Gold",
             "nameStrKey": "strT5MechLegGoldenName",
@@ -12816,7 +12813,8 @@
                 "health": 180000,
                 "cpu": 100,
                 "visibility": "Mothership",
-                "ranking": 1000000
+                "ranking": 1000000,
+                "variant_of": 3835205776
             },
             "spriteName": "T5_Hover_Gold",
             "nameStrKey": "strT5HoverGoldenName",
@@ -12847,7 +12845,8 @@
                 "health": 300000,
                 "cpu": 300,
                 "visibility": "Mothership",
-                "ranking": 3000000
+                "ranking": 3000000,
+                "variant_of": 171448327
             },
             "spriteName": "T5_Plasma_Gold",
             "nameStrKey": "strT5PlasmaGoldenName",
@@ -12878,7 +12877,8 @@
                 "health": 260000,
                 "cpu": 260,
                 "visibility": "Mothership",
-                "ranking": 2600000
+                "ranking": 2600000,
+                "variant_of": 2083340214
             },
             "spriteName": "T5_Rail_Gold",
             "nameStrKey": "strT5RailGoldenName",
@@ -12909,7 +12909,8 @@
                 "health": 240000,
                 "cpu": 240,
                 "visibility": "Mothership",
-                "ranking": 2400000
+                "ranking": 2400000,
+                "variant_of": 1184153980
             },
             "spriteName": "T5_Ion_Gold",
             "nameStrKey": "strT5IonGoldenName",
@@ -12940,7 +12941,8 @@
                 "health": 280000,
                 "cpu": 280,
                 "visibility": "Mothership",
-                "ranking": 2800000
+                "ranking": 2800000,
+                "variant_of": 1795842454
             },
             "spriteName": "T5_Chaingun_Gold",
             "nameStrKey": "strT5ChaingunGoldenName",
@@ -12971,7 +12973,8 @@
                 "health": 270000,
                 "cpu": 270,
                 "visibility": "Mothership",
-                "ranking": 2700000
+                "ranking": 2700000,
+                "variant_of": 2419806013
             },
             "spriteName": "T5_Seeker_Gold",
             "nameStrKey": "strT5SeekerGoldenName",
@@ -13002,7 +13005,8 @@
                 "health": 290000,
                 "cpu": 290,
                 "visibility": "Mothership",
-                "ranking": 2900000
+                "ranking": 2900000,
+                "variant_of": 1885850433
             },
             "spriteName": "T5_Mortar_Gold",
             "nameStrKey": "strT5MortarGoldenName",
@@ -13143,13 +13147,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227205318
             },
             "spriteName": "Neon_Cube",
             "nameStrKey": "strNeonCubeName",
             "mirrorCubeId": "",
             "hexId": "08f34670",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonEdge hexCode:4683ee73 intCode:1183051379": {
             "id": 1183051379,
@@ -13165,13 +13170,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227917916
             },
             "spriteName": "Neon_Edge",
             "nameStrKey": "strNeonEdgeName",
             "mirrorCubeId": "",
             "hexId": "4683ee73",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonEdgeRound hexCode:9c5bd476 intCode:2623263862": {
             "id": 2623263862,
@@ -13187,13 +13193,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 447126572
             },
             "spriteName": "Neon_Edge_Round",
             "nameStrKey": "strNeonEdgeRoundName",
             "mirrorCubeId": "",
             "hexId": "9c5bd476",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonEdgeSlope hexCode:c6212f1f intCode:3324063519": {
             "id": 3324063519,
@@ -13209,13 +13216,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 1538778047
             },
             "spriteName": "Neon_Edge_Slope",
             "nameStrKey": "strNeonEdgeSlopeName",
             "mirrorCubeId": "",
             "hexId": "c6212f1f",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonCorner hexCode:8b1398a4 intCode:2333317284": {
             "id": 2333317284,
@@ -13231,13 +13239,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 1931676396
             },
             "spriteName": "Neon_Corner",
             "nameStrKey": "strNeonCornerName",
             "mirrorCubeId": "",
             "hexId": "8b1398a4",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonCornerRound hexCode:be78d926 intCode:3195590950": {
             "id": 3195590950,
@@ -13253,13 +13262,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 2589418111
             },
             "spriteName": "Neon_Corner_Round",
             "nameStrKey": "strNeonCornerRoundName",
             "mirrorCubeId": "",
             "hexId": "be78d926",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonCornerSlope hexCode:e402224f intCode:3825345103": {
             "id": 3825345103,
@@ -13275,13 +13285,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 557016830
             },
             "spriteName": "Neon_Corner_Slope",
             "nameStrKey": "strNeonCornerSlopeName",
             "mirrorCubeId": "",
             "hexId": "e402224f",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonInner hexCode:60558570 intCode:1616217456": {
             "id": 1616217456,
@@ -13297,13 +13308,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 3559488176
             },
             "spriteName": "Neon_Inner",
             "nameStrKey": "strNeonInnerName",
             "mirrorCubeId": "",
             "hexId": "60558570",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonInnerRound hexCode:69c7f549 intCode:1774712137": {
             "id": 1774712137,
@@ -13319,13 +13331,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 1837286858
             },
             "spriteName": "Neon_Inner_Round",
             "nameStrKey": "strNeonInnerRoundName",
             "mirrorCubeId": "",
             "hexId": "69c7f549",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonInnerSlope hexCode:33bd0e20 intCode:868027936": {
             "id": 868027936,
@@ -13341,13 +13354,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 495400745
             },
             "spriteName": "Neon_Inner_Slope",
             "nameStrKey": "strNeonInnerSlopeName",
             "mirrorCubeId": "",
             "hexId": "33bd0e20",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonPyramid hexCode:cd7baec2 intCode:3447434946": {
             "id": 3447434946,
@@ -13363,13 +13377,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 2686602224
             },
             "spriteName": "Neon_Pyramid",
             "nameStrKey": "strNeonPyramidName",
             "mirrorCubeId": "",
             "hexId": "cd7baec2",
-            "isVariant": false
+            "isVariant": true
         },
         "NeonCone hexCode:20f143ce intCode:552682446": {
             "id": 552682446,
@@ -13385,13 +13400,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 1352234106
             },
             "spriteName": "Neon_Cone",
             "nameStrKey": "strNeonConeName",
             "mirrorCubeId": "",
             "hexId": "20f143ce",
-            "isVariant": false
+            "isVariant": true
         },
         "VaporTrailSingleFirework hexCode:6be74731 intCode:1810319153": {
             "id": 1810319153,
@@ -13627,7 +13643,8 @@
                 "health": 270000,
                 "cpu": 270,
                 "visibility": "Mothership",
-                "ranking": 2700000
+                "ranking": 2700000,
+                "variant_of": 2419806013
             },
             "spriteName": "T5_Seeker_Firework_Steam",
             "nameStrKey": "strT5SeekerFireworkName",
@@ -13966,13 +13983,14 @@
                 "health": 5400,
                 "cpu": 3,
                 "visibility": "Mothership",
-                "ranking": 30
+                "ranking": 30,
+                "variant_of": 1818686721
             },
             "spriteName": "Rod_Spring",
             "nameStrKey": "strRodSpringName",
             "mirrorCubeId": "",
             "hexId": "eb7e8b83",
-            "isVariant": false
+            "isVariant": true
         },
         "RodShortSpring hexCode:a89904c6 intCode:2828600518": {
             "id": 2828600518,
@@ -13988,13 +14006,14 @@
                 "health": 3600,
                 "cpu": 2,
                 "visibility": "Mothership",
-                "ranking": 20
+                "ranking": 20,
+                "variant_of": 1312806203
             },
             "spriteName": "Rod_Short_Spring",
             "nameStrKey": "strRodShortSpringName",
             "mirrorCubeId": "",
             "hexId": "a89904c6",
-            "isVariant": false
+            "isVariant": true
         },
         "RodLongSpring hexCode:3eb02849 intCode:1051732041": {
             "id": 1051732041,
@@ -14010,13 +14029,14 @@
                 "health": 9000,
                 "cpu": 5,
                 "visibility": "Mothership",
-                "ranking": 50
+                "ranking": 50,
+                "variant_of": 3489647384
             },
             "spriteName": "Rod_Long_Spring",
             "nameStrKey": "strRodLongSpringName",
             "mirrorCubeId": "",
             "hexId": "3eb02849",
-            "isVariant": false
+            "isVariant": true
         },
         "PilotSeatBunny hexCode:3f4926d1 intCode:1061758673": {
             "id": 1061758673,
@@ -14054,13 +14074,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227205318
             },
             "spriteName": "Retro_Cube",
             "nameStrKey": "strRetroCubeName",
             "mirrorCubeId": "",
             "hexId": "0ae961ac",
-            "isVariant": false
+            "isVariant": true
         },
         "RetroEdge hexCode:4499c9af intCode:1150929327": {
             "id": 1150929327,
@@ -14076,13 +14097,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 227917916
             },
             "spriteName": "Retro_Edge",
             "nameStrKey": "strRetroEdgeName",
             "mirrorCubeId": "",
             "hexId": "4499c9af",
-            "isVariant": false
+            "isVariant": true
         },
         "RetroCorner hexCode:52b80924 intCode:1387792676": {
             "id": 1387792676,
@@ -14098,13 +14120,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 1931676396
             },
             "spriteName": "Retro_Corner",
             "nameStrKey": "strRetroCornerName",
             "mirrorCubeId": "",
             "hexId": "52b80924",
-            "isVariant": false
+            "isVariant": true
         },
         "RetroInner hexCode:ed870873 intCode:3985049715": {
             "id": 3985049715,
@@ -14120,13 +14143,14 @@
                 "health": 1800,
                 "cpu": 1,
                 "visibility": "Mothership",
-                "ranking": 1
+                "ranking": 1,
+                "variant_of": 3559488176
             },
             "spriteName": "Retro_Inner",
             "nameStrKey": "strRetroInnerName",
             "mirrorCubeId": "",
             "hexId": "ed870873",
-            "isVariant": false
+            "isVariant": true
         },
         "MortarEggLauncher hexCode:b80d198e intCode:3087866254": {
             "id": 3087866254,
@@ -14142,7 +14166,8 @@
                 "health": 290000,
                 "cpu": 290,
                 "visibility": "Mothership",
-                "ranking": 2900000
+                "ranking": 2900000,
+                "variant_of": 1885850433
             },
             "spriteName": "T5_Mortar_Egg",
             "nameStrKey": "strMortarEggLauncherName",

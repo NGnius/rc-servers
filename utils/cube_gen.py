@@ -357,6 +357,9 @@ def apply_entry_overrides(entry: dict, cubes_data: dict, weapons_data: dict, mov
                 entry["info"]["category"] = cube_data["ItemCategory"]
             if "PlacementFaces" in cube_data:
                 entry["info"]["placements"] = cube_data["PlacementFaces"]
+            if "variantOf" in cube_data:
+                entry["info"]["variant_of"] = int(cube_data["variantOf"], 16)
+                entry["isVariant"] = True
     if movement_data is not None and not entry["isVariant"]:
         if entry["info"]["category"] in movement_data["Movements"]:
             if entry["info"]["size"] in movement_data["Movements"][entry["info"]["category"]]:
