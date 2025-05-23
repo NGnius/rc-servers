@@ -30,7 +30,7 @@ mod settings;
 pub use settings::Settings;
 
 mod chat;
-pub use chat::ChatConfig;
+pub use chat::{ChatConfig, ChatCommand, ChatOperation, BuiltInChatOperation};
 
 mod vehicle_factory;
 pub use vehicle_factory::{FactoryConfig, AdapterSettings, ArcFactorySettings};

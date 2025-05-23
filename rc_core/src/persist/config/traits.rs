@@ -23,6 +23,7 @@ pub trait ConfigProvider<C: Clone> {
     fn garage_upgrades(&self) -> GarageUpgrades;
     async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
     fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
+    fn chat_system_config(&self) -> ChatSystemConfig;
 }
 
 pub struct CompleteCampaignProvider {
@@ -120,4 +121,10 @@ impl GarageUpgrades {
             }))
         ].into())
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct ChatSystemConfig {
+    pub command_channel: String,
+    pub commands: Vec<crate::persist::ChatCommand>,
 }

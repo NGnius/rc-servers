@@ -1,1 +1,1 @@
-pub mod channel;
+pub use rc_core::data::channel;

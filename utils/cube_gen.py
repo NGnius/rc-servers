@@ -454,6 +454,22 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                 "sys",
                 "jam_club",
             ],
+            "commands": [
+                {
+                    "regex": "\\?online",
+                    "op": {
+                        "type": "BuiltIn",
+                        "built_in": "OnlineUsers"
+                    }
+                },
+                {
+                    "regex": "\\?users",
+                    "op": {
+                        "type": "BuiltIn",
+                        "built_in": "TotalUsers"
+                    }
+                }
+            ]
         },
         "factory": {
             "adapter": {

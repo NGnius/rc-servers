@@ -6,9 +6,9 @@ pub struct ChatProvider {
 }
 
 impl ChatProvider {
-    pub fn new(asset_root: impl AsRef<std::path::Path>, data_root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+    pub fn new(conf: rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         Ok(Self {
-            chat_system: std::sync::Arc::new(std::sync::RwLock::new(crate::state::chat::ChatSystem::new(asset_root, data_root)?)),
+            chat_system: std::sync::Arc::new(std::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf)?)),
         })
     }
 
@@ -161,12 +161,11 @@ impl ChatSystem {
         handle.send_private_message(response);
     }
 
-    pub fn new(asset_root: impl AsRef<std::path::Path>, data_root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
-        let config_persist = crate::persist::config::ChatSystemConfig::load(&asset_root)?;
+    pub fn new(config: rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         Ok(Self {
             chats: HashMap::new(),
             online_users: HashMap::new(),
-            config: super::ChatSystemConfig::from_persist(config_persist, asset_root.as_ref().to_path_buf(), data_root.as_ref().to_path_buf())?,
+            config: super::ChatSystemConfig::from_persist(config)?,
         })
     }
 

@@ -1,7 +1,7 @@
 //use rc_core::persist::user::ChatUser;
 use polariton::operation::{ParameterTable, OperationResponse};
 
-const CODE: u8 = 11;
+const CODE: u8 = 12;
 
 const PARAM_KEY: u8 = 18;
 
@@ -12,10 +12,10 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result
     Ok(params.into())
 }
 
-pub struct JoinedChannelsProvider;
+pub struct SubscribedChannelsProvider;
 
 #[async_trait::async_trait]
-impl polariton_server::operations::Operation<()> for JoinedChannelsProvider {
+impl polariton_server::operations::Operation<()> for SubscribedChannelsProvider {
     type User = crate::UserTy;
 
     async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
@@ -23,13 +23,13 @@ impl polariton_server::operations::Operation<()> for JoinedChannelsProvider {
     }
 }
 
-impl polariton_server::operations::OperationCode for JoinedChannelsProvider {
+impl polariton_server::operations::OperationCode for SubscribedChannelsProvider {
     fn op_code() -> u8 {
         CODE
     }
 }
 
 
-pub(super) fn all_channels_provider() -> JoinedChannelsProvider {
-    JoinedChannelsProvider
+pub(super) fn all_subbed_channels_provider() -> SubscribedChannelsProvider {
+    SubscribedChannelsProvider
 }

@@ -281,4 +281,11 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
     fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube> {
         &self.cubes
     }
+
+    fn chat_system_config(&self) -> super::ChatSystemConfig {
+        super::ChatSystemConfig {
+            command_channel: self.chat.command_channel.clone(),
+            commands: self.chat.commands.clone(),
+        }
+    }
 }

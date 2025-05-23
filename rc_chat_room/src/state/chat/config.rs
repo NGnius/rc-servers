@@ -1,21 +1,17 @@
 pub struct ChatSystemConfig {
     command_channel: String,
     commands: Vec<ChatCommand>,
-    asset_root: std::path::PathBuf,
-    data_root: std::path::PathBuf,
 }
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
-struct CommandContext<'a, 'b, 'c> {
+struct CommandContext<'a, 'b> {
     chat_system: &'a super::ChatSystem,
     user: &'b dyn rc_core::persist::user::User<()>,
-    asset_root: &'c std::path::PathBuf,
-    data_root: &'c std::path::PathBuf,
 }
 
 impl ChatSystemConfig {
-    pub fn from_persist(config: crate::persist::config::ChatSystemConfig, asset_root: std::path::PathBuf, data_root: std::path::PathBuf) -> std::io::Result<Self> {
+    pub fn from_persist(config: rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         let mut compiled_commands = Vec::with_capacity(config.commands.len());
         for (i, cmd) in config.commands.into_iter().enumerate() {
             let compiled_command = ChatCommand::compile_command(cmd).map_err(|e| {
@@ -27,8 +23,6 @@ impl ChatSystemConfig {
         Ok(Self {
             command_channel: config.command_channel,
             commands: compiled_commands,
-            asset_root,
-            data_root,
         })
     }
 
@@ -36,8 +30,6 @@ impl ChatSystemConfig {
         let ctx = CommandContext {
             chat_system,
             user,
-            asset_root: &self.asset_root,
-            data_root: &self.data_root,
         };
         for cmd in self.commands.iter() {
             if let Some(result) = cmd.perform_if_match(text, ctx) {
@@ -66,7 +58,7 @@ pub struct ChatCommand {
 }
 
 impl ChatCommand {
-    fn compile_command(command: crate::persist::config::ChatCommand) -> Result<Self, regex::Error> {
+    fn compile_command(command: rc_core::persist::ChatCommand) -> Result<Self, regex::Error> {
         Ok(Self {
             regex: regex::RegexBuilder::new(&command.regex).build()?,
             op: ChatOperation::from_persist(command.op)
@@ -89,11 +81,11 @@ enum ChatOperation {
 }
 
 impl ChatOperation {
-    fn from_persist(op: crate::persist::config::ChatOperation) -> Self {
+    fn from_persist(op: rc_core::persist::ChatOperation) -> Self {
         match op {
-            crate::persist::config::ChatOperation::BuiltIn(b_in) => Self::BuiltIn(BuiltIn::from_persist(b_in)),
-            crate::persist::config::ChatOperation::Custom => Self::Custom,
-            crate::persist::config::ChatOperation::Nop => Self::Nop,
+            rc_core::persist::ChatOperation::BuiltIn(b_in) => Self::BuiltIn(BuiltIn::from_persist(b_in)),
+            rc_core::persist::ChatOperation::Custom => Self::Custom,
+            rc_core::persist::ChatOperation::Nop => Self::Nop,
         }
     }
 
@@ -112,10 +104,10 @@ enum BuiltIn {
 }
 
 impl BuiltIn {
-    fn from_persist(b_in: crate::persist::config::BuiltInChatOperation) -> Self {
+    fn from_persist(b_in: rc_core::persist::BuiltInChatOperation) -> Self {
         match b_in {
-            crate::persist::config::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
-            crate::persist::config::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
+            rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
+            rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
         }
     }
 
@@ -130,14 +122,7 @@ impl BuiltIn {
                 }
             },
             Self::TotalUsers => {
-                let user_path = ctx.data_root.join(rc_core::persist::user::USERS_DIR);
-                let user_count = user_path.read_dir().map_or(0, |dir| dir.count()).clamp(1, usize::MAX) - 1;
-                if user_count == 1 {
-                    "1 user exists".to_owned()
-                } else {
-                    format!("{} users exist", user_count)
-                }
-
+                format!("User count is not supported")
             },
         }
     }

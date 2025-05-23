@@ -54,7 +54,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C> {
+pub trait User<C>: ChatUser {
     fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)>;
     fn token(&self) -> &'_ super::UserToken;
     fn is_mod(&self) -> bool;
@@ -121,3 +121,14 @@ pub struct VehicleUploadData {
     pub description: String,
     pub thumbnail: Vec<u8>,
 }
+
+use polariton::operation::Typed;
+
+#[async_trait::async_trait]
+pub trait ChatUser {
+    async fn subscribed_channels(&self) -> Result<Typed<()>, i16>;
+    async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16>;
+    async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<Typed<()>, i16>;
+    async fn remove_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<(), i16>;
+}
+

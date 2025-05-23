@@ -69,25 +69,26 @@ fn default_user_data(info: &super::RegistrationInfo) -> rc_database::schema::use
 }
 
 fn default_user_aux_data(user_id: u32) -> Vec<rc_database::schema::user_aux::ActiveModel> {
+    let current_time = current_unix_time();
     vec![
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserXP),
             data: rc_database::sea_orm::ActiveValue::Set("0".to_owned()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::PremiumExpiry),
-            data: rc_database::sea_orm::ActiveValue::Set(current_unix_time().to_string()),
+            data: rc_database::sea_orm::ActiveValue::Set(current_time.to_string()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UnlockedParts),
             data: rc_database::sea_orm::ActiveValue::Set(
 r#"{
@@ -98,37 +99,44 @@ r#"{
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::TechPoints),
             data: rc_database::sea_orm::ActiveValue::Set("1337".to_owned()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserRank),
             data: rc_database::sea_orm::ActiveValue::Set("1".to_owned()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserFreeCurrency),
             data: rc_database::sea_orm::ActiveValue::Set("10000".to_owned()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserPaidCurrency),
             data: rc_database::sea_orm::ActiveValue::Set("1000".to_owned()),
         },
         rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
             user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::GarageSlotOrder),
             data: rc_database::sea_orm::ActiveValue::Set("[0]".to_owned()),
+        },
+        rc_database::schema::user_aux::ActiveModel {
+            id: Default::default(),
+            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::SubscribedChannels),
+            data: rc_database::sea_orm::ActiveValue::Set("[\"sys\"]".to_owned()),
         }
     ]
 }

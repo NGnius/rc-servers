@@ -11,6 +11,7 @@ pub mod voting;
 pub mod weapon_list;
 pub mod weapon_upgrade;
 pub mod crf;
+pub mod channel;
 
 pub mod error_codes;
 

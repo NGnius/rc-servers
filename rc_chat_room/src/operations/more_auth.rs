@@ -1,24 +1,23 @@
 use polariton::operation::Typed;
 use polariton_server::operations::{Operation, OperationCode};
 
-use crate::persist::chat_user::{ChatUser, ChatUserImpl};
+//use crate::persist::chat_user::{ChatUser, ChatUserImpl};
+//use rc_core::persist::user::ChatUser;
 
 pub struct MoreLobbyAuth {
     chat_system: crate::state::chat::ChatImpl,
-    root: std::path::PathBuf,
 }
 
 impl MoreLobbyAuth {
     const AUTH_PAYLOAD_KEY: u8 = 245;
 
-    pub fn new(chat_system: crate::state::chat::ChatImpl, root: impl AsRef<std::path::Path>) -> Self {
+    pub fn new(chat_system: crate::state::chat::ChatImpl) -> Self {
         Self {
             chat_system,
-            root: root.as_ref().to_path_buf(),
         }
     }
 
-    fn build_ext_map(&self, token: &rc_core::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>> {
+    /*fn build_ext_map(&self, token: &rc_core::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>> {
         let user_dir = self.root.join(rc_core::persist::user::USERS_DIR).join(&token.uuid);
         let data = if let Ok(data) = ChatUserImpl::load(&user_dir) {
             data
@@ -29,15 +28,15 @@ impl MoreLobbyAuth {
         let mut map = std::collections::HashMap::with_capacity(1);
         map.insert(std::any::TypeId::of::<ChatUserImpl>(), Box::new(data) as _);
         Some(map)
-    }
+    }*/
 
     async fn do_auth<C>(&self, params: std::collections::HashMap<u8, Typed<C>>, user: &crate::UserTy) -> Result<polariton::operation::ParameterTable<C>, i16> {
         if let Some(Typed::Str(auth_payload)) = params.get(&Self::AUTH_PAYLOAD_KEY) {
-            if user.update_with_auth_ext(&auth_payload.string, |t| self.build_ext_map(t)).await {
+            if user.update_with_auth(&auth_payload.string).await {
                 let user_impl = user.user()?;
                 let name = user_impl.token().uuid.clone();
-                let chat_user = super::get_chat_user(user_impl.as_ref().as_ref());
-                let channels = chat_user.subscribed_channels_strings();
+                //let chat_user = super::get_chat_user(user_impl.as_ref().as_ref());
+                let channels = user_impl.subscribed_channels_strings().await?;
                 let event_tx = user.event_sender();
                 self.chat_system.system_mut().connect_user(name, channels, event_tx);
                 let mut resp_params = std::collections::HashMap::new();

@@ -69,7 +69,7 @@ impl ChatChannelType {
             6 => Ok(Self::Clan),
             7 => Ok(Self::Private),
             8 => Ok(Self::CustomGame),
-            _ => Err(rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16)
+            _ => Err(crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16)
         }
     }
 }

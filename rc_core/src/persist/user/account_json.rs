@@ -527,3 +527,78 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 }
+
+#[async_trait::async_trait]
+impl super::ChatUser for UserData {
+    async fn subscribed_channels(&self) -> Result<polariton::operation::Typed<()>, i16> {
+        let channels = self.subscribed_channels_strings().await?;
+        Ok(polariton::operation::Typed::Arr(polariton::operation::Arr {
+            ty: polariton::serdes::TypePrefix::HashMap, // hashtable
+            items: channels.iter().map(|name| crate::data::channel::ChatChannelInfo {
+                channel_name: name.to_owned(),
+                members: Vec::default(),
+                channel_ty: crate::data::channel::ChatChannelType::Public,
+            }.as_transmissible()).collect()
+        }))
+    }
+
+    async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16> {
+        let channels = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+                log::error!("Failed to retrieve SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+                crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+            })?.ok_or_else(|| {
+                log::error!("Failed to find SubscribedChannels (user_aux) for user_id {}", self.account.id);
+                crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+            })?;
+        let channels = serde_json::from_str::<Vec<String>>(&channels.data).map_err(|e| {
+            log::error!("Failed to parse SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+            crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+        })?;
+        Ok(channels)
+    }
+
+    async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<polariton::operation::Typed<()>, i16> {
+        if let crate::data::channel::ChatChannelType::Public = channel_ty {
+            let mut sub_channels = self.subscribed_channels_strings().await?;
+            sub_channels.push(channel.clone());
+            let new_data = serde_json::to_string(&sub_channels).map_err(|e| {
+                log::error!("Failed to convert to JSON SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+                crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+            })?;
+            self.db.update_user_aux_by_user_id_and_descriptor(rc_database::schema::user_aux::ActiveModel {
+                data: rc_database::sea_orm::ActiveValue::Set(new_data),
+                ..Default::default()
+            }, self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+                log::error!("Failed to update SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+                crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+            })?;
+        }
+
+         Ok(crate::data::channel::ChatChannelInfo {
+            channel_name: channel,
+            members: Vec::default(),
+            channel_ty,
+        }.as_transmissible())
+    }
+
+    async fn remove_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<(), i16> {
+        if let crate::data::channel::ChatChannelType::Public = channel_ty {
+            let mut sub_channels = self.subscribed_channels_strings().await?;
+            if let Some(index) = sub_channels.iter().position(|chann| chann == &channel) {
+                sub_channels.swap_remove(index);
+                let new_data = serde_json::to_string(&sub_channels).map_err(|e| {
+                    log::error!("Failed to convert to JSON SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+                })?;
+                self.db.update_user_aux_by_user_id_and_descriptor(rc_database::schema::user_aux::ActiveModel {
+                    data: rc_database::sea_orm::ActiveValue::Set(new_data),
+                    ..Default::default()
+                }, self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+                    log::error!("Failed to update SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+                })?;
+            }
+        }
+        Ok(())
+    }
+}
