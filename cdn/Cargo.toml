@@ -1,0 +1,13 @@
+[package]
+name = "cdn"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[dependencies]
+actix-web.workspace = true
+actix-files.workspace = true
+clap.workspace = true

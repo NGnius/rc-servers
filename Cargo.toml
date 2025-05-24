@@ -13,10 +13,10 @@ readme = "README.md"
 
 [workspace]
 members = [
-    "auth",
+    "auth", "cdn",
     "polariton_auth",
     "rc_services", "rc_services_room",
-    "rc_static_data", "rc_microtransactions",
+    "rc_microtransactions",
     "rc_social", "rc_social_room",
     "rc_chat", "rc_chat_room",
     "rc_singleplayer", "rc_singleplayer_room",
@@ -25,6 +25,8 @@ members = [
 
 [workspace.dependencies]
 rocket = { version = "0.5.1", features = [ "json" ] }
+actix-web = { version = "4" }
+actix-files = "0.6"
 libfj = { version = "0.7.5", path = "../libfj" }
 log = "0.4"
 env_logger = "0.11"
