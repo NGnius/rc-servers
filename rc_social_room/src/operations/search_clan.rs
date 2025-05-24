@@ -25,8 +25,8 @@ pub(super) fn search_clans_provider<C: Send + Sync>() -> SimpleFunc<32, crate::U
             ty: polariton::serdes::TypePrefix::HashMap, // hashmap
             items: vec![
                 ClanInfo {
-                    clan_name: "".to_owned(),
-                    clan_description: "".to_owned(),
+                    clan_name: "RE_clan_search_name".to_owned(),
+                    clan_description: "RE_clan_search_description".to_owned(),
                     clan_type: ClanType::Closed,
                     clan_size: 1,
                 }.as_transmissible(),

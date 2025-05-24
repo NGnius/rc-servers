@@ -14,7 +14,7 @@ pub(super) fn clan_invites_provider<C: Send + Sync>() -> SimpleFunc<39, crate::U
                 ClanInviteInfo {
                     username: "RE_user1".to_owned(),
                     display_name: "RE_user1".to_owned(),
-                    clan_name: "RE_clan1".to_owned(),
+                    clan_name: "RE_clan_invite1".to_owned(),
                     clan_size: 42,
                     use_custom_avatar: false,
                     avatar_id: 0,

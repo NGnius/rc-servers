@@ -15,6 +15,7 @@ async fn index() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
     let cli_args = cli::CliArgs::get();
     let cli_args2 = cli_args.clone();
     HttpServer::new(move || {
@@ -22,6 +23,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(actix_web::web::Data::new(cli_args2.clone()))
             .service(index)
             .service(robocraft::live_data::live_data_json)
+            .service(robocraft::user_avatar::get)
+            .service(robocraft::clan_avatar::get)
+            .service(robocraft::brawl_data::get)
+            .service(robocraft::campaign_data::get)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()
