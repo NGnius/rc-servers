@@ -14,7 +14,7 @@ pub(super) fn premium_remaining_provider() -> SimpleFunc<15, crate::UserTy, impl
         params.insert(HOURS_PARAM_KEY, Typed::Int(0));
         params.insert(MINUTES_PARAM_KEY, Typed::Int(0));
         params.insert(SECONDS_PARAM_KEY, Typed::Int(0));
-        params.insert(LIFETIME_PARAM_KEY, Typed::Bool(false.into()));
+        params.insert(LIFETIME_PARAM_KEY, Typed::Bool(false));
         Ok(params.into())
     })
 }

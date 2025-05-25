@@ -137,6 +137,13 @@ r#"{
             creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
             descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::SubscribedChannels),
             data: rc_database::sea_orm::ActiveValue::Set("[\"sys\"]".to_owned()),
+        },
+        rc_database::schema::user_aux::ActiveModel {
+            id: Default::default(),
+            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::AvatarId),
+            data: rc_database::sea_orm::ActiveValue::Set((current_time % 16).to_string()),
         }
     ]
 }

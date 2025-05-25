@@ -42,4 +42,5 @@ pub enum Descriptor {
     GarageSlotOrder, // Vec<u32>, CSV
     LastSeen, // u64, seconds since Unix epoch
     SubscribedChannels, // Vec<String>, JSON
+    AvatarId, // u32, u32::MAX means custom avatar
 }

@@ -1,14 +1,36 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::operation::{ParameterTable, Typed};
+use polariton::operation::{ParameterTable, OperationResponse};
 
-const IS_CUSTOM_PARAM_KEY: u8 = 130;
-const AVATAR_ID_PARAM_KEY: u8 = 129;
+const CODE: u8 = 110;
 
-pub(super) fn get_avatar_provider() -> SimpleFunc<110, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
-        params.insert(IS_CUSTOM_PARAM_KEY, Typed::Bool(false.into()));
-        params.insert(AVATAR_ID_PARAM_KEY, Typed::Int(1));
-        Ok(params.into())
-    })
+const IS_CUSTOM_PARAM_KEY: u8 = 130; // bool
+const AVATAR_ID_PARAM_KEY: u8 = 129; // int
+
+pub(super) fn avatar_get_provider() -> AvatarGetProvider {
+    AvatarGetProvider
+}
+
+async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
+    let mut params = params.to_dict();
+    let user_info = user.user()?;
+    let info = user_info.get_avatar_info().await?;
+    params.insert(IS_CUSTOM_PARAM_KEY, info.use_custom);
+    params.insert(AVATAR_ID_PARAM_KEY, info.avatar_id);
+    Ok(params.into())
+}
+
+pub(super) struct AvatarGetProvider;
+
+#[async_trait::async_trait]
+impl polariton_server::operations::Operation<()> for AvatarGetProvider {
+    type User = crate::UserTy;
+
+    async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
+        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_save(params, user).await)
+    }
+}
+
+impl polariton_server::operations::OperationCode for AvatarGetProvider {
+    fn op_code() -> u8 {
+        CODE
+    }
 }

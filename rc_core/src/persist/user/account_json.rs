@@ -526,6 +526,40 @@ impl <C: Clone> super::User<C> for UserData {
             Ok(0)
         }
     }
+
+    async fn get_avatar_info(&self) -> Result<super::GetAvatarInfo<C>, i16> {
+        let avatar_id_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::AvatarId).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?
+            .ok_or_else(|| {
+                log::error!("Failed to find AvatarId (user_aux) for user_id {}", self.account.id);
+                DATABASE_ERR
+            })?;
+        let avatar_id: u32 = avatar_id_aux.data.parse()
+            .map_err(|e| {
+                log::error!("Failed to parse AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
+                crate::data::error_codes::WebServicesError::UnexpectedError as i16
+            })?;
+        Ok(super::GetAvatarInfo {
+            avatar_id: polariton::operation::Typed::Int(if avatar_id == u32::MAX { 0 } else { avatar_id as i32 }),
+            use_custom: polariton::operation::Typed::Bool(avatar_id == u32::MAX),
+        })
+    }
+
+    async fn set_avatar_info(&self, info: super::AvatarInfo) -> Result<(), i16> {
+        let to_update = rc_database::schema::user_aux::ActiveModel {
+            data: rc_database::sea_orm::ActiveValue::Set(if info.use_custom { u32::MAX } else { info.avatar_id as u32 }.to_string()),
+            ..Default::default()
+        };
+        self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, rc_database::schema::user_aux::Descriptor::AvatarId).await
+            .map_err(|e| {
+                log::error!("Failed to update AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?;
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]

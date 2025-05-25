@@ -91,6 +91,8 @@ mod crf_list_query;
 mod crf_vehicle_data;
 mod crf_purchase;
 mod crf_upload;
+mod avatar_set_custom;
+mod avatar_set;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -136,7 +138,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(owned_cosmetics::selected_cosmetics_provider())
         .add(dev_message::dev_message_provider(&init_ctx.cubes))
         .add(custom_games_maps::allowed_maps_provider())
-        .add(avatar_info::get_avatar_provider())
+        .add(avatar_info::avatar_get_provider())
         .add(custom_game_session::get_custom_session_provider())
         .add(user_xp::get_user_xp_provider())
         .add(garage_upgrades::garage_upgrades_provider(&init_ctx.cubes))
@@ -204,4 +206,6 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(crf_vehicle_data::crf_item_data_provider(&init_ctx.factory))
         .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory, init_ctx.parsers.weapon_order()))
         .add(crf_upload::crf_upload_provider(&init_ctx.factory))
+        .add(avatar_set_custom::custom_avatar_upload_handler())
+        .add(avatar_set::avatar_set_provider())
 }

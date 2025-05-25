@@ -73,6 +73,8 @@ pub trait User<C>: ChatUser {
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
+    async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
+    async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
 }
 
 pub struct UserSlots<C> {
@@ -122,13 +124,21 @@ pub struct VehicleUploadData {
     pub thumbnail: Vec<u8>,
 }
 
-use polariton::operation::Typed;
+pub struct GetAvatarInfo<C> {
+    pub avatar_id: polariton::operation::Typed<C>,
+    pub use_custom: polariton::operation::Typed<C>,
+}
+
+pub struct AvatarInfo {
+    pub avatar_id: i32,
+    pub use_custom: bool,
+}
 
 #[async_trait::async_trait]
 pub trait ChatUser {
-    async fn subscribed_channels(&self) -> Result<Typed<()>, i16>;
+    async fn subscribed_channels(&self) -> Result<polariton::operation::Typed<()>, i16>;
     async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16>;
-    async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<Typed<()>, i16>;
+    async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<polariton::operation::Typed<()>, i16>;
     async fn remove_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<(), i16>;
 }
 
