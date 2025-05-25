@@ -13,3 +13,5 @@ actix-files.workspace = true
 clap.workspace = true
 log.workspace = true
 env_logger.workspace = true
+tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
+zip = "4"

@@ -3,21 +3,32 @@ use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder}
 pub struct ArcAdapter {
     orm: sea_orm::DatabaseConnection,
     ignore_expiry: bool,
+    cdn: Option<String>,
 }
 
 impl ArcAdapter {
-    pub async fn init(uri: &str, show_expired: bool) -> Result<Self, sea_orm::DbErr>{
+    pub async fn init(uri: &str, show_expired: bool, override_cdn: Option<String>) -> Result<Self, sea_orm::DbErr>{
         log::debug!("Connecting to Archive of RoboCraft (ARC) vehicle factory database URI: {}", uri);
         let db = sea_orm::Database::connect(uri).await?;
+        let good_cdn = override_cdn.map(|s| if s.ends_with("/") { s } else { format!("{}/", s) });
         Ok(Self {
             orm: db,
-            ignore_expiry: show_expired
+            ignore_expiry: show_expired,
+            cdn: good_cdn,
         })
     }
 
     fn default_query(&self) -> sea_orm::Select<super::entities::robot_metadata::Entity> {
         super::entities::robot_metadata::Entity::find()
             .order_by_desc(super::entities::robot_metadata::Column::RentCount)
+    }
+
+    fn thumbnail_url(&self, meta: String, id: u32) -> String {
+        if let Some(cdn) = &self.cdn {
+            format!("{}{}", cdn, id)
+        } else {
+            meta
+        }
     }
 }
 
@@ -41,7 +52,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     id: meta.id as _,
                     name: meta.name,
                     description: meta.description,
-                    thumbnail: meta.thumbnail,
+                    thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
                     added_by: meta.added_by,
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),

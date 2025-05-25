@@ -23,6 +23,9 @@ pub struct ArcFactorySettings {
     pub uri: String,
     #[serde(default = "default_true")]
     pub show_expired: bool,
+    /// should probably end with /roboshop/arc/Live/
+    #[serde(default)]
+    pub override_cdn: Option<String>,
 }
 
 fn default_true() -> bool {
