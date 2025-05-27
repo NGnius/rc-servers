@@ -140,6 +140,13 @@ impl Database {
             .await
     }
 
+    pub async fn garage_by_uuid(&self, uuid: i64) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::Uuid.eq(uuid))
+            .one(&self.orm)
+            .await
+    }
+
     pub async fn insert_garages(&self, entities: Vec<crate::schema::garage::ActiveModel>) -> Result<(), sea_orm::DbErr> {
         crate::schema::garage::Entity::insert_many(entities.into_iter()).exec(&self.orm).await?;
         Ok(())
@@ -162,6 +169,24 @@ impl Database {
             .column(crate::schema::garage::Column::Id)
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
             .filter(crate::schema::garage::Column::Slot.eq(slot))
+            .into_model::<crate::schema::common_query::Id>()
+            .one(&self.orm)
+            .await?;
+        if let Some(id) = id_opt {
+            entity.id = sea_orm::ActiveValue::Set(id.id);
+            Ok(Some(crate::schema::garage::Entity::update(entity)
+                .exec(&self.orm)
+                .await?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn update_garage_by_uuid(&self, mut entity: crate::schema::garage::ActiveModel, uuid: i64) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+        let id_opt = crate::schema::garage::Entity::find()
+            .select_only()
+            .column(crate::schema::garage::Column::Id)
+            .filter(crate::schema::garage::Column::Uuid.eq(uuid))
             .into_model::<crate::schema::common_query::Id>()
             .one(&self.orm)
             .await?;

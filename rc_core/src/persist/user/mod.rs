@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::UnlockedParts;
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData};
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 
@@ -47,6 +47,24 @@ pub fn uuid_str(uuid: &(u32, u32)) -> String {
     format!("{}_{}", uuid.0, uuid.1)
 }
 
+pub fn str_to_uuid(s: &str) -> Option<(u32, u32)> {
+    if let Some((uuid_0, uuid_1)) = s.split_once('_') {
+        let uuid_0 = if let Ok(uuid_0) = uuid_0.parse() {
+            uuid_0
+        } else {
+            return None;
+        };
+        let uuid_1 = if let Ok(uuid_1) = uuid_1.parse() {
+            uuid_1
+        } else {
+            return None;
+        };
+        Some((uuid_0, uuid_1))
+    } else {
+        None
+    }
+}
+
 pub fn i64_as_uuid_str(num: i64) -> String {
     uuid_str(&i64_split(num))
 }
@@ -65,4 +83,8 @@ pub fn i64_join(uuid: (u32, u32)) -> i64 {
         [bytes.0[0], bytes.0[1], bytes.0[2], bytes.0[3],
         bytes.1[0], bytes.1[1], bytes.1[2], bytes.1[3]]
     ) as i64
+}
+
+pub fn str_to_i64(s :&str) -> Option<i64> {
+    str_to_uuid(s).map(i64_join)
 }

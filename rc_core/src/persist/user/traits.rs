@@ -69,6 +69,9 @@ pub trait User<C>: ChatUser {
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
     async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
     async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn save_slot_controls(&self, controls: ControlData) -> Result<(), i16>;
+    async fn save_slot_customisations(&self, customs: CustomisationData) -> Result<(), i16>;
+    async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData<C>, i16>;
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self) -> Result<polariton::operation::Typed<C>, i16>;
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
@@ -122,6 +125,53 @@ pub struct VehicleUploadData {
     pub name: String,
     pub description: String,
     pub thumbnail: Vec<u8>,
+}
+
+pub struct ControlData {
+    pub slot: i32,
+    pub control_ty: ControlType,
+    pub vertical_strafing: bool,
+    pub sideways_driving: bool,
+    pub tracks_turn_on_spot: bool,
+}
+
+pub enum ControlType {
+    Camera = 0,
+    Keyboard = 1,
+    Count = 2,
+}
+
+impl ControlType {
+    pub fn from_i32(i: i32) -> Result<Self, i16> {
+        match i {
+            0 => Ok(Self::Camera),
+            1 => Ok(Self::Keyboard),
+            2 => Ok(Self::Count),
+            _ => Err(crate::data::error_codes::WebServicesError::UnexpectedError as i16),
+        }
+    }
+
+    #[inline]
+    pub(super) fn into_db(self) -> rc_database::schema::garage::ControlType {
+        match self {
+            Self::Camera => rc_database::schema::garage::ControlType::Camera,
+            Self::Keyboard => rc_database::schema::garage::ControlType::Keyboard,
+            Self::Count => rc_database::schema::garage::ControlType::Count,
+        }
+    }
+}
+
+pub struct CustomisationData {
+    pub uuid: String,
+    pub bay: String,
+    pub spawn: String,
+    pub death: String,
+}
+
+pub struct GetCustomisationData<C> {
+    pub bay: polariton::operation::Typed<C>,
+    pub spawn: polariton::operation::Typed<C>,
+    pub death: polariton::operation::Typed<C>,
 }
 
 pub struct GetAvatarInfo<C> {

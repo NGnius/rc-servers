@@ -5,6 +5,7 @@ mod m20250424_000002_create_user_permissions_table;
 mod m20250424_000003_create_garage_table;
 mod m20250424_000004_create_user_aux_table;
 mod m20250424_000005_create_campaign_tables;
+mod m20250526_000001_add_garage_customisation;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250424_000003_create_garage_table::Migration),
             Box::new(m20250424_000004_create_user_aux_table::Migration),
             Box::new(m20250424_000005_create_campaign_tables::Migration),
+            Box::new(m20250526_000001_add_garage_customisation::Migration),
         ]
     }
 }

@@ -21,11 +21,15 @@ pub struct Model {
     pub tutorial_robot: bool,
     pub starter_robot_index: Option<u32>,
     pub control_type: ControlType,
+    // control options
     pub vertical_strafing: bool,
     pub sideways_driving: bool,
     pub tracks_turn_on_spot: bool,
+    // end control options
     pub mastery_level: u32,
     pub bay_skin_id: String,
+    pub death_animation_id: String,
+    pub spawn_animation_id: String,
     pub weapon_order: String, // csv?
     pub robot_data: Vec<u8>,
     pub colour_data: Vec<u8>,

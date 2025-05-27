@@ -93,6 +93,8 @@ mod crf_purchase;
 mod crf_upload;
 mod avatar_set_custom;
 mod avatar_set;
+mod garage_slot_controls;
+mod garage_slot_set_customisations;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -208,4 +210,6 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(crf_upload::crf_upload_provider(&init_ctx.factory))
         .add(avatar_set_custom::custom_avatar_upload_handler())
         .add(avatar_set::avatar_set_provider())
+        .add(garage_slot_controls::garage_slot_controls_provider())
+        .add(garage_slot_set_customisations::garage_slot_customisation_provider())
 }

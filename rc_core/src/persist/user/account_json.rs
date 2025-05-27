@@ -182,10 +182,27 @@ impl UserData {
     async fn all_vehicles(&self) -> Result<Vec<rc_database::schema::garage::Model>, rc_database::sea_orm::DbErr> {
         self.db.garages_by_user_id(self.account.id).await
     }
+
+    async fn double_check_permissions(&self) -> Result<rc_database::schema::permissions::Model, rc_database::sea_orm::DbErr> {
+        Ok(self.db.perms_by_user_id(self.account.id).await?.unwrap())
+    }
+
+    async fn err_on_banned(&self) -> Result<(), i16> {
+        let perms = self.double_check_permissions().await.map_err(|e| {
+            log::error!("Failed to retrieve user {} permissions: {}", self.account.id, e);
+            DATABASE_ERR
+        })?;
+        if perms.banned {
+            Err(crate::data::error_codes::WebServicesError::Banned as i16)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 const INVALID_ROBOT_ERR: i16 = crate::data::error_codes::WebServicesError::InvalidRobot as i16; // 140
 const DATABASE_ERR: i16 = crate::data::error_codes::WebServicesError::DatabaseError as i16; // 8
+const UNEXPECTED_ERR: i16 = crate::data::error_codes::WebServicesError::UnexpectedError as i16; // 9
 
 #[async_trait::async_trait]
 impl <C: Clone> super::User<C> for UserData {
@@ -249,6 +266,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn select_garage(&self, slot: i32) -> Result<(), i16> {
+        self.err_on_banned().await?;
         self.db.update_garage_selected_by_user_id_and_slot(self.account.id, slot as u32).await.map_err(|e| {
             log::error!("Failed to select vehicle slot {} user_id {}: {}", slot, self.account.id, e);
             DATABASE_ERR
@@ -293,6 +311,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn slot_by_id(&self, id: i32) -> Result<crate::persist::user::UserSlotData<C>, i16> {
+        self.err_on_banned().await?;
         match self.load_garage_by_slot(id as _).await {
             Ok(Some(slot)) => {
                 let cube_count = slot.cube_count() as i32;
@@ -329,6 +348,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
+        self.err_on_banned().await?;
         let entity = rc_database::schema::garage::ActiveModel {
             weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
             robot_data: rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
@@ -345,6 +365,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16> {
+        self.err_on_banned().await?;
         let slots: Vec<u32> = slots.into_iter().map(|x| x as u32).collect();
         let entity = rc_database::schema::user_aux::ActiveModel {
             data: rc_database::sea_orm::ActiveValue::Set(serde_json::to_string_pretty(&slots).unwrap()),
@@ -358,6 +379,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn new_slot(&self, reset_slot: Option<i32>) -> Result<super::NewSlotData<C>, i16> {
+        self.err_on_banned().await?;
         let model = if let Some(slot) = reset_slot {
             let new_data = super::initial_data::default_reset_slot();
             if let Some(reset_g) = self.db.update_garage_by_user_id_and_slot(new_data, self.account.id, slot as u32).await.map_err(|e| {
@@ -394,6 +416,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16> {
+        self.err_on_banned().await?;
         if increments <= 0 {
             // no-op
             return Ok(polariton::operation::Typed::Bool(true));
@@ -432,11 +455,65 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 
+    async fn save_slot_controls(&self, controls: super::ControlData) -> Result<(), i16> {
+        self.err_on_banned().await?;
+        let entity = rc_database::schema::garage::ActiveModel {
+            control_type: rc_database::sea_orm::ActiveValue::Set(controls.control_ty.into_db()),
+            vertical_strafing: rc_database::sea_orm::ActiveValue::Set(controls.vertical_strafing),
+            sideways_driving: rc_database::sea_orm::ActiveValue::Set(controls.sideways_driving),
+            tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(controls.tracks_turn_on_spot),
+            ..Default::default()
+        };
+        self.save_garage_by_slot(entity, controls.slot as u32).await.map_err(|e| {
+            log::error!("Failed to save controls for slot {} for user_id {}: {}", controls.slot, self.account.id, e);
+            DATABASE_ERR
+        })?;
+        Ok(())
+    }
+
+    async fn save_slot_customisations(&self, customs: super::CustomisationData) -> Result<(), i16> {
+        self.err_on_banned().await?;
+        if let Some(uuid) = super::str_to_i64(&customs.uuid) {
+            let entity = rc_database::schema::garage::ActiveModel {
+                bay_skin_id: rc_database::sea_orm::ActiveValue::Set(customs.bay),
+                spawn_animation_id: rc_database::sea_orm::ActiveValue::Set(customs.spawn),
+                death_animation_id: rc_database::sea_orm::ActiveValue::Set(customs.death),
+                ..Default::default()
+            };
+            self.db.update_garage_by_uuid(entity, uuid).await.map_err(|e| {
+                log::error!("Failed to save customisations for garage {} for user_id {}: {}", uuid, self.account.id, e);
+                DATABASE_ERR
+            })?;
+        }
+        Ok(())
+    }
+
+    async fn get_slot_customisations(&self, uuid: &str) -> Result<super::GetCustomisationData<C>, i16> {
+        if let Some(uuid) = super::str_to_i64(uuid) {
+            let garage_opt = self.db.garage_by_uuid(uuid).await.map_err(|e| {
+                log::error!("Failed to retrieve garage {} for user_id {}: {}", uuid, self.account.id, e);
+                DATABASE_ERR
+            })?;
+            if let Some(garage) = garage_opt {
+                Ok(super::GetCustomisationData {
+                    bay: polariton::operation::Typed::Str(garage.bay_skin_id.into()),
+                    spawn: polariton::operation::Typed::Str(garage.spawn_animation_id.into()),
+                    death: polariton::operation::Typed::Str(garage.death_animation_id.into()),
+                })
+            } else {
+                Err(DATABASE_ERR)
+            }
+        } else {
+            Err(UNEXPECTED_ERR)
+        }
+    }
+
     fn signup_date(&self) -> i64 {
         super::since_windows_epoch(self.account.creation_time)
     }
 
     async fn singleplayer_robots(&self) ->  Result<polariton::operation::Typed<C>, i16> {
+        self.err_on_banned().await?;
         let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
             log::error!("Failed to retrieve selected vehicle for user_id {} (singleplayer_robots): {}", self.account.id, e);
             DATABASE_ERR
@@ -472,6 +549,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16> {
+        self.err_on_banned().await?;
         let slot = self.load_garage_by_slot(vehicle.slot as u32).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle slot {} for user_id {} (prepare_factory_upload): {}", vehicle.slot, self.account.id, e);
             DATABASE_ERR
@@ -494,6 +572,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn last_seen(&self) -> Result<u64, i16> {
+        self.err_on_banned().await?;
         let last_seen_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::LastSeen).await
             .map_err(|e| {
                 log::error!("Failed to retrieve LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
@@ -528,6 +607,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn get_avatar_info(&self) -> Result<super::GetAvatarInfo<C>, i16> {
+        self.err_on_banned().await?;
         let avatar_id_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::AvatarId).await
             .map_err(|e| {
                 log::error!("Failed to retrieve AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
@@ -549,6 +629,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn set_avatar_info(&self, info: super::AvatarInfo) -> Result<(), i16> {
+        self.err_on_banned().await?;
         let to_update = rc_database::schema::user_aux::ActiveModel {
             data: rc_database::sea_orm::ActiveValue::Set(if info.use_custom { u32::MAX } else { info.avatar_id as u32 }.to_string()),
             ..Default::default()

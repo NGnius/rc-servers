@@ -64,6 +64,17 @@ pub enum ControlType {
     Count = 2,
 }
 
+impl std::convert::From<crate::persist::user::ControlType> for ControlType {
+    #[inline]
+    fn from(value: crate::persist::user::ControlType) -> Self {
+        match value {
+            crate::persist::user::ControlType::Camera => Self::Camera,
+            crate::persist::user::ControlType::Keyboard => Self::Keyboard,
+            crate::persist::user::ControlType::Count => Self::Count,
+        }
+    }
+}
+
 pub struct ControlOptions {
     pub vertical_strafing: bool,
     pub sideways_driving: bool,
