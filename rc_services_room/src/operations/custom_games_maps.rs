@@ -41,7 +41,7 @@ pub(super) fn allowed_maps_provider() -> SimpleFunc<146, crate::UserTy, impl (Fn
                 (Typed::Str("RC_Planet_Earth_02_BA".into()), Typed::Str("strCustomGameMapNameRC_Planet_Earth_02_BA".into())),
                 (Typed::Str("RC_Planet_Earth_01_BA".into()), Typed::Str("strCustomGameMapNameRC_Planet_Earth_01_BA".into())),
                 (Typed::Str("RC_Planet_Neptune_03_BA".into()), Typed::Str("strCustomGameMapNameRC_Planet_Neptune_03_BA".into())),
-                (Typed::Str("TestRobot".into()), Typed::Str("TestRobot".into())),
+                //(Typed::Str("TestRobot".into()), Typed::Str("TestRobot".into())),
             ],
         }));
         Ok(params.into())

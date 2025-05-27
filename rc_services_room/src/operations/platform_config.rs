@@ -14,11 +14,11 @@ pub(super) fn platform_config_provider() -> SimpleFunc<165, crate::UserTy, impl 
                 (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(false.into())),
                 (Typed::Str("RoboPassButtonAvailable".into()), Typed::Bool(false.into())),
                 (Typed::Str("LanguageSelectionAvailable".into()), Typed::Bool(false.into())),
-                (Typed::Str("AutoJoinPublicChatRoom".into()), Typed::Bool(false.into())), // TODO maybe?
-                (Typed::Str("CanCreateChatRooms".into()), Typed::Bool(false.into())), // TODO
+                (Typed::Str("AutoJoinPublicChatRoom".into()), Typed::Bool(true.into())), // TODO maybe?
+                (Typed::Str("CanCreateChatRooms".into()), Typed::Bool(true.into())), // TODO
                 (Typed::Str("CurseVoiceEnabled".into()), Typed::Bool(false.into())),
                 (Typed::Str("DeltaDNAEnabled".into()), Typed::Bool(false.into())),
-                (Typed::Str("UseDecimalSystem".into()), Typed::Bool(false.into())),
+                (Typed::Str("UseDecimalSystem".into()), Typed::Bool(true.into())),
                 (Typed::Str("FeedbackURL".into()), Typed::Str("https://mstdn.ca/@ngram".into())),
                 (Typed::Str("SupportURL".into()), Typed::Str("https://git.ngni.us/OpenJam/servers".into())),
                 (Typed::Str("WikiURL".into()), Typed::Str("https://git.ngram.ca/OpenJam/servers/wiki".into())),
