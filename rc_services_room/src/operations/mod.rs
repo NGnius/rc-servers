@@ -144,7 +144,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(custom_game_session::get_custom_session_provider())
         .add(user_xp::get_user_xp_provider())
         .add(garage_upgrades::garage_upgrades_provider(&init_ctx.cubes))
-        .add(game_event_params::event_system_params_provider())
+        .add(game_event_params::event_system_params_provider(&init_ctx.cubes))
         .add(garage_bay_uuid::garage_id_provider())
         .add(tech_tree_data::tech_tree_layout_provider(&init_ctx.cubes))
         .add(item_shop_bundles::item_bundle_provider())

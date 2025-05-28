@@ -24,6 +24,7 @@ pub trait ConfigProvider<C: Clone> {
     async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
     fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
     fn chat_system_config(&self) -> ChatSystemConfig;
+    fn gamemode_events(&self) -> GameEventSequence;
 }
 
 pub struct CompleteCampaignProvider {
@@ -127,4 +128,132 @@ impl GarageUpgrades {
 pub struct ChatSystemConfig {
     pub command_channel: String,
     pub commands: Vec<crate::persist::ChatCommand>,
+}
+
+#[derive(Clone, Debug)]
+pub struct GameEventSequence {
+    pub strategy: GameRotationStrategy,
+    pub modes: Vec<GameEvents>,
+    pub index: usize,
+    pub started: i64,
+}
+
+impl GameEventSequence {
+    pub fn now(&mut self) -> GameEventTransmissible {
+        let time_now = chrono::Utc::now().timestamp();
+        let mut item_now = &self.modes[self.index];
+        if time_now >= (item_now.duration.as_secs() as i64) + self.started {
+            // needs refresh
+            self.index = self.strategy.next(self.index, self.modes.len());
+            item_now = &self.modes[self.index];
+            self.started = time_now;
+        }
+        let remaining_ticks = ((item_now.duration.as_secs() as i64) - (time_now - self.started)) * 10_000_000;
+        GameEventTransmissible {
+            maps: Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Str,
+                items: vec![
+                    Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().into()),
+                    Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().into()),
+                ],
+            }),
+            visibilities: Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Int,
+                items: vec![
+                    Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility) as _),
+                    Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility) as _),
+                ],
+            }),
+            modes: Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Int,
+                items: vec![
+                    Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode) as _),
+                    Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.multiplayer.mode) as _),
+                ],
+            }),
+            auto_heals: Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Bool,
+                items: vec![
+                    Typed::Bool(item_now.singleplayer.auto_heal),
+                    Typed::Bool(item_now.multiplayer.auto_heal),
+                ],
+            }),
+            remaining_ticks: Typed::Long(remaining_ticks),
+        }
+    }
+}
+
+pub struct GameEventTransmissible {
+    pub maps: Typed,
+    pub visibilities: Typed,
+    pub modes: Typed,
+    pub auto_heals: Typed,
+    pub remaining_ticks: Typed,
+}
+
+#[derive(Clone, Debug)]
+pub enum GameRotationStrategy {
+    Sequence,
+    Random,
+}
+
+impl GameRotationStrategy {
+    pub(super) fn next(&self, last: usize, count: usize) -> usize {
+        match self {
+            Self::Sequence => (last+1) % count,
+            Self::Random => {
+                use rand::prelude::*;
+                let mut rng = rand::rng();
+                let num: u64 = rng.random();
+                let num = num.clamp(0, usize::MAX as u64) as usize;
+                num % count
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GameEvents {
+    pub singleplayer: GameEvent,
+    pub multiplayer: GameEvent,
+    pub duration: std::time::Duration,
+}
+
+#[derive(Clone, Debug)]
+pub struct GameEvent {
+    pub map: GameMap,
+    pub visibility: GameVisibility,
+    pub mode: GameType,
+    pub auto_heal: bool,
+}
+
+#[derive(Clone, Debug, Copy)]
+pub enum GameMap {
+    Mars1,
+    Mars2,
+    Mars3,
+    Neptune1,
+    Neptune2,
+    Neptune3,
+    Earth1,
+    Earth2,
+}
+
+#[derive(Clone, Debug, Copy)]
+pub enum GameVisibility {
+    Good,
+    Poor,
+    Bad,
+}
+
+
+#[derive(Clone, Debug, Copy)]
+pub enum GameType {
+    BattleArena,
+    SuddenDeath,
+    Pit,
+    TestMode,
+    SinglePlayer,
+    TeamDeathmatch,
+    Campaign,
 }

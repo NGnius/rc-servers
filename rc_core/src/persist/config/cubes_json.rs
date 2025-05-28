@@ -288,4 +288,19 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             commands: self.chat.commands.clone(),
         }
     }
+
+    fn gamemode_events(&self) -> super::GameEventSequence {
+        let strategy = self.battle.rotation.strategy.into_conf();
+        let first = strategy.next(self.battle.rotation.modes.len() - 1, self.battle.rotation.modes.len());
+        super::GameEventSequence {
+            strategy: self.battle.rotation.strategy.into_conf(),
+            modes: self.battle.rotation.modes.clone().into_iter().map(|event| super::GameEvents {
+                singleplayer: event.singleplayer.into_conf(),
+                multiplayer: event.multiplayer.into_conf(),
+                duration: std::time::Duration::from_secs(event.duration_s),
+            }).collect(),
+            index: first,
+            started: chrono::Utc::now().timestamp(),
+        }
+    }
 }

@@ -3068,6 +3068,7 @@ dependencies = [
  "log",
  "polariton",
  "polariton_server",
+ "rand 0.9.0",
  "rc_database",
  "rc_factory",
  "serde",

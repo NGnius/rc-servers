@@ -10,6 +10,8 @@ pub struct BattleConfig {
     pub games: GameModes,
     #[serde(default = "default_campaigns")]
     pub singleplayer: super::Campaigns,
+    #[serde(default = "default_rotation")]
+    pub rotation: GameEventSequence,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -99,6 +101,124 @@ impl std::convert::Into<crate::data::game_mode::GameModeConfigs> for GameModes {
             elimination: self.elimination.into(),
             the_pit: self.pit.into(),
             team_deathmatch: self.team_deathmatch.into(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameEventSequence {
+    pub strategy: GameRotationStrategy,
+    pub modes: Vec<GameEvents>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum GameRotationStrategy {
+    Sequence,
+    Random,
+}
+
+impl GameRotationStrategy {
+    pub fn into_conf(self) -> crate::persist::config::GameRotationStrategy {
+        match self {
+            Self::Sequence => crate::persist::config::GameRotationStrategy::Sequence,
+            Self::Random => crate::persist::config::GameRotationStrategy::Random,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameEvents {
+    pub singleplayer: GameEvent,
+    pub multiplayer: GameEvent,
+    pub duration_s: u64, // seconds
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GameEvent {
+    pub map: GameMap,
+    pub visibility: GameVisibility,
+    pub mode: GameType,
+    pub auto_heal: bool,
+}
+
+impl GameEvent {
+    pub fn into_conf(self) -> crate::persist::config::GameEvent {
+        crate::persist::config::GameEvent {
+            map: self.map.into_conf(),
+            visibility: self.visibility.into_conf(),
+            mode: self.mode.into_conf(),
+            auto_heal: self.auto_heal,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum GameMap {
+    // TODO put some more obvious aliases on these
+    Mars1,
+    Mars2,
+    Mars3,
+    Neptune1,
+    Neptune2,
+    Neptune3,
+    Earth1,
+    Earth2,
+}
+
+impl GameMap {
+    fn into_conf(self) -> crate::persist::config::GameMap {
+        match self {
+            Self::Mars1 => crate::persist::config::GameMap::Mars1,
+            Self::Mars2 => crate::persist::config::GameMap::Mars2,
+            Self::Mars3 => crate::persist::config::GameMap::Mars3,
+            Self::Neptune1 => crate::persist::config::GameMap::Neptune1,
+            Self::Neptune2 => crate::persist::config::GameMap::Neptune2,
+            Self::Neptune3 => crate::persist::config::GameMap::Neptune3,
+            Self::Earth1 => crate::persist::config::GameMap::Earth1,
+            Self::Earth2 => crate::persist::config::GameMap::Earth2,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum GameVisibility {
+    Good,
+    Poor,
+    Bad,
+}
+
+impl GameVisibility {
+    fn into_conf(self) -> crate::persist::config::GameVisibility {
+        match self {
+            Self::Good => crate::persist::config::GameVisibility::Good,
+            Self::Poor => crate::persist::config::GameVisibility::Poor,
+            Self::Bad => crate::persist::config::GameVisibility::Bad,
+        }
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum GameType {
+    BattleArena,
+    SuddenDeath,
+    Pit,
+    TestMode,
+    SinglePlayer,
+    TeamDeathmatch,
+    Campaign,
+}
+
+impl GameType {
+    fn into_conf(self) -> crate::persist::config::GameType {
+        match self {
+            Self::BattleArena => crate::persist::config::GameType::BattleArena,
+            Self::SuddenDeath => crate::persist::config::GameType::SuddenDeath,
+            Self::Pit => crate::persist::config::GameType::Pit,
+            Self::TestMode => crate::persist::config::GameType::TestMode,
+            Self::SinglePlayer => crate::persist::config::GameType::SinglePlayer,
+            Self::TeamDeathmatch => crate::persist::config::GameType::TeamDeathmatch,
+            Self::Campaign => crate::persist::config::GameType::Campaign,
         }
     }
 }
@@ -197,6 +317,134 @@ fn default_campaigns() -> super::Campaigns {
                     }
                 ],
             }
+        ]
+    }
+}
+
+fn default_rotation() -> GameEventSequence {
+    GameEventSequence {
+        strategy: GameRotationStrategy::Sequence,
+        modes: vec![
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Neptune1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Neptune3,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                duration_s: 5*60, // 5 minutes
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Neptune2,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::Pit,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Neptune3,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::TestMode,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Neptune3,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Mars2,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::Pit,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Mars3,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::TestMode,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::Pit,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Earth2,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::SuddenDeath,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Mars1,
+                    visibility: GameVisibility::Poor,
+                    mode: GameType::TestMode,
+                    auto_heal: true,
+                },
+                duration_s: 5*60,
+            },
         ]
     }
 }
