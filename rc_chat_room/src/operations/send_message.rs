@@ -1,5 +1,7 @@
 use polariton::operation::{ParameterTable, Typed};
 
+const MAX_MESSAGE_LEN: usize = 512;
+
 const CHANNEL_TYPE_PARAM_KEY: u8 = 1; // in; int
 const MESSAGE_TEXT_PARAM_KEY: u8 = 2; // in; str
 const CHANNEL_NAME_PARAM_KEY: u8 = 3; // in; str
@@ -12,12 +14,16 @@ pub fn send_public_message_handler(chat_system: crate::state::chat::ChatImpl) ->
             let channel_enum = crate::data::channel::ChatChannelType::from_u8(channel_ty as u8)?;
             if let Some(Typed::Str(channel_name)) = params.remove(&CHANNEL_NAME_PARAM_KEY) {
                 if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
+                    let user = user.user()?;
+                    if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
+                        log::warn!("Rejecting too long chat message from {}", user.token().uuid);
+                        return Err(rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
+                    }
                     let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
                         chat_loc.string.clone()
                     } else {
                         "<unknown location>".to_owned()
                     };
-                    let user = user.user()?;
                     let chat_system = chat.system();
                     log::debug!("Got message `{}` from user {} ({} @ {}/{:?})", message_text.string, user.token().uuid, chat_loc, channel_name.string, channel_enum);
                     chat_system.handle_public_message(user.as_ref().as_ref(), message_text.string, channel_name.string, channel_enum);
@@ -35,12 +41,16 @@ pub fn send_private_message_handler(chat_system: crate::state::chat::ChatImpl) -
         let mut params = params.to_dict();
         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
             if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
+                let user = user.user()?;
+                if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
+                    log::warn!("Rejecting too long chat message from {}", user.token().uuid);
+                    return Err(rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
+                }
                 let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
                     chat_loc.string.clone()
                 } else {
                     "<unknown location>".to_owned()
                 };
-                let user = user.user()?;
                 let chat_system = chat.system();
                 log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.token().uuid, chat_loc, username.string);
                 chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, username.string);
