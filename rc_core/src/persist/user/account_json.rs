@@ -198,6 +198,33 @@ impl UserData {
             Ok(())
         }
     }
+
+    fn check_perms_to_exec(&self, ty: &super::SanctionType) -> Result<(), i16> {
+        match ty {
+            super::SanctionType::Warn
+            | super::SanctionType::Mute
+            | super::SanctionType::Note => if self.has_any_elevated_perms() {
+                Ok(())
+            } else {
+                Err(crate::data::error_codes::ChatErrorCodes::ModeratorsOnly as i16)
+            },
+            super::SanctionType::Ban
+            | super::SanctionType::Kick => if self.has_admin_or_better_perms() {
+                Ok(())
+            } else {
+                Err(crate::data::error_codes::ChatErrorCodes::AdminsOnly as i16)
+            },
+        }
+    }
+
+    #[inline]
+    fn has_any_elevated_perms(&self) -> bool {
+        self.perms.moderator | self.perms.administrator | self.perms.developer
+    }
+
+    fn has_admin_or_better_perms(&self) -> bool {
+        self.perms.administrator | self.perms.developer
+    }
 }
 
 const INVALID_ROBOT_ERR: i16 = crate::data::error_codes::WebServicesError::InvalidRobot as i16; // 140
@@ -715,5 +742,84 @@ impl super::ChatUser for UserData {
             }
         }
         Ok(())
+    }
+
+    /*async fn has_pending_sanctions(&self) -> Result<bool, i16> {
+        let count = self.db.count_sanctions_to_ack_by_user_id_and_descriptor(self.account.id, rc_database::schema::sanction::Descriptor::Warn).await.map_err(|e| {
+            log::error!("Failed to count pending sanctions for user_id {}: {}", self.account.id, e);
+            crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+        })?;
+        Ok(count != 0)
+    }*/
+
+    async fn get_sanctions(&self, username: String) -> Result<polariton::operation::Typed<()>, i16> {
+        let user_opt = self.db.user_by_display_name(username.clone()).await.map_err(|e| {
+            log::error!("Failed to retrieve user by username {} for user_id {}: {}", username, self.account.id, e);
+            crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+        })?;
+        if let Some(user) = user_opt {
+            let sanctions = self.db.sanctions_by_user_id(user.id).await.map_err(|e| {
+                log::error!("Failed to retrieve sanctions by username {} for user_id {}: {}", username, self.account.id, e);
+                crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+            })?;
+            Ok(polariton::operation::Typed::Arr(polariton::operation::Arr {
+                ty: polariton::serdes::TypePrefix::Str,
+                items: sanctions.into_iter().map(|x| {
+                    let data = crate::data::sanction::SanctionJson {
+                        type_: crate::data::sanction::SanctionType::from_db(x.descriptor),
+                        reason: x.reason,
+                        reporter: x.issuer_name,
+                        issued: chrono::DateTime::from_timestamp(x.creation_time, 0).unwrap(),
+                    };
+                    polariton::operation::Typed::Str(data.as_json().into())
+                }).collect(),
+            }))
+        } else {
+            Err(crate::data::error_codes::ChatErrorCodes::DoesNotExist as i16)
+        }
+    }
+
+    async fn set_sanction(&self, sanction: super::SetSanction) -> Result<(), i16> {
+        self.check_perms_to_exec(&sanction.type_)?;
+        let user_opt = self.db.user_by_display_name(sanction.username.clone()).await.map_err(|e| {
+            log::error!("Failed to retrieve user by username {} for user_id {}: {}", sanction.username, self.account.id, e);
+            crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+        })?;
+        if let Some(user) = user_opt {
+            if sanction.is_adding {
+                let now = chrono::Utc::now().timestamp();
+                let sanction_ty = crate::data::sanction::SanctionType::from_persist(sanction.type_).to_db();
+                let to_add = rc_database::schema::sanction::ActiveModel {
+                    user_id: rc_database::sea_orm::ActiveValue::Set(user.id),
+                    creation_time: rc_database::sea_orm::ActiveValue::Set(now),
+                    issuer_id: rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                    issuer_name: rc_database::sea_orm::ActiveValue::Set(self.account.display_name.clone()),
+                    descriptor: rc_database::sea_orm::ActiveValue::Set(sanction_ty.clone()),
+                    reason: rc_database::sea_orm::ActiveValue::Set(sanction.reason),
+                    duration: rc_database::sea_orm::ActiveValue::Set(if sanction.duration <= 0 { None } else { Some(sanction.duration as i64) }),
+                    ..Default::default()
+                };
+                if matches!(sanction_ty, rc_database::schema::sanction::Descriptor::Ban) {
+                    self.db.update_perms_by_user_id(rc_database::schema::permissions::ActiveModel {
+                        banned: rc_database::sea_orm::ActiveValue::Set(true),
+                        ..Default::default()
+                    }, user.id).await.map_err(|e| {
+                        log::error!("Failed to update permissions (to ban) for user_id {} by user_id {}: {}", user.id, self.account.id, e);
+                        crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+                    })?;
+                }
+                self.db.insert_sanction(to_add).await.map_err(|e| {
+                    log::error!("Failed to insert sanction for user_id {} by user_id {}: {}", user.id, self.account.id, e);
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
+                })?;
+                Ok(())
+            } else {
+                // FIXME
+                log::error!("Modifying sanctions is not currently supported");
+                Err(crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16)
+            }
+        } else {
+            Err(crate::data::error_codes::ChatErrorCodes::DoesNotExist as i16)
+        }
     }
 }

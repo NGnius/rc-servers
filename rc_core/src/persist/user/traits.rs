@@ -190,5 +190,36 @@ pub trait ChatUser {
     async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16>;
     async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<polariton::operation::Typed<()>, i16>;
     async fn remove_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<(), i16>;
+    //async fn has_pending_sanctions(&self) -> Result<bool, i16>;
+    async fn get_sanctions(&self, username: String) -> Result<polariton::operation::Typed<()>, i16>;
+    async fn set_sanction(&self, sanction: SetSanction) -> Result<(), i16>;
 }
 
+pub struct SetSanction {
+    pub is_adding: bool, // if false, it's modifying
+    pub type_: SanctionType,
+    pub duration: i32,
+    pub reason: String,
+    pub username: String,
+}
+
+pub enum SanctionType {
+    Warn = 0,
+    Mute = 1,
+    Ban = 2,
+    Note = 3,
+    Kick = 4,
+}
+
+impl SanctionType {
+    pub fn from_i32(i: i32) -> Result<Self, i16> {
+        match i {
+            0 => Ok(Self::Warn),
+            1 => Ok(Self::Mute),
+            2 => Ok(Self::Ban),
+            3 => Ok(Self::Note),
+            4 => Ok(Self::Kick),
+            _ => Err(crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16),
+        }
+    }
+}

@@ -5,6 +5,7 @@ pub mod garage;
 pub mod campaign;
 pub mod campaign_difficulty_completion;
 pub mod common_query;
+pub mod sanction;
 
 pub fn parse_int_csv(s: &str) -> Vec<u32> {
     s.split(',').filter_map(|i_as_s| {

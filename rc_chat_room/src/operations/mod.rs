@@ -7,6 +7,8 @@ mod public_channels;
 mod join_channel;
 mod user_online;
 mod subscribed_channels;
+mod add_modify_sanction;
+mod list_sanctions;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -25,5 +27,7 @@ pub fn handler(chat_system: crate::state::chat::ChatImpl, conf: &rc_core::persis
         .add(send_message::send_private_message_handler(chat_system.clone()))
         .add(join_channel::leave_channel_provider(chat_system.clone()))
         .add(subscribed_channels::all_subbed_channels_provider())
+        .add(add_modify_sanction::add_modify_sanction_provider())
+        .add(list_sanctions::list_sanctions_provider())
         //.add(polariton_server::operations::Ack::<00000, _>::default())
 }

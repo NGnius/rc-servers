@@ -1,5 +1,5 @@
 use sea_orm_migration::MigratorTrait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait};
 
 pub struct Database {
     orm: sea_orm::DatabaseConnection,
@@ -103,6 +103,24 @@ impl Database {
 
     pub async fn insert_perms(&self, entity: crate::schema::permissions::ActiveModel) -> Result<crate::schema::permissions::Model, sea_orm::DbErr> {
         entity.insert(&self.orm).await
+    }
+
+    pub async fn update_perms_by_user_id(&self, mut entity: crate::schema::permissions::ActiveModel, user_id: u32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
+        let id_opt = crate::schema::permissions::Entity::find()
+            .select_only()
+            .column(crate::schema::permissions::Column::Id)
+            .filter(crate::schema::permissions::Column::UserId.eq(user_id))
+            .into_model::<crate::schema::common_query::Id>()
+            .one(&self.orm)
+            .await?;
+        if let Some(id) = id_opt {
+            entity.id = sea_orm::ActiveValue::Set(id.id);
+            Ok(Some(crate::schema::permissions::Entity::update(entity)
+                .exec(&self.orm)
+                .await?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn garage_max_slot_by_user_id(&self, user_id: u32) -> Result<u32, sea_orm::DbErr> {
@@ -226,5 +244,27 @@ impl Database {
             }
         })?;
         Ok(())
+    }
+
+    pub async fn count_sanctions_to_ack_by_user_id_and_descriptor(&self, user_id: u32, desc: crate::schema::sanction::Descriptor) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            .filter(crate::schema::sanction::Column::Descriptor.eq(desc))
+            .filter(crate::schema::sanction::Column::Acknowledged.is_null())
+            .count(&self.orm)
+            .await
+    }
+
+    pub async fn sanctions_by_user_id(&self, user_id: u32) -> Result<Vec<crate::schema::sanction::Model>, sea_orm::DbErr> {
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            .filter(crate::schema::sanction::Column::Acknowledged.is_null())
+            .order_by_asc(crate::schema::sanction::Column::CreationTime)
+            .all(&self.orm)
+            .await
+    }
+
+    pub async fn insert_sanction(&self, entity: crate::schema::sanction::ActiveModel) -> Result<crate::schema::sanction::Model, sea_orm::DbErr> {
+        entity.insert(&self.orm).await
     }
 }

@@ -164,6 +164,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(polariton_server::operations::Ack::<152, _>::default()) // custom game player state changed (188 is desired state)
         .add(custom_games_invite::pending_invite_provider())
         .add(chat_settings::chat_settings_provider())
+        .add(polariton_server::operations::Ack::<19, _>::default()) // save chat settings
         .add(prebuilt_robots::garage_robot_data_provider())
         .add(prebuilt_colours::garage_colour_combo_provider())
         .add(robopass_preview_items::robopass_preview_provider())
