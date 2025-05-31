@@ -195,5 +195,9 @@ pub enum PrefabId {
     Database {
         garage: u32,
     },
-    // TODO File, Raw
+    Raw {
+        cube_data: Vec<u8>,
+        colour_data: Vec<u8>,
+    }
+    // TODO File
 }

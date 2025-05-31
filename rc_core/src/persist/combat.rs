@@ -227,13 +227,13 @@ fn default_game_modes() -> GameModes {
     GameModes {
         battle_arena: GameMode {
             respawn_heal_duration: 10.0,
-            respawn_full_heal_duration: 10.0,
+            respawn_full_heal_duration: 0.5,
             kill_limit: 0,
             game_time_m: 20,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,
-            respawn_full_heal_duration: 10.0,
+            respawn_full_heal_duration: 0.5,
             kill_limit: 10,
             game_time_m: 10,
         },
@@ -245,7 +245,7 @@ fn default_game_modes() -> GameModes {
         },
         team_deathmatch: GameMode {
             respawn_heal_duration: 10.0,
-            respawn_full_heal_duration: 10.0,
+            respawn_full_heal_duration: 0.5,
             kill_limit: 10,
             game_time_m: 10,
         },
@@ -321,17 +321,17 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
         vehicles: vec![
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
-                username: "NGnius".to_owned(),
+                username: "NGnius!".to_owned(),
                 id: super::PrefabId::Database { garage: 1 }
             },
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
-                username: "NGram".to_owned(),
+                username: "NGram!".to_owned(),
                 id: super::PrefabId::Database { garage: 1 }
             },
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
-                username: "NGniusness".to_owned(),
+                username: "NGniusness!".to_owned(),
                 id: super::PrefabId::Database { garage: 1 }
             },
         ],

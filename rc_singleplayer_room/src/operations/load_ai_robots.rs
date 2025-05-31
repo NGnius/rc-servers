@@ -15,31 +15,6 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
     let ulock = user.user()?;
     let mut params = params.to_dict();
     params.insert(PARAM_KEY, ulock.singleplayer_robots(factory, weapon_order).await?);
-    /*let event_tx = user.event_sender();
-    let user_bot_data = ulock.slot_by_id(ulock.selected_garage().await.1 as _).await?;
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(20)).await;
-        log::debug!("Sending singleplayer event");
-        let mut spawn_params = std::collections::HashMap::with_capacity(4);
-        spawn_params.insert(2 /* robot GUID */, user_bot_data.uuid);
-        spawn_params.insert(3 /* machine model */, user_bot_data.data);
-        spawn_params.insert(4 /* robot name */, Typed::Str("Robot123".into())); // FIXME
-        spawn_params.insert(7 /* color model */, user_bot_data.colour_data);
-        event_tx.send(polariton_server::ToSend::Data {
-            data: polariton::packet::Data::Event(polariton::operation::Event { code: 3, params: spawn_params.into() }),
-            encrypt: true,
-            channel: 0,
-            reliable: true,
-        }).unwrap();
-        /*let mut update_params = std::collections::HashMap::with_capacity(1);
-        update_params.insert(6 /* ??? */, Typed::Int(5));
-        event_tx.send(polariton_server::ToSend::Data {
-            data: polariton::packet::Data::Event(polariton::operation::Event { code: 5, params: update_params.into() }),
-            encrypt: true,
-            channel: 0,
-            reliable: true,
-        }).unwrap();*/
-    });*/
     Ok(params.into())
 }
 

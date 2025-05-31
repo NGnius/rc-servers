@@ -11,11 +11,15 @@ impl ArcAdapter {
         log::debug!("Connecting to Archive of RoboCraft (ARC) vehicle factory database URI: {}", uri);
         let db = sea_orm::Database::connect(uri).await?;
         let good_cdn = override_cdn.map(|s| if s.ends_with("/") { s } else { format!("{}/", s) });
-        Ok(Self {
+        let adapter = Self {
             orm: db,
             ignore_expiry: show_expired,
             cdn: good_cdn,
-        })
+        };
+        // do query to ensure database is ok
+        adapter.default_query().one(&adapter.orm).await?;
+
+        Ok(adapter)
     }
 
     fn default_query(&self) -> sea_orm::Select<super::entities::robot_metadata::Entity> {

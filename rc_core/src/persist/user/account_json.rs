@@ -29,7 +29,7 @@ impl AccountProvider {
         })
     }
 
-    pub fn fake_user<C: Clone>(&self) -> Box<dyn super::User<C> + Send + Sync> {
+    /*pub fn fake_user<C: Clone>(&self) -> Box<dyn super::User<C> + Send + Sync> {
         Box::new(UserData {
             token: super::UserToken { uuid: "fake user!".to_owned(), token: "".to_owned(), refresh_token: "".to_owned() },
             account: rc_database::schema::user::Model {
@@ -56,7 +56,7 @@ impl AccountProvider {
             extensions: Default::default(),
             db: self.db.clone(),
         })
-    }
+    }*/
 }
 
 #[async_trait::async_trait]
@@ -351,6 +351,33 @@ impl UserData {
                         }
                     }
                 },
+                crate::persist::PrefabId::Raw {
+                    cube_data,
+                    colour_data,
+                } => {
+                    let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
+                    let weapons_guess = vec![weapons_guess[0], 0, 0];
+                    let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                    crate::data::player_data::PlayerData {
+                        name: username.clone(),
+                        display_name: username.clone(),
+                        mastery: 1,
+                        tier: 1, // FIXME
+                        robot_name: vehicle.name.clone().unwrap_or_else(|| "Raw Robot".to_owned()),
+                        robot_map: cube_data.to_owned(),
+                        team: 1,
+                        has_premium: false,
+                        robot_uuid: uuid_str,
+                        cpu: 420, // FIXME
+                        weapon_order: weapons_guess,
+                        colour_map: colour_data.to_owned(),
+                        is_ai: true,
+                        spawn_effect: "Spawn".to_owned(),
+                        death_effect: "Explosion".to_owned(),
+                        player_rank: 1,
+                        weapon_rank: weapon_ranks,
+                    }
+                }
             };
             next_id += 1;
             enemies.push(enemy);
