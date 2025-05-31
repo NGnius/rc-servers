@@ -694,6 +694,18 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 
+    async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16> {
+        let to_save = rc_database::schema::garage::ActiveModel {
+            name: rc_database::sea_orm::ActiveValue::Set(name),
+            ..Default::default()
+        };
+        self.db.update_garage_by_user_id_and_slot(to_save, self.account.id, slot as u32).await.map_err(|e| {
+            log::error!("Failed to save garage {} for user_id {}: {}", slot, self.account.id, e);
+            DATABASE_ERR
+        })?;
+        Ok(())
+    }
+
     fn signup_date(&self) -> i64 {
         super::since_windows_epoch(self.account.creation_time)
     }
