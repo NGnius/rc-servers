@@ -12,3 +12,4 @@ rocket.workspace = true
 libfj.workspace = true
 log.workspace = true
 env_logger.workspace = true
+git-version.workspace = true

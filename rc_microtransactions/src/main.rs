@@ -5,10 +5,11 @@ mod robocraft;
 fn index() -> String {
     let name = env!("CARGO_PKG_NAME");
     let version = env!("CARGO_PKG_VERSION");
+    let git_version = git_version::git_version!(args = ["--always", "--dirty=+"]);
     let authors = env!("CARGO_PKG_AUTHORS");
     let license = env!("CARGO_PKG_LICENSE");
     let repo = env!("CARGO_PKG_REPOSITORY");
-    format!("{} {} by [{}]\n{}\n{}", name, version, authors, license, repo)
+    format!("{} {}:{} by [{}]\n{}\n{}", name, version, git_version, authors, license, repo)
 }
 
 #[rocket::launch]

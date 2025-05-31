@@ -26,3 +26,4 @@ jsonwebtoken = "9"
 clap.workspace = true
 rc_core = { version = "*", optional = true, path = "../rc_core" }
 serde.workspace = true
+git-version.workspace = true
