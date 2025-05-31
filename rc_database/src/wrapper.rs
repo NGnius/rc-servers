@@ -165,6 +165,12 @@ impl Database {
             .await
     }
 
+    pub async fn garage_by_id(&self, id: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find_by_id(id)
+            .one(&self.orm)
+            .await
+    }
+
     pub async fn insert_garages(&self, entities: Vec<crate::schema::garage::ActiveModel>) -> Result<(), sea_orm::DbErr> {
         crate::schema::garage::Entity::insert_many(entities.into_iter()).exec(&self.orm).await?;
         Ok(())

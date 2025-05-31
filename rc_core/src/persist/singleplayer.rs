@@ -1,11 +1,13 @@
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Campaigns {
+pub struct SingleplayerConfig {
+    #[serde(default = "default_campaigns")]
     pub campaigns: Vec<Campaign>,
+    pub vehicles: Vec<super::PrefabVehicle>,
 }
 
-impl Campaigns {
+impl SingleplayerConfig {
     pub fn into_campaign_params(self) -> crate::data::campaign::CampaignsGameParameters {
         crate::data::campaign::CampaignsGameParameters { campaigns: self.campaigns.into_iter().map(|x| x.into_campaign_params()).collect() }
     }
@@ -221,4 +223,8 @@ impl std::convert::Into<crate::data::campaign::CampaignType> for CampaignType {
             Self::Elimination => crate::data::campaign::CampaignType::Elimination,
         }
     }
+}
+
+fn default_campaigns() -> Vec<Campaign> {
+    super::combat::default_campaigns().campaigns
 }

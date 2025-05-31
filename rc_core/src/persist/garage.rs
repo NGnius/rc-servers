@@ -176,3 +176,24 @@ impl std::convert::Into<crate::data::garage_bay::ControlOptions> for GarageContr
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PrefabVehicle {
+    pub name: Option<String>,
+    pub username: String,
+    #[serde(flatten)]
+    pub id: PrefabId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum PrefabId {
+    Factory {
+        #[serde(alias="crf")]
+        factory: u32,
+    },
+    Database {
+        garage: u32,
+    },
+    // TODO File, Raw
+}

@@ -9,7 +9,7 @@ pub struct BattleConfig {
     #[serde(default = "default_game_modes")]
     pub games: GameModes,
     #[serde(default = "default_campaigns")]
-    pub singleplayer: super::Campaigns,
+    pub singleplayer: super::SingleplayerConfig,
     #[serde(default = "default_rotation")]
     pub rotation: GameEventSequence,
 }
@@ -252,8 +252,8 @@ fn default_game_modes() -> GameModes {
     }
 }
 
-fn default_campaigns() -> super::Campaigns {
-    super::Campaigns {
+pub(super) fn default_campaigns() -> super::SingleplayerConfig {
+    super::SingleplayerConfig {
         campaigns: vec![
             super::Campaign {
                 id: "strCampaignModeBattle".to_owned(),
@@ -317,7 +317,24 @@ fn default_campaigns() -> super::Campaigns {
                     }
                 ],
             }
-        ]
+        ],
+        vehicles: vec![
+            super::PrefabVehicle {
+                name: Some("Config your singleplayer!".to_owned()),
+                username: "NGnius".to_owned(),
+                id: super::PrefabId::Database { garage: 1 }
+            },
+            super::PrefabVehicle {
+                name: Some("Config your singleplayer!".to_owned()),
+                username: "NGram".to_owned(),
+                id: super::PrefabId::Database { garage: 1 }
+            },
+            super::PrefabVehicle {
+                name: Some("Config your singleplayer!".to_owned()),
+                username: "NGniusness".to_owned(),
+                id: super::PrefabId::Database { garage: 1 }
+            },
+        ],
     }
 }
 

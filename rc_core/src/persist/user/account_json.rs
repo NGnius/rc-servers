@@ -5,6 +5,7 @@ use crate::persist::config::ConfigProvider;
 pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
+    singleplayer_vehicles: std::sync::Arc<Vec<crate::persist::garage::PrefabVehicle>>,
     auto_signups: bool,
     secret: Vec<u8>,
     db: std::sync::Arc<rc_database::Database>,
@@ -21,9 +22,39 @@ impl AccountProvider {
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
+            singleplayer_vehicles: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::singleplayer_vehicles(conf)),
             auto_signups: server_settings.auto_signup,
             secret: std::fs::read(&token_path)?,
             db: std::sync::Arc::new(db),
+        })
+    }
+
+    pub fn fake_user<C: Clone>(&self) -> Box<dyn super::User<C> + Send + Sync> {
+        Box::new(UserData {
+            token: super::UserToken { uuid: "fake user!".to_owned(), token: "".to_owned(), refresh_token: "".to_owned() },
+            account: rc_database::schema::user::Model {
+                id: 0,
+                creation_time: 0,
+                public_id: "".to_owned(),
+                display_name: "".to_owned(),
+                password: "".to_owned(),
+                email: "".to_owned(),
+                steam_id: None,
+            },
+            perms: rc_database::schema::permissions::Model {
+                id: 0,
+                user_id: 0,
+                moderator: true,
+                administrator: true,
+                developer: true,
+                royalty: false,
+                banned: false,
+            },
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            singleplayer_vehicles: self.singleplayer_vehicles.clone(),
+            extensions: Default::default(),
+            db: self.db.clone(),
         })
     }
 }
@@ -53,6 +84,7 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             perms: user_perms,
             cubes: self.cubes.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
+            singleplayer_vehicles: self.singleplayer_vehicles.clone(),
             extensions: ext,
             db: self.db.clone(),
         }))
@@ -163,6 +195,7 @@ struct UserData {
     perms: rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
+    singleplayer_vehicles: std::sync::Arc<Vec<crate::persist::garage::PrefabVehicle>>,
     extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
     db: std::sync::Arc<rc_database::Database>,
 }
@@ -224,6 +257,105 @@ impl UserData {
 
     fn has_admin_or_better_perms(&self) -> bool {
         self.perms.administrator | self.perms.developer
+    }
+
+    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
+        use rand::seq::IndexedRandom;
+        let mut enemies = Vec::with_capacity(5);
+        let mut next_id = 0;
+        let mut seen_usernames = std::collections::HashSet::<String>::new();
+        for _ in 0..5 {
+            let vehicle = self.singleplayer_vehicles.choose(&mut rand::rng())
+                .ok_or(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16)?;
+            let current_id = next_id;
+            let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((i32::MAX as u32, current_id)));
+            let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
+            let username = if seen_usernames.contains(&vehicle.username) {
+                let mut username = vehicle.username.clone();
+                while seen_usernames.contains(&username) {
+                    username = format!("{}{}", username, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].choose(&mut rand::rng()).unwrap());
+                }
+                username
+            } else {
+                vehicle.username.clone()
+            };
+            seen_usernames.insert(username.clone());
+            let enemy = match &vehicle.id {
+                crate::persist::PrefabId::Factory { factory: factory_id } => {
+                    //use rc_factory::VehicleFactoryAdapter;
+                    match factory.vehicle(*factory_id).await {
+                        Ok(Some(factory_vehicle)) => {
+                            let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
+                            let weapons_guess = vec![weapons_guess[0], 0, 0];
+                            let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                            crate::data::player_data::PlayerData {
+                                name: username.clone(),
+                                display_name: username.clone(),
+                                mastery: 1,
+                                tier: 1, // FIXME
+                                robot_name: vehicle.name.clone().unwrap_or_else(|| factory_vehicle.1.name.clone()),
+                                robot_map: factory_vehicle.0.cube_data,
+                                team: 1,
+                                has_premium: false,
+                                robot_uuid: uuid_str,
+                                cpu: 420,
+                                weapon_order: weapons_guess,
+                                colour_map: factory_vehicle.0.colour_data,
+                                is_ai: true,
+                                spawn_effect: "Spawn".to_owned(),
+                                death_effect: "Explosion".to_owned(),
+                                player_rank: 1,
+                                weapon_rank: weapon_ranks,
+                            }
+                        },
+                        Ok(None) => {
+                            log::error!("Prefab vehicle {} does not exist in factory", factory_id);
+                            return Err(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16);
+                        },
+                        Err(e) => {
+                            log::error!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e);
+                            return Err(crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16);
+                        }
+                    }
+                },
+                crate::persist::PrefabId::Database { garage } => {
+                    match self.db.garage_by_id(*garage).await {
+                        Ok(Some(db_vehicle)) => {
+                            crate::data::player_data::PlayerData {
+                                name: username.clone(),
+                                display_name: username.clone(),
+                                mastery: 1,
+                                tier: 1, // FIXME
+                                robot_name: vehicle.name.clone().unwrap_or_else(|| db_vehicle.name.clone()),
+                                robot_map: db_vehicle.robot_data,
+                                team: 1,
+                                has_premium: false,
+                                robot_uuid: uuid_str,
+                                cpu: db_vehicle.total_robot_cpu as i32,
+                                weapon_order: rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
+                                colour_map: db_vehicle.colour_data,
+                                is_ai: true,
+                                spawn_effect: "Spawn".to_owned(),
+                                death_effect: "Explosion".to_owned(),
+                                player_rank: 1,
+                                weapon_rank: rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+                            }
+                        },
+                        Ok(None) => {
+                            log::error!("Prefab vehicle {} does not exist in main garage database", garage);
+                            return Err(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e);
+                            return Err(crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16);
+                        }
+                    }
+                },
+            };
+            next_id += 1;
+            enemies.push(enemy);
+        }
+        Ok(enemies)
     }
 }
 
@@ -539,8 +671,9 @@ impl <C: Clone> super::User<C> for UserData {
         super::since_windows_epoch(self.account.creation_time)
     }
 
-    async fn singleplayer_robots(&self) ->  Result<polariton::operation::Typed<C>, i16> {
-        self.err_on_banned().await?;
+    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser) ->  Result<polariton::operation::Typed<C>, i16> {
+        //self.err_on_banned().await?;
+        let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order).await?;
         let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
             log::error!("Failed to retrieve selected vehicle for user_id {} (singleplayer_robots): {}", self.account.id, e);
             DATABASE_ERR
@@ -550,28 +683,30 @@ impl <C: Clone> super::User<C> for UserData {
             INVALID_ROBOT_ERR
         })?;
         let user_uuid = self.token.uuid.clone();
+        let weapon_order = rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+
+        // real user MUST be last
+        vehicles.push(crate::data::player_data::PlayerData {
+            name: user_uuid.clone(),
+            display_name: self.account.display_name.clone(),
+            mastery: current_slot.mastery_level as i32,
+            tier: 1, // FIXME
+            robot_name: current_slot.name,
+            robot_map: current_slot.robot_data.clone(),
+            team: 0,
+            has_premium: false, // FIXME
+            robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
+            cpu: current_slot.total_robot_cpu as i32,
+            weapon_order: weapon_order.clone(),
+            colour_map: current_slot.colour_data.clone(),
+            is_ai: false,
+            spawn_effect: "Spawn_Warp".to_owned(), // FIXME
+            death_effect: "Explosion_Warp".to_owned(), // FIXME
+            player_rank: 1, // FIXME
+            weapon_rank: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+        });
         Ok(crate::data::player_data::PlayerDatas {
-            players: vec![
-                crate::data::player_data::PlayerData {
-                    name: user_uuid.clone(),
-                    display_name: self.account.display_name.clone(),
-                    mastery: current_slot.mastery_level as i32,
-                    tier: 1, // FIXME
-                    robot_name: current_slot.name,
-                    robot_map: current_slot.robot_data,
-                    team: 0,
-                    has_premium: true, // FIXME
-                    robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
-                    cpu: current_slot.total_robot_cpu as i32,
-                    weapon_order: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
-                    colour_map: current_slot.colour_data,
-                    is_ai: false,
-                    spawn_effect: "Spawn_Warp".to_owned(), // FIXME
-                    death_effect: "Explosion_Warp".to_owned(), // FIXME
-                    player_rank: 1, // FIXME
-                    weapon_rank: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
-                }
-            ],
+            players: vehicles,
         }.as_transmissible())
     }
 

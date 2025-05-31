@@ -25,6 +25,8 @@ pub trait ConfigProvider<C: Clone> {
     fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
     fn chat_system_config(&self) -> ChatSystemConfig;
     fn gamemode_events(&self) -> GameEventSequence;
+    // FIXME don't use serializable types in traits
+    fn singleplayer_vehicles(&self) -> Vec<crate::persist::garage::PrefabVehicle>;
 }
 
 pub struct CompleteCampaignProvider {

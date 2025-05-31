@@ -13,6 +13,7 @@ pub mod weapon_upgrade;
 pub mod crf;
 pub mod channel;
 pub mod sanction;
+pub mod robot_data;
 
 pub mod error_codes;
 

@@ -19,7 +19,7 @@ pub mod item_shop_bundle;
 pub mod player_robopass_season;
 //pub use rc_core::data::weapon_upgrade;
 pub mod player_rank;
-pub mod robot_data;
+// pub use rc_core::data::robot_data;
 pub mod quest;
 //pub use rc_core::data::auto_regen;
 //pub use rc_core::data::voting;

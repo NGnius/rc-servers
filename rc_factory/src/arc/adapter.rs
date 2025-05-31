@@ -68,7 +68,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     banner_message: Default::default(),
                     combat_rating: meta.combat_rating,
                     cosmetic_rating: meta.cosmetic_rating,
-                    cube_amounts: Default::default(),
+                    cube_amounts: Default::default(), // FIXME parse cube amounts
                 }
             )))
         } else {

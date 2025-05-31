@@ -10,7 +10,7 @@ pub struct PrebuiltRobotInfo {
 }
 
 impl PrebuiltRobotInfo {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             //(Typed::Str("[key]".into()), Typed::Str(self.id.clone().into())),
             (Typed::Str("Name".into()), Typed::Str(self.name.clone().into())),

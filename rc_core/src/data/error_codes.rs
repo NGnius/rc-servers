@@ -60,3 +60,15 @@ pub enum ChatErrorCodes {
     PasswordRequired = 16,
     ChannelExpired = 17,
 }
+
+#[repr(i16)]
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum SingleplayerErrorCode {
+    None = 0,
+    DatabaseError = 1,
+    UnexpectedError = 2,
+    WrongNumberOfAuthParams = 3,
+    MaintenanceMode = 4,
+    DuplicateLogin = 5,
+}

@@ -10,6 +10,13 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
+pub struct InitConfig {
+    pub cubes: rc_core::persist::config::ConfigImpl,
+    pub users: std::sync::Arc<rc_core::persist::user::UserImpl>,
+    pub factory: std::sync::Arc<rc_core::factory::Factory>,
+    pub parsers: rc_core::cubes::CubeParsers,
+}
+
 pub type UserTy = rc_core::UserState<()>;
 
 #[tokio::main]
@@ -20,8 +27,17 @@ async fn main() -> std::io::Result<()> {
 
     let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
+    let factory = std::sync::Arc::new(<rc_core::persist::config::ConfigImpl as rc_core::ConfigProvider<()>>::factory::<'_, '_>(&cubes).await.expect("Bad vehicle factory (CRF) config"));
+    let parsers = rc_core::cubes::CubeParsers::new(&cubes);
 
-    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
+    let init_ctx = InitConfig {
+        cubes,
+        users,
+        factory,
+        parsers,
+    };
+
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
@@ -30,11 +46,11 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server.clone(), users.clone()).await;
+        process_socket(socket, address, server.clone(), init_ctx.users.clone()).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
-            tokio::spawn(process_socket(socket, address, server.clone(), users.clone()));
+            tokio::spawn(process_socket(socket, address, server.clone(), init_ctx.users.clone()));
         }
     }
     server.join();

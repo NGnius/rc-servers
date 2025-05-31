@@ -6,7 +6,7 @@ pub use cube_data::{Cube, ItemTier, ItemCategory, ItemType};
 //pub use cube_data::{VisibilityMode, ItemType};
 
 mod garage;
-pub use garage::{GarageSlot, GarageControls, ControlType};
+pub use garage::{GarageSlot, GarageControls, ControlType, PrefabVehicle, PrefabId};
 
 mod movement;
 pub use movement::{MovementCategoryData, MovementData};
@@ -21,7 +21,7 @@ mod combat;
 pub use combat::BattleConfig;
 
 mod singleplayer;
-pub use singleplayer::{Campaigns, Campaign, CampaignDifficulty, CampaignCompletion, CampaignType, Wave, WaveRobot};
+pub use singleplayer::{SingleplayerConfig, Campaign, CampaignDifficulty, CampaignCompletion, CampaignType, Wave, WaveRobot};
 
 mod client_config;
 pub use client_config::GameplaySettings;

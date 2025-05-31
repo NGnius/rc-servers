@@ -1,7 +1,7 @@
 use polariton_server::operations::SimpleFunc;
 use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
-use crate::data::robot_data::*;
+use rc_core::data::robot_data::*;
 
 const PARAM_KEY: u8 = 1;
 

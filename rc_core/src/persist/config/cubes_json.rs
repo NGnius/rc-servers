@@ -30,7 +30,7 @@ impl CubeConfig {
 }
 
 #[async_trait::async_trait]
-impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
+impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn cube_list(&self) -> Typed<C> {
         Typed::Dict(Dict {
             key_ty: TypePrefix::Str,
@@ -303,4 +303,55 @@ impl <C: Clone> super::ConfigProvider<C> for CubeConfig {
             started: chrono::Utc::now().timestamp(),
         }
     }
+
+    fn singleplayer_vehicles(&self) -> Vec<crate::persist::garage::PrefabVehicle> {
+        // FIXME don't use serializable types in traits
+        self.battle.singleplayer.vehicles.clone()
+    }
+
+    /*async fn prefab_vehicles(&self, user: &(dyn crate::persist::user::User<C> + Sync), factory: &crate::factory::Factory) -> Typed<C> {
+        let mut next_id = 0;
+        let mut id_map = Vec::with_capacity(self.battle.singleplayer.vehicles.len());
+        let mut debug_str_map = Vec::with_capacity(self.battle.singleplayer.vehicles.len());
+        for vehicle in self.battle.singleplayer.vehicles.clone().into_iter() {
+            let current_id = next_id;
+            let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((i32::MAX as u32, current_id)));
+            let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
+            let prebuilt = match &vehicle.id {
+                crate::persist::PrefabId::Factory { factory: factory_id } => {
+                    use rc_factory::VehicleFactoryAdapter;
+                    let factory_vehicle = factory.vehicle(*factory_id).await
+                        .expect("Failed to retrieve prefab vehicle from factory") // result
+                        .expect("Prefab vehicle does not exist in factory"); // option
+                    crate::data::robot_data::PrebuiltRobotInfo {
+                        name: vehicle.name.unwrap_or(factory_vehicle.1.name),
+                        class: vehicle.class,
+                        category: "RE_robot_category0".to_owned(),
+                        robot_data: factory_vehicle.0.cube_data,
+                        colour_data: factory_vehicle.0.colour_data,
+                    }
+                },
+                crate::persist::PrefabId::Database { garage } => {
+                    let db_vehicle = user.garage_by_id(*garage).await
+                        .expect("Prefab vehicle does not exist in main garage database");
+                    crate::data::robot_data::PrebuiltRobotInfo {
+                        name: vehicle.name.unwrap_or(db_vehicle.name.expect("Prefab vehicle name is required")),
+                        class: vehicle.class,
+                        category: "RE_robot_category0".to_owned(),
+                        robot_data: db_vehicle.robot_data,
+                        colour_data: db_vehicle.colour_data,
+                    }
+                },
+            };
+            debug_str_map.push(format!("`{}` -> `{}`", uuid_str, prebuilt.name));
+            id_map.push((Typed::Str(uuid_str.into()), prebuilt.as_transmissible()));
+            next_id += 1;
+        }
+        log::debug!("Prefab mapping generated `<uuid>` -> `<name>`:\n\t{}", debug_str_map.join("\n\t"));
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str, // str
+            val_ty: TypePrefix::HashMap, // hashmap
+            items: id_map,
+        })
+    }*/
 }
