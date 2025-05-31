@@ -601,6 +601,80 @@ impl <C: Clone> super::User<C> for UserData {
         })
     }
 
+    async fn copy_slot(&self, slot: i32, into_slot: Option<i32>, append: &str) -> Result<(), i16> {
+        let slot_to_copy = self.db.garage_by_user_id_and_slot(self.account.id, slot as u32).await.map_err(|e| {
+            log::error!("Failed to retrieve vehicle slot {} to copy for user_id {}: {}", slot, self.account.id, e);
+            DATABASE_ERR
+        })?.ok_or_else(|| {
+            log::error!("No vehicle slot {} to copy for user_id {}", slot, self.account.id);
+            UNEXPECTED_ERR
+        })?;
+        let new_name = format!("{} {}", slot_to_copy.name, append);
+        let new_slot = if let Some(existing_slot) = into_slot {
+            log::info!("Copy slot {} -> {} as `{}`", slot, existing_slot, new_name);
+            if let Some(existing_g) = self.db.garage_by_user_id_and_slot(self.account.id, existing_slot as u32).await.map_err(|e| {
+                log::error!("Failed to retrieve vehicle slot {} for user_id {}: {}", slot, self.account.id, e);
+                DATABASE_ERR
+            })? {
+                use rc_database::sea_orm::IntoActiveModel;
+                let mut to_update = existing_g.into_active_model();
+                // copy everything except id, user_id, creation_time, slot, was_rated, bay_cpu, mastery_level, selected
+                to_update.name = rc_database::sea_orm::ActiveValue::Set(new_name);
+                to_update.crf_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.crf_id);
+                to_update.movement_categories = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.movement_categories);
+                to_update.thumbnail_version = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.thumbnail_version);
+                to_update.total_robot_cpu = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_cpu);
+                to_update.total_cosmetic_cpu = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_cosmetic_cpu);
+                to_update.total_robot_ranking = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_ranking);
+                to_update.tutorial_robot = rc_database::sea_orm::ActiveValue::Set(false);
+                to_update.starter_robot_index = rc_database::sea_orm::ActiveValue::Set(None);
+                to_update.control_type = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.control_type);
+                to_update.vertical_strafing = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.vertical_strafing);
+                to_update.sideways_driving = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.sideways_driving);
+                to_update.tracks_turn_on_spot = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.tracks_turn_on_spot);
+                to_update.bay_skin_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.bay_skin_id);
+                to_update.death_animation_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.death_animation_id);
+                to_update.spawn_animation_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.spawn_animation_id);
+                to_update.weapon_order = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.weapon_order);
+                to_update.robot_data = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.robot_data);
+                to_update.colour_data = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.colour_data);
+                self.db.update_garage(to_update).await.map_err(|e| {
+                    log::error!("Failed to update garage slot {} copied from {} for user_id {}: {}", existing_slot, slot, self.account.id, e);
+                    DATABASE_ERR
+                })?;
+                existing_slot as u32
+            } else {
+                log::warn!("No existing vehicle slot {} for user_id {}, copying to new slot", slot, self.account.id);
+                return <Self as super::User<C>>::copy_slot(self, slot, None, append).await;
+            }
+        } else {
+            log::info!("Copy slot {} -> <new slot> as `{}`", slot, new_name);
+            use rc_database::sea_orm::IntoActiveModel;
+            let mut to_insert = slot_to_copy.into_active_model();
+            let max_slot = self.db.garage_max_slot_by_user_id(self.account.id).await.map_err(|e| {
+                log::error!("Failed to get max garage slot during copy for user_id {}: {}", self.account.id, e);
+                DATABASE_ERR
+            })?;
+            let now = chrono::Utc::now().timestamp();
+            let uuid = super::uuid_sanitize(now);
+            to_insert.id = Default::default();
+            to_insert.creation_time = rc_database::sea_orm::ActiveValue::Set(now);
+            to_insert.uuid = rc_database::sea_orm::ActiveValue::Set(uuid);
+            to_insert.slot = rc_database::sea_orm::ActiveValue::Set(max_slot + 1);
+            to_insert.name = rc_database::sea_orm::ActiveValue::Set(new_name);
+            self.db.insert_garage(to_insert).await.map_err(|e| {
+                log::error!("Failed to insert garage slot copied from {} for user_id {}: {}", slot, self.account.id, e);
+                DATABASE_ERR
+            })?;
+            max_slot + 1
+        };
+        self.db.update_garage_selected_by_user_id_and_slot(self.account.id, new_slot).await.map_err(|e| {
+            log::error!("Failed to select copied garage slot {} for user_id {}: {}", new_slot, self.account.id, e);
+            DATABASE_ERR
+        })?;
+        Ok(())
+    }
+
     async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16> {
         self.err_on_banned().await?;
         if increments <= 0 {

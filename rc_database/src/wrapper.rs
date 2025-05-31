@@ -180,12 +180,11 @@ impl Database {
         entity.insert(&self.orm).await
     }
 
-    /*pub async fn update_garage(&self, entity: crate::schema::garage::ActiveModel, id: u32) -> Result<crate::schema::garage::Model, sea_orm::DbErr> {
+    pub async fn update_garage(&self, entity: crate::schema::garage::ActiveModel) -> Result<crate::schema::garage::Model, sea_orm::DbErr> {
         crate::schema::garage::Entity::update(entity)
-            .filter(crate::schema::garage::Column::Id.eq(id))
             .exec(&self.orm)
             .await
-    }*/
+    }
 
     pub async fn update_garage_by_user_id_and_slot(&self, mut entity: crate::schema::garage::ActiveModel, user_id: u32, slot: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         let id_opt = crate::schema::garage::Entity::find()

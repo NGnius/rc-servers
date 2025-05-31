@@ -68,6 +68,7 @@ pub trait User<C>: ChatUser {
     async fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
     async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
+    async fn copy_slot(&self, slot: i32, into_slot: Option<i32>, append: &str) -> Result<(), i16>;
     async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16>;
     async fn save_slot_controls(&self, controls: ControlData) -> Result<(), i16>;
     async fn save_slot_customisations(&self, customs: CustomisationData) -> Result<(), i16>;

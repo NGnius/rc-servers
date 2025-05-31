@@ -96,6 +96,7 @@ mod avatar_set;
 mod garage_slot_controls;
 mod garage_slot_set_customisations;
 mod garage_slot_name;
+mod garage_slot_copy;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -215,4 +216,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(garage_slot_controls::garage_slot_controls_provider())
         .add(garage_slot_set_customisations::garage_slot_customisation_provider())
         .add(garage_slot_name::garage_slot_rename_provider())
+        .add(garage_slot_copy::garage_slot_copy_provider())
 }
