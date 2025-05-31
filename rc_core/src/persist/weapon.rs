@@ -44,7 +44,9 @@ pub struct WeaponData {
     pub aeroflak_damage_radius: Option<f32>,
     pub aeroflak_explosion_radius: Option<f32>,
     pub aeroflak_ground_clearance: Option<f32>,
+    #[serde(alias="aeroflak_buff_max_stacks")]
     pub aeroflak_max_stacks: Option<i32>,
+    #[serde(alias="aeroflak_buff_damage_per_stack")]
     pub aeroflak_damage_per_stack: Option<i32>,
     #[serde(alias="aeroflak_buff_time_to_expire")]
     pub aeroflak_stack_expire: Option<f32>,
