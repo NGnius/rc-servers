@@ -97,20 +97,38 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                 libfj::robocraft::FactoryOrderType::MostBought => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::BuyCount); },
             }
             if !query.text_filter.is_empty() {
+                let query_text = format!("%{}%", query.text_filter.replace('%', ""));
                 if query.player_filter {
                     query_builder = query_builder.filter(
                         sea_orm::sea_query::Condition::any()
-                            .add(super::entities::robot_metadata::Column::AddedBy.like(query.text_filter.clone()))
-                            .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query.text_filter))
+                            .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                            .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
                     );
                 } else {
-                    query_builder = query_builder.filter(
-                        sea_orm::sea_query::Condition::any()
-                            .add(super::entities::robot_metadata::Column::AddedBy.like(query.text_filter.clone()))
-                            .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query.text_filter.clone()))
-                            .add(super::entities::robot_metadata::Column::Name.like(query.text_filter.clone()))
-                            .add(super::entities::robot_metadata::Column::Description.like(query.text_filter.clone()))
-                    );
+                    match query.text_search_field {
+                        libfj::robocraft::FactoryTextSearchField::All => {
+                            query_builder = query_builder.filter(
+                                sea_orm::sea_query::Condition::any()
+                                    .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                    .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text.clone()))
+                                    .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                                    .add(super::entities::robot_metadata::Column::Description.like(query_text))
+                            );
+                        },
+                        libfj::robocraft::FactoryTextSearchField::Name => {
+                            query_builder = query_builder.filter(
+                                sea_orm::sea_query::Condition::any()
+                                    .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                            );
+                        },
+                        libfj::robocraft::FactoryTextSearchField::Player => {
+                            query_builder = query_builder.filter(
+                                sea_orm::sea_query::Condition::any()
+                                    .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                    .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
+                            );
+                        },
+                    }
                 }
             }
             // movement filters not supported
@@ -124,12 +142,17 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
             if query.buyable {
                 query_builder = query_builder.filter(super::entities::robot_metadata::Column::Buyable.ne(0));
             }
+            if !self.ignore_expiry {
+                let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
+                log::debug!("Expiry must exceed `{}`", now_str);
+                query_builder = query_builder.filter(super::entities::robot_metadata::Column::ExpiryDate.gte(now_str))
+            }
             query_builder
         };
 
         // FIXME add support for query.prepend_featured_bot
         let metadata_pages = query_params.paginate(&self.orm, query.page_size as u64);
-        let metadatas = metadata_pages.fetch_page(query.page as u64).await?;
+        let metadatas = metadata_pages.fetch_page((query.page - 1) as u64).await?;
         let mut infos = Vec::with_capacity(metadatas.len());
         for meta in metadatas {
             //let cube_amounts = super::entities::robot_cubes::Entity::find_by_id(meta.id).one(&self.orm).await?.map(|x| x.cube_amounts).unwrap_or_else(|| "".to_owned());
