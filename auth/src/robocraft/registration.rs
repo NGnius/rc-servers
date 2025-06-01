@@ -180,10 +180,17 @@ async fn form_load() -> Template {
     })
 }
 
+#[get("/robocraft/favicon")]
+pub async fn favicon(config: &State<crate::common::cli::Config>) -> Result<rocket::fs::NamedFile, std::io::Error> {
+    let path = config.robocraft.assets.join("favicon.jpg");
+    rocket::fs::NamedFile::open(path).await
+}
+
+
 
 pub fn stage() -> rocket::fairing::AdHoc {
     rocket::fairing::AdHoc::on_ignite("Robocraft Steam", |rocket| async {
-        rocket.mount("/", routes![form_load, form_submit])
+        rocket.mount("/", routes![form_load, form_submit, favicon])
             .attach(Template::fairing())
     })
 }
