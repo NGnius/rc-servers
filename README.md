@@ -52,6 +52,8 @@ It is possible to remove the obfuscation from the Robocraft's `Assembly-CSharp.d
 
 If you can program or are learning Rust, pull requests are appreciated! If you can't and would prefer not to learn, reporting issues is also welcome.
 
+Note: New users cannot create repositories on this git server and so can't create pull requests. If you're interested in contributing code, please ask NGnius to lift that restriction on your account.
+
 If you'd like to discuss, contact NGnius on Signal `rfc.1149` or email `ngniusness@gmail.com`. I'll make a Signal group chat if there's enough interest.
 
 # Acknowledgements
