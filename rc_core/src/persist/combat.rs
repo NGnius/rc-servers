@@ -321,20 +321,27 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
         vehicles: vec![
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
-                username: "NGnius!".to_owned(),
-                id: super::PrefabId::Database { garage: 1 }
+                username: "NGnius?".to_owned(),
+                id: super::PrefabId::Database { garage: 1 },
             },
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
                 username: "NGram!".to_owned(),
-                id: super::PrefabId::Database { garage: 1 }
+                id: super::PrefabId::Database { garage: 1 },
             },
             super::PrefabVehicle {
                 name: Some("Config your singleplayer!".to_owned()),
-                username: "NGniusness!".to_owned(),
-                id: super::PrefabId::Database { garage: 1 }
+                username: "NGniusness*".to_owned(),
+                id: super::PrefabId::Database { garage: 1 },
+            },
+            super::PrefabVehicle {
+                name: Some("Config your singleplayer!".to_owned()),
+                username: "NG~".to_owned(),
+                id: super::PrefabId::Database { garage: 1 },
             },
         ],
+        max_teammates: 0,
+        max_enemies: 5,
     }
 }
 

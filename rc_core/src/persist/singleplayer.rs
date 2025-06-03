@@ -5,6 +5,8 @@ pub struct SingleplayerConfig {
     #[serde(default = "default_campaigns")]
     pub campaigns: Vec<Campaign>,
     pub vehicles: Vec<super::PrefabVehicle>,
+    pub max_teammates: u32,
+    pub max_enemies: u32,
 }
 
 impl SingleplayerConfig {
@@ -14,6 +16,18 @@ impl SingleplayerConfig {
 
     pub fn into_waves(self) -> crate::data::campaign::LiveCampaignWaves {
         crate::data::campaign::LiveCampaignWaves { waves: self.campaigns.into_iter().map(|x| x.into_waves()).collect() }
+    }
+
+    pub fn into_singleplayer_conf(&self) -> crate::persist::config::SingleplayerConfig {
+        crate::persist::config::SingleplayerConfig {
+            max_teammates: self.max_teammates,
+            max_enemies: self.max_enemies,
+            vehicles: self.vehicles.iter().map(|v| crate::persist::config::VehicleInfo {
+                name: v.name.clone(),
+                username: v.username.clone(),
+                id: v.id.clone().into(),
+            }).collect()
+        }
     }
 }
 

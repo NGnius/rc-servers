@@ -201,3 +201,13 @@ pub enum PrefabId {
     }
     // TODO File
 }
+
+impl std::convert::Into<crate::persist::config::VehicleDescriptor> for PrefabId {
+    fn into(self) -> crate::persist::config::VehicleDescriptor {
+        match self {
+            Self::Factory { factory } => crate::persist::config::VehicleDescriptor::Factory { factory },
+            Self::Database { garage } => crate::persist::config::VehicleDescriptor::Database { garage },
+            Self::Raw { cube_data, colour_data } => crate::persist::config::VehicleDescriptor::Raw { cube_data , colour_data },
+        }
+    }
+}

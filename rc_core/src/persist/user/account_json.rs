@@ -5,7 +5,6 @@ use crate::persist::config::ConfigProvider;
 pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
-    singleplayer_vehicles: std::sync::Arc<Vec<crate::persist::garage::PrefabVehicle>>,
     auto_signups: bool,
     secret: Vec<u8>,
     db: std::sync::Arc<rc_database::Database>,
@@ -22,7 +21,6 @@ impl AccountProvider {
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
-            singleplayer_vehicles: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::singleplayer_vehicles(conf)),
             auto_signups: server_settings.auto_signup,
             secret: std::fs::read(&token_path)?,
             db: std::sync::Arc::new(db),
@@ -84,7 +82,6 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             perms: user_perms,
             cubes: self.cubes.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
-            singleplayer_vehicles: self.singleplayer_vehicles.clone(),
             extensions: ext,
             db: self.db.clone(),
         }))
@@ -195,7 +192,6 @@ struct UserData {
     perms: rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
-    singleplayer_vehicles: std::sync::Arc<Vec<crate::persist::garage::PrefabVehicle>>,
     extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
     db: std::sync::Arc<rc_database::Database>,
 }
@@ -259,13 +255,13 @@ impl UserData {
         self.perms.administrator | self.perms.developer
     }
 
-    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
+    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
         use rand::seq::IndexedRandom;
-        let mut enemies = Vec::with_capacity(5);
+        let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
         let mut next_id = 0;
         let mut seen_usernames = std::collections::HashSet::<String>::new();
-        for _ in 0..5 {
-            let vehicle = self.singleplayer_vehicles.choose(&mut rand::rng())
+        for i in 0..(singleplayer_config.max_enemies + singleplayer_config.max_teammates) {
+            let vehicle = singleplayer_config.vehicles.choose(&mut rand::rng())
                 .ok_or(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16)?;
             let current_id = next_id;
             let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((i32::MAX as u32, current_id)));
@@ -280,8 +276,9 @@ impl UserData {
                 vehicle.username.clone()
             };
             seen_usernames.insert(username.clone());
+            let team_num = if i < singleplayer_config.max_enemies { 1 } else { 0 };
             let enemy = match &vehicle.id {
-                crate::persist::PrefabId::Factory { factory: factory_id } => {
+                crate::persist::config::VehicleDescriptor::Factory { factory: factory_id } => {
                     //use rc_factory::VehicleFactoryAdapter;
                     match factory.vehicle(*factory_id).await {
                         Ok(Some(factory_vehicle)) => {
@@ -295,7 +292,7 @@ impl UserData {
                                 tier: 1, // FIXME
                                 robot_name: vehicle.name.clone().unwrap_or_else(|| factory_vehicle.1.name.clone()),
                                 robot_map: factory_vehicle.0.cube_data,
-                                team: 1,
+                                team: team_num,
                                 has_premium: false,
                                 robot_uuid: uuid_str,
                                 cpu: 420,
@@ -318,7 +315,7 @@ impl UserData {
                         }
                     }
                 },
-                crate::persist::PrefabId::Database { garage } => {
+                crate::persist::config::VehicleDescriptor::Database { garage } => {
                     match self.db.garage_by_id(*garage).await {
                         Ok(Some(db_vehicle)) => {
                             crate::data::player_data::PlayerData {
@@ -328,7 +325,7 @@ impl UserData {
                                 tier: 1, // FIXME
                                 robot_name: vehicle.name.clone().unwrap_or_else(|| db_vehicle.name.clone()),
                                 robot_map: db_vehicle.robot_data,
-                                team: 1,
+                                team: team_num,
                                 has_premium: false,
                                 robot_uuid: uuid_str,
                                 cpu: db_vehicle.total_robot_cpu as i32,
@@ -351,7 +348,7 @@ impl UserData {
                         }
                     }
                 },
-                crate::persist::PrefabId::Raw {
+                crate::persist::config::VehicleDescriptor::Raw {
                     cube_data,
                     colour_data,
                 } => {
@@ -365,7 +362,7 @@ impl UserData {
                         tier: 1, // FIXME
                         robot_name: vehicle.name.clone().unwrap_or_else(|| "Raw Robot".to_owned()),
                         robot_map: cube_data.to_owned(),
-                        team: 1,
+                        team: team_num,
                         has_premium: false,
                         robot_uuid: uuid_str,
                         cpu: 420, // FIXME
@@ -380,9 +377,9 @@ impl UserData {
                 }
             };
             next_id += 1;
-            enemies.push(enemy);
+            players.push(enemy);
         }
-        Ok(enemies)
+        Ok(players)
     }
 }
 
@@ -784,9 +781,9 @@ impl <C: Clone> super::User<C> for UserData {
         super::since_windows_epoch(self.account.creation_time)
     }
 
-    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser) ->  Result<polariton::operation::Typed<C>, i16> {
+    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) ->  Result<polariton::operation::Typed<C>, i16> {
         //self.err_on_banned().await?;
-        let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order).await?;
+        let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order, singleplayer_config).await?;
         let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
             log::error!("Failed to retrieve selected vehicle for user_id {} (singleplayer_robots): {}", self.account.id, e);
             DATABASE_ERR

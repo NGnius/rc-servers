@@ -26,7 +26,7 @@ pub trait ConfigProvider<C: Clone> {
     fn chat_system_config(&self) -> ChatSystemConfig;
     fn gamemode_events(&self) -> GameEventSequence;
     // FIXME don't use serializable types in traits
-    fn singleplayer_vehicles(&self) -> Vec<crate::persist::garage::PrefabVehicle>;
+    fn singleplayer_details(&self) -> SingleplayerConfig;
 }
 
 pub struct CompleteCampaignProvider {
@@ -258,4 +258,33 @@ pub enum GameType {
     SinglePlayer,
     TeamDeathmatch,
     Campaign,
+}
+
+#[derive(Clone, Debug)]
+pub struct SingleplayerConfig {
+    pub max_teammates: u32,
+    pub max_enemies: u32,
+    pub vehicles: Vec<VehicleInfo>,
+}
+
+#[derive(Clone, Debug)]
+pub struct VehicleInfo {
+    pub name: Option<String>,
+    pub username: String,
+    pub id: VehicleDescriptor,
+}
+
+#[derive(Clone, Debug)]
+pub enum VehicleDescriptor {
+    Factory {
+        factory: u32,
+    },
+    Database {
+        garage: u32,
+    },
+    Raw {
+        cube_data: Vec<u8>,
+        colour_data: Vec<u8>,
+    }
+    // TODO File
 }

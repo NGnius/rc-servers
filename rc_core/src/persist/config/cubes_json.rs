@@ -304,9 +304,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
     }
 
-    fn singleplayer_vehicles(&self) -> Vec<crate::persist::garage::PrefabVehicle> {
-        // FIXME don't use serializable types in traits
-        self.battle.singleplayer.vehicles.clone()
+    fn singleplayer_details(&self) -> super::SingleplayerConfig {
+        self.battle.singleplayer.into_singleplayer_conf()
     }
 
     /*async fn prefab_vehicles(&self, user: &(dyn crate::persist::user::User<C> + Sync), factory: &crate::factory::Factory) -> Typed<C> {

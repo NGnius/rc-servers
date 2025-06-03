@@ -75,7 +75,7 @@ pub trait User<C>: ChatUser {
     async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData<C>, i16>;
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
-    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<polariton::operation::Typed<C>, i16>;
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
