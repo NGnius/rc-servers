@@ -1,6 +1,6 @@
 use polariton_server::operations::{Operation, OperationCode};
 use rand::Rng;
-use rc_core::ConfigProvider;
+use oj_rc_core::ConfigProvider;
 
 const MAX_DELTA: u64 = 60 * 60 * 24; // 1 day
 
@@ -10,7 +10,7 @@ const MESSAGE_PARAM_KEY: u8 = 2;
 const DISPLAY_TIME_PARAM_KEY: u8 = 15;
 
 pub struct DevMessageProvider<C: Clone> {
-    messages: rc_core::persist::config::DevMessageProvider<C>,
+    messages: oj_rc_core::persist::config::DevMessageProvider<C>,
 }
 
 impl <C: Clone> DevMessageProvider<C> {
@@ -49,7 +49,7 @@ impl <C: Clone> OperationCode for DevMessageProvider<C> {
     }
 }
 
-pub(super) fn dev_message_provider(conf: &rc_core::ConfigImpl) -> DevMessageProvider<()> {
+pub(super) fn dev_message_provider(conf: &oj_rc_core::ConfigImpl) -> DevMessageProvider<()> {
     let messages = conf.login_messages();
     DevMessageProvider { messages }
 }

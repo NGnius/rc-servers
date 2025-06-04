@@ -99,7 +99,7 @@ impl std::convert::Into<crate::data::garage_bay::GarageSlotInfo> for GarageSlot 
     }
 }
 
-pub fn db_into_data(garage: rc_database::schema::garage::Model) -> crate::data::garage_bay::GarageSlotInfo {
+pub fn db_into_data(garage: oj_rc_database::schema::garage::Model) -> crate::data::garage_bay::GarageSlotInfo {
     let cube_count = garage.cube_count();
     crate::data::garage_bay::GarageSlotInfo {
         name: garage.name,
@@ -123,22 +123,22 @@ pub fn db_into_data(garage: rc_database::schema::garage::Model) -> crate::data::
         },
         mastery_level: garage.mastery_level as i32,
         bay_skin_id: garage.bay_skin_id,
-        weapon_order: rc_database::schema::parse_int_csv(&garage.weapon_order).into_iter().map(|x| x as i32).collect(),
+        weapon_order: oj_rc_database::schema::parse_int_csv(&garage.weapon_order).into_iter().map(|x| x as i32).collect(),
     }
 }
 
 fn movement_category_into_data(mov_cat: &str) -> Vec<crate::data::weapon_list::ItemCategory> {
-    rc_database::schema::parse_int_csv(mov_cat)
+    oj_rc_database::schema::parse_int_csv(mov_cat)
         .into_iter()
         .filter_map(|num| crate::data::weapon_list::ItemCategory::from_bigger(num as _))
         .collect()
 }
 
-pub fn control_ty_into_data(control_ty: rc_database::schema::garage::ControlType) -> crate::data::garage_bay::ControlType {
+pub fn control_ty_into_data(control_ty: oj_rc_database::schema::garage::ControlType) -> crate::data::garage_bay::ControlType {
     match control_ty {
-        rc_database::schema::garage::ControlType::Camera => crate::data::garage_bay::ControlType::Camera,
-        rc_database::schema::garage::ControlType::Keyboard => crate::data::garage_bay::ControlType::Keyboard,
-        rc_database::schema::garage::ControlType::Count => crate::data::garage_bay::ControlType::Count,
+        oj_rc_database::schema::garage::ControlType::Camera => crate::data::garage_bay::ControlType::Camera,
+        oj_rc_database::schema::garage::ControlType::Keyboard => crate::data::garage_bay::ControlType::Keyboard,
+        oj_rc_database::schema::garage::ControlType::Count => crate::data::garage_bay::ControlType::Count,
     }
 }
 

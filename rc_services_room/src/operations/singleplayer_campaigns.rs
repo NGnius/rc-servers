@@ -2,13 +2,13 @@ use polariton_server::operations::{Immediate, SimpleFunc};
 use polariton_server::operations::{Operation, OperationCode};
 use polariton::operation::{ParameterTable, Typed};
 
-use rc_core::ConfigProvider;
+use oj_rc_core::ConfigProvider;
 
 const CAMPAIGNS_BYTES_PARAM_KEY: u8 = 64; // list of bytes (serialised data)
 const CAMPAIGNS_WAVES_PARAM_KEY: u8 = 70; // hashtable
 const CAMPAIGNS_VERSIONS_PARAM_KEY: u8 = 69; // hashtable
 
-pub(super) fn singleplayer_campaigns_provider(conf: &rc_core::ConfigImpl) -> Immediate<65, crate::UserTy> {
+pub(super) fn singleplayer_campaigns_provider(conf: &oj_rc_core::ConfigImpl) -> Immediate<65, crate::UserTy> {
     Immediate::new(|| {
         let mut params = std::collections::HashMap::new();
         params.insert(CAMPAIGNS_BYTES_PARAM_KEY, conf.campaigns_parameters()); // first 4 bytes are i32 for length of the rest
@@ -31,7 +31,7 @@ const CAMPAIGN_DIFFICULTY_PARAM_KEY: u8 = 23; // i32; in
 const CAMPAIGN_WAVES_PARAM_KEY: u8 = 75; // bytes; out
 
 pub struct SingleplayerCompleteCampaignProvider {
-    campaign_details: rc_core::persist::config::CompleteCampaignProvider,
+    campaign_details: oj_rc_core::persist::config::CompleteCampaignProvider,
 }
 
 impl <C: Send + 'static> Operation<C> for SingleplayerCompleteCampaignProvider {
@@ -73,15 +73,15 @@ impl OperationCode for SingleplayerCompleteCampaignProvider {
     }
 }
 
-pub(super) fn singleplayer_complete_campaign_provider(conf: &rc_core::ConfigImpl) -> SingleplayerCompleteCampaignProvider {
-    let campaign_details: rc_core::persist::config::CompleteCampaignProvider = <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::campaign_details(conf);
+pub(super) fn singleplayer_complete_campaign_provider(conf: &oj_rc_core::ConfigImpl) -> SingleplayerCompleteCampaignProvider {
+    let campaign_details: oj_rc_core::persist::config::CompleteCampaignProvider = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::campaign_details(conf);
     SingleplayerCompleteCampaignProvider { campaign_details }
 }
 
 const CAMPAIGN_WAVE_NUMBER_PARAM_KEYL: u8 = 73;
 
 pub(super) fn singleplayer_save_complete_campaign_provider() -> SimpleFunc<68, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    //let campaign_details = <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::campaign_details(conf);
+    //let campaign_details = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::campaign_details(conf);
     SimpleFunc::new(move |params, user: &crate::UserTy| {
         let mut params = params.to_dict();
         if let Some(Typed::Str(campaign_id)) = params.get(&CAMPAIGN_ID_PARAM_KEY) {

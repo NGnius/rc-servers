@@ -72,7 +72,7 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<Par
                 if let Some(Typed::Arr(weapon_order)) = params.remove(&WEAPON_ORDER_PARAM_KEY) {
                     let weapon_order_filtered: Vec<_> = weapon_order.items.into_iter().filter_map(|ty| if let Typed::Int(i) = ty { Some(i) } else { None }).collect();
                     let user_info = user.user()?;
-                    let vehicle_data = rc_core::persist::user::VehicleData {
+                    let vehicle_data = oj_rc_core::persist::user::VehicleData {
                         name: None,
                         slot: slot_index,
                         robot_data: robot_data.vec,

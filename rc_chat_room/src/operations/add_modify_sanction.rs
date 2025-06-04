@@ -24,8 +24,8 @@ impl <C: Send + 'static> SimpleOperation<C> for AddSanctionProvider {
                     if let Some(Typed::Str(reason)) = params.remove(&REASON_PARAM_KEY) {
                         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
                             let user_info = user.user()?;
-                            let sanction = rc_core::persist::user::SetSanction {
-                                type_: rc_core::persist::user::SanctionType::from_i32(sanction_ty)?,
+                            let sanction = oj_rc_core::persist::user::SetSanction {
+                                type_: oj_rc_core::persist::user::SanctionType::from_i32(sanction_ty)?,
                                 is_adding,
                                 duration,
                                 reason: reason.string,
@@ -38,7 +38,7 @@ impl <C: Send + 'static> SimpleOperation<C> for AddSanctionProvider {
                 }
             }
         }
-        Err((rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16).into())
+        Err((oj_rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16).into())
     }
 }
 

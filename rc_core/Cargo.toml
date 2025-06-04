@@ -1,5 +1,5 @@
 [package]
-name = "rc_core"
+name = "oj_rc_core"
 version.workspace = true
 edition.workspace = true
 readme.workspace = true
@@ -13,16 +13,16 @@ polariton.workspace = true
 hex = "0.4"
 serde.workspace = true
 serde_json.workspace = true
-chrono = "0.4"
+chrono.workspace = true
 polariton_server.workspace = true
 tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util", "time" ] }
 async-trait.workspace = true
-rand = { version = "0.9", features = [ "thread_rng" ] }
+rand.workspace = true
 
 # auth
 libfj.workspace = true
 jsonwebtoken = "9"
 argon2 = { version = "0.5", features = [ "std" ] }
 
-rc_database = { version = "0.2", path = "../rc_database" }
-rc_factory = { version = "0.2", path = "../rc_factory" }
+oj_rc_database = { version = "0.2", path = "../rc_database" }
+oj_rc_factory = { version = "0.2", path = "../rc_factory" }

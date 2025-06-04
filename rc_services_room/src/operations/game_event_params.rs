@@ -21,7 +21,7 @@ RC_Planet_Neptune_01_CTF
 */
 
 pub struct GameEventsParamsProvider {
-    sequence: std::sync::Mutex<rc_core::persist::config::GameEventSequence>,
+    sequence: std::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>,
 }
 
 #[async_trait::async_trait]
@@ -51,8 +51,8 @@ impl OperationCode for GameEventsParamsProvider {
     }
 }
 
-pub(super) fn event_system_params_provider(conf: &rc_core::ConfigImpl) -> GameEventsParamsProvider {
-    let game_seq = <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::gamemode_events(conf);
+pub(super) fn event_system_params_provider(conf: &oj_rc_core::ConfigImpl) -> GameEventsParamsProvider {
+    let game_seq = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemode_events(conf);
     GameEventsParamsProvider {
         sequence: std::sync::Mutex::new(game_seq),
     }

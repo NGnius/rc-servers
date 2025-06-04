@@ -16,7 +16,7 @@ async fn do_save(params: ParameterTable<()>, _user: &crate::UserTy) -> Result<Pa
         if let Some(Typed::Int(format)) = params.remove(&FORMAT_PARAM_KEY) {
             log::debug!("Got custom avatar ({}B) with format {}", image.vec.len(), format);
             // TODO actually save image
-            /*let info = rc_core::persist::user::AvatarInfo {
+            /*let info = oj_rc_core::persist::user::AvatarInfo {
                 avatar_id: 0,
                 use_custom: true,
             };

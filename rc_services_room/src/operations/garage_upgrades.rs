@@ -1,18 +1,18 @@
 use polariton::operation::{ParameterTable, OperationResponse};
-use rc_core::ConfigProvider;
+use oj_rc_core::ConfigProvider;
 
 const CODE: u8 = 1;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn garage_upgrades_provider(conf: &rc_core::ConfigImpl) -> GarageUpgradesProvider {
+pub(super) fn garage_upgrades_provider(conf: &oj_rc_core::ConfigImpl) -> GarageUpgradesProvider {
     GarageUpgradesProvider {
-        upgrades: <rc_core::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf),
+        upgrades: <oj_rc_core::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf),
     }
 }
 
 pub struct GarageUpgradesProvider {
-    upgrades: rc_core::persist::config::GarageUpgrades,
+    upgrades: oj_rc_core::persist::config::GarageUpgrades,
 }
 
 impl GarageUpgradesProvider {

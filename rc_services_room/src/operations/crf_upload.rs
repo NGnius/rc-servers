@@ -1,6 +1,6 @@
 use polariton_server::operations::{Operation, OperationCode};
 use polariton::operation::{Typed, ParameterTable};
-use rc_factory::VehicleFactoryAdapter;
+use oj_rc_factory::VehicleFactoryAdapter;
 
 const CODE: u8 = 96;
 
@@ -8,7 +8,7 @@ const DATA_PARAM_KEY: u8 = 101; // in; dict
 const VERSION_PARAM_KEY: u8 = 99; // in; str
 const SUCCESS_PARAM_KEY: u8 = 103; // out; bool
 
-async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     if let Some(Typed::Str(version)) = params.remove(&VERSION_PARAM_KEY) {
         if let Some(Typed::Dict(data)) = params.remove(&DATA_PARAM_KEY) {
@@ -17,7 +17,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
             let prepared = user_info.prepare_factory_upload(upload_info.into_core()).await?;
             let success = factory.upload(prepared).await.map_err(|e| {
                 log::error!("Failed to upload to factory: {}", e);
-                rc_core::data::error_codes::WebServicesError::UnexpectedError as i16
+                oj_rc_core::data::error_codes::WebServicesError::UnexpectedError as i16
             })?;
             params.insert(SUCCESS_PARAM_KEY, Typed::Bool(success));
         }
@@ -26,7 +26,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
 }
 
 pub struct CrfUploadProvider {
-    factory: std::sync::Arc<rc_core::factory::Factory>,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
 #[async_trait::async_trait]
@@ -44,7 +44,7 @@ impl OperationCode for CrfUploadProvider {
     }
 }
 
-pub(super) fn crf_upload_provider(factory: &std::sync::Arc<rc_core::factory::Factory>) -> CrfUploadProvider {
+pub(super) fn crf_upload_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> CrfUploadProvider {
     CrfUploadProvider {
         factory: factory.to_owned(),
     }

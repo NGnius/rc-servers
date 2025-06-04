@@ -1,4 +1,4 @@
-//use rc_core::persist::user::ChatUser;
+//use oj_rc_core::persist::user::ChatUser;
 use polariton::operation::{ParameterTable, OperationResponse};
 
 const CODE: u8 = 11;

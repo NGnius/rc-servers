@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 mod cli;
 
-use polariton_auth::Handshake;
+use oj_polariton_auth::Handshake;
 use tokio::net;
 
 use polariton::packet::{Data, Message, Packet, StandardMessage};
@@ -86,7 +86,7 @@ impl AuthError {
     }
 }
 
-impl polariton_auth::AuthProvider<AuthError> for AuthImpl {
+impl oj_polariton_auth::AuthProvider<AuthError> for AuthImpl {
     fn validate(&mut self, params: &std::collections::HashMap<u8, Typed>) -> Result<std::collections::HashMap<u8, Typed>, AuthError> {
         if let Some(Typed::Str(token)) = params.get(&TOKEN_KEY) {
             if let Some(Typed::Str(service)) = params.get(&SERVICE_KEY) {
@@ -191,7 +191,7 @@ async fn do_connect_handshake(
     let to_send = match handshake.authenticate(&packet3, &ctx) {
         Ok(x) => x,
         Err(h) => match h.extra {
-            polariton_auth::AuthError::Validation(e) => {
+            oj_polariton_auth::AuthError::Validation(e) => {
                 e.log_err();
                 return None;
             },

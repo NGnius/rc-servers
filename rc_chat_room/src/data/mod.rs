@@ -1,1 +1,1 @@
-pub use rc_core::data::channel;
+pub use oj_rc_core::data::channel;

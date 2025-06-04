@@ -1,10 +1,10 @@
 use polariton_server::operations::Immediate;
 //use polariton::operation::{ParameterTable, Typed};
-use rc_core::ConfigProvider;
+use oj_rc_core::ConfigProvider;
 
 const PARAM_KEY: u8 = 20;
 
-pub(super) fn public_channels_provider(conf: &rc_core::persist::config::ConfigImpl) -> Immediate<13, crate::UserTy> {
+pub(super) fn public_channels_provider(conf: &oj_rc_core::persist::config::ConfigImpl) -> Immediate<13, crate::UserTy> {
     let pub_channs = conf.public_channels();
     Immediate::new(move || {
         let mut params = std::collections::HashMap::with_capacity(1);

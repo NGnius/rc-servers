@@ -15,9 +15,9 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result
     if let Some(Typed::Int(index)) = params.remove(&INDEX_PARAM_KEY) {
         if let Some(Typed::Int(control_ty)) = params.remove(&CONTROL_TY_PARAM_KEY) {
             if let Some(Typed::Arr(control_options)) = params.remove(&CONTROL_OPTIONS_PARAM_KEY) {
-                let mut controls = rc_core::persist::user::ControlData {
+                let mut controls = oj_rc_core::persist::user::ControlData {
                     slot: index,
-                    control_ty: rc_core::persist::user::ControlType::from_i32(control_ty)?,
+                    control_ty: oj_rc_core::persist::user::ControlType::from_i32(control_ty)?,
                     vertical_strafing: false,
                     sideways_driving: false,
                     tracks_turn_on_spot: false,

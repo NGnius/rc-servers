@@ -21,7 +21,7 @@ impl SimpleOperation<()> for GetSanctionsProvider {
             params.insert(SANCTIONS_PARAM_KEY, sanctions);
             return Ok(params.into());
         }
-        Err((rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16).into())
+        Err((oj_rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as i16).into())
     }
 }
 

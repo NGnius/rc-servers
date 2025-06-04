@@ -1,23 +1,23 @@
 use polariton_server::operations::{Operation, OperationCode};
 use polariton::operation::{Typed, ParameterTable};
-use rc_factory::VehicleFactoryAdapter;
+use oj_rc_factory::VehicleFactoryAdapter;
 
 const CODE: u8 = 86;
 
 const FILTERS_PARAM_KEY: u8 = 92;
 const ITEMS_PARAM_KEY: u8 = 93;
 
-async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     if let Some(Typed::Bytes(filters)) = params.remove(&FILTERS_PARAM_KEY) {
         let mut cursor = std::io::Cursor::new(filters.vec);
         let filters = crate::data::crf::ShopItemListFilters::parse(&mut cursor).map_err(|e| {
             log::error!("Failed to parse factory item query: {}", e);
-            rc_core::data::error_codes::WebServicesError::UnexpectedError as i16
+            oj_rc_core::data::error_codes::WebServicesError::UnexpectedError as i16
         })?;
         let vehicles = factory.list(filters.into_core()).await.map_err(|e| {
             log::error!("Failed to retrieve vehicles from factory: {}", e);
-            rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+            oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
         let vehicles: Vec<_> = vehicles.into_iter().map(|x| crate::data::crf::ItemResult::from(x)).collect();
         params.insert(ITEMS_PARAM_KEY, crate::data::crf::ItemResult::as_transmissible(&vehicles));
@@ -26,7 +26,7 @@ async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory:
 }
 
 pub struct CrfItemListProvider {
-    factory: std::sync::Arc<rc_core::factory::Factory>,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
 #[async_trait::async_trait]
@@ -44,7 +44,7 @@ impl OperationCode for CrfItemListProvider {
     }
 }
 
-pub(super) fn crf_item_list_query_provider(factory: &std::sync::Arc<rc_core::factory::Factory>) -> CrfItemListProvider {
+pub(super) fn crf_item_list_query_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> CrfItemListProvider {
     CrfItemListProvider {
         factory: factory.to_owned(),
     }

@@ -7,7 +7,7 @@ edition.workspace = true
 version = "0.2.0"
 edition = "2024"
 repository = "https://git.ngram.ca/OpenJam/servers"
-license = "GPLv3"
+license = "GPL-3.0-only"
 authors = ["NGnius <ngniusness@gmail.com>"]
 readme = "README.md"
 
@@ -27,14 +27,18 @@ members = [
 rocket = { version = "0.5.1", features = [ "json" ] }
 actix-web = { version = "4", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd"] }
 actix-files = "0.6"
-libfj = { version = "0.7.5", path = "../libfj" }
+#libfj = { version = "0.8", path = "../libfj" }
+libfj = { version = "0.8" }
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4.5", features = [ "derive" ] }
-polariton = { version = "0.2", path = "../polariton", features = [ "tokio-async" ] }
-polariton_server = { version = "0.2", path = "../polariton/server", features = [ "tokio-async" ] }
+#polariton = { version = "0.2", path = "../polariton", features = [ "tokio-async" ] }
+#polariton_server = { version = "0.2", path = "../polariton/server", features = [ "tokio-async" ] }
+polariton = { version = "0.2", features = [ "tokio-async" ] }
+polariton_server = { version = "0.2", features = [ "tokio-async" ] }
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
 async-trait = "0.1"
 chrono = "0.4"
 git-version = "0.3"
+rand = { version = "0.9", features = [ "thread_rng" ] }

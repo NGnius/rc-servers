@@ -1,4 +1,4 @@
-use rc_core::UserAuthenticator;
+use oj_rc_core::UserAuthenticator;
 use rocket::{post, routes, serde::json::Json, http::Status, State};
 
 #[post("/authenticate/robocraft/game", data = "<body>")]
@@ -12,9 +12,9 @@ pub async fn user_password_auth(body: Json<libfj::robocraft::EmailUserAuthentica
         email_verified: true,
         flags: Vec::new(),
     };
-    let user_info = rc_core::persist::user::UserInfo {
+    let user_info = oj_rc_core::persist::user::UserInfo {
         payload,
-        extra: rc_core::persist::user::ExtraUserInfo::Username { password: body.password.clone() },
+        extra: oj_rc_core::persist::user::ExtraUserInfo::Username { password: body.password.clone() },
     };
     let response = config.robocraft.account_provider.login(user_info).await
         .map_err(|e| {

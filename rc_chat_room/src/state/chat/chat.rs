@@ -6,7 +6,7 @@ pub struct ChatProvider {
 }
 
 impl ChatProvider {
-    pub fn new(conf: rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
+    pub fn new(conf: oj_rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         Ok(Self {
             chat_system: std::sync::Arc::new(std::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf)?)),
         })
@@ -83,7 +83,7 @@ impl ChatSystem {
         }
     }
 
-    pub fn handle_public_message(&self, user: &dyn rc_core::persist::user::User<()>, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+    pub fn handle_public_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if self.config.is_command_channel(&channel) {
             if let Some(user_handle) = self.online_users.get(&user.token().uuid) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty);
@@ -103,7 +103,7 @@ impl ChatSystem {
         }
     }
 
-    fn handle_public_command(&self, user: &dyn rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+    fn handle_public_command(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         let event_params = crate::events::chat_message::PublicMessage {
             sender_name: self.config.command_username().to_owned(),
             sender_display_name: self.config.command_username().to_owned(),
@@ -126,7 +126,7 @@ impl ChatSystem {
         handle.send(polariton_server::ToSend::Data { data: polariton::packet::Data::Event(event), encrypt: true, channel: 0, reliable: true });
     }
 
-    pub fn handle_private_message(&self, user: &dyn rc_core::persist::user::User<()>, text: String, recipient: String) {
+    pub fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, recipient: String) {
         if self.config.is_command_user(&recipient) {
             if let Some(user_handle) = self.online_users.get(&user.token().uuid) {
                 self.handle_private_command(user, text, user_handle);
@@ -144,7 +144,7 @@ impl ChatSystem {
         }
     }
 
-    fn handle_private_command(&self, user: &dyn rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle) {
+    fn handle_private_command(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle) {
         let event_params = crate::events::chat_message::PrivateMessage {
             sender_name: self.config.command_username().to_owned(),
             sender_display_name: self.config.command_username().to_owned(),
@@ -161,7 +161,7 @@ impl ChatSystem {
         handle.send_private_message(response);
     }
 
-    pub fn new(config: rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
+    pub fn new(config: oj_rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         Ok(Self {
             chats: HashMap::new(),
             online_users: HashMap::new(),

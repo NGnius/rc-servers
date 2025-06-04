@@ -34,7 +34,7 @@ impl ActiveModelBehavior for ActiveModel {}
 pub enum Descriptor {
     UserXP, // u32
     PremiumExpiry, // u64, seconds since Unix epoch
-    UnlockedParts, // rc_core::persist::user::UnlockedParts
+    UnlockedParts, // oj_rc_core::persist::user::UnlockedParts
     TechPoints, // u32
     UserRank, // u32
     UserFreeCurrency, // u64

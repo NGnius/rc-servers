@@ -75,8 +75,8 @@ pub trait User<C>: ChatUser {
     async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData<C>, i16>;
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
-    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<polariton::operation::Typed<C>, i16>;
-    async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16>;
+    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
@@ -154,11 +154,11 @@ impl ControlType {
     }
 
     #[inline]
-    pub(super) fn into_db(self) -> rc_database::schema::garage::ControlType {
+    pub(super) fn into_db(self) -> oj_rc_database::schema::garage::ControlType {
         match self {
-            Self::Camera => rc_database::schema::garage::ControlType::Camera,
-            Self::Keyboard => rc_database::schema::garage::ControlType::Keyboard,
-            Self::Count => rc_database::schema::garage::ControlType::Count,
+            Self::Camera => oj_rc_database::schema::garage::ControlType::Camera,
+            Self::Keyboard => oj_rc_database::schema::garage::ControlType::Keyboard,
+            Self::Count => oj_rc_database::schema::garage::ControlType::Count,
         }
     }
 }

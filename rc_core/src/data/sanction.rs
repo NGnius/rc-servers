@@ -40,23 +40,23 @@ pub enum SanctionType {
 }
 
 impl SanctionType {
-    pub(crate) fn from_db(t: rc_database::schema::sanction::Descriptor) -> Self {
+    pub(crate) fn from_db(t: oj_rc_database::schema::sanction::Descriptor) -> Self {
         match t {
-            rc_database::schema::sanction::Descriptor::Warn => Self::Warning,
-            rc_database::schema::sanction::Descriptor::Mute => Self::Mute,
-            rc_database::schema::sanction::Descriptor::Ban => Self::Suspension,
-            rc_database::schema::sanction::Descriptor::Note => Self::Note,
-            rc_database::schema::sanction::Descriptor::Kick => Self::Kick,
+            oj_rc_database::schema::sanction::Descriptor::Warn => Self::Warning,
+            oj_rc_database::schema::sanction::Descriptor::Mute => Self::Mute,
+            oj_rc_database::schema::sanction::Descriptor::Ban => Self::Suspension,
+            oj_rc_database::schema::sanction::Descriptor::Note => Self::Note,
+            oj_rc_database::schema::sanction::Descriptor::Kick => Self::Kick,
         }
     }
 
-    pub(crate) fn to_db(self) -> rc_database::schema::sanction::Descriptor {
+    pub(crate) fn to_db(self) -> oj_rc_database::schema::sanction::Descriptor {
         match self {
-            Self::Warning => rc_database::schema::sanction::Descriptor::Warn,
-            Self::Mute => rc_database::schema::sanction::Descriptor::Mute,
-            Self::Suspension => rc_database::schema::sanction::Descriptor::Ban,
-            Self::Note => rc_database::schema::sanction::Descriptor::Note,
-            Self::Kick => rc_database::schema::sanction::Descriptor::Kick,
+            Self::Warning => oj_rc_database::schema::sanction::Descriptor::Warn,
+            Self::Mute => oj_rc_database::schema::sanction::Descriptor::Mute,
+            Self::Suspension => oj_rc_database::schema::sanction::Descriptor::Ban,
+            Self::Note => oj_rc_database::schema::sanction::Descriptor::Note,
+            Self::Kick => oj_rc_database::schema::sanction::Descriptor::Kick,
         }
     }
 

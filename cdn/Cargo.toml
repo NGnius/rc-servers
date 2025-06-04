@@ -1,5 +1,5 @@
 [package]
-name = "cdn"
+name = "oj_cdn"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "rc_microtransactions"
+name = "oj_rc_microtransactions"
 version.workspace = true
 edition.workspace = true
 readme.workspace = true

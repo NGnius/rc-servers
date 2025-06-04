@@ -7,7 +7,7 @@ pub struct AccountProvider {
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     auto_signups: bool,
     secret: Vec<u8>,
-    db: std::sync::Arc<rc_database::Database>,
+    db: std::sync::Arc<oj_rc_database::Database>,
 }
 
 impl AccountProvider {
@@ -16,7 +16,7 @@ impl AccountProvider {
         let server_settings = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf);
         let database_uri = server_settings.database;
         log::debug!("Connecting to user database URI: {}", database_uri);
-        let db = rc_database::Database::init(&database_uri).await
+        let db = oj_rc_database::Database::init(&database_uri).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
@@ -30,7 +30,7 @@ impl AccountProvider {
     /*pub fn fake_user<C: Clone>(&self) -> Box<dyn super::User<C> + Send + Sync> {
         Box::new(UserData {
             token: super::UserToken { uuid: "fake user!".to_owned(), token: "".to_owned(), refresh_token: "".to_owned() },
-            account: rc_database::schema::user::Model {
+            account: oj_rc_database::schema::user::Model {
                 id: 0,
                 creation_time: 0,
                 public_id: "".to_owned(),
@@ -39,7 +39,7 @@ impl AccountProvider {
                 email: "".to_owned(),
                 steam_id: None,
             },
-            perms: rc_database::schema::permissions::Model {
+            perms: oj_rc_database::schema::permissions::Model {
                 id: 0,
                 user_id: 0,
                 moderator: true,
@@ -188,31 +188,31 @@ impl super::UserAuthenticator for AccountProvider {
 #[allow(dead_code)]
 struct UserData {
     token: super::UserToken,
-    account: rc_database::schema::user::Model,
-    perms: rc_database::schema::permissions::Model,
+    account: oj_rc_database::schema::user::Model,
+    perms: oj_rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
-    db: std::sync::Arc<rc_database::Database>,
+    db: std::sync::Arc<oj_rc_database::Database>,
 }
 
 impl UserData {
-    async fn load_garage_by_slot(&self, slot: u32) -> Result<Option<rc_database::schema::garage::Model>, rc_database::sea_orm::DbErr> {
+    async fn load_garage_by_slot(&self, slot: u32) -> Result<Option<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
         //let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", id));
         //crate::persist::GarageSlot::load(&path)
         self.db.garage_by_user_id_and_slot(self.account.id, slot).await
     }
 
-    async fn save_garage_by_slot(&self, data: rc_database::schema::garage::ActiveModel, slot: u32) -> Result<(), rc_database::sea_orm::DbErr> {
+    async fn save_garage_by_slot(&self, data: oj_rc_database::schema::garage::ActiveModel, slot: u32) -> Result<(), oj_rc_database::sea_orm::DbErr> {
         self.db.update_garage_by_user_id_and_slot(data, self.account.id, slot).await?;
         Ok(())
     }
 
-    async fn all_vehicles(&self) -> Result<Vec<rc_database::schema::garage::Model>, rc_database::sea_orm::DbErr> {
+    async fn all_vehicles(&self) -> Result<Vec<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
         self.db.garages_by_user_id(self.account.id).await
     }
 
-    async fn double_check_permissions(&self) -> Result<rc_database::schema::permissions::Model, rc_database::sea_orm::DbErr> {
+    async fn double_check_permissions(&self) -> Result<oj_rc_database::schema::permissions::Model, oj_rc_database::sea_orm::DbErr> {
         Ok(self.db.perms_by_user_id(self.account.id).await?.unwrap())
     }
 
@@ -255,7 +255,7 @@ impl UserData {
         self.perms.administrator | self.perms.developer
     }
 
-    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
+    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
         use rand::seq::IndexedRandom;
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
         let mut next_id = 0;
@@ -279,7 +279,7 @@ impl UserData {
             let team_num = if i < singleplayer_config.max_enemies { 1 } else { 0 };
             let enemy = match &vehicle.id {
                 crate::persist::config::VehicleDescriptor::Factory { factory: factory_id } => {
-                    //use rc_factory::VehicleFactoryAdapter;
+                    //use oj_rc_factory::VehicleFactoryAdapter;
                     match factory.vehicle(*factory_id).await {
                         Ok(Some(factory_vehicle)) => {
                             let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
@@ -329,13 +329,13 @@ impl UserData {
                                 has_premium: false,
                                 robot_uuid: uuid_str,
                                 cpu: db_vehicle.total_robot_cpu as i32,
-                                weapon_order: rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
+                                weapon_order: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
                                 colour_map: db_vehicle.colour_data,
                                 is_ai: true,
                                 spawn_effect: "Spawn".to_owned(),
                                 death_effect: "Explosion".to_owned(),
                                 player_rank: 1,
-                                weapon_rank: rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+                                weapon_rank: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
                             }
                         },
                         Ok(None) => {
@@ -410,7 +410,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn unlocked_parts(&self) -> Vec<u32> {
-        match self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
+        match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
             Ok(Some(parts)) => {
                 match serde_json::from_str::<super::inventory::UnlockedParts>(&parts.data) {
                     Ok(json) => {
@@ -464,7 +464,7 @@ impl <C: Clone> super::User<C> for UserData {
                 Vec::default()
             }
         };
-        let slot_order = match self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await{
+        let slot_order = match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await{
             Ok(Some(slot_order_db)) => {
                 let slots = serde_json::from_str::<Vec<u32>>(&slot_order_db.data).unwrap_or_default();
                 polariton::operation::Typed::ObjArr(slots.iter().map(|slot| polariton::operation::Typed::Int(*slot as _)).collect::<Vec<_>>().into())
@@ -508,8 +508,8 @@ impl <C: Clone> super::User<C> for UserData {
                     data: polariton::operation::Typed::Bytes(slot.robot_data.into()),
                     colour_data: polariton::operation::Typed::Bytes(slot.colour_data.into()),
                     cube_count: polariton::operation::Typed::Int(cube_count),
-                    weapon_order: polariton::operation::Typed::IntArr(rc_database::schema::parse_int_csv(&slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
-                    movement_categories: polariton::operation::Typed::IntArr(rc_database::schema::parse_int_csv(&slot.movement_categories).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
+                    weapon_order: polariton::operation::Typed::IntArr(oj_rc_database::schema::parse_int_csv(&slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
+                    movement_categories: polariton::operation::Typed::IntArr(oj_rc_database::schema::parse_int_csv(&slot.movement_categories).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
                     control_type: polariton::operation::Typed::Int(control_ty as _),
                     control_options: control_options.as_transmissible(),
                     mastery_level: polariton::operation::Typed::Int(slot.mastery_level as i32),
@@ -532,12 +532,12 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
         self.err_on_banned().await?;
-        let entity = rc_database::schema::garage::ActiveModel {
-            weapon_order: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::dump_csv(&vehicle.weapon_order)),
-            robot_data: rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
-            colour_data: rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
-            crf_id: if let Some(crf_id) = vehicle.crf_id { rc_database::sea_orm::ActiveValue::Set(Some(crf_id as u32)) } else { Default::default() },
-            name: if let Some(new_name) = vehicle.name { rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
+        let entity = oj_rc_database::schema::garage::ActiveModel {
+            weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&vehicle.weapon_order)),
+            robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
+            colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
+            crf_id: if let Some(crf_id) = vehicle.crf_id { oj_rc_database::sea_orm::ActiveValue::Set(Some(crf_id as u32)) } else { Default::default() },
+            name: if let Some(new_name) = vehicle.name { oj_rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
             ..Default::default()
         };
         self.save_garage_by_slot(entity, vehicle.slot as u32).await.map_err(|e| {
@@ -550,11 +550,11 @@ impl <C: Clone> super::User<C> for UserData {
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16> {
         self.err_on_banned().await?;
         let slots: Vec<u32> = slots.into_iter().map(|x| x as u32).collect();
-        let entity = rc_database::schema::user_aux::ActiveModel {
-            data: rc_database::sea_orm::ActiveValue::Set(serde_json::to_string_pretty(&slots).unwrap()),
+        let entity = oj_rc_database::schema::user_aux::ActiveModel {
+            data: oj_rc_database::sea_orm::ActiveValue::Set(serde_json::to_string_pretty(&slots).unwrap()),
             ..Default::default()
         };
-        self.db.update_user_aux_by_user_id_and_descriptor(entity, self.account.id, rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await.map_err(|e| {
+        self.db.update_user_aux_by_user_id_and_descriptor(entity, self.account.id, oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await.map_err(|e| {
             log::error!("Failed to update garage slot order for user_id {}: {}", self.account.id, e);
             DATABASE_ERR
         })?;
@@ -613,28 +613,28 @@ impl <C: Clone> super::User<C> for UserData {
                 log::error!("Failed to retrieve vehicle slot {} for user_id {}: {}", slot, self.account.id, e);
                 DATABASE_ERR
             })? {
-                use rc_database::sea_orm::IntoActiveModel;
+                use oj_rc_database::sea_orm::IntoActiveModel;
                 let mut to_update = existing_g.into_active_model();
                 // copy everything except id, user_id, creation_time, slot, was_rated, bay_cpu, mastery_level, selected
-                to_update.name = rc_database::sea_orm::ActiveValue::Set(new_name);
-                to_update.crf_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.crf_id);
-                to_update.movement_categories = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.movement_categories);
-                to_update.thumbnail_version = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.thumbnail_version);
-                to_update.total_robot_cpu = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_cpu);
-                to_update.total_cosmetic_cpu = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_cosmetic_cpu);
-                to_update.total_robot_ranking = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_ranking);
-                to_update.tutorial_robot = rc_database::sea_orm::ActiveValue::Set(false);
-                to_update.starter_robot_index = rc_database::sea_orm::ActiveValue::Set(None);
-                to_update.control_type = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.control_type);
-                to_update.vertical_strafing = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.vertical_strafing);
-                to_update.sideways_driving = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.sideways_driving);
-                to_update.tracks_turn_on_spot = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.tracks_turn_on_spot);
-                to_update.bay_skin_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.bay_skin_id);
-                to_update.death_animation_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.death_animation_id);
-                to_update.spawn_animation_id = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.spawn_animation_id);
-                to_update.weapon_order = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.weapon_order);
-                to_update.robot_data = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.robot_data);
-                to_update.colour_data = rc_database::sea_orm::ActiveValue::Set(slot_to_copy.colour_data);
+                to_update.name = oj_rc_database::sea_orm::ActiveValue::Set(new_name);
+                to_update.crf_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.crf_id);
+                to_update.movement_categories = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.movement_categories);
+                to_update.thumbnail_version = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.thumbnail_version);
+                to_update.total_robot_cpu = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_cpu);
+                to_update.total_cosmetic_cpu = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_cosmetic_cpu);
+                to_update.total_robot_ranking = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_ranking);
+                to_update.tutorial_robot = oj_rc_database::sea_orm::ActiveValue::Set(false);
+                to_update.starter_robot_index = oj_rc_database::sea_orm::ActiveValue::Set(None);
+                to_update.control_type = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.control_type);
+                to_update.vertical_strafing = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.vertical_strafing);
+                to_update.sideways_driving = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.sideways_driving);
+                to_update.tracks_turn_on_spot = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.tracks_turn_on_spot);
+                to_update.bay_skin_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.bay_skin_id);
+                to_update.death_animation_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.death_animation_id);
+                to_update.spawn_animation_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.spawn_animation_id);
+                to_update.weapon_order = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.weapon_order);
+                to_update.robot_data = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.robot_data);
+                to_update.colour_data = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.colour_data);
                 self.db.update_garage(to_update).await.map_err(|e| {
                     log::error!("Failed to update garage slot {} copied from {} for user_id {}: {}", existing_slot, slot, self.account.id, e);
                     DATABASE_ERR
@@ -646,7 +646,7 @@ impl <C: Clone> super::User<C> for UserData {
             }
         } else {
             log::info!("Copy slot {} -> <new slot> as `{}`", slot, new_name);
-            use rc_database::sea_orm::IntoActiveModel;
+            use oj_rc_database::sea_orm::IntoActiveModel;
             let mut to_insert = slot_to_copy.into_active_model();
             let max_slot = self.db.garage_max_slot_by_user_id(self.account.id).await.map_err(|e| {
                 log::error!("Failed to get max garage slot during copy for user_id {}: {}", self.account.id, e);
@@ -655,10 +655,10 @@ impl <C: Clone> super::User<C> for UserData {
             let now = chrono::Utc::now().timestamp();
             let uuid = super::uuid_sanitize(now);
             to_insert.id = Default::default();
-            to_insert.creation_time = rc_database::sea_orm::ActiveValue::Set(now);
-            to_insert.uuid = rc_database::sea_orm::ActiveValue::Set(uuid);
-            to_insert.slot = rc_database::sea_orm::ActiveValue::Set(max_slot + 1);
-            to_insert.name = rc_database::sea_orm::ActiveValue::Set(new_name);
+            to_insert.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(now);
+            to_insert.uuid = oj_rc_database::sea_orm::ActiveValue::Set(uuid);
+            to_insert.slot = oj_rc_database::sea_orm::ActiveValue::Set(max_slot + 1);
+            to_insert.name = oj_rc_database::sea_orm::ActiveValue::Set(new_name);
             self.db.insert_garage(to_insert).await.map_err(|e| {
                 log::error!("Failed to insert garage slot copied from {} for user_id {}: {}", slot, self.account.id, e);
                 DATABASE_ERR
@@ -694,8 +694,8 @@ impl <C: Clone> super::User<C> for UserData {
                 Ok(polariton::operation::Typed::Bool(false))
             } else {
                 let upgrade_to_cpu = self.garage_upgrades.increments[upgrade_to].cpu;
-                let entity = rc_database::schema::garage::ActiveModel {
-                    bay_cpu: rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu),
+                let entity = oj_rc_database::schema::garage::ActiveModel {
+                    bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu),
                     ..Default::default()
                 };
                 self.db.update_garage_by_user_id_and_slot(entity, self.account.id, selected_slot.slot).await.map_err(|e| {
@@ -714,11 +714,11 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn save_slot_controls(&self, controls: super::ControlData) -> Result<(), i16> {
         self.err_on_banned().await?;
-        let entity = rc_database::schema::garage::ActiveModel {
-            control_type: rc_database::sea_orm::ActiveValue::Set(controls.control_ty.into_db()),
-            vertical_strafing: rc_database::sea_orm::ActiveValue::Set(controls.vertical_strafing),
-            sideways_driving: rc_database::sea_orm::ActiveValue::Set(controls.sideways_driving),
-            tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(controls.tracks_turn_on_spot),
+        let entity = oj_rc_database::schema::garage::ActiveModel {
+            control_type: oj_rc_database::sea_orm::ActiveValue::Set(controls.control_ty.into_db()),
+            vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(controls.vertical_strafing),
+            sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(controls.sideways_driving),
+            tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(controls.tracks_turn_on_spot),
             ..Default::default()
         };
         self.save_garage_by_slot(entity, controls.slot as u32).await.map_err(|e| {
@@ -731,10 +731,10 @@ impl <C: Clone> super::User<C> for UserData {
     async fn save_slot_customisations(&self, customs: super::CustomisationData) -> Result<(), i16> {
         self.err_on_banned().await?;
         if let Some(uuid) = super::str_to_i64(&customs.uuid) {
-            let entity = rc_database::schema::garage::ActiveModel {
-                bay_skin_id: rc_database::sea_orm::ActiveValue::Set(customs.bay),
-                spawn_animation_id: rc_database::sea_orm::ActiveValue::Set(customs.spawn),
-                death_animation_id: rc_database::sea_orm::ActiveValue::Set(customs.death),
+            let entity = oj_rc_database::schema::garage::ActiveModel {
+                bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set(customs.bay),
+                spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(customs.spawn),
+                death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(customs.death),
                 ..Default::default()
             };
             self.db.update_garage_by_uuid(entity, uuid).await.map_err(|e| {
@@ -766,8 +766,8 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16> {
-        let to_save = rc_database::schema::garage::ActiveModel {
-            name: rc_database::sea_orm::ActiveValue::Set(name),
+        let to_save = oj_rc_database::schema::garage::ActiveModel {
+            name: oj_rc_database::sea_orm::ActiveValue::Set(name),
             ..Default::default()
         };
         self.db.update_garage_by_user_id_and_slot(to_save, self.account.id, slot as u32).await.map_err(|e| {
@@ -781,7 +781,7 @@ impl <C: Clone> super::User<C> for UserData {
         super::since_windows_epoch(self.account.creation_time)
     }
 
-    async fn singleplayer_robots(&self, factory: &dyn rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) ->  Result<polariton::operation::Typed<C>, i16> {
+    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) ->  Result<polariton::operation::Typed<C>, i16> {
         //self.err_on_banned().await?;
         let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order, singleplayer_config).await?;
         let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
@@ -793,7 +793,7 @@ impl <C: Clone> super::User<C> for UserData {
             INVALID_ROBOT_ERR
         })?;
         let user_uuid = self.token.uuid.clone();
-        let weapon_order = rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+        let weapon_order = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
 
         // real user MUST be last
         vehicles.push(crate::data::player_data::PlayerData {
@@ -813,14 +813,14 @@ impl <C: Clone> super::User<C> for UserData {
             spawn_effect: "Spawn_Warp".to_owned(), // FIXME
             death_effect: "Explosion_Warp".to_owned(), // FIXME
             player_rank: 1, // FIXME
-            weapon_rank: rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+            weapon_rank: oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
         });
         Ok(crate::data::player_data::PlayerDatas {
             players: vehicles,
         }.as_transmissible())
     }
 
-    async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<rc_factory::VehicleUploadInfo, i16> {
+    async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16> {
         self.err_on_banned().await?;
         let slot = self.load_garage_by_slot(vehicle.slot as u32).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle slot {} for user_id {} (prepare_factory_upload): {}", vehicle.slot, self.account.id, e);
@@ -829,7 +829,7 @@ impl <C: Clone> super::User<C> for UserData {
             log::error!("Failed to find vehicle slot {} for user_id {} (prepare_factory_upload)", vehicle.slot, self.account.id);
             INVALID_ROBOT_ERR
         })?;
-        Ok(rc_factory::VehicleUploadInfo {
+        Ok(oj_rc_factory::VehicleUploadInfo {
             name: vehicle.name,
             description: vehicle.description,
             thumbnail: vehicle.thumbnail,
@@ -845,29 +845,29 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn last_seen(&self) -> Result<u64, i16> {
         self.err_on_banned().await?;
-        let last_seen_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::LastSeen).await
+        let last_seen_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::LastSeen).await
             .map_err(|e| {
                 log::error!("Failed to retrieve LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
                 DATABASE_ERR
             })?;
         let now = chrono::Utc::now().timestamp();
         if let Some(last_seen) = last_seen_aux_opt {
-            let to_update = rc_database::schema::user_aux::ActiveModel {
-                data: rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
+            let to_update = oj_rc_database::schema::user_aux::ActiveModel {
+                data: oj_rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
                 ..Default::default()
             };
-            self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, rc_database::schema::user_aux::Descriptor::LastSeen).await
+            self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, oj_rc_database::schema::user_aux::Descriptor::LastSeen).await
                 .map_err(|e| {
                     log::error!("Failed to update LastSeen (user_aux) for user_id {}: {}", self.account.id, e);
                     DATABASE_ERR
                 })?;
             Ok(last_seen.data.parse().unwrap_or_default())
         } else {
-            let to_insert = rc_database::schema::user_aux::ActiveModel {
-                user_id: rc_database::sea_orm::ActiveValue::Set(self.account.id),
-                creation_time: rc_database::sea_orm::ActiveValue::Set(now),
-                descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::LastSeen),
-                data: rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
+            let to_insert = oj_rc_database::schema::user_aux::ActiveModel {
+                user_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::LastSeen),
+                data: oj_rc_database::sea_orm::ActiveValue::Set((now as u64).to_string()),
                 ..Default::default()
             };
             self.db.insert_user_aux(vec![to_insert]).await.map_err(|e| {
@@ -880,7 +880,7 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn get_avatar_info(&self) -> Result<super::GetAvatarInfo<C>, i16> {
         self.err_on_banned().await?;
-        let avatar_id_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::AvatarId).await
+        let avatar_id_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
             .map_err(|e| {
                 log::error!("Failed to retrieve AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
                 DATABASE_ERR
@@ -902,11 +902,11 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn set_avatar_info(&self, info: super::AvatarInfo) -> Result<(), i16> {
         self.err_on_banned().await?;
-        let to_update = rc_database::schema::user_aux::ActiveModel {
-            data: rc_database::sea_orm::ActiveValue::Set(if info.use_custom { u32::MAX } else { info.avatar_id as u32 }.to_string()),
+        let to_update = oj_rc_database::schema::user_aux::ActiveModel {
+            data: oj_rc_database::sea_orm::ActiveValue::Set(if info.use_custom { u32::MAX } else { info.avatar_id as u32 }.to_string()),
             ..Default::default()
         };
-        self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, rc_database::schema::user_aux::Descriptor::AvatarId).await
+        self.db.update_user_aux_by_user_id_and_descriptor(to_update, self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
             .map_err(|e| {
                 log::error!("Failed to update AvatarId (user_aux) for user_id {}: {}", self.account.id, e);
                 DATABASE_ERR
@@ -930,7 +930,7 @@ impl super::ChatUser for UserData {
     }
 
     async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16> {
-        let channels = self.db.user_aux_by_user_id_and_descriptor(self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+        let channels = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
                 log::error!("Failed to retrieve SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
                 crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
             })?.ok_or_else(|| {
@@ -952,10 +952,10 @@ impl super::ChatUser for UserData {
                 log::error!("Failed to convert to JSON SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
                 crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
             })?;
-            self.db.update_user_aux_by_user_id_and_descriptor(rc_database::schema::user_aux::ActiveModel {
-                data: rc_database::sea_orm::ActiveValue::Set(new_data),
+            self.db.update_user_aux_by_user_id_and_descriptor(oj_rc_database::schema::user_aux::ActiveModel {
+                data: oj_rc_database::sea_orm::ActiveValue::Set(new_data),
                 ..Default::default()
-            }, self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+            }, self.account.id, oj_rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
                 log::error!("Failed to update SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
                 crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
             })?;
@@ -977,10 +977,10 @@ impl super::ChatUser for UserData {
                     log::error!("Failed to convert to JSON SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
                     crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
                 })?;
-                self.db.update_user_aux_by_user_id_and_descriptor(rc_database::schema::user_aux::ActiveModel {
-                    data: rc_database::sea_orm::ActiveValue::Set(new_data),
+                self.db.update_user_aux_by_user_id_and_descriptor(oj_rc_database::schema::user_aux::ActiveModel {
+                    data: oj_rc_database::sea_orm::ActiveValue::Set(new_data),
                     ..Default::default()
-                }, self.account.id, rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
+                }, self.account.id, oj_rc_database::schema::user_aux::Descriptor::SubscribedChannels).await.map_err(|e| {
                     log::error!("Failed to update SubscribedChannels (user_aux) for user_id {}: {}", self.account.id, e);
                     crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
                 })?;
@@ -990,7 +990,7 @@ impl super::ChatUser for UserData {
     }
 
     /*async fn has_pending_sanctions(&self) -> Result<bool, i16> {
-        let count = self.db.count_sanctions_to_ack_by_user_id_and_descriptor(self.account.id, rc_database::schema::sanction::Descriptor::Warn).await.map_err(|e| {
+        let count = self.db.count_sanctions_to_ack_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::sanction::Descriptor::Warn).await.map_err(|e| {
             log::error!("Failed to count pending sanctions for user_id {}: {}", self.account.id, e);
             crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16
         })?;
@@ -1034,19 +1034,19 @@ impl super::ChatUser for UserData {
             if sanction.is_adding {
                 let now = chrono::Utc::now().timestamp();
                 let sanction_ty = crate::data::sanction::SanctionType::from_persist(sanction.type_).to_db();
-                let to_add = rc_database::schema::sanction::ActiveModel {
-                    user_id: rc_database::sea_orm::ActiveValue::Set(user.id),
-                    creation_time: rc_database::sea_orm::ActiveValue::Set(now),
-                    issuer_id: rc_database::sea_orm::ActiveValue::Set(self.account.id),
-                    issuer_name: rc_database::sea_orm::ActiveValue::Set(self.account.display_name.clone()),
-                    descriptor: rc_database::sea_orm::ActiveValue::Set(sanction_ty.clone()),
-                    reason: rc_database::sea_orm::ActiveValue::Set(sanction.reason),
-                    duration: rc_database::sea_orm::ActiveValue::Set(if sanction.duration <= 0 { None } else { Some(sanction.duration as i64) }),
+                let to_add = oj_rc_database::schema::sanction::ActiveModel {
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(user.id),
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                    issuer_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                    issuer_name: oj_rc_database::sea_orm::ActiveValue::Set(self.account.display_name.clone()),
+                    descriptor: oj_rc_database::sea_orm::ActiveValue::Set(sanction_ty.clone()),
+                    reason: oj_rc_database::sea_orm::ActiveValue::Set(sanction.reason),
+                    duration: oj_rc_database::sea_orm::ActiveValue::Set(if sanction.duration <= 0 { None } else { Some(sanction.duration as i64) }),
                     ..Default::default()
                 };
-                if matches!(sanction_ty, rc_database::schema::sanction::Descriptor::Ban) {
-                    self.db.update_perms_by_user_id(rc_database::schema::permissions::ActiveModel {
-                        banned: rc_database::sea_orm::ActiveValue::Set(true),
+                if matches!(sanction_ty, oj_rc_database::schema::sanction::Descriptor::Ban) {
+                    self.db.update_perms_by_user_id(oj_rc_database::schema::permissions::ActiveModel {
+                        banned: oj_rc_database::sea_orm::ActiveValue::Set(true),
                         ..Default::default()
                     }, user.id).await.map_err(|e| {
                         log::error!("Failed to update permissions (to ban) for user_id {} by user_id {}: {}", user.id, self.account.id, e);

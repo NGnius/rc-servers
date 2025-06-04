@@ -442,25 +442,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "auth"
-version = "0.2.0"
-dependencies = [
- "clap",
- "env_logger",
- "git-version",
- "hex",
- "jsonwebtoken",
- "libfj",
- "log",
- "rc_core",
- "rocket",
- "rocket_dyn_templates",
- "serde",
- "steamworks",
- "uuid",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -691,20 +672,6 @@ dependencies = [
  "jobserver",
  "libc",
  "shlex",
-]
-
-[[package]]
-name = "cdn"
-version = "0.2.0"
-dependencies = [
- "actix-files",
- "actix-web",
- "clap",
- "env_logger",
- "git-version",
- "log",
- "tokio",
- "zip",
 ]
 
 [[package]]
@@ -2092,7 +2059,9 @@ checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
 
 [[package]]
 name = "libfj"
-version = "0.7.5"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f595f6d12b48064b9c14adac6a5f8e85409026fdf1409630a8b8f23dd368f6f3"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2528,6 +2497,227 @@ dependencies = [
 ]
 
 [[package]]
+name = "oj_auth"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "git-version",
+ "hex",
+ "jsonwebtoken",
+ "libfj",
+ "log",
+ "oj_rc_core",
+ "rocket",
+ "rocket_dyn_templates",
+ "serde",
+ "steamworks",
+ "uuid",
+]
+
+[[package]]
+name = "oj_cdn"
+version = "0.2.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "clap",
+ "env_logger",
+ "git-version",
+ "log",
+ "tokio",
+ "zip",
+]
+
+[[package]]
+name = "oj_polariton_auth"
+version = "0.2.0"
+dependencies = [
+ "log",
+ "num",
+ "polariton",
+ "rand 0.9.0",
+ "ring",
+ "simple-rijndael",
+]
+
+[[package]]
+name = "oj_rc_chat"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_chat_room"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "oj_rc_core",
+ "polariton",
+ "polariton_server",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_core"
+version = "0.2.0"
+dependencies = [
+ "argon2",
+ "async-trait",
+ "chrono",
+ "hex",
+ "jsonwebtoken",
+ "libfj",
+ "log",
+ "oj_rc_database",
+ "oj_rc_factory",
+ "polariton",
+ "polariton_server",
+ "rand 0.9.0",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_database"
+version = "0.2.0"
+dependencies = [
+ "itertools",
+ "sea-orm",
+ "sea-orm-migration",
+]
+
+[[package]]
+name = "oj_rc_factory"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "libfj",
+ "log",
+ "sea-orm",
+]
+
+[[package]]
+name = "oj_rc_microtransactions"
+version = "0.2.0"
+dependencies = [
+ "env_logger",
+ "git-version",
+ "libfj",
+ "log",
+ "rocket",
+]
+
+[[package]]
+name = "oj_rc_services"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_services_room"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "clap",
+ "env_logger",
+ "hex",
+ "libfj",
+ "log",
+ "oj_polariton_auth",
+ "oj_rc_core",
+ "oj_rc_factory",
+ "polariton",
+ "polariton_server",
+ "rand 0.9.0",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_singleplayer"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_singleplayer_room"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "oj_rc_core",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_social"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_social_room"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "oj_rc_core",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2766,25 +2956,17 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 [[package]]
 name = "polariton"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "702e1d4db7a6a1fc945d934b6636fc4831ed22249141faf6ab21e6a273d153bf"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
-name = "polariton_auth"
-version = "0.2.0"
-dependencies = [
- "log",
- "num",
- "polariton",
- "rand 0.9.0",
- "ring",
- "simple-rijndael",
-]
-
-[[package]]
 name = "polariton_server"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "564b6872c1aaf14b4281a7d2d87373eea18573ee717fb351e0d41beee5f5cb10"
 dependencies = [
  "async-trait",
  "log",
@@ -3044,182 +3226,6 @@ checksum = "b08f3c9802962f7e1b25113931d94f43ed9725bebc59db9d0c3e9a23b67e15ff"
 dependencies = [
  "getrandom 0.3.1",
  "zerocopy 0.8.14",
-]
-
-[[package]]
-name = "rc_chat"
-version = "0.2.0"
-dependencies = [
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "tokio",
-]
-
-[[package]]
-name = "rc_chat_room"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "rc_core",
- "regex",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "rc_core"
-version = "0.2.0"
-dependencies = [
- "argon2",
- "async-trait",
- "chrono",
- "hex",
- "jsonwebtoken",
- "libfj",
- "log",
- "polariton",
- "polariton_server",
- "rand 0.9.0",
- "rc_database",
- "rc_factory",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "rc_database"
-version = "0.2.0"
-dependencies = [
- "itertools",
- "sea-orm",
- "sea-orm-migration",
-]
-
-[[package]]
-name = "rc_factory"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "base64 0.22.1",
- "chrono",
- "libfj",
- "log",
- "sea-orm",
-]
-
-[[package]]
-name = "rc_microtransactions"
-version = "0.2.0"
-dependencies = [
- "env_logger",
- "git-version",
- "libfj",
- "log",
- "rocket",
-]
-
-[[package]]
-name = "rc_services"
-version = "0.2.0"
-dependencies = [
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "tokio",
-]
-
-[[package]]
-name = "rc_services_room"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "base64 0.22.1",
- "chrono",
- "clap",
- "env_logger",
- "hex",
- "libfj",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "rand 0.9.0",
- "rc_core",
- "rc_factory",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "rc_singleplayer"
-version = "0.2.0"
-dependencies = [
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "tokio",
-]
-
-[[package]]
-name = "rc_singleplayer_room"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "rc_core",
- "tokio",
-]
-
-[[package]]
-name = "rc_social"
-version = "0.2.0"
-dependencies = [
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "tokio",
-]
-
-[[package]]
-name = "rc_social_room"
-version = "0.2.0"
-dependencies = [
- "async-trait",
- "clap",
- "env_logger",
- "log",
- "polariton",
- "polariton_auth",
- "polariton_server",
- "rc_core",
- "tokio",
 ]
 
 [[package]]

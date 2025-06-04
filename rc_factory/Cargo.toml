@@ -1,5 +1,5 @@
 [package]
-name = "rc_factory"
+name = "oj_rc_factory"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

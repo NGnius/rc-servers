@@ -17,7 +17,7 @@ pub fn send_public_message_handler(chat_system: crate::state::chat::ChatImpl) ->
                     let user = user.user()?;
                     if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
                         log::warn!("Rejecting too long chat message from {}", user.token().uuid);
-                        return Err(rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
+                        return Err(oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
                     }
                     let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
                         chat_loc.string.clone()
@@ -44,7 +44,7 @@ pub fn send_private_message_handler(chat_system: crate::state::chat::ChatImpl) -
                 let user = user.user()?;
                 if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
                     log::warn!("Rejecting too long chat message from {}", user.token().uuid);
-                    return Err(rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
+                    return Err(oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
                 }
                 let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
                     chat_loc.string.clone()

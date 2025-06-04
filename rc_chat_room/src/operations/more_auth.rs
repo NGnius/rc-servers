@@ -2,7 +2,7 @@ use polariton::operation::Typed;
 use polariton_server::operations::{Operation, OperationCode};
 
 //use crate::persist::chat_user::{ChatUser, ChatUserImpl};
-//use rc_core::persist::user::ChatUser;
+//use oj_rc_core::persist::user::ChatUser;
 
 pub struct MoreLobbyAuth {
     chat_system: crate::state::chat::ChatImpl,
@@ -17,8 +17,8 @@ impl MoreLobbyAuth {
         }
     }
 
-    /*fn build_ext_map(&self, token: &rc_core::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>> {
-        let user_dir = self.root.join(rc_core::persist::user::USERS_DIR).join(&token.uuid);
+    /*fn build_ext_map(&self, token: &oj_rc_core::persist::user::UserToken) -> Option<std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>> {
+        let user_dir = self.root.join(oj_rc_core::persist::user::USERS_DIR).join(&token.uuid);
         let data = if let Ok(data) = ChatUserImpl::load(&user_dir) {
             data
         } else {

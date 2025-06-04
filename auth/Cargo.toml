@@ -1,5 +1,5 @@
 [package]
-name = "auth"
+name = "oj_auth"
 version.workspace = true
 edition.workspace = true
 readme.workspace = true
@@ -9,7 +9,7 @@ authors.workspace = true
 
 [features]
 steam = ["steamworks"]
-robocraft = ["rc_core"]
+robocraft = ["oj_rc_core"]
 cardlife = []
 default = ["robocraft", "cardlife"]
 
@@ -24,6 +24,6 @@ steamworks = { version = "0.11", optional = true }
 hex = "0.4"
 jsonwebtoken = "9"
 clap.workspace = true
-rc_core = { version = "*", optional = true, path = "../rc_core" }
+oj_rc_core = { version = "*", optional = true, path = "../rc_core" }
 serde.workspace = true
 git-version.workspace = true

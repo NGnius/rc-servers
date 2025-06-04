@@ -1,6 +1,6 @@
 use polariton_server::operations::{Operation, OperationCode};
 use polariton::{operation::{Dict, Typed}, serdes::TypePrefix};
-use rc_core::ConfigProvider;
+use oj_rc_core::ConfigProvider;
 
 const PARAM_KEY: u8 = 16;
 
@@ -32,7 +32,7 @@ impl OperationCode for CubeInventoryProvider {
     }
 }
 
-pub(super) fn cube_inv_provider<'a>(cubes: &'a rc_core::ConfigImpl) -> CubeInventoryProvider {
-    let cube_ids = <rc_core::ConfigImpl as ConfigProvider<()>>::ids(cubes);
+pub(super) fn cube_inv_provider<'a>(cubes: &'a oj_rc_core::ConfigImpl) -> CubeInventoryProvider {
+    let cube_ids = <oj_rc_core::ConfigImpl as ConfigProvider<()>>::ids(cubes);
     CubeInventoryProvider { cube_ids }
 }

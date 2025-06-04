@@ -14,7 +14,7 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<Par
     let user_info = user.user()?;
     if let Some(Typed::Int(avatar)) = params.remove(&AVATAR_ID_PARAM_KEY) {
         if let Some(Typed::Bool(is_custom)) = params.remove(&IS_CUSTOM_PARAM_KEY) {
-            let info = rc_core::persist::user::AvatarInfo {
+            let info = oj_rc_core::persist::user::AvatarInfo {
                 avatar_id: avatar,
                 use_custom: is_custom,
             };

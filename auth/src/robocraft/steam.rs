@@ -1,4 +1,4 @@
-use rc_core::UserAuthenticator;
+use oj_rc_core::UserAuthenticator;
 use rocket::{http::Status, post, routes, serde::json::Json, State};
 
 #[post("/authenticate/steam/game", data = "<body>")]
@@ -14,9 +14,9 @@ pub async fn steam_auth(body: Json<libfj::robocraft::SteamAuthenticationPayload>
         email_verified: true,
         flags: Vec::new(),
     };
-    let user_info = rc_core::persist::user::UserInfo {
+    let user_info = oj_rc_core::persist::user::UserInfo {
         payload,
-        extra: rc_core::persist::user::ExtraUserInfo::Steam { id: steam_id },
+        extra: oj_rc_core::persist::user::ExtraUserInfo::Steam { id: steam_id },
     };
     let response = config.robocraft.account_provider.login(user_info).await
         .map_err(|e| {

@@ -12,7 +12,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler() -> OperationsHandler<crate::UserTy, crate::data::custom::CustomType> {
     OperationsHandler::<crate::UserTy, crate::data::custom::CustomType>::new()
-        .modify(rc_core::polariton::OpIdCopy)
+        .modify(oj_rc_core::polariton::OpIdCopy)
         .add(more_auth::MoreLobbyAuth)
         //.add(polariton_server::operations::Ack::<33, _>::default()) // get user clan info (this is equivalent to not being in a clan)
         .add(friend_list::friends_provider()) // TODO friend object parsing Token: 0x0200169C RID: 5788

@@ -4,13 +4,13 @@ mod cli;
 mod data;
 mod operations;
 
-use polariton_auth::Handshake;
+use oj_polariton_auth::Handshake;
 use tokio::net;
 
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = rc_core::UserState<crate::data::custom::CustomType>;
+pub type UserTy = oj_rc_core::UserState<crate::data::custom::CustomType>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -18,8 +18,8 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let cubes = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
-    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
+    let cubes = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
 
@@ -42,7 +42,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy, crate::data::custom::CustomType>>, users: std::sync::Arc<rc_core::UserImpl>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy, crate::data::custom::CustomType>>, users: std::sync::Arc<oj_rc_core::UserImpl>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -53,7 +53,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     };
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
-    let user_state = rc_core::UserState::<crate::data::custom::CustomType>::new(users, chann_tx.clone());
+    let user_state = oj_rc_core::UserState::<crate::data::custom::CustomType>::new(users, chann_tx.clone());
     let op_ctx = polariton::serdes::SerdesContext::<crate::data::custom::CustomType, crate::data::custom::CustomTypeSerdes>::default_const();
     let ctx = polariton::packet::SerdesContext::from_boxed(op_ctx, enc);
     server.handle_async_with_channel(socket_r, socket_w, user_state, ctx, chann_tx, chann_rx).await;
@@ -90,7 +90,7 @@ impl AuthError {
     }
 }
 
-impl polariton_auth::AuthProvider<AuthError> for AuthImpl {
+impl oj_polariton_auth::AuthProvider<AuthError> for AuthImpl {
     fn validate(&mut self, params: &std::collections::HashMap<u8, Typed>) -> Result<std::collections::HashMap<u8, Typed>, AuthError> {
         if let Some(Typed::Str(token)) = params.get(&TOKEN_KEY) {
             if let Some(Typed::Str(service)) = params.get(&SERVICE_KEY) {
@@ -193,7 +193,7 @@ async fn do_connect_handshake(
     let to_send = match handshake.authenticate(&packet3, &ctx) {
         Ok(x) => x,
         Err(h) => match h.extra {
-            polariton_auth::AuthError::Validation(e) => {
+            oj_polariton_auth::AuthError::Validation(e) => {
                 e.log_err();
                 return None;
             },

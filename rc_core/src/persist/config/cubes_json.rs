@@ -318,7 +318,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
             let prebuilt = match &vehicle.id {
                 crate::persist::PrefabId::Factory { factory: factory_id } => {
-                    use rc_factory::VehicleFactoryAdapter;
+                    use oj_rc_factory::VehicleFactoryAdapter;
                     let factory_vehicle = factory.vehicle(*factory_id).await
                         .expect("Failed to retrieve prefab vehicle from factory") // result
                         .expect("Prefab vehicle does not exist in factory"); // option

@@ -4,7 +4,7 @@ fn current_unix_time() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
-async fn build_new_account_data(user: &super::UserInfo, db: &rc_database::Database) -> Result<(), rc_database::sea_orm::DbErr> {
+async fn build_new_account_data(user: &super::UserInfo, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
     let reg_info = super::RegistrationInfo {
         display_name: user.payload.display_name.clone(),
         password: if let super::ExtraUserInfo::Email { password } | super::ExtraUserInfo::Username { password } = &user.extra {
@@ -19,7 +19,7 @@ async fn build_new_account_data(user: &super::UserInfo, db: &rc_database::Databa
     Ok(())
 }
 
-pub async fn setup_new_user(user: &super::UserInfo, db: &rc_database::Database) -> Result<(), rc_database::sea_orm::DbErr> {
+pub async fn setup_new_user(user: &super::UserInfo, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
     /*let ref_path = new_dir.as_ref().parent().unwrap().join(REFERENCE_DIR);
     if !ref_path.exists() {
         log::debug!("Initialising reference directory {}", ref_path.display());
@@ -31,7 +31,7 @@ pub async fn setup_new_user(user: &super::UserInfo, db: &rc_database::Database) 
     Ok(())
 }
 
-pub async fn register_new_user(info: &super::RegistrationInfo, db: &rc_database::Database) -> Result<u32, rc_database::sea_orm::DbErr> {
+pub async fn register_new_user(info: &super::RegistrationInfo, db: &oj_rc_database::Database) -> Result<u32, oj_rc_database::sea_orm::DbErr> {
     let user_data = db.insert_user(default_user_data(info)).await?;
     db.insert_perms(default_user_perms(user_data.id)).await?;
     db.insert_user_aux(default_user_aux_data(user_data.id)).await?;
@@ -39,7 +39,7 @@ pub async fn register_new_user(info: &super::RegistrationInfo, db: &rc_database:
     Ok(user_data.id)
 }
 
-fn default_user_data(info: &super::RegistrationInfo) -> rc_database::schema::user::ActiveModel {
+fn default_user_data(info: &super::RegistrationInfo) -> oj_rc_database::schema::user::ActiveModel {
     let password = {
         use argon2::password_hash::PasswordHasher;
         let argon2_algo = argon2::Argon2::default();
@@ -57,208 +57,208 @@ fn default_user_data(info: &super::RegistrationInfo) -> rc_database::schema::use
     } else {
         None
     };
-    rc_database::schema::user::ActiveModel {
+    oj_rc_database::schema::user::ActiveModel {
         id: Default::default(),
-        creation_time: rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
-        public_id: rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
-        display_name: rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
-        password: rc_database::sea_orm::ActiveValue::Set(password),
-        email: rc_database::sea_orm::ActiveValue::Set(info.email.clone().unwrap_or_else(|| "".to_owned())),
-        steam_id: rc_database::sea_orm::ActiveValue::Set(steam_id),
+        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+        public_id: oj_rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
+        display_name: oj_rc_database::sea_orm::ActiveValue::Set(info.display_name.clone()),
+        password: oj_rc_database::sea_orm::ActiveValue::Set(password),
+        email: oj_rc_database::sea_orm::ActiveValue::Set(info.email.clone().unwrap_or_else(|| "".to_owned())),
+        steam_id: oj_rc_database::sea_orm::ActiveValue::Set(steam_id),
     }
 }
 
-fn default_user_aux_data(user_id: u32) -> Vec<rc_database::schema::user_aux::ActiveModel> {
+fn default_user_aux_data(user_id: u32) -> Vec<oj_rc_database::schema::user_aux::ActiveModel> {
     let current_time = current_unix_time();
     vec![
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserXP),
-            data: rc_database::sea_orm::ActiveValue::Set("0".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::UserXP),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("0".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::PremiumExpiry),
-            data: rc_database::sea_orm::ActiveValue::Set(current_time.to_string()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::PremiumExpiry),
+            data: oj_rc_database::sea_orm::ActiveValue::Set(current_time.to_string()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UnlockedParts),
-            data: rc_database::sea_orm::ActiveValue::Set(
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::UnlockedParts),
+            data: oj_rc_database::sea_orm::ActiveValue::Set(
 r#"{
   "unlocked": [],
   "override": "UnlockAll"
 }"#.to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::TechPoints),
-            data: rc_database::sea_orm::ActiveValue::Set("1337".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::TechPoints),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("1337".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserRank),
-            data: rc_database::sea_orm::ActiveValue::Set("1".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::UserRank),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("1".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserFreeCurrency),
-            data: rc_database::sea_orm::ActiveValue::Set("10000".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::UserFreeCurrency),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("10000".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::UserPaidCurrency),
-            data: rc_database::sea_orm::ActiveValue::Set("1000".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::UserPaidCurrency),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("1000".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::GarageSlotOrder),
-            data: rc_database::sea_orm::ActiveValue::Set("[0]".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("[0]".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::SubscribedChannels),
-            data: rc_database::sea_orm::ActiveValue::Set("[\"sys\"]".to_owned()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::SubscribedChannels),
+            data: oj_rc_database::sea_orm::ActiveValue::Set("[\"sys\"]".to_owned()),
         },
-        rc_database::schema::user_aux::ActiveModel {
+        oj_rc_database::schema::user_aux::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            descriptor: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::user_aux::Descriptor::AvatarId),
-            data: rc_database::sea_orm::ActiveValue::Set((current_time % 16).to_string()),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::AvatarId),
+            data: oj_rc_database::sea_orm::ActiveValue::Set((current_time % 16).to_string()),
         }
     ]
 }
 
-fn default_user_perms(user_id: u32) -> rc_database::schema::permissions::ActiveModel {
-    rc_database::schema::permissions::ActiveModel {
+fn default_user_perms(user_id: u32) -> oj_rc_database::schema::permissions::ActiveModel {
+    oj_rc_database::schema::permissions::ActiveModel {
         id: Default::default(),
-        user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-        moderator: rc_database::sea_orm::ActiveValue::Set(false),
-        administrator: rc_database::sea_orm::ActiveValue::Set(false),
-        developer: rc_database::sea_orm::ActiveValue::Set(false),
-        royalty: rc_database::sea_orm::ActiveValue::Set(false),
-        banned: rc_database::sea_orm::ActiveValue::Set(false),
+        user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+        moderator: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        administrator: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        developer: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        royalty: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        banned: oj_rc_database::sea_orm::ActiveValue::Set(false),
     }
 }
 
-pub fn default_new_slot(user_id: u32, slot: u32, bay_cpu: u32) -> rc_database::schema::garage::ActiveModel {
+pub fn default_new_slot(user_id: u32, slot: u32, bay_cpu: u32) -> oj_rc_database::schema::garage::ActiveModel {
     let current_time = current_unix_time();
-    rc_database::schema::garage::ActiveModel {
+    oj_rc_database::schema::garage::ActiveModel {
         id: Default::default(),
-        user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-        creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-        slot: rc_database::sea_orm::ActiveValue::Set(slot),
-        name: rc_database::sea_orm::ActiveValue::Set(format!("Bay {}", slot)),
-        crf_id: rc_database::sea_orm::ActiveValue::Set(None),
-        was_rated: rc_database::sea_orm::ActiveValue::Set(false),
-        movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-        uuid: rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
-        thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
-        total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-        total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-        total_robot_ranking: rc_database::sea_orm::ActiveValue::Set(0),
-        bay_cpu: rc_database::sea_orm::ActiveValue::Set(bay_cpu),
-        tutorial_robot: rc_database::sea_orm::ActiveValue::Set(false),
-        starter_robot_index: rc_database::sea_orm::ActiveValue::Set(None),
-        control_type: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::garage::ControlType::Camera),
-        vertical_strafing: rc_database::sea_orm::ActiveValue::Set(false),
-        sideways_driving: rc_database::sea_orm::ActiveValue::Set(false),
-        tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(false),
-        mastery_level: rc_database::sea_orm::ActiveValue::Set(1),
-        bay_skin_id: rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
-        death_animation_id: rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
-        spawn_animation_id: rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
-        weapon_order: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-        robot_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
-        colour_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
-        selected: rc_database::sea_orm::ActiveValue::Set(false),
+        user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+        slot: oj_rc_database::sea_orm::ActiveValue::Set(slot),
+        name: oj_rc_database::sea_orm::ActiveValue::Set(format!("Bay {}", slot)),
+        crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+        was_rated: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        movement_categories: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        uuid: oj_rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
+        thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(bay_cpu),
+        tutorial_robot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        starter_robot_index: oj_rc_database::sea_orm::ActiveValue::Set(None),
+        control_type: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::garage::ControlType::Camera),
+        vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(1),
+        bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
+        death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
+        spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
+        weapon_order: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        selected: oj_rc_database::sea_orm::ActiveValue::Set(false),
     }
 }
 
-pub fn default_reset_slot() -> rc_database::schema::garage::ActiveModel {
-    rc_database::schema::garage::ActiveModel {
+pub fn default_reset_slot() -> oj_rc_database::schema::garage::ActiveModel {
+    oj_rc_database::schema::garage::ActiveModel {
         id: Default::default(),
         user_id: Default::default(),
         creation_time: Default::default(),
         slot: Default::default(),
         name: Default::default(),
-        crf_id: rc_database::sea_orm::ActiveValue::Set(None),
-        was_rated: rc_database::sea_orm::ActiveValue::Set(false),
-        movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+        was_rated: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        movement_categories: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
         uuid: Default::default(),
-        thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
-        total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-        total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-        total_robot_ranking: rc_database::sea_orm::ActiveValue::Set(0),
+        thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+        total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(0),
         bay_cpu: Default::default(),
-        tutorial_robot: rc_database::sea_orm::ActiveValue::Set(false),
-        starter_robot_index: rc_database::sea_orm::ActiveValue::Set(None),
-        control_type: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::garage::ControlType::Camera),
-        vertical_strafing: rc_database::sea_orm::ActiveValue::Set(false),
-        sideways_driving: rc_database::sea_orm::ActiveValue::Set(false),
-        tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(false),
+        tutorial_robot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        starter_robot_index: oj_rc_database::sea_orm::ActiveValue::Set(None),
+        control_type: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::garage::ControlType::Camera),
+        vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(false),
         mastery_level: Default::default(),
-        bay_skin_id: rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
-        death_animation_id: rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
-        spawn_animation_id: rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
-        weapon_order: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-        robot_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
-        colour_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
+        death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
+        spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
+        weapon_order: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+        robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+        colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
         selected: Default::default(),
     }
 }
 
-fn default_garage_slots(user_id: u32) -> Vec<rc_database::schema::garage::ActiveModel> {
+fn default_garage_slots(user_id: u32) -> Vec<oj_rc_database::schema::garage::ActiveModel> {
     let current_time = current_unix_time();
     vec![
-        rc_database::schema::garage::ActiveModel {
+        oj_rc_database::schema::garage::ActiveModel {
             id: Default::default(),
-            user_id: rc_database::sea_orm::ActiveValue::Set(user_id),
-            creation_time: rc_database::sea_orm::ActiveValue::Set(current_time),
-            slot: rc_database::sea_orm::ActiveValue::Set(0),
-            name: rc_database::sea_orm::ActiveValue::Set("Bay 0".to_owned()),
-            crf_id: rc_database::sea_orm::ActiveValue::Set(None),
-            was_rated: rc_database::sea_orm::ActiveValue::Set(false),
-            movement_categories: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-            uuid: rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
-            thumbnail_version: rc_database::sea_orm::ActiveValue::Set(0),
-            total_robot_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-            total_cosmetic_cpu: rc_database::sea_orm::ActiveValue::Set(0),
-            total_robot_ranking: rc_database::sea_orm::ActiveValue::Set(0),
-            bay_cpu: rc_database::sea_orm::ActiveValue::Set(2_000),
-            tutorial_robot: rc_database::sea_orm::ActiveValue::Set(false),
-            starter_robot_index: rc_database::sea_orm::ActiveValue::Set(None),
-            control_type: rc_database::sea_orm::ActiveValue::Set(rc_database::schema::garage::ControlType::Camera),
-            vertical_strafing: rc_database::sea_orm::ActiveValue::Set(false),
-            sideways_driving: rc_database::sea_orm::ActiveValue::Set(false),
-            tracks_turn_on_spot: rc_database::sea_orm::ActiveValue::Set(false),
-            mastery_level: rc_database::sea_orm::ActiveValue::Set(1),
-            bay_skin_id: rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
-            death_animation_id: rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
-            spawn_animation_id: rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
-            weapon_order: rc_database::sea_orm::ActiveValue::Set("".to_owned()),
-            robot_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
-            colour_data: rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
-            selected: rc_database::sea_orm::ActiveValue::Set(true),
+            user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_time),
+            slot: oj_rc_database::sea_orm::ActiveValue::Set(0),
+            name: oj_rc_database::sea_orm::ActiveValue::Set("Bay 0".to_owned()),
+            crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+            was_rated: oj_rc_database::sea_orm::ActiveValue::Set(false),
+            movement_categories: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+            uuid: oj_rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
+            thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(0),
+            total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+            total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(0),
+            total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(0),
+            bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(2_000),
+            tutorial_robot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+            starter_robot_index: oj_rc_database::sea_orm::ActiveValue::Set(None),
+            control_type: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::garage::ControlType::Camera),
+            vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(false),
+            sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(false),
+            tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+            mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(1),
+            bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set("RC_MothershipSkin_Neptune_01".to_owned()),
+            death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Explosion".to_owned()),
+            spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set("Spawn".to_owned()),
+            weapon_order: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
+            robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+            colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vec![0u8; 4]),
+            selected: oj_rc_database::sea_orm::ActiveValue::Set(true),
         }
     ]
     /*vec![

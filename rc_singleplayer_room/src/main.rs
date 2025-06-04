@@ -4,20 +4,20 @@ mod cli;
 mod data;
 mod operations;
 
-use polariton_auth::Handshake;
+use oj_polariton_auth::Handshake;
 use tokio::net;
 
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
 pub struct InitConfig {
-    pub config: rc_core::persist::config::ConfigImpl,
-    pub users: std::sync::Arc<rc_core::persist::user::UserImpl>,
-    pub factory: std::sync::Arc<rc_core::factory::Factory>,
-    pub parsers: rc_core::cubes::CubeParsers,
+    pub config: oj_rc_core::persist::config::ConfigImpl,
+    pub users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>,
+    pub factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+    pub parsers: oj_rc_core::cubes::CubeParsers,
 }
 
-pub type UserTy = rc_core::UserState<()>;
+pub type UserTy = oj_rc_core::UserState<()>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -25,10 +25,10 @@ async fn main() -> std::io::Result<()> {
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let config = rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
-    let users = std::sync::Arc::new(rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
-    let factory = std::sync::Arc::new(<rc_core::persist::config::ConfigImpl as rc_core::ConfigProvider<()>>::factory::<'_, '_>(&config).await.expect("Bad vehicle factory (CRF) config"));
-    let parsers = rc_core::cubes::CubeParsers::new(&config);
+    let config = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
+    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory::<'_, '_>(&config).await.expect("Bad vehicle factory (CRF) config"));
+    let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
 
     let init_ctx = InitConfig {
         config,
@@ -58,7 +58,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<rc_core::persist::user::UserImpl>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -69,7 +69,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     };
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
-    let user_state = rc_core::UserState::<()>::new(users, chann_tx.clone());
+    let user_state = oj_rc_core::UserState::<()>::new(users, chann_tx.clone());
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
     server.handle_async_with_channel(socket_r, socket_w, user_state, ctx, chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
@@ -105,7 +105,7 @@ impl AuthError {
     }
 }
 
-impl polariton_auth::AuthProvider<AuthError> for AuthImpl {
+impl oj_polariton_auth::AuthProvider<AuthError> for AuthImpl {
     fn validate(&mut self, params: &std::collections::HashMap<u8, Typed>) -> Result<std::collections::HashMap<u8, Typed>, AuthError> {
         if let Some(Typed::Str(token)) = params.get(&TOKEN_KEY) {
             if let Some(Typed::Str(service)) = params.get(&SERVICE_KEY) {
@@ -208,7 +208,7 @@ async fn do_connect_handshake(
     let to_send = match handshake.authenticate(&packet3, &ctx) {
         Ok(x) => x,
         Err(h) => match h.extra {
-            polariton_auth::AuthError::Validation(e) => {
+            oj_polariton_auth::AuthError::Validation(e) => {
                 e.log_err();
                 return None;
             },

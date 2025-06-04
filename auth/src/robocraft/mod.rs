@@ -18,15 +18,15 @@ pub fn stage() -> rocket::fairing::AdHoc {
 #[allow(dead_code)]
 pub struct RcConfig {
     pub data: std::path::PathBuf,
-    pub account_provider: rc_core::UserImpl,
+    pub account_provider: oj_rc_core::UserImpl,
     pub assets: std::path::PathBuf,
 }
 
 impl RcConfig {
     pub async fn from_args(args: &crate::common::cli::CliArgs) -> Self {
-        let conf = rc_core::persist::config::ConfigImpl::load(&args.assets_robocraft).expect("Bad config data");
+        let conf = oj_rc_core::persist::config::ConfigImpl::load(&args.assets_robocraft).expect("Bad config data");
         Self {
-            account_provider: rc_core::UserImpl::load(&args.data_robocraft, &conf).await.expect("Invalid Robocraft user data"),
+            account_provider: oj_rc_core::UserImpl::load(&args.data_robocraft, &conf).await.expect("Invalid Robocraft user data"),
             data: args.data_robocraft.clone().into(),
             assets: args.assets_robocraft.clone().into(),
         }

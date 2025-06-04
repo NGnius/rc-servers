@@ -1,5 +1,5 @@
 use polariton::operation::{ParameterTable, Typed, OperationResponse};
-use rc_factory::VehicleFactoryAdapter;
+use oj_rc_factory::VehicleFactoryAdapter;
 
 const CODE: u8 = 166;
 
@@ -9,7 +9,7 @@ const SLOT_PARAM_KEY: u8 = 43; // in; int
 const FACTORY_ID_PARAM_KEY: u8 = 94; // in; int
 
 
-async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>, weapon_order: &std::sync::Arc<rc_core::cubes::WeaponListParser>) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: &std::sync::Arc<oj_rc_core::cubes::WeaponListParser>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     let user_info = user.user()?;
     let slot = if let Some(Typed::Int(slot)) = params.remove(&SLOT_PARAM_KEY) {
@@ -22,14 +22,14 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
         // TODO charge for robot?
         let vehicle = factory.vehicle(factory_id as _).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle {} (for copy-construct) from factory: {}", factory_id, e);
-            rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+            oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
         if let Some((vehicle_to_copy, vehicle_meta)) = vehicle {
             // parse cube data for weapon order
             let mut cursor = std::io::Cursor::new(&vehicle_to_copy.cube_data);
             let weapons = weapon_order.guess_weapons(&mut cursor);
             // save to database
-            let to_save = rc_core::persist::user::VehicleData {
+            let to_save = oj_rc_core::persist::user::VehicleData {
                 name: Some(vehicle_meta.name),
                 slot,
                 robot_data: vehicle_to_copy.cube_data,
@@ -40,7 +40,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
             user_info.save_slot(to_save).await?;
         } else {
             log::warn!("Failed to retrieve (for copy-construct) non-existent factory vehicle {}", factory_id);
-            return Err(rc_core::data::error_codes::WebServicesError::DatabaseError as i16);
+            return Err(oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16);
         }
 
     }
@@ -49,8 +49,8 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
 }
 
 pub struct CrfItemPurchaseProvider {
-    factory: std::sync::Arc<rc_core::factory::Factory>,
-    weapon_order: std::sync::Arc<rc_core::cubes::WeaponListParser>,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+    weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
 }
 
 #[async_trait::async_trait]
@@ -69,7 +69,7 @@ impl polariton_server::operations::OperationCode for CrfItemPurchaseProvider {
 }
 
 
-pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<rc_core::factory::Factory>, weapon_order: std::sync::Arc<rc_core::cubes::WeaponListParser>) -> CrfItemPurchaseProvider {
+pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>) -> CrfItemPurchaseProvider {
     CrfItemPurchaseProvider {
         factory: factory.to_owned(),
         weapon_order,

@@ -1,32 +1,32 @@
 use polariton_server::operations::{Operation, OperationCode};
 use polariton::operation::{Typed, ParameterTable};
-use rc_factory::VehicleFactoryAdapter;
+use oj_rc_factory::VehicleFactoryAdapter;
 
 const CODE: u8 = 87;
 
 const ID_PARAM_KEY: u8 = 94;
 const DATA_PARAM_KEY: u8 = 95;
 
-async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory: &std::sync::Arc<rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     if let Some(Typed::Int(id)) = params.remove(&ID_PARAM_KEY) {
         let vehicle = factory.vehicle(id as _).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle {} from factory: {}", id, e);
-            rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+            oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
         if let Some(vehicle) = vehicle {
             let vehicle_data = crate::data::crf::ItemData::from(vehicle.0);
             params.insert(DATA_PARAM_KEY, vehicle_data.as_transmissible());
         } else {
             log::warn!("Failed to retrieve non-existent factory vehicle {}", id);
-            return Err(rc_core::data::error_codes::WebServicesError::InvalidRobot as i16);
+            return Err(oj_rc_core::data::error_codes::WebServicesError::InvalidRobot as i16);
         }
     }
     Ok(params.into())
 }
 
 pub struct CrfItemDataProvider {
-    factory: std::sync::Arc<rc_core::factory::Factory>,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
 #[async_trait::async_trait]
@@ -44,7 +44,7 @@ impl OperationCode for CrfItemDataProvider {
     }
 }
 
-pub(super) fn crf_item_data_provider(factory: &std::sync::Arc<rc_core::factory::Factory>) -> CrfItemDataProvider {
+pub(super) fn crf_item_data_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>) -> CrfItemDataProvider {
     CrfItemDataProvider {
         factory: factory.to_owned(),
     }

@@ -4,15 +4,15 @@ const CODE: u8 = 1;
 
 const PARAM_KEY: u8 = 8;
 
-pub(super) fn tdm_machines_provider(factory: &std::sync::Arc<rc_core::factory::Factory>, weapon_order: std::sync::Arc<rc_core::cubes::WeaponListParser>, conf: &rc_core::ConfigImpl) -> AiRobots {
+pub(super) fn tdm_machines_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, conf: &oj_rc_core::ConfigImpl) -> AiRobots {
     AiRobots {
         factory: factory.to_owned(),
         weapon_parser: weapon_order,
-        singleplayer_config: <rc_core::ConfigImpl as rc_core::ConfigProvider<()>>::singleplayer_details(conf),
+        singleplayer_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::singleplayer_details(conf),
     }
 }
 
-async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &rc_core::factory::Factory, weapon_order: &rc_core::cubes::WeaponListParser, singleplayer_conf: &rc_core::persist::config::SingleplayerConfig) -> Result<ParameterTable<()>, i16> {
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &oj_rc_core::factory::Factory, weapon_order: &oj_rc_core::cubes::WeaponListParser, singleplayer_conf: &oj_rc_core::persist::config::SingleplayerConfig) -> Result<ParameterTable<()>, i16> {
     let ulock = user.user()?;
     let mut params = params.to_dict();
     params.insert(PARAM_KEY, ulock.singleplayer_robots(factory, weapon_order, singleplayer_conf).await?);
@@ -20,9 +20,9 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
 }
 
 pub struct AiRobots {
-    factory: std::sync::Arc<rc_core::factory::Factory>,
-    weapon_parser: std::sync::Arc<rc_core::cubes::WeaponListParser>,
-    singleplayer_config: rc_core::persist::config::SingleplayerConfig,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+    weapon_parser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
+    singleplayer_config: oj_rc_core::persist::config::SingleplayerConfig,
 }
 
 #[async_trait::async_trait]

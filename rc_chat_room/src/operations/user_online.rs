@@ -30,7 +30,7 @@ pub(super) fn is_online_provider(chat_system: crate::state::ChatImpl) -> SimpleC
                 Ok(params.into())
             }
         } else {
-            Err(rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as _)
+            Err(oj_rc_core::data::error_codes::ChatErrorCodes::UnexpectedError as _)
         }
     }, chat_system)
 }

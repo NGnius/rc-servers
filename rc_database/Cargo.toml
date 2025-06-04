@@ -1,5 +1,5 @@
 [package]
-name = "rc_database"
+name = "oj_rc_database"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

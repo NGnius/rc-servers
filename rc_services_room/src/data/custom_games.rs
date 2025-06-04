@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-pub use rc_core::data::game_mode::GameMode;
+pub use oj_rc_core::data::game_mode::GameMode;
 
 #[repr(u8)]
 #[derive(Copy, Clone)]

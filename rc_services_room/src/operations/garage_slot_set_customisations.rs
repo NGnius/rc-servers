@@ -18,7 +18,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result
             if let Some(Typed::Str(spawn)) = params.remove(&SPAWN_SKIN_PARAM_KEY) {
                 if let Some(Typed::Str(death)) = params.remove(&DEATH_SKIN_PARAM_KEY) {
                     let user_info = user.user()?;
-                    user_info.save_slot_customisations(rc_core::persist::user::CustomisationData {
+                    user_info.save_slot_customisations(oj_rc_core::persist::user::CustomisationData {
                         uuid: uuid.string,
                         bay: bay_skin.string,
                         spawn: spawn.string,

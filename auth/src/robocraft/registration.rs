@@ -1,4 +1,4 @@
-use rc_core::UserAuthenticator;
+use oj_rc_core::UserAuthenticator;
 use rocket::{post, get, form::{Form, FromForm}, routes, http::Status, State};
 use rocket_dyn_templates::{Template, context};
 use serde::Serialize;
@@ -86,7 +86,7 @@ async fn form_submit(form: Form<RegisterForm>, config: &State<crate::common::cli
             if !email.contains('@') {
                 return Ok(registration_err(form.into_inner(), "Email must contain @".to_owned()));
             }
-            let email_exists = config.robocraft.account_provider.user_exists(rc_core::persist::user::UserId::Email(email.to_owned()))
+            let email_exists = config.robocraft.account_provider.user_exists(oj_rc_core::persist::user::UserId::Email(email.to_owned()))
                 .await
                 .map_err(|e| {
                     log::error!("Failed to check if user email {} exists: {}", email, e);
@@ -114,7 +114,7 @@ async fn form_submit(form: Form<RegisterForm>, config: &State<crate::common::cli
             if steam_id >= 7656120_0000000000 || steam_id < 7656119_0000000000 {
                 return Ok(registration_err(form.into_inner(), "Invalid SteamID (should be like 7656119XXXXXXXXXX)".to_owned()));
             }
-            let steam_exists = config.robocraft.account_provider.user_exists(rc_core::persist::user::UserId::SteamId(steam_id))
+            let steam_exists = config.robocraft.account_provider.user_exists(oj_rc_core::persist::user::UserId::SteamId(steam_id))
                 .await
                 .map_err(|e| {
                     log::error!("Failed to check if user steam id {} exists: {}", steam_id, e);
@@ -139,7 +139,7 @@ async fn form_submit(form: Form<RegisterForm>, config: &State<crate::common::cli
     if !all_valid_chars(&form.display_name.to_lowercase()) {
         return Ok(registration_err(form.into_inner(), "Invalid username (only alphanumerics and _ allowed)".to_owned()));
     }
-    let username_exists = config.robocraft.account_provider.user_exists(rc_core::persist::user::UserId::Username(form.display_name.to_owned()))
+    let username_exists = config.robocraft.account_provider.user_exists(oj_rc_core::persist::user::UserId::Username(form.display_name.to_owned()))
         .await
         .map_err(|e| {
             log::error!("Failed to check if user name {} exists: {}", form.display_name, e);
@@ -149,7 +149,7 @@ async fn form_submit(form: Form<RegisterForm>, config: &State<crate::common::cli
         return Ok(registration_err(form.into_inner(), "Username already registered".to_owned()));
     }
 
-    let user_id = match config.robocraft.account_provider.register(rc_core::persist::user::RegistrationInfo {
+    let user_id = match config.robocraft.account_provider.register(oj_rc_core::persist::user::RegistrationInfo {
         display_name: form.display_name.clone(),
         password: form.password.clone(),
         email: actual_email,

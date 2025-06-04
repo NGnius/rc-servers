@@ -140,8 +140,8 @@ fn ticks_from_now(time: &chrono::DateTime<chrono::Utc>) -> i64 {
         .unwrap_or_else(|| dur.num_milliseconds() * 1_000_000 / 100)
 }
 
-impl std::convert::From<rc_factory::VehicleQueryInfo> for ItemResult {
-    fn from(value: rc_factory::VehicleQueryInfo) -> Self {
+impl std::convert::From<oj_rc_factory::VehicleQueryInfo> for ItemResult {
+    fn from(value: oj_rc_factory::VehicleQueryInfo) -> Self {
         Self {
             id: value.id,
             name: value.name,
@@ -182,8 +182,8 @@ impl ItemData {
     }
 }
 
-impl std::convert::From<rc_factory::VehicleInfo> for ItemData {
-    fn from(value: rc_factory::VehicleInfo) -> Self {
+impl std::convert::From<oj_rc_factory::VehicleInfo> for ItemData {
+    fn from(value: oj_rc_factory::VehicleInfo) -> Self {
         Self {
             index: value.id,
             cube_data: value.cube_data,
