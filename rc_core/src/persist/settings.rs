@@ -16,7 +16,7 @@ fn default_gameplay_settings() -> super::GameplaySettings {
     super::GameplaySettings {
         show_tutorial_after_date: "2030-01-01".to_owned(),
         health_threshold: 0.20,
-        microbot_sphere: 10.0,
+        microbot_sphere: 0.5,
         misfire_angle: 10.0,
         shield_dps: 100,
         shield_hps: 2_000,
