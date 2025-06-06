@@ -18,12 +18,12 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::user_aux::Entity)
                     .col(
                         ColumnDef::new(crate::schema::user_aux::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::user_aux::Column::UserId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::user_aux::Column::UserId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-users_aux-user_id")

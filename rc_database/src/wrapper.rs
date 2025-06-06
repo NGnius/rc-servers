@@ -54,14 +54,14 @@ impl Database {
         entity.insert(&self.orm).await
     }
 
-    pub async fn user_aux_by_user_id(&self, user_id: u32) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+    pub async fn user_aux_by_user_id(&self, user_id: i32) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
         crate::schema::user_aux::Entity::find()
             .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
             .all(&self.orm)
             .await
     }
 
-    pub async fn user_aux_by_user_id_and_descriptor(&self, user_id: u32, descriptor: crate::schema::user_aux::Descriptor) -> Result<Option<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+    pub async fn user_aux_by_user_id_and_descriptor(&self, user_id: i32, descriptor: crate::schema::user_aux::Descriptor) -> Result<Option<crate::schema::user_aux::Model>, sea_orm::DbErr> {
         crate::schema::user_aux::Entity::find()
             .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
             .filter(crate::schema::user_aux::Column::Descriptor.eq(descriptor))
@@ -74,7 +74,7 @@ impl Database {
         Ok(())
     }
 
-    pub async fn update_user_aux_by_user_id_and_descriptor(&self, mut entity: crate::schema::user_aux::ActiveModel, user_id: u32, descriptor: crate::schema::user_aux::Descriptor) -> Result<Option<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+    pub async fn update_user_aux_by_user_id_and_descriptor(&self, mut entity: crate::schema::user_aux::ActiveModel, user_id: i32, descriptor: crate::schema::user_aux::Descriptor) -> Result<Option<crate::schema::user_aux::Model>, sea_orm::DbErr> {
         let id_opt = crate::schema::user_aux::Entity::find()
             .select_only()
             .column(crate::schema::user_aux::Column::Id)
@@ -94,7 +94,7 @@ impl Database {
         }
     }
 
-    pub async fn perms_by_user_id(&self, user_id: u32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
+    pub async fn perms_by_user_id(&self, user_id: i32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
         crate::schema::permissions::Entity::find()
             .filter(crate::schema::permissions::Column::UserId.eq(user_id))
             .one(&self.orm)
@@ -105,7 +105,7 @@ impl Database {
         entity.insert(&self.orm).await
     }
 
-    pub async fn update_perms_by_user_id(&self, mut entity: crate::schema::permissions::ActiveModel, user_id: u32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
+    pub async fn update_perms_by_user_id(&self, mut entity: crate::schema::permissions::ActiveModel, user_id: i32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
         let id_opt = crate::schema::permissions::Entity::find()
             .select_only()
             .column(crate::schema::permissions::Column::Id)
@@ -123,18 +123,18 @@ impl Database {
         }
     }
 
-    pub async fn garage_max_slot_by_user_id(&self, user_id: u32) -> Result<u32, sea_orm::DbErr> {
+    pub async fn garage_max_slot_by_user_id(&self, user_id: i32) -> Result<i32, sea_orm::DbErr> {
         let result = crate::schema::garage::Entity::find()
             .select_only()
             .column_as(crate::schema::garage::Column::Slot.max(), "column")
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
-            .into_model::<crate::schema::common_query::SingleColumn<u32>>()
+            .into_model::<crate::schema::common_query::SingleColumn<i32>>()
             .one(&self.orm)
             .await?;
         Ok(result.map(|x| *x).unwrap_or(0))
     }
 
-    pub async fn garage_selected(&self, user_id: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+    pub async fn garage_selected(&self, user_id: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
             .filter(crate::schema::garage::Column::Selected.eq(true))
@@ -142,7 +142,7 @@ impl Database {
             .await
     }
 
-    pub async fn garage_by_user_id_and_slot(&self, user_id: u32, garage_slot: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+    pub async fn garage_by_user_id_and_slot(&self, user_id: i32, garage_slot: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
             .filter(crate::schema::garage::Column::Slot.eq(garage_slot))
@@ -150,7 +150,7 @@ impl Database {
             .await
     }
 
-    pub async fn garages_by_user_id(&self, user_id: u32) -> Result<Vec<crate::schema::garage::Model>, sea_orm::DbErr> {
+    pub async fn garages_by_user_id(&self, user_id: i32) -> Result<Vec<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
             .order_by_asc(crate::schema::garage::Column::Slot)
@@ -165,7 +165,7 @@ impl Database {
             .await
     }
 
-    pub async fn garage_by_id(&self, id: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+    pub async fn garage_by_id(&self, id: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find_by_id(id)
             .one(&self.orm)
             .await
@@ -186,7 +186,7 @@ impl Database {
             .await
     }
 
-    pub async fn update_garage_by_user_id_and_slot(&self, mut entity: crate::schema::garage::ActiveModel, user_id: u32, slot: u32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
+    pub async fn update_garage_by_user_id_and_slot(&self, mut entity: crate::schema::garage::ActiveModel, user_id: i32, slot: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         let id_opt = crate::schema::garage::Entity::find()
             .select_only()
             .column(crate::schema::garage::Column::Id)
@@ -223,7 +223,7 @@ impl Database {
         }
     }
 
-    pub async fn update_garage_selected_by_user_id_and_slot(&self, user_id: u32, slot: u32) -> Result<(), sea_orm::DbErr> {
+    pub async fn update_garage_selected_by_user_id_and_slot(&self, user_id: i32, slot: i32) -> Result<(), sea_orm::DbErr> {
         self.orm.transaction(|txn| {
             Box::pin(async move {
                 crate::schema::garage::Entity::update_many()
@@ -251,7 +251,7 @@ impl Database {
         Ok(())
     }
 
-    pub async fn count_sanctions_to_ack_by_user_id_and_descriptor(&self, user_id: u32, desc: crate::schema::sanction::Descriptor) -> Result<u64, sea_orm::DbErr> {
+    pub async fn count_sanctions_to_ack_by_user_id_and_descriptor(&self, user_id: i32, desc: crate::schema::sanction::Descriptor) -> Result<u64, sea_orm::DbErr> {
         crate::schema::sanction::Entity::find()
             .filter(crate::schema::sanction::Column::UserId.eq(user_id))
             .filter(crate::schema::sanction::Column::Descriptor.eq(desc))
@@ -260,7 +260,7 @@ impl Database {
             .await
     }
 
-    pub async fn sanctions_by_user_id(&self, user_id: u32) -> Result<Vec<crate::schema::sanction::Model>, sea_orm::DbErr> {
+    pub async fn sanctions_by_user_id(&self, user_id: i32) -> Result<Vec<crate::schema::sanction::Model>, sea_orm::DbErr> {
         crate::schema::sanction::Entity::find()
             .filter(crate::schema::sanction::Column::UserId.eq(user_id))
             .filter(crate::schema::sanction::Column::Acknowledged.is_null())

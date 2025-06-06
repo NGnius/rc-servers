@@ -4,8 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "users_aux")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u32,
-    pub user_id: u32,
+    pub id: i32,
+    pub user_id: i32,
     pub creation_time: i64, // seconds since unix epoch
     pub descriptor: Descriptor,
     pub data: String, // usually JSON

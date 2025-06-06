@@ -18,12 +18,12 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::sanction::Entity)
                     .col(
                         ColumnDef::new(crate::schema::sanction::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::sanction::Column::UserId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::sanction::Column::UserId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-sanction-user_id")
@@ -31,7 +31,7 @@ impl MigrationTrait for Migration {
                             .to(crate::schema::user::Entity, crate::schema::user::Column::Id),
                     )
                     .col(ColumnDef::new(crate::schema::sanction::Column::CreationTime).big_integer().not_null())
-                    .col(ColumnDef::new(crate::schema::sanction::Column::IssuerId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::sanction::Column::IssuerId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-sanction-issuer_id")
@@ -43,7 +43,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(crate::schema::sanction::Column::Reason).string().not_null())
                     .col(ColumnDef::new(crate::schema::sanction::Column::Duration).big_integer())
                     .col(ColumnDef::new(crate::schema::sanction::Column::Acknowledged).big_integer())
-                    .col(ColumnDef::new(crate::schema::sanction::Column::AppealerId).unsigned())
+                    .col(ColumnDef::new(crate::schema::sanction::Column::AppealerId).integer())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-sanction-appealer_id")

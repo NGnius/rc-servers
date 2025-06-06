@@ -4,11 +4,11 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "campaigns_completion")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u32,
-    pub campaign_id: u32,
+    pub id: i32,
+    pub campaign_id: i32,
     pub creation_time: i64, // seconds since unix epoch
-    pub level: u32,
-    pub wave: u32,
+    pub level: i32,
+    pub wave: i32,
     pub complete: bool,
 }
 

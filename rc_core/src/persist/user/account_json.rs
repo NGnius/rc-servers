@@ -180,7 +180,7 @@ impl super::UserAuthenticator for AccountProvider {
         })
     }
 
-    async fn register(&self, info: super::RegistrationInfo) -> Result<u32, String> {
+    async fn register(&self, info: super::RegistrationInfo) -> Result<i32, String> {
         super::register_new_user(&info, &self.db).await.map_err(|e| e.to_string())
     }
 }
@@ -197,13 +197,13 @@ struct UserData {
 }
 
 impl UserData {
-    async fn load_garage_by_slot(&self, slot: u32) -> Result<Option<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
+    async fn load_garage_by_slot(&self, slot: i32) -> Result<Option<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
         //let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", id));
         //crate::persist::GarageSlot::load(&path)
         self.db.garage_by_user_id_and_slot(self.account.id, slot).await
     }
 
-    async fn save_garage_by_slot(&self, data: oj_rc_database::schema::garage::ActiveModel, slot: u32) -> Result<(), oj_rc_database::sea_orm::DbErr> {
+    async fn save_garage_by_slot(&self, data: oj_rc_database::schema::garage::ActiveModel, slot: i32) -> Result<(), oj_rc_database::sea_orm::DbErr> {
         self.db.update_garage_by_user_id_and_slot(data, self.account.id, slot).await?;
         Ok(())
     }
@@ -436,7 +436,7 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn selected_garage(&self) -> (String, u32) {
         match self.db.garage_selected(self.account.id).await {
-            Ok(Some(selected)) => (super::i64_as_uuid_str(selected.uuid), selected.slot),
+            Ok(Some(selected)) => (super::i64_as_uuid_str(selected.uuid), selected.slot as u32),
             Ok(None) => {
                 log::warn!("User {} does not have a selected garage", self.account.id);
                 ("0_0".to_owned(), 0)
@@ -450,7 +450,7 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn select_garage(&self, slot: i32) -> Result<(), i16> {
         self.err_on_banned().await?;
-        self.db.update_garage_selected_by_user_id_and_slot(self.account.id, slot as u32).await.map_err(|e| {
+        self.db.update_garage_selected_by_user_id_and_slot(self.account.id, slot).await.map_err(|e| {
             log::error!("Failed to select vehicle slot {} user_id {}: {}", slot, self.account.id, e);
             DATABASE_ERR
         })
@@ -536,11 +536,11 @@ impl <C: Clone> super::User<C> for UserData {
             weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&vehicle.weapon_order)),
             robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
             colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
-            crf_id: if let Some(crf_id) = vehicle.crf_id { oj_rc_database::sea_orm::ActiveValue::Set(Some(crf_id as u32)) } else { Default::default() },
+            crf_id: if let Some(crf_id) = vehicle.crf_id { oj_rc_database::sea_orm::ActiveValue::Set(Some(crf_id)) } else { Default::default() },
             name: if let Some(new_name) = vehicle.name { oj_rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
             ..Default::default()
         };
-        self.save_garage_by_slot(entity, vehicle.slot as u32).await.map_err(|e| {
+        self.save_garage_by_slot(entity, vehicle.slot).await.map_err(|e| {
             log::error!("Failed to save vehicle slot {} for user_id {}: {}", vehicle.slot, self.account.id, e);
             DATABASE_ERR
         })?;
@@ -565,7 +565,7 @@ impl <C: Clone> super::User<C> for UserData {
         self.err_on_banned().await?;
         let model = if let Some(slot) = reset_slot {
             let new_data = super::initial_data::default_reset_slot();
-            if let Some(reset_g) = self.db.update_garage_by_user_id_and_slot(new_data, self.account.id, slot as u32).await.map_err(|e| {
+            if let Some(reset_g) = self.db.update_garage_by_user_id_and_slot(new_data, self.account.id, slot).await.map_err(|e| {
                 log::error!("Failed to reset vehicle slot {} for user_id {}: {}", slot, self.account.id, e);
                 DATABASE_ERR
             })? {
@@ -599,7 +599,7 @@ impl <C: Clone> super::User<C> for UserData {
     }
 
     async fn copy_slot(&self, slot: i32, into_slot: Option<i32>, append: &str) -> Result<(), i16> {
-        let slot_to_copy = self.db.garage_by_user_id_and_slot(self.account.id, slot as u32).await.map_err(|e| {
+        let slot_to_copy = self.db.garage_by_user_id_and_slot(self.account.id, slot).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle slot {} to copy for user_id {}: {}", slot, self.account.id, e);
             DATABASE_ERR
         })?.ok_or_else(|| {
@@ -609,7 +609,7 @@ impl <C: Clone> super::User<C> for UserData {
         let new_name = format!("{} {}", slot_to_copy.name, append);
         let new_slot = if let Some(existing_slot) = into_slot {
             log::info!("Copy slot {} -> {} as `{}`", slot, existing_slot, new_name);
-            if let Some(existing_g) = self.db.garage_by_user_id_and_slot(self.account.id, existing_slot as u32).await.map_err(|e| {
+            if let Some(existing_g) = self.db.garage_by_user_id_and_slot(self.account.id, existing_slot).await.map_err(|e| {
                 log::error!("Failed to retrieve vehicle slot {} for user_id {}: {}", slot, self.account.id, e);
                 DATABASE_ERR
             })? {
@@ -639,7 +639,7 @@ impl <C: Clone> super::User<C> for UserData {
                     log::error!("Failed to update garage slot {} copied from {} for user_id {}: {}", existing_slot, slot, self.account.id, e);
                     DATABASE_ERR
                 })?;
-                existing_slot as u32
+                existing_slot
             } else {
                 log::warn!("No existing vehicle slot {} for user_id {}, copying to new slot", slot, self.account.id);
                 return <Self as super::User<C>>::copy_slot(self, slot, None, append).await;
@@ -657,7 +657,7 @@ impl <C: Clone> super::User<C> for UserData {
             to_insert.id = Default::default();
             to_insert.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(now);
             to_insert.uuid = oj_rc_database::sea_orm::ActiveValue::Set(uuid);
-            to_insert.slot = oj_rc_database::sea_orm::ActiveValue::Set(max_slot + 1);
+            to_insert.slot = oj_rc_database::sea_orm::ActiveValue::Set((max_slot + 1) as i32);
             to_insert.name = oj_rc_database::sea_orm::ActiveValue::Set(new_name);
             self.db.insert_garage(to_insert).await.map_err(|e| {
                 log::error!("Failed to insert garage slot copied from {} for user_id {}: {}", slot, self.account.id, e);
@@ -685,7 +685,7 @@ impl <C: Clone> super::User<C> for UserData {
             log::error!("No selected vehicle slot for user_id {}", self.account.id);
             DATABASE_ERR
         })?;
-        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu).last();
+        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu as u32).last();
         if let Some((i, _)) = inc_opt {
             let max_upgrade = self.garage_upgrades.increments.len() - 1;
             let upgrade_to = i + (increments as usize);
@@ -695,7 +695,7 @@ impl <C: Clone> super::User<C> for UserData {
             } else {
                 let upgrade_to_cpu = self.garage_upgrades.increments[upgrade_to].cpu;
                 let entity = oj_rc_database::schema::garage::ActiveModel {
-                    bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu),
+                    bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu as i32),
                     ..Default::default()
                 };
                 self.db.update_garage_by_user_id_and_slot(entity, self.account.id, selected_slot.slot).await.map_err(|e| {
@@ -721,7 +721,7 @@ impl <C: Clone> super::User<C> for UserData {
             tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(controls.tracks_turn_on_spot),
             ..Default::default()
         };
-        self.save_garage_by_slot(entity, controls.slot as u32).await.map_err(|e| {
+        self.save_garage_by_slot(entity, controls.slot).await.map_err(|e| {
             log::error!("Failed to save controls for slot {} for user_id {}: {}", controls.slot, self.account.id, e);
             DATABASE_ERR
         })?;
@@ -770,7 +770,7 @@ impl <C: Clone> super::User<C> for UserData {
             name: oj_rc_database::sea_orm::ActiveValue::Set(name),
             ..Default::default()
         };
-        self.db.update_garage_by_user_id_and_slot(to_save, self.account.id, slot as u32).await.map_err(|e| {
+        self.db.update_garage_by_user_id_and_slot(to_save, self.account.id, slot).await.map_err(|e| {
             log::error!("Failed to save garage {} for user_id {}: {}", slot, self.account.id, e);
             DATABASE_ERR
         })?;
@@ -822,7 +822,7 @@ impl <C: Clone> super::User<C> for UserData {
 
     async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16> {
         self.err_on_banned().await?;
-        let slot = self.load_garage_by_slot(vehicle.slot as u32).await.map_err(|e| {
+        let slot = self.load_garage_by_slot(vehicle.slot).await.map_err(|e| {
             log::error!("Failed to retrieve vehicle slot {} for user_id {} (prepare_factory_upload): {}", vehicle.slot, self.account.id, e);
             DATABASE_ERR
         })?.ok_or_else(|| {
@@ -835,8 +835,8 @@ impl <C: Clone> super::User<C> for UserData {
             thumbnail: vehicle.thumbnail,
             added_by: self.account.public_id.clone(),
             added_by_display_name: self.account.display_name.clone(),
-            cpu: slot.total_robot_cpu,
-            total_robot_ranking: slot.total_robot_ranking,
+            cpu: slot.total_robot_cpu as u32,
+            total_robot_ranking: slot.total_robot_ranking as u32,
             build_version: vehicle.version,
             cube_data: slot.robot_data,
             colour_data: slot.colour_data,

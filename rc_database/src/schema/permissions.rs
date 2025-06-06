@@ -4,8 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "permissions")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u32,
-    pub user_id: u32,
+    pub id: i32,
+    pub user_id: i32,
     pub moderator: bool,
     pub administrator: bool,
     pub developer: bool,

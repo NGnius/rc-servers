@@ -5,27 +5,27 @@ use super::ItemCategory;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GarageSlot {
     #[serde(default)]
-    pub slot: u32,
+    pub slot: i32,
     pub name: String,
     #[serde(default)]
     pub cubes: u32,
     #[serde(default)]
-    pub crf_id: u32, // 0 means not uploaded
+    pub crf_id: i32, // 0 means not uploaded
     #[serde(default = "default_false")]
     pub was_rated: bool,
     #[serde(default)]
     pub movement_categories: Vec<ItemCategory>,
     #[serde(default)]
     pub uuid: (u32, u32),
-    pub thumbnail_version: u32,
+    pub thumbnail_version: i32,
     #[serde(default)]
-    pub total_robot_cpu: u32,
+    pub total_robot_cpu: i32,
     #[serde(default)]
-    pub total_cosmetic_cpu: u32,
+    pub total_cosmetic_cpu: i32,
     #[serde(default)]
-    pub total_robot_ranking: u32,
+    pub total_robot_ranking: i32,
     #[serde(default)]
-    pub bay_cpu: u32,
+    pub bay_cpu: i32,
     #[serde(default = "default_false")]
     pub tutorial_robot: bool,
     #[serde(default = "default_neg_1")]
@@ -79,15 +79,15 @@ impl std::convert::Into<crate::data::garage_bay::GarageSlotInfo> for GarageSlot 
         crate::data::garage_bay::GarageSlotInfo {
             name: self.name,
             cubes: self.cubes,
-            crf_id: self.crf_id,
+            crf_id: self.crf_id as u32,
             was_rated: self.was_rated,
             movement_categories: self.movement_categories.into_iter().map(|x| x.into()).collect(),
             uuid: self.uuid,
-            thumbnail_version: self.thumbnail_version,
-            total_robot_cpu: self.total_robot_cpu,
-            total_cosmetic_cpu: self.total_cosmetic_cpu,
-            total_robot_ranking: self.total_robot_ranking,
-            bay_cpu: self.bay_cpu,
+            thumbnail_version: self.thumbnail_version as u32,
+            total_robot_cpu: self.total_robot_cpu as u32,
+            total_cosmetic_cpu: self.total_cosmetic_cpu as u32,
+            total_robot_ranking: self.total_robot_ranking as u32,
+            bay_cpu: self.bay_cpu as u32,
             tutorial_robot: self.tutorial_robot,
             starter_robot_index: self.starter_robot_index,
             control_type: self.control_type.into(),
@@ -104,15 +104,15 @@ pub fn db_into_data(garage: oj_rc_database::schema::garage::Model) -> crate::dat
     crate::data::garage_bay::GarageSlotInfo {
         name: garage.name,
         cubes: cube_count,
-        crf_id: garage.crf_id.unwrap_or(0),
+        crf_id: garage.crf_id.unwrap_or(0) as u32,
         was_rated: garage.was_rated,
         movement_categories: movement_category_into_data(&garage.movement_categories),
         uuid: super::user::i64_split(garage.uuid),
-        thumbnail_version: garage.thumbnail_version,
-        total_robot_cpu: garage.total_robot_cpu,
-        total_cosmetic_cpu: garage.total_cosmetic_cpu,
-        total_robot_ranking: garage.total_robot_ranking,
-        bay_cpu: garage.bay_cpu,
+        thumbnail_version: garage.thumbnail_version as u32,
+        total_robot_cpu: garage.total_robot_cpu as u32,
+        total_cosmetic_cpu: garage.total_cosmetic_cpu as u32,
+        total_robot_ranking: garage.total_robot_ranking as u32,
+        bay_cpu: garage.bay_cpu as u32,
         tutorial_robot: garage.tutorial_robot,
         starter_robot_index: garage.starter_robot_index.map(|x| x as i32).unwrap_or(-1),
         control_type: control_ty_into_data(garage.control_type),
@@ -193,7 +193,7 @@ pub enum PrefabId {
         factory: u32,
     },
     Database {
-        garage: u32,
+        garage: i32,
     },
     Raw {
         cube_data: Vec<u8>,

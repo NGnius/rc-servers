@@ -280,7 +280,7 @@ pub enum VehicleDescriptor {
         factory: u32,
     },
     Database {
-        garage: u32,
+        garage: i32,
     },
     Raw {
         cube_data: Vec<u8>,

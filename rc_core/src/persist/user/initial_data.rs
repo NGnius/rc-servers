@@ -31,7 +31,7 @@ pub async fn setup_new_user(user: &super::UserInfo, db: &oj_rc_database::Databas
     Ok(())
 }
 
-pub async fn register_new_user(info: &super::RegistrationInfo, db: &oj_rc_database::Database) -> Result<u32, oj_rc_database::sea_orm::DbErr> {
+pub async fn register_new_user(info: &super::RegistrationInfo, db: &oj_rc_database::Database) -> Result<i32, oj_rc_database::sea_orm::DbErr> {
     let user_data = db.insert_user(default_user_data(info)).await?;
     db.insert_perms(default_user_perms(user_data.id)).await?;
     db.insert_user_aux(default_user_aux_data(user_data.id)).await?;
@@ -68,7 +68,7 @@ fn default_user_data(info: &super::RegistrationInfo) -> oj_rc_database::schema::
     }
 }
 
-fn default_user_aux_data(user_id: u32) -> Vec<oj_rc_database::schema::user_aux::ActiveModel> {
+fn default_user_aux_data(user_id: i32) -> Vec<oj_rc_database::schema::user_aux::ActiveModel> {
     let current_time = current_unix_time();
     vec![
         oj_rc_database::schema::user_aux::ActiveModel {
@@ -148,7 +148,7 @@ r#"{
     ]
 }
 
-fn default_user_perms(user_id: u32) -> oj_rc_database::schema::permissions::ActiveModel {
+fn default_user_perms(user_id: i32) -> oj_rc_database::schema::permissions::ActiveModel {
     oj_rc_database::schema::permissions::ActiveModel {
         id: Default::default(),
         user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
@@ -160,7 +160,7 @@ fn default_user_perms(user_id: u32) -> oj_rc_database::schema::permissions::Acti
     }
 }
 
-pub fn default_new_slot(user_id: u32, slot: u32, bay_cpu: u32) -> oj_rc_database::schema::garage::ActiveModel {
+pub fn default_new_slot(user_id: i32, slot: i32, bay_cpu: i32) -> oj_rc_database::schema::garage::ActiveModel {
     let current_time = current_unix_time();
     oj_rc_database::schema::garage::ActiveModel {
         id: Default::default(),
@@ -227,7 +227,7 @@ pub fn default_reset_slot() -> oj_rc_database::schema::garage::ActiveModel {
     }
 }
 
-fn default_garage_slots(user_id: u32) -> Vec<oj_rc_database::schema::garage::ActiveModel> {
+fn default_garage_slots(user_id: i32) -> Vec<oj_rc_database::schema::garage::ActiveModel> {
     let current_time = current_unix_time();
     vec![
         oj_rc_database::schema::garage::ActiveModel {

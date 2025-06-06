@@ -4,29 +4,29 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "garages")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u32,
-    pub user_id: u32,
+    pub id: i32,
+    pub user_id: i32,
     pub creation_time: i64, // seconds since unix epoch
-    pub slot: u32,
+    pub slot: i32,
     pub name: String,
-    pub crf_id: Option<u32>,
+    pub crf_id: Option<i32>,
     pub was_rated: bool,
     pub movement_categories: String, // csv?
     pub uuid: i64,
-    pub thumbnail_version: u32,
-    pub total_robot_cpu: u32,
-    pub total_cosmetic_cpu: u32,
-    pub total_robot_ranking: u32,
-    pub bay_cpu: u32,
+    pub thumbnail_version: i32,
+    pub total_robot_cpu: i32,
+    pub total_cosmetic_cpu: i32,
+    pub total_robot_ranking: i32,
+    pub bay_cpu: i32,
     pub tutorial_robot: bool,
-    pub starter_robot_index: Option<u32>,
+    pub starter_robot_index: Option<i32>,
     pub control_type: ControlType,
     // control options
     pub vertical_strafing: bool,
     pub sideways_driving: bool,
     pub tracks_turn_on_spot: bool,
     // end control options
-    pub mastery_level: u32,
+    pub mastery_level: i32,
     pub bay_skin_id: String,
     pub death_animation_id: String,
     pub spawn_animation_id: String,
@@ -64,9 +64,9 @@ impl Related<super::user::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[repr(u8)]
+#[repr(i32)]
 #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "u8", db_type = "TinyInteger")]
+#[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum ControlType {
     Camera = 0,
     Keyboard = 1,

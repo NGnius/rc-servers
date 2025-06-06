@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::user::Entity)
                     .col(
                         ColumnDef::new(crate::schema::user::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),

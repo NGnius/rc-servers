@@ -18,12 +18,12 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::permissions::Entity)
                     .col(
                         ColumnDef::new(crate::schema::permissions::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::permissions::Column::UserId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::permissions::Column::UserId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-permissions-user_id")

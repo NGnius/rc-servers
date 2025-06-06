@@ -18,12 +18,12 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::campaign::Entity)
                     .col(
                         ColumnDef::new(crate::schema::campaign::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::campaign::Column::UserId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::campaign::Column::UserId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-campaign-user_id")
@@ -41,12 +41,12 @@ impl MigrationTrait for Migration {
                     .table(crate::schema::campaign_difficulty_completion::Entity)
                     .col(
                         ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Id)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::CampaignId).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::CampaignId).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-campaigns_completion-campaign_id")
@@ -54,8 +54,8 @@ impl MigrationTrait for Migration {
                             .to(crate::schema::campaign::Entity, crate::schema::campaign::Column::Id),
                     )
                     .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::CreationTime).big_integer().not_null())
-                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Level).unsigned().not_null())
-                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Wave).unsigned().not_null())
+                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Level).integer().not_null())
+                    .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Wave).integer().not_null())
                     .col(ColumnDef::new(crate::schema::campaign_difficulty_completion::Column::Complete).boolean().not_null())
                     .to_owned(),
             )

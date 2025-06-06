@@ -50,7 +50,7 @@ pub trait UserProvider<C> {
 pub trait UserAuthenticator {
     async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
     async fn user_exists(&self, user: UserId) -> Result<bool, String>;
-    async fn register(&self, info: RegistrationInfo) -> Result<u32, String>;
+    async fn register(&self, info: RegistrationInfo) -> Result<i32, String>;
 }
 
 #[async_trait::async_trait]
