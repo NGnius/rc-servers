@@ -11,7 +11,7 @@ async fn index() -> impl Responder {
     let authors = env!("CARGO_PKG_AUTHORS");
     let license = env!("CARGO_PKG_LICENSE");
     let repo = env!("CARGO_PKG_REPOSITORY");
-    format!("{} {}{} by [{}]\n{}\n{}", name, version, git_version, authors, license, repo)
+    format!("{} {}:{} by [{}]\n{}\n{}", name, version, git_version, authors, license, repo)
 }
 
 #[actix_web::main]

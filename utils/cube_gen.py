@@ -1,5 +1,7 @@
 #!/bin/env python3
 
+# it is assumed this is run from ./utils/
+
 import sys
 import json
 import argparse
