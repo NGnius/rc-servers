@@ -16,8 +16,8 @@ You may need to change the `activegroup` from `dev` to `ngram` (or vice versa fo
 ## Privacy
 
 The minimum amount of data is (and should be) collected to provide the expected functionality.
-In most cases, these means no data is collected or logged except some debug log messages in development versions.
-Some personal identifiers are sent but only exist ephemerally.
+In most cases, this means no data is collected or logged except some debug log messages in development versions.
+Some personal identifiers, such as IP addresses and session tokens, are sent but only exist ephemerally.
 The exception is Robocraft servers, which store the minimum account info possible.
 This includes a unique user identifier, username, vehicle data, and user configuration data.
 If email and/or Steam account identifier are provided, those are also stored.
