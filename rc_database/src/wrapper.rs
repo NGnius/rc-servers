@@ -24,7 +24,7 @@ impl Database {
 
     pub async fn user_by_steam_id(&self, steam_id: u64) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
-            .filter(crate::schema::user::Column::SteamId.eq(Some(steam_id)))
+            .filter(crate::schema::user::Column::SteamId.eq(Some(steam_id.to_string())))
             .one(&self.orm)
             .await
     }
