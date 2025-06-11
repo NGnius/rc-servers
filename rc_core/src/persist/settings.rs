@@ -22,7 +22,7 @@ fn default_gameplay_settings() -> super::GameplaySettings {
         shield_hps: 2_000,
         request_review_level: 10_000,
         critical_ratio: 5.0,
-        cross_promo_image: "https://git.ngram.ca/assets/img/logo.png".to_owned(),
+        cross_promo_image: "https://git.ngram.ca/OpenJam/servers/raw/branch/main/assets/robocraft/favicon.jpg".to_owned(),
         cross_promo_link: "https://git.ngram.ca/OpenJam/servers".to_owned(),
     }
 }

@@ -14,6 +14,7 @@ pub mod crf;
 pub mod channel;
 pub mod sanction;
 pub mod robot_data;
+pub mod lobby;
 
 pub mod error_codes;
 

@@ -1,0 +1,19 @@
+[package]
+name = "oj_rc_lobby_room"
+version.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+log.workspace = true
+env_logger.workspace = true
+tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util", "time"] }
+clap.workspace = true
+polariton.workspace = true
+oj_polariton_auth = { version = "*", path = "../polariton_auth" }
+polariton_server.workspace = true
+oj_rc_core = { version = "*", path = "../rc_core" }
+async-trait.workspace = true

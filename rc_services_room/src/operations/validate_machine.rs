@@ -19,7 +19,7 @@ pub(super) fn validate_robot_provider() -> SimpleFunc<102, crate::UserTy, impl (
     SimpleFunc::new(|params, _user: &crate::UserTy| {
         let mut params = params.to_dict();
         if let Some(Typed::Int(lobby_ty)) = params.get(&LOBBY_PARAM_KEY) {
-            log::info!("Got lobby type {} ({:?})", lobby_ty, crate::data::lobby::LobbyType::from_int(*lobby_ty));
+            log::info!("Got lobby type {} ({:?})", lobby_ty, oj_rc_core::data::lobby::LobbyType::from_int(*lobby_ty));
         }
         // let lock = user.read().unwrap();
         // let user_info = lock.user()?;

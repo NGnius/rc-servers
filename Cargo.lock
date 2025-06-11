@@ -2615,6 +2615,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "oj_rc_lobby"
+version = "0.2.1"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
+name = "oj_rc_lobby_room"
+version = "0.2.1"
+dependencies = [
+ "async-trait",
+ "clap",
+ "env_logger",
+ "log",
+ "oj_polariton_auth",
+ "oj_rc_core",
+ "polariton",
+ "polariton_server",
+ "tokio",
+]
+
+[[package]]
 name = "oj_rc_microtransactions"
 version = "0.2.1"
 dependencies = [

@@ -1,5 +1,7 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <!-- Primary Meta Tags -->
   <title>Registration - Openjam</title>
   <meta name="title" content="Registration - Openjam" />
@@ -87,8 +89,9 @@
       border-color: red;
     }
     input:required:invalid.form-input-box::after {
-      content: "*";
+      content: "*required";
       color: red;
+      font-size: 12px;
     }
     input {
       width: 100%;
@@ -96,6 +99,11 @@
       border: thin solid white;
       background-color: lightgrey;
       font-size: 20px;
+    }
+    .input-required-hint::after {
+      color: red;
+      /*content: "*required";*/
+      font-size: 12px;
     }
     .form-disclaimer {
       margin: 0 auto;
@@ -138,6 +146,7 @@
           <label for="display_name">Username</label>
         </div>
         <input class="form-input-box" type="text" id="display_name" name="display_name" value="{{form.display_name}}" placeholder="username" required/>
+        <span class="input-required-hint"></span>
       </div>
 
       <div class="form-input">
@@ -145,6 +154,7 @@
           <label for="password">Password</label>
         </div>
         <input class="form-input-box" type="password" id="password" name="password" value="{{form.password}}" placeholder="password" required/>
+        <span class="input-required-hint"></span>
       </div>
 
       <div class="form-input">
@@ -152,6 +162,7 @@
           <label for="password_c">Password (again)</label>
         </div>
         <input class="form-input-box" type="password" id="password_c" name="password_c" value="{{form.password_c}}" placeholder="password (again)" required/>
+        <span class="input-required-hint"></span>
       </div>
 
       <div class="form-input">
