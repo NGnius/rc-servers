@@ -2498,7 +2498,7 @@ dependencies = [
 
 [[package]]
 name = "oj_auth"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2517,7 +2517,7 @@ dependencies = [
 
 [[package]]
 name = "oj_cdn"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "actix-files",
  "actix-web",
@@ -2531,7 +2531,7 @@ dependencies = [
 
 [[package]]
 name = "oj_polariton_auth"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "log",
  "num",
@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_chat"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2556,7 +2556,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_chat_room"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -2574,7 +2574,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2595,7 +2595,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_database"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "itertools",
  "sea-orm",
@@ -2604,7 +2604,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_factory"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2616,7 +2616,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_lobby"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2629,7 +2629,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_lobby_room"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -2644,7 +2644,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_microtransactions"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "env_logger",
  "git-version",
@@ -2655,7 +2655,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_services"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2668,7 +2668,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_services_room"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2691,7 +2691,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_singleplayer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2704,7 +2704,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_singleplayer_room"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -2719,7 +2719,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_social"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2732,7 +2732,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_social_room"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -2984,17 +2984,13 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 [[package]]
 name = "polariton"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "702e1d4db7a6a1fc945d934b6636fc4831ed22249141faf6ab21e6a273d153bf"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "polariton_server"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "564b6872c1aaf14b4281a7d2d87373eea18573ee717fb351e0d41beee5f5cb10"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "log",
@@ -3908,7 +3904,7 @@ dependencies = [
 
 [[package]]
 name = "servers"
-version = "0.2.1"
+version = "0.3.0"
 
 [[package]]
 name = "sha1"

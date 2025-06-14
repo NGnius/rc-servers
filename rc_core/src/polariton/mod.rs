@@ -1,2 +1,2 @@
-mod svelto_uuid_copy;
-pub use svelto_uuid_copy::OpIdCopy;
+mod op_mod;
+pub use op_mod::RcOpModifier;

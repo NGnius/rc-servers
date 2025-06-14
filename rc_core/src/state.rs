@@ -1,12 +1,13 @@
 use crate::persist::user::UserProvider;
 use polariton_server::ToSend;
 
-pub struct UserState<C: Clone = ()> {
+pub struct UserState<C: Clone + Send + 'static = ()> {
     state: std::sync::RwLock<InitState<C>>,
     event_tx: tokio::sync::mpsc::UnboundedSender<ToSend<C>>,
+    event_emitter: polariton_server::events::EventEmitter<C>,
 }
 
-impl <C: Clone> UserState<C> {
+impl <C: Clone + Send + 'static> UserState<C> {
     pub async fn update_with_auth(&self, auth_str: &str) -> bool {
         self.update_with_auth_ext(auth_str, |_| Some(Default::default())).await
     }
@@ -53,9 +54,11 @@ impl <C: Clone> UserState<C> {
     }
 
     pub fn new(provider: std::sync::Arc<crate::persist::user::UserImpl>, event_tx: tokio::sync::mpsc::UnboundedSender<ToSend<C>>) -> Self {
+        let emitter = polariton_server::events::EventEmitter::new(event_tx.clone());
         Self {
             state: std::sync::RwLock::new(InitState::Unauthenticated(provider)),
             event_tx,
+            event_emitter: emitter,
         }
     }
 
@@ -67,12 +70,16 @@ impl <C: Clone> UserState<C> {
         }
     }
 
-    pub fn event(&self, event_data: ToSend<C>) {
+    /*pub fn event(&self, event_data: ToSend<C>) {
         self.event_tx.send(event_data).unwrap()
+    }*/
+
+    pub fn event_chann(&self) -> tokio::sync::mpsc::UnboundedSender<ToSend<C>> {
+        self.event_tx.clone()
     }
 
-    pub fn event_sender(&self) -> tokio::sync::mpsc::UnboundedSender<ToSend<C>> {
-        self.event_tx.clone()
+    pub fn event_sender(&self) -> &'_ polariton_server::events::EventEmitter<C> {
+        &self.event_emitter
     }
 }
 

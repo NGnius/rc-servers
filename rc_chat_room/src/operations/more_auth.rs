@@ -37,7 +37,7 @@ impl MoreLobbyAuth {
                 let name = user_impl.token().uuid.clone();
                 //let chat_user = super::get_chat_user(user_impl.as_ref().as_ref());
                 let channels = user_impl.subscribed_channels_strings().await?;
-                let event_tx = user.event_sender();
+                let event_tx = user.event_chann();
                 self.chat_system.system_mut().connect_user(name, channels, event_tx);
                 let mut resp_params = std::collections::HashMap::new();
                 resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));

@@ -102,7 +102,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
-        .modify(oj_rc_core::polariton::OpIdCopy)
+        .modify(oj_rc_core::polariton::RcOpModifier)
         .add(eac::EacChallengeIgnorer)
         .add(more_auth::MoreLobbyAuth)
         .add(versioner::VersionTeller)
