@@ -149,8 +149,14 @@ impl super::UserAuthenticator for AccountProvider {
             alg: jsonwebtoken::Algorithm::HS256,
             ..Default::default()
         };
+        let mut payload = info.payload;
+        payload.public_id = user_info.public_id;
+        payload.display_name = user_info.display_name.clone();
+        payload.robocraft_name = user_info.display_name;
+        payload.email_address = user_info.email;
+        payload.email_verified = true;
         let secret = jsonwebtoken::EncodingKey::from_secret(&self.secret);
-        let token = jsonwebtoken::encode(&header, &info.payload, &secret)
+        let token = jsonwebtoken::encode(&header, &payload, &secret)
             .unwrap_or_else(|e| {
                 log::error!("Failed to encode JWT: {}", e);
                 libfj::robocraft::DEFAULT_TOKEN.to_owned()
