@@ -19,6 +19,10 @@ pub struct CliArgs {
     #[arg(long, default_value_t = {"../data/robocraft".to_string()})]
     pub data: String,
 
+    /// Domain and port of the game match server
+    #[arg(long, default_value_t = {"127.0.0.1:4542".to_string()})]
+    pub redirect: String,
+
     /// Handle one connection and then exit
     #[arg(short = '1', long)]
     pub once: bool,

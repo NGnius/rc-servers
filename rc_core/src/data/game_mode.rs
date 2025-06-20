@@ -82,7 +82,7 @@ impl GameMap {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum GameMode {
     BattleArena = 0,
     SuddenDeath = 1,
@@ -121,7 +121,7 @@ impl GameMode {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum MapVisibility {
     Good = 0,
     Poor = 1,

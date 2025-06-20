@@ -54,7 +54,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser {
+pub trait User<C>: ChatUser + LobbyUser {
     fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)>;
     fn token(&self) -> &'_ super::UserToken;
     fn is_mod(&self) -> bool;
@@ -224,4 +224,9 @@ impl SanctionType {
             _ => Err(crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16),
         }
     }
+}
+
+#[async_trait::async_trait]
+pub trait LobbyUser {
+    async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
 }

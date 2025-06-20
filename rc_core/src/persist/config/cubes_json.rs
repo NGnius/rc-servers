@@ -353,4 +353,16 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             items: id_map,
         })
     }*/
+
+    fn players_per_game(&self) -> usize {
+        self.battle.multiplayer.players_per_game
+    }
+
+    fn is_multiplayer_enabled(&self) -> bool {
+        self.battle.multiplayer.enabled
+    }
+
+    fn network_config(&self) -> crate::persist::NetworkConf {
+        self.battle.multiplayer.network.clone()
+    }
 }

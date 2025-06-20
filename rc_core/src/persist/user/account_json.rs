@@ -261,6 +261,50 @@ impl UserData {
         self.perms.administrator | self.perms.developer
     }
 
+    async fn user_player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
+        let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
+            log::error!("Failed to retrieve selected vehicle for user_id {} (user_player_data): {}", self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(DATABASE_ERR, format!("Could not retrieve selected garage: {}", e))
+        })?
+        .ok_or_else(|| {
+            log::error!("Failed to find selected vehicle for user_id {} (user_player_data)", self.account.id);
+            polariton_server::operations::SimpleOpError::with_message(INVALID_ROBOT_ERR, "No selected garage".to_owned())
+        })?;
+        let user_uuid = self.token.uuid.clone();
+        let weapon_order = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+        let user_avatar_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await.map_err(|e| {
+            log::error!("Failed to retrieve avatar for user_id {} (user_player_data): {}", self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(DATABASE_ERR, format!("Could not retrieve avatar: {}", e))
+        })?
+        .ok_or_else(|| {
+            log::error!("Failed to find avatar for user_id {} (user_player_data)", self.account.id);
+            polariton_server::operations::SimpleOpError::with_message(UNEXPECTED_ERR, "No avatar".to_owned())
+        })?;
+        let avatar_id: Result<i32, _> = user_avatar_aux.data.parse();
+
+        // real user MUST be last
+        Ok(crate::data::player_data::PlayerData {
+            name: user_uuid.clone(),
+            display_name: self.account.display_name.clone(),
+            mastery: current_slot.mastery_level as i32,
+            tier: 1, // FIXME
+            robot_name: current_slot.name,
+            robot_map: current_slot.robot_data.clone(),
+            team: 0,
+            has_premium: false, // FIXME
+            robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
+            cpu: current_slot.total_robot_cpu as i32,
+            avatar_id: avatar_id.ok(),
+            weapon_order: weapon_order.clone(),
+            colour_map: current_slot.colour_data.clone(),
+            is_ai: false,
+            spawn_effect: current_slot.spawn_animation_id,
+            death_effect: current_slot.death_animation_id,
+            player_rank: 1, // FIXME
+            weapon_rank: oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+        })
+    }
+
     async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
         use rand::seq::IndexedRandom;
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
@@ -302,6 +346,7 @@ impl UserData {
                                 has_premium: false,
                                 robot_uuid: uuid_str,
                                 cpu: 420,
+                                avatar_id: None, // not serialised
                                 weapon_order: weapons_guess,
                                 colour_map: factory_vehicle.0.colour_data,
                                 is_ai: true,
@@ -335,6 +380,7 @@ impl UserData {
                                 has_premium: false,
                                 robot_uuid: uuid_str,
                                 cpu: db_vehicle.total_robot_cpu as i32,
+                                avatar_id: None, // not serialised
                                 weapon_order: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
                                 colour_map: db_vehicle.colour_data,
                                 is_ai: true,
@@ -372,6 +418,7 @@ impl UserData {
                         has_premium: false,
                         robot_uuid: uuid_str,
                         cpu: 420, // FIXME
+                        avatar_id: None, // not serialised
                         weapon_order: weapons_guess,
                         colour_map: colour_data.to_owned(),
                         is_ai: true,
@@ -790,37 +837,10 @@ impl <C: Clone> super::User<C> for UserData {
     async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) ->  Result<polariton::operation::Typed<C>, i16> {
         //self.err_on_banned().await?;
         let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order, singleplayer_config).await?;
-        let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
-            log::error!("Failed to retrieve selected vehicle for user_id {} (singleplayer_robots): {}", self.account.id, e);
-            DATABASE_ERR
-        })?
-        .ok_or_else(|| {
-            log::error!("Failed to find selected vehicle for user_id {} (singleplayer_robots)", self.account.id);
-            INVALID_ROBOT_ERR
-        })?;
-        let user_uuid = self.token.uuid.clone();
-        let weapon_order = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+        let user_bot = self.user_player_data().await?;
 
         // real user MUST be last
-        vehicles.push(crate::data::player_data::PlayerData {
-            name: user_uuid.clone(),
-            display_name: self.account.display_name.clone(),
-            mastery: current_slot.mastery_level as i32,
-            tier: 1, // FIXME
-            robot_name: current_slot.name,
-            robot_map: current_slot.robot_data.clone(),
-            team: 0,
-            has_premium: false, // FIXME
-            robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
-            cpu: current_slot.total_robot_cpu as i32,
-            weapon_order: weapon_order.clone(),
-            colour_map: current_slot.colour_data.clone(),
-            is_ai: false,
-            spawn_effect: "Spawn_Warp".to_owned(), // FIXME
-            death_effect: "Explosion_Warp".to_owned(), // FIXME
-            player_rank: 1, // FIXME
-            weapon_rank: oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
-        });
+        vehicles.push(user_bot);
         Ok(crate::data::player_data::PlayerDatas {
             players: vehicles,
         }.as_transmissible())
@@ -1072,5 +1092,19 @@ impl super::ChatUser for UserData {
         } else {
             Err(crate::data::error_codes::ChatErrorCodes::DoesNotExist as i16)
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl super::LobbyUser for UserData {
+    async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
+        self.user_player_data().await.map_err(|e| {
+            if let Some(msg) = e.error_msg() {
+                polariton_server::operations::SimpleOpError::with_message(crate::data::error_codes::LobbyReasonCode::from_service_error(e.error_code()) as i16, msg.to_owned())
+            } else {
+                polariton_server::operations::SimpleOpError::with_code(crate::data::error_codes::LobbyReasonCode::from_service_error(e.error_code()) as i16)
+            }
+
+        })
     }
 }

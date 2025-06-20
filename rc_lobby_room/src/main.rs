@@ -1,8 +1,11 @@
 #![forbid(unsafe_code)]
 mod cli;
+mod lobby;
+pub use lobby::QueueHandler;
 
 mod data;
 mod operations;
+mod events;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -13,8 +16,8 @@ use polariton::operation::{OperationResponse, Typed};
 pub struct InitConfig {
     pub config: oj_rc_core::persist::config::ConfigImpl,
     pub users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>,
-    pub factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     pub parsers: oj_rc_core::cubes::CubeParsers,
+    pub queue: std::sync::Arc<QueueHandler>,
 }
 
 pub type UserTy = oj_rc_core::UserState<()>;
@@ -27,14 +30,14 @@ async fn main() -> std::io::Result<()> {
 
     let config = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
-    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory::<'_, '_>(&config).await.expect("Bad vehicle factory (CRF) config"));
+    let queue = std::sync::Arc::new(QueueHandler::new(&config, &args.redirect));
     let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
 
     let init_ctx = InitConfig {
         config,
         users,
-        factory,
         parsers,
+        queue,
     };
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));

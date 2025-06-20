@@ -13,14 +13,16 @@ const EVENT_TO_JOIN_PARAM_KEY: u8 = 41; // str; in
 const ESTIMATED_QUEUE_TIME_PARAM_KEY: u8 = 13; // int (seconds); out
 const PERSONAL_RANKING_PARAM_KEY: u8 = 17; // double; out
 
-pub(super) struct QueueJoinProvider;
+pub(super) struct QueueJoinProvider {
+    queue_handler: std::sync::Arc<crate::QueueHandler>,
+}
 
 #[async_trait::async_trait]
 impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
     type User = crate::UserTy;
     const CODE: u8 = CODE;
 
-    async fn handle(&self, params: ParameterTable<C>, _user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
+    async fn handle(&self, params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let mut params = params.to_dict();
         if let Some(Typed::Str(group_id)) = params.remove(&GROUP_ID_PARAM_KEY) {
             if let Some(Typed::Int(slot_id)) = params.remove(&GARAGE_SLOT_PARAM_KEY) {
@@ -32,6 +34,16 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                 log::debug!("Got lobby join queue request of platoon {} ({} players, is_leader:{}) slot {} lobby {:?} event {}", group_id.string, group_size, is_leader, slot_id, lobby_ty, event_to_join.string);
                                 params.insert(ESTIMATED_QUEUE_TIME_PARAM_KEY, Typed::Int(42));
                                 params.insert(PERSONAL_RANKING_PARAM_KEY, Typed::Double(42.0));
+                                let events = user.event_sender();
+                                let user_info = user.user()?;
+                                self.queue_handler.join_queue(
+                                    "FIXME_map".to_owned(),
+                                    oj_rc_core::data::game_mode::GameMode::BattleArena, // FIXME
+                                    oj_rc_core::data::game_mode::MapVisibility::Good, // FIXME
+                                    true, // FIXME
+                                    user_info.as_ref().as_ref(),
+                                    events.to_owned(),
+                                ).await;
                             }
                         }
                     }
@@ -42,6 +54,8 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
     }
 }
 
-pub(super) fn join_queue_provider<C: Send + 'static>() -> SimpleOpImpl<C, crate::UserTy, QueueJoinProvider> {
-    SimpleOpImpl::new(QueueJoinProvider)
+pub(super) fn join_queue_provider<C: Send + 'static>(queue_handler: &std::sync::Arc<crate::QueueHandler>) -> SimpleOpImpl<C, crate::UserTy, QueueJoinProvider> {
+    SimpleOpImpl::new(QueueJoinProvider {
+        queue_handler: queue_handler.to_owned(),
+    })
 }

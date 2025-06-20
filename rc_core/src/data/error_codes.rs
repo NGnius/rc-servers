@@ -72,3 +72,32 @@ pub enum SingleplayerErrorCode {
     MaintenanceMode = 4,
     DuplicateLogin = 5,
 }
+
+#[repr(i16)]
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum LobbyReasonCode {
+    UnexpectedError = -1,
+    Ok = 0,
+    MaintenanceMode = 1,
+    RobotValidationError = 2,
+    LoggedInOtherLocation = 3,
+    GroupFailedChecks = 4,
+    ConnectionTestFailed = 5,
+    WrongGameModeForParty = 6,
+    BrawlConnectionTestFailed = 7,
+    PartyNotAllowed = 8,
+    NoSuitableLobbyFound = 9,
+    EventSystemExpired = 10
+}
+
+impl LobbyReasonCode {
+    pub(crate) fn from_service_error(err: i16) -> Self {
+        match err {
+            0 /* None */ => Self::Ok,
+            125 => Self::MaintenanceMode,
+            140 => Self::RobotValidationError,
+            _ => Self::UnexpectedError,
+        }
+    }
+}

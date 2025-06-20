@@ -12,6 +12,8 @@ pub struct BattleConfig {
     pub singleplayer: super::SingleplayerConfig,
     #[serde(default = "default_rotation")]
     pub rotation: GameEventSequence,
+    #[serde(default = "default_multiplayer")]
+    pub multiplayer: super::MultiplayerConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -470,5 +472,13 @@ fn default_rotation() -> GameEventSequence {
                 duration_s: 5*60,
             },
         ]
+    }
+}
+
+fn default_multiplayer() -> super::MultiplayerConfig {
+    super::MultiplayerConfig {
+        players_per_game: 1,
+        enabled: true,
+        network: super::multiplayer::default_net_conf(),
     }
 }

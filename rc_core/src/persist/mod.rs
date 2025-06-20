@@ -35,6 +35,9 @@ pub use chat::{ChatConfig, ChatCommand, ChatOperation, BuiltInChatOperation};
 mod vehicle_factory;
 pub use vehicle_factory::{FactoryConfig, AdapterSettings, ArcFactorySettings};
 
+mod multiplayer;
+pub use multiplayer::{MultiplayerConfig, NetworkConf};
+
 pub(self) const VALID_ROBOT: &[u8] = &[64,
     0,
     0,
