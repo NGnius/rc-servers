@@ -8,7 +8,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f7b0a21988c1bf877cf4759ef5ddaac04c1c9fe808c9142ecb78ba97d97a28a"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "bytes",
  "futures-core",
  "futures-sink",
@@ -29,7 +29,7 @@ dependencies = [
  "actix-service",
  "actix-utils",
  "actix-web",
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "bytes",
  "derive_more 0.99.20",
  "futures-core",
@@ -53,7 +53,7 @@ dependencies = [
  "actix-service",
  "actix-utils",
  "base64 0.22.1",
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "brotli",
  "bytes",
  "bytestring",
@@ -385,6 +385,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "async-recursion"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
 name = "async-stream"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -508,9 +519,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.8.0"
+version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
+checksum = "1b8e56985ec62d17e9c1001dc89c88ecd7dc08e47eba5ec7c29c7b5eeecde967"
 dependencies = [
  "serde",
 ]
@@ -631,9 +642,28 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.9.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
+checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
+
+[[package]]
+name = "byteserde"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa4dd3b475a835b18659784f3f891dfdbc8dc97b13529b151924fcc3e274c618"
+dependencies = [
+ "bytes",
+]
+
+[[package]]
+name = "byteserde_derive"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8916aaf54883b8780e6b29901298853a47de431ecb5d62a4317d658d4c18868d"
+dependencies = [
+ "quote",
+ "syn 2.0.96",
+]
 
 [[package]]
 name = "bytestring"
@@ -1028,7 +1058,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b035a542cf7abf01f2e3c4d5a7acbaebfefe120ae4efc7bde3df98186e4b8af7"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "proc-macro2",
  "proc-macro2-diagnostics",
  "quote",
@@ -2071,7 +2101,7 @@ dependencies = [
  "half",
  "highhash",
  "libfj_parsable_macro_derive",
- "num_enum",
+ "num_enum 0.5.11",
  "obj",
  "reqwest",
  "serde",
@@ -2122,7 +2152,7 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "libc",
  "redox_syscall",
 ]
@@ -2158,6 +2188,26 @@ name = "litemap"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
+
+[[package]]
+name = "literustlib"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "num_enum 0.7.4",
+]
+
+[[package]]
+name = "literustlib_server"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "async-trait",
+ "bytes",
+ "literustlib",
+ "log",
+ "tokio",
+]
 
 [[package]]
 name = "local-channel"
@@ -2321,7 +2371,7 @@ version = "6.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6205bd8bb1e454ad2e27422015fb5e4f2bcc7e08fa8f27058670d208324a4d2d"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "crossbeam-channel",
  "filetime",
  "fsevent-sys",
@@ -2466,7 +2516,17 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
- "num_enum_derive",
+ "num_enum_derive 0.5.11",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a973b4e44ce6cad84ce69d797acf9a044532e4184c4f267913d1b546a0727b7a"
+dependencies = [
+ "num_enum_derive 0.7.4",
+ "rustversion",
 ]
 
 [[package]]
@@ -2479,6 +2539,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77e878c846a8abae00dd069496dbe8751b16ac1c3d6bd2a7283a938e8228f90d"
+dependencies = [
+ "proc-macro-crate 3.3.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
 ]
 
 [[package]]
@@ -2535,7 +2607,7 @@ version = "0.3.0"
 dependencies = [
  "log",
  "num",
- "polariton",
+ "polariton 0.3.0",
  "rand 0.9.0",
  "ring",
  "simple-rijndael",
@@ -2549,7 +2621,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2564,7 +2636,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "regex",
  "serde",
@@ -2585,7 +2657,7 @@ dependencies = [
  "log",
  "oj_rc_database",
  "oj_rc_factory",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "rand 0.9.0",
  "serde",
@@ -2622,7 +2694,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2637,7 +2709,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2661,7 +2733,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2681,7 +2753,7 @@ dependencies = [
  "oj_polariton_auth",
  "oj_rc_core",
  "oj_rc_factory",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "rand 0.9.0",
  "serde",
@@ -2697,7 +2769,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2712,7 +2784,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2725,7 +2797,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2740,7 +2812,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton",
+ "polariton 0.3.0",
  "polariton_server",
  "tokio",
 ]
@@ -2983,6 +3055,11 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "polariton"
+version = "0.2.0"
+source = "git+https://git.ngram.ca/OpenJam/polariton.git?rev=a27e90106037555d4aa10059270df9bdc9080d76#a27e90106037555d4aa10059270df9bdc9080d76"
+
+[[package]]
+name = "polariton"
 version = "0.3.0"
 dependencies = [
  "tokio",
@@ -2994,7 +3071,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "log",
- "polariton",
+ "polariton 0.3.0",
  "tokio",
 ]
 
@@ -3253,6 +3330,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc_multiplayer"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "clap",
+ "env_logger",
+ "literustlib",
+ "literustlib_server",
+ "log",
+ "oj_rc_core",
+ "rlnl",
+ "tokio",
+]
+
+[[package]]
 name = "rdrand"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3267,7 +3360,7 @@ version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a862b389f93e68874fbf580b9de08dd02facb9a788ebadaf4a3fd33cf58834"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
 ]
 
 [[package]]
@@ -3437,6 +3530,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rlnl"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.9.1",
+ "byteserde",
+ "byteserde_derive",
+ "polariton 0.2.0",
+ "sealed",
+ "strum 0.27.1",
+]
+
+[[package]]
 name = "rocket"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3594,7 +3699,7 @@ version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -3712,7 +3817,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "strum",
+ "strum 0.26.3",
  "thiserror 2.0.11",
  "time",
  "tracing",
@@ -3842,6 +3947,17 @@ name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
+
+[[package]]
+name = "sealed"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22f968c5ea23d555e670b449c1c5e7b2fc399fdaec1d304a17cd48e288abc107"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
 
 [[package]]
 name = "semver"
@@ -4141,7 +4257,7 @@ dependencies = [
  "atoi",
  "base64 0.22.1",
  "bigdecimal",
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "byteorder",
  "bytes",
  "chrono",
@@ -4188,7 +4304,7 @@ dependencies = [
  "atoi",
  "base64 0.22.1",
  "bigdecimal",
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
  "byteorder",
  "chrono",
  "crc",
@@ -4319,6 +4435,28 @@ name = "strum"
 version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+
+[[package]]
+name = "strum"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f64def088c51c9510a8579e3c5d67c65349dcf755e5479ad3d010aa6454e2c32"
+dependencies = [
+ "strum_macros",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c77a8c5abcaf0f9ce05d62342b7d298c346515365c36b673df4ebe3ced01fde8"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.96",
+]
 
 [[package]]
 name = "subtle"
@@ -5256,7 +5394,7 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3268f3d866458b787f390cf61f4bbb563b922d091359f9608842999eaee3943c"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.1",
 ]
 
 [[package]]

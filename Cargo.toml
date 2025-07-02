@@ -22,6 +22,7 @@ members = [
     "rc_singleplayer", "rc_singleplayer_room",
     "rc_lobby", "rc_lobby_room",
     "rc_core", "rc_database", "rc_factory",
+    "rc_multiplayer",
 ]
 
 [workspace.dependencies]

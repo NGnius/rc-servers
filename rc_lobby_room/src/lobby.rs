@@ -62,7 +62,7 @@ impl QueueHandler {
     }
 
     async fn send_events_to_player(enter_event: std::sync::Arc<crate::events::battle_enter::BattleEnter>, sender: polariton_server::events::EventEmitter) {
-        const WAIT_BEFORE_ENTER: std::time::Duration = std::time::Duration::from_secs(2);
+        const WAIT_BEFORE_ENTER: std::time::Duration = std::time::Duration::from_secs(1);
         if sender.emit(crate::events::battle_found::BattleFound) {
             tokio::time::sleep(WAIT_BEFORE_ENTER).await;
             sender.emit(enter_event.as_ref());

@@ -1,0 +1,21 @@
+[package]
+name = "rc_multiplayer"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[dependencies]
+log.workspace = true
+env_logger.workspace = true
+tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util" ] }
+clap.workspace = true
+oj_rc_core = { version = "*", path = "../rc_core" }
+async-trait.workspace = true
+bytes = "1.10"
+
+literustlib_server = { version = "0.1", path = "../../LiteRustLib/server" }
+literustlib = { version = "0.1", path = "../../LiteRustLib" }
+rlnl = { version = "0.1", path = "../../rlnl" }
