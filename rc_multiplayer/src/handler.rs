@@ -17,7 +17,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
     type PacketData = super::PacketData;
     type UserData = super::UserData;
 
-    async fn on_receive(&self, data: Self::PacketData, _header: &literustlib::packet::Header, peer: &mut literustlib_server::Connection<Self::PacketData>, user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
+    async fn on_receive(&self, data: Self::PacketData, _header: &literustlib::packet::Header, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
         log::debug!("Got event {:?} (len: {}) from connection id {}", data.variant, data.data.len(), peer.id());
         if let Some(handler) = self.event_handlers.get(&(data.variant as u16)) {
             handler.handle(&data.data, peer, user, sender).await;
@@ -33,7 +33,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         }
     }
 
-    async fn on_connect_start(&self, addr: &core::net::SocketAddr, key: String, peer: &mut literustlib_server::Connection<Self::PacketData>) -> Option<Self::UserData> {
+    async fn on_connect_start(&self, addr: &core::net::SocketAddr, key: String, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>) -> Option<Self::UserData> {
         log::debug!("New connection started from {}!!! (key:{}, id:{})", addr, key, peer.id());
         //let mut buf = Vec::new();
         //literustlib::packet::Packet::with_data(literustlib::packet::Property::Reliable, &[9, 0, 0, 0, 0, 0]).dump(&mut buf).unwrap_or_default();
@@ -41,7 +41,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         Some(())
     }
 
-    async fn on_connect_done(&self, peer: &mut literustlib_server::Connection<Self::PacketData>, _user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
+    async fn on_connect_done(&self, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
         log::debug!("New connection completed (id:{})", peer.id());
         //let mut buf = Vec::new();
         //literustlib::packet::Packet::with_data(literustlib::packet::Property::Reliable, &[9, 0, 0, 0, 0, 0]).dump(&mut buf).unwrap_or_default();

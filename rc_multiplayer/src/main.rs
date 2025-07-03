@@ -26,7 +26,8 @@ async fn main() -> std::io::Result<()> {
         parsers,
     };
 
+    let mtu = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config).max_packet_size;
     let event_handler = handler::LnlEventHandler::new(&init_ctx).await;
-    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), 4223).await.expect("Bad server");
+    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu).await.expect("Bad server");
     server.listen().await
 }
