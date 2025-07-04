@@ -1,14 +1,17 @@
 pub struct LnlEventHandler {
-    event_handlers: std::collections::HashMap<u16, Box<dyn super::EventCodeHandler>>,
+    event_handlers: std::collections::HashMap<i16, Box<dyn super::EventCodeHandler>>,
 }
 
 impl LnlEventHandler {
-    pub async fn new(init_ctx: &crate::InitConfig) -> Self {
-        let mut event_handlers = std::collections::HashMap::new();
-        // init event code handlers
+    pub fn new() -> Self {
         Self {
-            event_handlers
+            event_handlers: std::collections::HashMap::new(),
         }
+    }
+
+    pub fn add<H: super::EventCode + super::EventCodeHandler + 'static>(mut self, handler: H) -> Self {
+        self.event_handlers.insert(H::CODE, Box::new(handler));
+        self
     }
 }
 
@@ -19,7 +22,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
 
     async fn on_receive(&self, data: Self::PacketData, _header: &literustlib::packet::Header, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
         log::debug!("Got event {:?} (len: {}) from connection id {}", data.variant, data.data.len(), peer.id());
-        if let Some(handler) = self.event_handlers.get(&(data.variant as u16)) {
+        if let Some(handler) = self.event_handlers.get(&(data.variant as i16)) {
             handler.handle(&data.data, peer, user, sender).await;
         } else {
             #[cfg(debug_assertions)]
@@ -38,7 +41,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         //let mut buf = Vec::new();
         //literustlib::packet::Packet::with_data(literustlib::packet::Property::Reliable, &[9, 0, 0, 0, 0, 0]).dump(&mut buf).unwrap_or_default();
         //socket.send_to(&buf, addr).await.unwrap_or_default();
-        Some(())
+        Some(crate::UserData::new())
     }
 
     async fn on_connect_done(&self, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
@@ -65,7 +68,6 @@ impl literustlib::packet::PacketData for EventData {
     fn parse(bytes: bytes::Bytes, _header: &literustlib::packet::Header) -> std::io::Result<Self> {
         if bytes.len() >= 6 {
             let data = bytes.slice(6..);
-            let slice: &[u8] = &bytes[0..6];
             let net_message_num = i16::from_le_bytes([bytes[0], bytes[1]]);
             let net_message_type = crate::data::MessageType::from_i16(net_message_num).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Unsupported, format!("Unsupported message type {}", net_message_num)))?;
             let event_code = i16::from_le_bytes([bytes[2], bytes[3]]);

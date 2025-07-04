@@ -1,8 +1,11 @@
 mod cli;
 mod handler;
 mod traits;
-pub use traits::{EventCodeHandler, UserData, PacketData};
+pub use traits::{EventCodeHandler, UserData, PacketData, EventCode};
 mod data;
+mod events;
+mod handlers;
+mod user;
 
 pub struct InitConfig {
     pub config: oj_rc_core::persist::config::ConfigImpl,
@@ -27,7 +30,7 @@ async fn main() -> std::io::Result<()> {
     };
 
     let mtu = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config).max_packet_size;
-    let event_handler = handler::LnlEventHandler::new(&init_ctx).await;
+    let event_handler = events::handler(&init_ctx).await;
     let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu).await.expect("Bad server");
     server.listen().await
 }
