@@ -361,7 +361,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune3,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::BattleArena,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60, // 5 minutes
@@ -376,7 +376,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::Pit,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -391,7 +391,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::TestMode,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -406,7 +406,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune3,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::BattleArena,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -421,7 +421,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::Pit,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -436,7 +436,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::TestMode,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -451,7 +451,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::Pit,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -466,7 +466,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::TestMode,
+                    mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
                 duration_s: 5*60,

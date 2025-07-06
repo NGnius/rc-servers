@@ -16,7 +16,7 @@ pub fn send_public_message_handler(chat_system: crate::state::chat::ChatImpl) ->
                 if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
                     let user = user.user()?;
                     if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
-                        log::warn!("Rejecting too long chat message from {}", user.token().uuid);
+                        log::warn!("Rejecting too long chat message from {}", user.public_id());
                         return Err(oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
                     }
                     let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
@@ -25,7 +25,7 @@ pub fn send_public_message_handler(chat_system: crate::state::chat::ChatImpl) ->
                         "<unknown location>".to_owned()
                     };
                     let chat_system = chat.system();
-                    log::debug!("Got message `{}` from user {} ({} @ {}/{:?})", message_text.string, user.token().uuid, chat_loc, channel_name.string, channel_enum);
+                    log::debug!("Got message `{}` from user {} ({} @ {}/{:?})", message_text.string, user.public_id(), chat_loc, channel_name.string, channel_enum);
                     chat_system.handle_public_message(user.as_ref().as_ref(), message_text.string, channel_name.string, channel_enum);
                 }
             }
@@ -43,7 +43,7 @@ pub fn send_private_message_handler(chat_system: crate::state::chat::ChatImpl) -
             if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
                 let user = user.user()?;
                 if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
-                    log::warn!("Rejecting too long chat message from {}", user.token().uuid);
+                    log::warn!("Rejecting too long chat message from {}", user.public_id());
                     return Err(oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16)
                 }
                 let chat_loc = if let Some(Typed::Str(chat_loc)) = params.remove(&CHAT_LOCATION_PARAM_KEY) {
@@ -52,7 +52,7 @@ pub fn send_private_message_handler(chat_system: crate::state::chat::ChatImpl) -
                     "<unknown location>".to_owned()
                 };
                 let chat_system = chat.system();
-                log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.token().uuid, chat_loc, username.string);
+                log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.public_id(), chat_loc, username.string);
                 chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, username.string);
             }
         }

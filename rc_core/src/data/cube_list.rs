@@ -105,6 +105,19 @@ impl ItemTier {
             ItemTier::T5 => "T5",
         }
     }
+
+    pub fn from_u32(num: u32) -> Option<Self> {
+        match num {
+            0 => Some(Self::NoTier),
+            100 => Some(Self::T0),
+            200 => Some(Self::T1),
+            300 => Some(Self::T2),
+            400 => Some(Self::T3),
+            500 => Some(Self::T4),
+            600 => Some(Self::T5),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]

@@ -25,7 +25,7 @@ async fn do_join_handling(params: ParameterTable<()>, user: &crate::UserTy, chat
             }
             let user_info = user.user()?;
             //let chat_user = super::get_chat_user(user_info.as_ref().as_ref());
-            chat_system.system_mut().join_channel(user_info.token().uuid.clone(), chann_name.string.clone());
+            chat_system.system_mut().join_channel(user_info.public_id().to_owned(), chann_name.string.clone());
             let response = user_info.add_subscribed_channel(chann_name.string, crate::data::channel::ChatChannelType::from_u8(chann_ty as _)?).await?;
             params.insert(CHANNEL_INFO_PARAM_KEY, response);
         }
@@ -62,7 +62,7 @@ async fn do_leave_handling(params: ParameterTable<()>, user: &crate::UserTy, cha
         if let Some(Typed::Int(chann_ty)) = params.remove(&CHANNEL_TYPE_PARAM_KEY) {
             let user_info = user.user()?;
             //let chat_user = super::get_chat_user(user_info.as_ref().as_ref());
-            chat_system.system_mut().leave_channel(user_info.token().uuid.clone(), chann_name.string.clone());
+            chat_system.system_mut().leave_channel(user_info.public_id().to_owned(), chann_name.string.clone());
             user_info.remove_subscribed_channel(chann_name.string, crate::data::channel::ChatChannelType::from_u8(chann_ty as _)?).await?;
         }
     }

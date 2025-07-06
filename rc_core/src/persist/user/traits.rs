@@ -43,7 +43,9 @@ pub struct RegistrationInfo {
 
 #[async_trait::async_trait]
 pub trait UserProvider<C> {
-    async fn authenticate(&self, user: UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+    async fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn User<C> + Send + Sync>, String>;
 }
 
 #[async_trait::async_trait]
@@ -54,9 +56,8 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + LobbyUser {
-    fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)>;
-    fn token(&self) -> &'_ super::UserToken;
+pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
+    fn public_id(&self) -> &'_ str;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
@@ -229,4 +230,12 @@ impl SanctionType {
 #[async_trait::async_trait]
 pub trait LobbyUser {
     async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
+pub trait MultiplayerUser {
+    // TODO
+    fn user_id(&self) -> i32;
+    fn user_name(&self) -> &'_ str;
+    fn display_name(&self) -> &'_ str;
 }

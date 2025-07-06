@@ -59,7 +59,7 @@ impl AccountProvider {
 
 #[async_trait::async_trait]
 impl <C: Clone> super::UserProvider<C> for AccountProvider {
-    async fn authenticate(&self, token: super::UserToken, ext: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
+    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
         //let new_root = self.root.join(&token.uuid);
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
@@ -77,15 +77,33 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
         };
         //let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
         Ok(Box::new(UserData {
-            token,
             account: user_info,
             perms: user_perms,
             cubes: self.cubes.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
-            extensions: ext,
             db: self.db.clone(),
         }))
         //Err("Unable to authenticate".to_string())
+    }
+
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
+        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| e.to_string())? {
+            user_info
+        } else {
+            return Err("User not found".to_owned());
+        };
+        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| e.to_string())? {
+            user_perms
+        } else {
+            return Err("User permissions not found".to_owned());
+        };
+        Ok(Box::new(UserData {
+            account: user_info,
+            perms: user_perms,
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            db: self.db.clone(),
+        }))
     }
 }
 
@@ -193,12 +211,10 @@ impl super::UserAuthenticator for AccountProvider {
 
 #[allow(dead_code)]
 struct UserData {
-    token: super::UserToken,
     account: oj_rc_database::schema::user::Model,
     perms: oj_rc_database::schema::permissions::Model,
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
-    extensions: std::collections::HashMap<std::any::TypeId, Box<dyn std::any::Any + Send + Sync + 'static>>,
     db: std::sync::Arc<oj_rc_database::Database>,
 }
 
@@ -270,7 +286,7 @@ impl UserData {
             log::error!("Failed to find selected vehicle for user_id {} (user_player_data)", self.account.id);
             polariton_server::operations::SimpleOpError::with_message(INVALID_ROBOT_ERR, "No selected garage".to_owned())
         })?;
-        let user_uuid = self.token.uuid.clone();
+        let user_uuid = self.account.public_id.clone();
         let weapon_order = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
         let user_avatar_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await.map_err(|e| {
             log::error!("Failed to retrieve avatar for user_id {} (user_player_data): {}", self.account.id, e);
@@ -442,12 +458,8 @@ const UNEXPECTED_ERR: i16 = crate::data::error_codes::WebServicesError::Unexpect
 
 #[async_trait::async_trait]
 impl <C: Clone> super::User<C> for UserData {
-    fn ext(&self, ty: std::any::TypeId) -> Option<&'_ (dyn std::any::Any + Send + Sync + 'static)> {
-        self.extensions.get(&ty).map(|x| x.as_ref())
-    }
-
-    fn token(&self) -> &'_ super::UserToken {
-        &self.token
+    fn public_id(&self) -> &'_ str {
+        &self.account.public_id
     }
 
     fn is_mod(&self) -> bool {
@@ -1106,5 +1118,21 @@ impl super::LobbyUser for UserData {
             }
 
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl super::MultiplayerUser for UserData {
+    // TODO
+    fn user_id(&self) -> i32 {
+        self.account.id
+    }
+
+    fn user_name(&self) -> &'_ str {
+        &self.account.public_id
+    }
+
+    fn display_name(&self) -> &'_ str {
+        &self.account.display_name
     }
 }

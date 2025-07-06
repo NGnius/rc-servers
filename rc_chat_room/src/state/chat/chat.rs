@@ -85,13 +85,13 @@ impl ChatSystem {
 
     pub fn handle_public_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if self.config.is_command_channel(&channel) {
-            if let Some(user_handle) = self.online_users.get(&user.token().uuid) {
+            if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty);
             }
         } else if let Some(room) = self.chats.get(&channel) {
             let event_params = crate::events::chat_message::PublicMessage {
-                sender_name: user.token().uuid.clone(),
-                sender_display_name: user.token().uuid.clone(),
+                sender_name: user.public_id().to_owned(),
+                sender_display_name: user.public_id().to_owned(),
                 text,
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),
@@ -128,13 +128,13 @@ impl ChatSystem {
 
     pub fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, recipient: String) {
         if self.config.is_command_user(&recipient) {
-            if let Some(user_handle) = self.online_users.get(&user.token().uuid) {
+            if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_private_command(user, text, user_handle);
             }
         } else if let Some(recipient_handle) = self.online_users.get(&recipient) {
             let private_msg = crate::events::chat_message::PrivateMessage {
-                sender_name: user.token().uuid.clone(),
-                sender_display_name: user.token().uuid.clone(),
+                sender_name: user.public_id().to_owned(),
+                sender_display_name: user.public_id().to_owned(),
                 text,
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),

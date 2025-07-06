@@ -88,7 +88,7 @@ pub(super) fn singleplayer_save_complete_campaign_provider() -> SimpleFunc<68, c
             if let Some(Typed::Int(campaign_difficulty)) = params.get(&CAMPAIGN_DIFFICULTY_PARAM_KEY) {
                 if let Some(Typed::Int(wave_number)) = params.get(&CAMPAIGN_WAVE_NUMBER_PARAM_KEYL) {
                     let user_info = user.user()?;
-                    log::info!("User {} completed campaign {} difficulty {} wave {}", user_info.token().uuid, campaign_id.string, campaign_difficulty, wave_number);
+                    log::info!("User {} completed campaign {} difficulty {} wave {}", user_info.public_id(), campaign_id.string, campaign_difficulty, wave_number);
                     // TODO save wave as completed
                     params.clear();
                 }

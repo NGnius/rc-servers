@@ -18,20 +18,49 @@ pub trait RlnlEventCodeHandler: Sync + Send {
     //type Out: byteserde::ser_heap::ByteSerializeHeap;
     const CODE: rlnl::event_code::NetworkEvent;
 
-    async fn handle(&self, data: Self::In, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &literustlib_server::DataSender<crate::PacketData>);
+    async fn handle(&self, data: Self::In, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>);
 }
 
 #[async_trait::async_trait]
 impl <In: byteserde::des_slice::ByteDeserializeSlice<In>, H: RlnlEventCodeHandler<In=In>> crate::EventCodeHandler for SimpleRlnl<In, H> {
-    async fn handle(&self, data: &bytes::Bytes, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &literustlib_server::DataSender<crate::PacketData>) {
+    async fn handle(&self, data: &bytes::Bytes, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         let mut des = byteserde::des_slice::ByteDeserializerSlice::new(&data);
-        let rlnl_data = In::byte_deserialize(&mut des).expect("Bad serialization");
+        let rlnl_data = In::byte_deserialize(&mut des).expect("Bad deserialization");
         self.handler.handle(rlnl_data, peer, user, sender).await;
     }
 }
 
 impl <In: byteserde::des_slice::ByteDeserializeSlice<In>, H: RlnlEventCodeHandler<In=In>> crate::EventCode for SimpleRlnl<In, H> {
     const CODE: i16 = H::CODE as i16;
+}
+
+pub struct RlnlSender<'a> {
+    sender: &'a literustlib_server::DataSender<crate::PacketData>,
+}
+
+impl <'a> RlnlSender<'a> {
+    #[inline]
+    pub fn new(inner: &'a literustlib_server::DataSender<crate::PacketData>) -> Self {
+        Self {
+            sender: inner,
+        }
+    }
+
+    pub async fn send_data<D: byteserde::ser_heap::ByteSerializeHeap>(&self, data: &D, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
+        let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
+        data.byte_serialize_heap(&mut ser).map_err(|e| std::io::Error::new(std::io::ErrorKind::Unsupported, e.message))?;
+        let event_data = crate::handler::EventData::with_data(
+            crate::data::MessageType::ServerMsg,
+            event,
+            bytes::Bytes::copy_from_slice(ser.as_slice()),
+        );
+        self.sender.send_data(event_data, property, conn).await
+    }
+
+    pub async fn send_empty(&self, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
+        let event_data = crate::handler::EventData::without_data(crate::data::MessageType::ServerMsg, event);
+        self.sender.send_data(event_data, property, conn).await
+    }
 }
 
 

@@ -34,7 +34,7 @@ impl MoreLobbyAuth {
         if let Some(Typed::Str(auth_payload)) = params.get(&Self::AUTH_PAYLOAD_KEY) {
             if user.update_with_auth(&auth_payload.string).await {
                 let user_impl = user.user()?;
-                let name = user_impl.token().uuid.clone();
+                let name = user_impl.public_id().to_owned();
                 //let chat_user = super::get_chat_user(user_impl.as_ref().as_ref());
                 let channels = user_impl.subscribed_channels_strings().await?;
                 let event_tx = user.event_chann();

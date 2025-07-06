@@ -1,16 +1,22 @@
 pub struct LnlEventHandler {
     event_handlers: std::collections::HashMap<i16, Box<dyn super::EventCodeHandler>>,
+    motion_handler: Box<dyn super::RobotMotionHandler>,
+    user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>
 }
 
 impl LnlEventHandler {
-    pub fn new() -> Self {
+    pub fn new<M: super::RobotMotionHandler + 'static>(user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, motion_handler: M) -> Self {
         Self {
             event_handlers: std::collections::HashMap::new(),
+            motion_handler: Box::new(motion_handler),
+            user_provider,
         }
     }
 
     pub fn add<H: super::EventCode + super::EventCodeHandler + 'static>(mut self, handler: H) -> Self {
-        self.event_handlers.insert(H::CODE, Box::new(handler));
+        if self.event_handlers.insert(H::CODE, Box::new(handler)).is_some() {
+            log::warn!("Replaced event handler {} with new handler", H::CODE);
+        }
         self
     }
 }
@@ -20,20 +26,33 @@ impl literustlib_server::EventHandler for LnlEventHandler {
     type PacketData = super::PacketData;
     type UserData = super::UserData;
 
-    async fn on_receive(&self, data: Self::PacketData, _header: &literustlib::packet::Header, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
-        log::debug!("Got event {:?} (len: {}) from connection id {}", data.variant, data.data.len(), peer.id());
-        if let Some(handler) = self.event_handlers.get(&(data.variant as i16)) {
-            handler.handle(&data.data, peer, user, sender).await;
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Unsupported event variant {:?} ({}), pls fix!!!\n {:?}", data.variant, data.variant as u16, &data.data[..]);
-            }
-            #[cfg(not(debug_assertions))]
-            {
-                log::warn!("Unsupported event variant {:?} ({}), pls fix!!!", data.variant, data.variant as u16);
-            }
+    async fn on_receive(&self, data: Self::PacketData, _header: &literustlib::packet::Header, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
+        log::debug!("Got message {:?} (len: {}) from connection id {}", data.message_ty, data.data.len(), peer.id());
+        match data.message_ty {
+            crate::data::MessageType::ClientMsg => {
+                if let Some(handler) = self.event_handlers.get(&data.variant) {
+                    handler.handle(&data.data, peer, user, sender).await;
+                } else {
+                    let variant_pretty = i16_to_event(data.variant).map(|x| format!("{:?}", x)).unwrap_or_else(|| "???".to_owned());
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Unsupported event variant {} ({}), pls fix!!!\n {:?}", variant_pretty, data.variant, &data.data[..]);
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        log::warn!("Unsupported event variant {} ({}), pls fix!!!", variant_pretty, data.variant);
+                    }
+                }
+            },
+            crate::data::MessageType::ServerMsg => {
+                log::debug!("Got message from server but I'm the server??? (ignoring)");
+            },
+            crate::data::MessageType::RobotMotion => {
+                self.motion_handler.handle(&data.data, user).await;
+                //log::warn!("Ignoring robot motion message");
+            },
         }
+
     }
 
     async fn on_connect_start(&self, addr: &core::net::SocketAddr, key: String, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>) -> Option<Self::UserData> {
@@ -41,15 +60,16 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         //let mut buf = Vec::new();
         //literustlib::packet::Packet::with_data(literustlib::packet::Property::Reliable, &[9, 0, 0, 0, 0, 0]).dump(&mut buf).unwrap_or_default();
         //socket.send_to(&buf, addr).await.unwrap_or_default();
-        Some(crate::UserData::new())
+        Some(crate::UserData::new(self.user_provider.clone()))
     }
 
-    async fn on_connect_done(&self, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &literustlib_server::DataSender<Self::PacketData>) {
+    async fn on_connect_done(&self, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
         log::debug!("New connection completed (id:{})", peer.id());
-        //let mut buf = Vec::new();
-        //literustlib::packet::Packet::with_data(literustlib::packet::Property::Reliable, &[9, 0, 0, 0, 0, 0]).dump(&mut buf).unwrap_or_default();
-        //socket.send_to(&buf, addr).await.unwrap_or_default();
-        if let Err(e) = sender.send_to(bytes::Bytes::from_static(&[49, 0, 9, 0, 0, 0]), literustlib::packet::Property::Reliable, peer).await {
+        let data = EventData::without_data(
+            crate::data::MessageType::ServerMsg,
+            rlnl::event_code::NetworkEvent::OnConnectedToGameServer,
+        );
+        if let Err(e) = sender.send_data(data, literustlib::packet::Property::Reliable, peer).await {
             log::error!("Failed to send rlnl OnConnectedToGameServer event: {}", e);
         }
 
@@ -59,41 +79,60 @@ impl literustlib_server::EventHandler for LnlEventHandler {
 #[derive(Debug)]
 pub struct EventData {
     pub message_ty: crate::data::MessageType,
-    pub variant: rlnl::event_code::NetworkEvent,
+    pub variant: i16,
     pub data_size: u16,
     pub data: bytes::Bytes,
 }
 
+impl EventData {
+    pub fn with_data(message_ty: crate::data::MessageType, event: rlnl::event_code::NetworkEvent, data: bytes::Bytes) -> Self {
+        Self {
+            message_ty,
+            variant: event as i16,
+            data_size: data.len().try_into().expect("Event data too large"),
+            data,
+        }
+    }
+
+    pub fn without_data(message_ty: crate::data::MessageType, event: rlnl::event_code::NetworkEvent) -> Self {
+        Self {
+            message_ty,
+            variant: event as i16,
+            data_size: 0,
+            data: bytes::Bytes::new(),
+        }
+    }
+}
+
 impl literustlib::packet::PacketData for EventData {
     fn parse(bytes: bytes::Bytes, _header: &literustlib::packet::Header) -> std::io::Result<Self> {
+        log::debug!("Got packet data ({}) {:?}", bytes.len(), &bytes[..]);
         if bytes.len() >= 6 {
             let data = bytes.slice(6..);
             let net_message_num = i16::from_le_bytes([bytes[0], bytes[1]]);
             let net_message_type = crate::data::MessageType::from_i16(net_message_num).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Unsupported, format!("Unsupported message type {}", net_message_num)))?;
-            let event_code = i16::from_le_bytes([bytes[2], bytes[3]]);
+            let variant = i16::from_le_bytes([bytes[2], bytes[3]]);
             let data_size = u16::from_le_bytes([bytes[4], bytes[5]]);
-            if let Some(event_variant) = i16_to_event(event_code) {
-                Ok(Self {
-                    message_ty: net_message_type,
-                    variant: event_variant,
-                    data_size,
-                    data,
-                })
-            } else {
-                Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid packet code"))
-            }
+            Ok(Self {
+                message_ty: net_message_type,
+                variant,
+                data_size,
+                data,
+            })
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Packet data is not long enough"))
+            Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Packet data is too short"))
         }
 
     }
 
-    fn dump(&self) -> Vec<u8> {
+    fn dump(&self) -> bytes::Bytes {
         use std::io::Write;
         let mut buf = Vec::new();
-        buf.write_all(&(self.variant as u16).to_be_bytes()).unwrap();
+        buf.write_all(&(self.message_ty as i16).to_le_bytes()).unwrap();
+        buf.write_all(&(self.variant as i16).to_le_bytes()).unwrap();
+        buf.write_all(&(self.data_size as u16).to_le_bytes()).unwrap();
         buf.write_all(&self.data).unwrap();
-        buf
+        buf.into()
     }
 }
 

@@ -27,12 +27,12 @@ impl <C: Clone + Send + 'static> UserState<C> {
                         token: splits[1].to_owned(),
                         refresh_token: splits[2].to_owned(),
                     };
-                    let ext = if let Some(ext) = ext_f(&token) {
-                        ext
+                    if let Some(ext) = ext_f(&token) {
+                        log::debug!("Ignoring extra auth info: {:?}", ext);
                     } else {
                         return false;
-                    };
-                    match auth.authenticate(token, ext).await {
+                    }
+                    match auth.authenticate(token).await {
                         Ok(user) => {
                             let mut lock = self.state.write().unwrap();
                             *lock = InitState::Authenticated(std::sync::Arc::new(user));
