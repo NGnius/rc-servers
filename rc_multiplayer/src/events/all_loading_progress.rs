@@ -2,8 +2,8 @@ pub struct RequestAllLoadingProgress {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
 
-pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::dataless::Dataless<RequestAllLoadingProgress> {
-    crate::handlers::dataless::Dataless::new(RequestAllLoadingProgress::new(init_ctx))
+pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::Dataless<RequestAllLoadingProgress> {
+    crate::handlers::Dataless::new(RequestAllLoadingProgress::new(init_ctx))
 }
 
 impl RequestAllLoadingProgress {
@@ -15,7 +15,7 @@ impl RequestAllLoadingProgress {
 }
 
 #[async_trait::async_trait]
-impl crate::handlers::dataless::DatalessEventCodeHandler for RequestAllLoadingProgress {
+impl crate::handlers::DatalessEventCodeHandler for RequestAllLoadingProgress {
     const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::RequestLoadingProgressAllUsers;
 
     async fn handle(&self, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {

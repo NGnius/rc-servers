@@ -16,6 +16,7 @@ oj_rc_core = { version = "*", path = "../rc_core" }
 async-trait.workspace = true
 bytes = "1.10"
 byteserde = "0.6.2"
+chrono.workspace = true
 
 literustlib_server = { version = "0.1", path = "../../LiteRustLib/server" }
 literustlib = { version = "0.1", path = "../../LiteRustLib" }

@@ -46,7 +46,7 @@ impl <'a> RlnlSender<'a> {
         }
     }
 
-    pub async fn send_data<D: byteserde::ser_heap::ByteSerializeHeap>(&self, data: &D, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
+    pub async fn send_data<D: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, data: &D, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
         let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
         data.byte_serialize_heap(&mut ser).map_err(|e| std::io::Error::new(std::io::ErrorKind::Unsupported, e.message))?;
         let event_data = crate::handler::EventData::with_data(

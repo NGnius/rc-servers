@@ -2,8 +2,8 @@ pub struct WeaponSelect {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
 
-pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::simple_typed::SimpleRlnl<rlnl::events::ingame::SelectWeapon, WeaponSelect> {
-    crate::handlers::simple_typed::SimpleRlnl::new(WeaponSelect::new(init_ctx))
+pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::SimpleRlnl<rlnl::events::ingame::SelectWeapon, WeaponSelect> {
+    crate::handlers::SimpleRlnl::new(WeaponSelect::new(init_ctx))
 }
 
 impl WeaponSelect {
@@ -15,7 +15,7 @@ impl WeaponSelect {
 }
 
 #[async_trait::async_trait]
-impl crate::handlers::simple_typed::RlnlEventCodeHandler for WeaponSelect {
+impl crate::handlers::RlnlEventCodeHandler for WeaponSelect {
     type In = rlnl::events::ingame::SelectWeapon;
     const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::WeaponSelect;
 

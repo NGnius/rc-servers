@@ -2,8 +2,8 @@ pub struct GameLoadingProgress {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
 
-pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::simple_typed::SimpleRlnl<rlnl::events::loading::LoadingProgress, GameLoadingProgress> {
-    crate::handlers::simple_typed::SimpleRlnl::new(GameLoadingProgress::new(init_ctx))
+pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::SimpleRlnl<rlnl::events::loading::LoadingProgress, GameLoadingProgress> {
+    crate::handlers::SimpleRlnl::new(GameLoadingProgress::new(init_ctx))
 }
 
 impl GameLoadingProgress {
@@ -15,7 +15,7 @@ impl GameLoadingProgress {
 }
 
 #[async_trait::async_trait]
-impl crate::handlers::simple_typed::RlnlEventCodeHandler for GameLoadingProgress {
+impl crate::handlers::RlnlEventCodeHandler for GameLoadingProgress {
     type In = rlnl::events::loading::LoadingProgress;
     const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::BroadcastLoadingProgress;
 

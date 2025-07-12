@@ -23,6 +23,21 @@ pub enum GameMessage {
     RequestLoadingSync {
         user_id: i32,
     },
+    LoadComplete {
+        user_id: i32,
+    },
+    BroadcastRlnl {
+        user_id: i32,
+        event: rlnl::event_code::NetworkEvent,
+        property: literustlib::packet::Property,
+        data: Option<Box<dyn byteserde::ser_heap::ByteSerializeHeap + Send + Sync>>,
+    },
+    RebroadcastRlnl {
+        skip_user_id: i32,
+        event: rlnl::event_code::NetworkEvent,
+        property: literustlib::packet::Property,
+        data: Option<Box<dyn byteserde::ser_heap::ByteSerializeHeap + Send + Sync>>,
+    },
     Motion {
         user_id: i32,
         data: bytes::Bytes,
@@ -40,6 +55,9 @@ impl GameMessage {
             Self::RequestLoadingProgress { user_id, .. } => *user_id,
             Self::WeaponSelect { user_id, .. } => *user_id,
             Self::RequestLoadingSync { user_id, .. } => *user_id,
+            Self::LoadComplete { user_id, .. } => *user_id,
+            Self::BroadcastRlnl { user_id, .. } => *user_id,
+            Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::Motion { user_id, .. } => *user_id,
             Self::NoOp => unreachable!("NoOp is irrelevant for user ID"),
         }

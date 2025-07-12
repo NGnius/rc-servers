@@ -10,4 +10,6 @@ pub(self) use generic::GenericGamemodeEngine;
 mod aggregate;
 pub use aggregate::GameMatches;
 
+mod countdown;
+
 pub const CHANNEL_BOUND: usize = 16;

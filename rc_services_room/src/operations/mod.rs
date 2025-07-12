@@ -218,4 +218,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(garage_slot_name::garage_slot_rename_provider())
         .add(garage_slot_copy::garage_slot_copy_provider())
         .add(polariton_server::operations::Ack::<12, _>::default()) // TODO handle UpdatePlayerDailyQuestProgressRequest instead of ignoring it
+        .add(polariton_server::operations::Ack::<90, _>::default()) // TODO handle SubmitCRFRatingRequest instead of ignoring it
 }

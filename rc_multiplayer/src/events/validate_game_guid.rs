@@ -2,8 +2,8 @@ pub struct AuthUserGame {
     matches: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
 
-pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::simple_typed::SimpleRlnl<rlnl::events::loading::GameGuidInfo, AuthUserGame> {
-    crate::handlers::simple_typed::SimpleRlnl::new(AuthUserGame::new(init_ctx))
+pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::SimpleRlnl<rlnl::events::loading::GameGuidInfo, AuthUserGame> {
+    crate::handlers::SimpleRlnl::new(AuthUserGame::new(init_ctx))
 }
 
 impl AuthUserGame {
@@ -15,7 +15,7 @@ impl AuthUserGame {
 }
 
 #[async_trait::async_trait]
-impl crate::handlers::simple_typed::RlnlEventCodeHandler for AuthUserGame {
+impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
     type In = rlnl::events::loading::GameGuidInfo;
     const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::ValidateGameGuid;
 
