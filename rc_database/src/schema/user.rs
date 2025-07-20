@@ -23,6 +23,8 @@ pub enum Relation {
     Aux,
     #[sea_orm(has_many = "super::campaign::Entity")]
     Campaigns,
+    #[sea_orm(has_many = "super::multiplayer_game_player::Entity")]
+    Player,
 }
 
 impl Related<super::permissions::Entity> for Entity {
@@ -46,6 +48,12 @@ impl Related<super::user_aux::Entity> for Entity {
 impl Related<super::campaign::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Campaigns.def()
+    }
+}
+
+impl Related<super::multiplayer_game_player::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Player.def()
     }
 }
 

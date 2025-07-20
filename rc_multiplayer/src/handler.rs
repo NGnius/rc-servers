@@ -63,7 +63,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         Some(crate::UserData::new(self.user_provider.clone()))
     }
 
-    async fn on_connect_done(&self, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
+    async fn on_connect_done(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
         log::debug!("New connection completed (id:{})", peer.id());
         let data = EventData::without_data(
             crate::data::MessageType::ServerMsg,
@@ -71,6 +71,14 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         );
         if let Err(e) = sender.send_data(data, literustlib::packet::Property::Reliable, peer).await {
             log::error!("Failed to send rlnl OnConnectedToGameServer event: {}", e);
+        }
+    }
+
+    async fn on_disconnect(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData) {
+        if let Some(user_info) = user.user().await {
+            log::info!("Disconnect from user {} ({})", user_info.user_id(), peer.id());
+        } else {
+            log::debug!("Disconnect from connection {}", peer.id());
         }
 
     }

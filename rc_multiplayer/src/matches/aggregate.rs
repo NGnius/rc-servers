@@ -31,6 +31,7 @@ impl GameMatches {
                 match msg {
                     super::GameMessage::NewConnection { user, game_guid, connection, response, sender } => {
                         if let Some(tx) = self.matches.get(&game_guid) {
+                            self.routing.insert(user.user_id(), game_guid.clone());
                             if tx.send(super::GameMessage::NewConnection { user, game_guid, connection, response, sender }).await.is_err() {
                                 log::error!("Failed to send NewConnection game message to existing match");
                             }

@@ -229,13 +229,76 @@ impl SanctionType {
 
 #[async_trait::async_trait]
 pub trait LobbyUser {
+    fn user_id(&self) -> i32;
     async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
+    async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+}
+
+pub struct GameDescriptor {
+    pub guid: String,
+    pub map: String,
+    pub mode: crate::data::game_mode::GameMode,
+    pub visibility: crate::data::game_mode::MapVisibility,
+    pub auto_heal: bool,
+    pub is_ranked: bool,
+    pub is_custom: bool,
+    pub is_complete: bool,
+}
+
+pub struct PlayerLobbyDescriptor {
+    pub user_id: i32,
+    pub team: i32,
+    pub group: Option<i32>,
+}
+
+pub struct PlayerDescriptor {
+    pub user_id: i32,
+    pub player_id: u8,
+    pub team: i32,
+    pub group: Option<i32>,
+    pub public_id: String,
+    pub display_name: String,
+    pub is_rewards_claimed: bool,
+}
+
+#[derive(Debug)]
+pub struct MultiplayerError {
+    pub code: MultiplayerErrorCode,
+    pub message: String,
+}
+
+impl core::fmt::Display for MultiplayerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}: {}", self.code, self.message)
+    }
+}
+
+impl core::error::Error for MultiplayerError {}
+
+#[repr(u8)]
+#[derive(Debug)]
+pub enum MultiplayerErrorCode {
+    HaxSpeed = 0,
+    HaxException = 1,
+    HaxTeleport = 2,
+    HaxEacViolation = 6,
+    HaxAfk = 7,
+    HaxFirerange = 8,
+    HaxFiredamage = 9,
+    HaxFirerate = 10,
+    HaxFireposition = 11,
+    IncorrectGameGuid = 12,
+    CustomString = 13,
+    TimedOut = 14,
+    GameEnded = 15,
 }
 
 #[async_trait::async_trait]
 pub trait MultiplayerUser {
-    // TODO
     fn user_id(&self) -> i32;
     fn user_name(&self) -> &'_ str;
     fn display_name(&self) -> &'_ str;
+    async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
+    async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
+    async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
 }

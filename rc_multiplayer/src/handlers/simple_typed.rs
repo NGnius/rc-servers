@@ -22,15 +22,21 @@ pub trait RlnlEventCodeHandler: Sync + Send {
 }
 
 #[async_trait::async_trait]
-impl <In: byteserde::des_slice::ByteDeserializeSlice<In>, H: RlnlEventCodeHandler<In=In>> crate::EventCodeHandler for SimpleRlnl<In, H> {
+impl <In: byteserde::des_slice::ByteDeserializeSlice<In> + Send, H: RlnlEventCodeHandler<In=In>> crate::EventCodeHandler for SimpleRlnl<In, H> {
     async fn handle(&self, data: &bytes::Bytes, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         let mut des = byteserde::des_slice::ByteDeserializerSlice::new(&data);
-        let rlnl_data = In::byte_deserialize(&mut des).expect("Bad deserialization");
-        self.handler.handle(rlnl_data, peer, user, sender).await;
+        match In::byte_deserialize(&mut des) {
+            Ok(rlnl_data) => {
+                self.handler.handle(rlnl_data, peer, user, sender).await;
+            },
+            Err(e) => {
+                log::error!("Bad deserialization: {}", e);
+            }
+        }
     }
 }
 
-impl <In: byteserde::des_slice::ByteDeserializeSlice<In>, H: RlnlEventCodeHandler<In=In>> crate::EventCode for SimpleRlnl<In, H> {
+impl <In: byteserde::des_slice::ByteDeserializeSlice<In> + Send, H: RlnlEventCodeHandler<In=In>> crate::EventCode for SimpleRlnl<In, H> {
     const CODE: i16 = H::CODE as i16;
 }
 

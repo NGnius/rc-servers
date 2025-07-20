@@ -8,7 +8,7 @@ pub struct PlayerData {
     pub tier: i32,
     pub robot_name: String,
     pub robot_map: Vec<u8>,
-    // -- unused i32 here --
+    pub group: Option<String>, // unused i32 too???
     pub team: i32,
     pub has_premium: bool,
     pub robot_uuid: String,
@@ -70,7 +70,7 @@ impl PlayerData {
             (Typed::Str("spawnEffect".into()), Typed::Str(self.spawn_effect.clone().into())),
             (Typed::Str("deathEffect".into()), Typed::Str(self.death_effect.clone().into())),
             //(Typed::Str("groupId".into()), Typed::Int(self.group)), // FIXME
-            (Typed::Str("groupId".into()), Typed::Int(self.team)), // not strongly enforced in EnterBattleEventListener
+            (Typed::Str("groupId".into()), Typed::Str(self.group.clone().unwrap_or_default().into())),
             (Typed::Str("team".into()), Typed::Int(self.team)), // not strongly enforced in EnterBattleEventListener (but has to be parsable into an i32)
             (Typed::Str("hasPremium".into()), Typed::Bool(self.has_premium)),
             (Typed::Str("weaponOrder".into()), Typed::IntArr(self.weapon_order.clone().into())),

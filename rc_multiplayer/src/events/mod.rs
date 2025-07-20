@@ -42,6 +42,13 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::FireMiss,
         >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
+            {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::SpottingIds,
+        >::handler(init_ctx))
 }
 
 #[inline]

@@ -118,6 +118,32 @@ impl GameMode {
             crate::persist::config::GameType::Campaign => Self::Campaign,
         }
     }
+
+    #[inline]
+    pub(crate) fn from_db(mode: oj_rc_database::schema::multiplayer_game::GameMode) -> Self {
+        match mode {
+            oj_rc_database::schema::multiplayer_game::GameMode::BattleArena => Self::BattleArena,
+            oj_rc_database::schema::multiplayer_game::GameMode::SuddenDeath => Self::SuddenDeath,
+            oj_rc_database::schema::multiplayer_game::GameMode::Pit => Self::Pit,
+            oj_rc_database::schema::multiplayer_game::GameMode::TestMode => Self::TestMode,
+            oj_rc_database::schema::multiplayer_game::GameMode::SinglePlayer => Self::SinglePlayer,
+            oj_rc_database::schema::multiplayer_game::GameMode::TeamDeathmatch => Self::TeamDeathmatch,
+            oj_rc_database::schema::multiplayer_game::GameMode::Campaign => Self::Campaign,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn to_db(&self) -> oj_rc_database::schema::multiplayer_game::GameMode {
+        match self {
+            Self::BattleArena => oj_rc_database::schema::multiplayer_game::GameMode::BattleArena,
+            Self::SuddenDeath => oj_rc_database::schema::multiplayer_game::GameMode::SuddenDeath,
+            Self::Pit => oj_rc_database::schema::multiplayer_game::GameMode::Pit,
+            Self::TestMode => oj_rc_database::schema::multiplayer_game::GameMode::TestMode,
+            Self::SinglePlayer => oj_rc_database::schema::multiplayer_game::GameMode::SinglePlayer,
+            Self::TeamDeathmatch => oj_rc_database::schema::multiplayer_game::GameMode::TeamDeathmatch,
+            Self::Campaign => oj_rc_database::schema::multiplayer_game::GameMode::Campaign,
+        }
+    }
 }
 
 #[repr(u8)]
@@ -135,6 +161,24 @@ impl MapVisibility {
             crate::persist::config::GameVisibility::Good => Self::Good,
             crate::persist::config::GameVisibility::Poor => Self::Poor,
             crate::persist::config::GameVisibility::Bad => Self::Bad,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn from_db(mode: oj_rc_database::schema::multiplayer_game::MapVisibility) -> Self {
+        match mode {
+            oj_rc_database::schema::multiplayer_game::MapVisibility::Good => Self::Good,
+            oj_rc_database::schema::multiplayer_game::MapVisibility::Poor => Self::Poor,
+            oj_rc_database::schema::multiplayer_game::MapVisibility::Bad => Self::Bad,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn to_db(&self) -> oj_rc_database::schema::multiplayer_game::MapVisibility {
+        match self {
+            Self::Good => oj_rc_database::schema::multiplayer_game::MapVisibility::Good,
+            Self::Poor => oj_rc_database::schema::multiplayer_game::MapVisibility::Poor,
+            Self::Bad => oj_rc_database::schema::multiplayer_game::MapVisibility::Bad,
         }
     }
 }
