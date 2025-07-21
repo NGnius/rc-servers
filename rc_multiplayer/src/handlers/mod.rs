@@ -9,3 +9,6 @@ pub use ingame_broadcast::Broadcaster;
 
 mod ingame_broadcast_dataless;
 pub use ingame_broadcast_dataless::DatalessBroadcaster;
+
+mod stub;
+pub use stub::Stub;

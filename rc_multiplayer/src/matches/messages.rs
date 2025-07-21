@@ -26,6 +26,15 @@ pub enum GameMessage {
     LoadComplete {
         user_id: i32,
     },
+    SpotVehicle {
+        user_id: i32,
+        remote_player: u8,
+    },
+    DestroyVehicle {
+        user_id: i32,
+        remote_player: u8,
+        killer_player: u8,
+    },
     BroadcastRlnl {
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
@@ -56,6 +65,8 @@ impl GameMessage {
             Self::WeaponSelect { user_id, .. } => *user_id,
             Self::RequestLoadingSync { user_id, .. } => *user_id,
             Self::LoadComplete { user_id, .. } => *user_id,
+            Self::SpotVehicle { user_id, .. } => *user_id,
+            Self::DestroyVehicle { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::Motion { user_id, .. } => *user_id,

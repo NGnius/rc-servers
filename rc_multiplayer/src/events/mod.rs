@@ -5,6 +5,8 @@ mod weapon_select;
 mod activate_sync;
 mod loading_done;
 //mod player_input;
+mod spot_player;
+mod kill_player;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -42,34 +44,51 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::FireMiss,
         >::handler(init_ctx))
-        .add(crate::handlers::Broadcaster::<
+        /*.add(crate::handlers::Broadcaster::<
             true,
             {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
             {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::SpottingIds,
-        >::handler(init_ctx))
+        >::handler(init_ctx))*/
+        .add(spot_player::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
-            true,
+            false,
             {rlnl::event_code::NetworkEvent::DamageCube as i16},
             {rlnl::event_code::NetworkEvent::DestroyCubesFull as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::DestroyCubesFull,
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
-            true,
+            false,
             {rlnl::event_code::NetworkEvent::DamageCubeNoEffect as i16},
             {rlnl::event_code::NetworkEvent::DestroyCubeNoEffect as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::DestroyCubeNoEffect,
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
-            true,
+            false,
             {rlnl::event_code::NetworkEvent::DamageCubeEffectOnly as i16},
             {rlnl::event_code::NetworkEvent::DestroyCubeEffectOnly as i16},
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::DestroyCubeEffectOnly,
         >::handler(init_ctx))
+        .add(crate::handlers::Stub::<
+            {rlnl::event_code::NetworkEvent::DestroyCubesBonusRequest as i16},
+            rlnl::events::ingame::DestroyedHealedCubesBonus,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            false,
+            {rlnl::event_code::NetworkEvent::HealSelf as i16},
+            {rlnl::event_code::NetworkEvent::HealSelfResponse as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::HealedCubes,
+        >::handler(init_ctx))
+        .add(crate::handlers::Stub::<
+            {rlnl::event_code::NetworkEvent::KillBonusRequest as i16},
+            rlnl::events::ingame::Kill, // FIXME this is not a player ID -- it's actually sending 2 bytes not 1
+        >::handler(init_ctx))
+        .add(kill_player::handler(init_ctx))
 }
 
 #[inline]

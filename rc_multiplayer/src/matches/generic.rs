@@ -335,7 +335,7 @@ impl GenericGamemodeEngine {
                                 rlnl::event_code::NetworkEvent::BroadcastWeaponSelect,
                                 literustlib::packet::Property::ReliableOrdered,
                                 &data,
-                                false
+                                true
                             ).await;
                         }
                     },
@@ -406,6 +406,25 @@ impl GenericGamemodeEngine {
                             self.game_start.store(game_start.timestamp(), std::sync::atomic::Ordering::Relaxed);
                             super::countdown::match_countdown(senders, game_start);
                         }
+                    },
+                    super::GameMessage::SpotVehicle { user_id, remote_player } => {
+                        self.rebroadcast(
+                            user_id,
+                            rlnl::event_code::NetworkEvent::RemoteEnemySpotted,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &rlnl::events::ingame::PlayerId { player: remote_player },
+                            true
+                        ).await;
+                    },
+                    super::GameMessage::DestroyVehicle { user_id, remote_player, killer_player } => {
+                        self.rebroadcast(
+                            user_id,
+                            rlnl::event_code::NetworkEvent::MachineDestroyedConfirmed,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &rlnl::events::ingame::Kill { killee_player_id: remote_player, killer_player_id: killer_player },
+                            true,
+                        ).await;
+                        log::warn!("Player {} was destroyed by {} ({}) !!!implement this!!!", remote_player, killer_player, user_id);
                     }
                     super::GameMessage::BroadcastRlnl { user_id: _, event, property, data } => {
                         if let Some(data) = data {
@@ -413,7 +432,7 @@ impl GenericGamemodeEngine {
                         } else {
                             self.broadcast_dataless(event, property, true).await;
                         }
-                    }
+                    },
                     super::GameMessage::RebroadcastRlnl { skip_user_id, event, property, data } => {
                         if let Some(data) = data {
                             self.rebroadcast(skip_user_id, event, property, &*data, true).await;
@@ -421,7 +440,7 @@ impl GenericGamemodeEngine {
                             self.rebroadcast_dataless(skip_user_id, event, property, true).await;
                         }
 
-                    }
+                    },
                     super::GameMessage::Motion { user_id, data } => {
                         for conn in self.users.read().await.values() {
                             if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
@@ -432,7 +451,7 @@ impl GenericGamemodeEngine {
                                 data: data.clone(),
                             }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
                         }
-                    }
+                    },
                     super::GameMessage::NoOp => {},
                 }
             }
