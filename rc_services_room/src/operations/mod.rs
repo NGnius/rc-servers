@@ -185,7 +185,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(building_xp::building_xp_save_provider())
         .add(robot_sanction::all_robot_sanctions_provider())
         .add(reconnect_game::available_reconnect_provider())
-        .add(machine::garage_machine_save_provider())
+        .add(machine::garage_machine_save_provider(init_ctx.parsers.cpu_counter()))
         .add(polariton_server::operations::Ack::<32, _>::default()) // TODO handle SaveMachineColorRequest instead of ignoring it
         .add(polariton_server::operations::Ack::<45, _>::default()) // TODO handle UpdateThumbnailVersionRequest instead of ignoring it
         .add(weapon_order::weapon_order_provider(&init_ctx.cubes))
@@ -209,7 +209,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(crf_earnings::robot_shop_user_earnings_provider())
         .add(crf_list_query::crf_item_list_query_provider(&init_ctx.factory))
         .add(crf_vehicle_data::crf_item_data_provider(&init_ctx.factory))
-        .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory, init_ctx.parsers.weapon_order()))
+        .add(crf_purchase::crf_copy_to_bay_provider(&init_ctx.factory, init_ctx.parsers.weapon_order(), init_ctx.parsers.cpu_counter()))
         .add(crf_upload::crf_upload_provider(&init_ctx.factory))
         .add(avatar_set_custom::custom_avatar_upload_handler())
         .add(avatar_set::avatar_set_provider())

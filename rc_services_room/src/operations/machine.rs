@@ -59,11 +59,13 @@ const COMPRESSED_COLOUR_DATA_PARAM_KEY: u8 = 33; // byte arr
 
 const INVALID_ROBOT_ERR: i16 = 140;
 
-pub(super) fn garage_machine_save_provider() -> MachineSaver {
-    MachineSaver
+pub(super) fn garage_machine_save_provider(cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> MachineSaver {
+    MachineSaver {
+        cpu_counter
+    }
 }
 
-async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
+async fn do_save(params: ParameterTable<()>, user: &crate::UserTy, cpu_counter: &std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> Result<ParameterTable, i16> {
     log::debug!("machine save params: {:?}", params);
     let mut params = params.to_dict();
     if let Some(Typed::Int(slot_index)) = params.remove(&SLOT_PARAM_KEY) {
@@ -80,7 +82,7 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<Par
                         weapon_order: weapon_order_filtered,
                         crf_id: None,
                     };
-                    user_info.save_slot(vehicle_data).await?;
+                    user_info.save_slot(vehicle_data, cpu_counter).await?;
                     let mut params_out = std::collections::HashMap::with_capacity(1);
                     params_out.insert(ERROR_PARAM_KEY, Typed::Int(0));
                     return Ok(params_out.into());
@@ -99,14 +101,16 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<Par
     Err(INVALID_ROBOT_ERR)
 }
 
-pub struct MachineSaver;
+pub struct MachineSaver {
+    cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+}
 
 #[async_trait::async_trait]
 impl polariton_server::operations::Operation<()> for MachineSaver {
     type User = crate::UserTy;
 
     async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
-        polariton_server::operations::result_to_op_resp::<CODE_MACHINE_SAVER, ()>(do_save(params, user).await)
+        polariton_server::operations::result_to_op_resp::<CODE_MACHINE_SAVER, ()>(do_save(params, user, &self.cpu_counter).await)
     }
 }
 

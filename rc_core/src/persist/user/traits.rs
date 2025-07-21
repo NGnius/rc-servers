@@ -66,7 +66,7 @@ pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
     async fn all_slots(&self) -> UserSlots<C>;
     async fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
-    async fn save_slot(&self, vehicle: VehicleData) -> Result<(), i16>;
+    async fn save_slot(&self, vehicle: VehicleData, cpu_counter: &crate::cubes::CpuListParser) -> Result<(), i16>;
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
     async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
     async fn copy_slot(&self, slot: i32, into_slot: Option<i32>, append: &str) -> Result<(), i16>;
@@ -76,7 +76,7 @@ pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
     async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData<C>, i16>;
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
-    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<polariton::operation::Typed<C>, i16>;
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
@@ -230,7 +230,7 @@ impl SanctionType {
 #[async_trait::async_trait]
 pub trait LobbyUser {
     fn user_id(&self) -> i32;
-    async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
+    async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
     async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
 }
 

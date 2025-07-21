@@ -21,10 +21,11 @@ pub struct QueueHandler {
     hostname: String,
     hostport: u16,
     network_conf: crate::data::network::NetworkConfigData,
+    cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
 }
 
 impl QueueHandler {
-    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str) -> Self {
+    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         Self {
             users_in_queue: tokio::sync::Mutex::new(HashMap::new()),
@@ -33,6 +34,7 @@ impl QueueHandler {
             hostname: domain.to_owned(),
             hostport: port_str.parse().expect("Invalid redirect port"),
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
+            cpu_counter,
         }
     }
 
@@ -109,7 +111,7 @@ impl QueueHandler {
         let key = QueueKey {
             map, mode, visibility, auto_heal,
         };
-        match user.player_data().await {
+        match user.player_data(&self.cpu_counter).await {
             Ok(player_data) => {
                 let mut new_player = QueueUser {
                     emitter: event_emitter,

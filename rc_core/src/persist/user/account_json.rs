@@ -281,7 +281,7 @@ impl UserData {
         self.perms.administrator | self.perms.developer
     }
 
-    async fn user_player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
+    async fn user_player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
         let current_slot = self.db.garage_selected(self.account.id).await.map_err(|e| {
             log::error!("Failed to retrieve selected vehicle for user_id {} (user_player_data): {}", self.account.id, e);
             polariton_server::operations::SimpleOpError::with_message(DATABASE_ERR, format!("Could not retrieve selected garage: {}", e))
@@ -291,7 +291,8 @@ impl UserData {
             polariton_server::operations::SimpleOpError::with_message(INVALID_ROBOT_ERR, "No selected garage".to_owned())
         })?;
         let user_uuid = self.account.public_id.clone();
-        let weapon_order = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+        let weapon_orders = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
+        let weapon_ranks = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect();
         let user_avatar_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await.map_err(|e| {
             log::error!("Failed to retrieve avatar for user_id {} (user_player_data): {}", self.account.id, e);
             polariton_server::operations::SimpleOpError::with_message(DATABASE_ERR, format!("Could not retrieve avatar: {}", e))
@@ -301,32 +302,36 @@ impl UserData {
             polariton_server::operations::SimpleOpError::with_message(UNEXPECTED_ERR, "No avatar".to_owned())
         })?;
         let avatar_id: Result<i32, _> = user_avatar_aux.data.parse();
+        let cpu_count = if current_slot.total_robot_cpu <= 0 {
+            cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&current_slot.robot_data)).total as i32
+        } else {
+            current_slot.total_robot_cpu
+        };
 
-        // real user MUST be last
         Ok(crate::data::player_data::PlayerData {
-            name: user_uuid.clone(),
+            name: user_uuid,
             display_name: self.account.display_name.clone(),
             mastery: current_slot.mastery_level as i32,
             tier: 1, // FIXME
             robot_name: current_slot.name,
-            robot_map: current_slot.robot_data.clone(),
+            robot_map: current_slot.robot_data,
             group: None, // no platoon
             team: 0,
             has_premium: false, // FIXME
             robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
-            cpu: current_slot.total_robot_cpu as i32,
+            cpu: cpu_count,
             avatar_id: avatar_id.ok(),
-            weapon_order: weapon_order.clone(),
-            colour_map: current_slot.colour_data.clone(),
+            weapon_order: weapon_orders,
+            colour_map: current_slot.colour_data,
             is_ai: false,
             spawn_effect: current_slot.spawn_animation_id,
             death_effect: current_slot.death_animation_id,
             player_rank: 1, // FIXME
-            weapon_rank: oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+            weapon_rank: weapon_ranks,
         })
     }
 
-    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
+    async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
         use rand::seq::IndexedRandom;
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
         let mut next_id = 0;
@@ -356,6 +361,11 @@ impl UserData {
                             let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
                             let weapons_guess = vec![weapons_guess[0], 0, 0];
                             let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                            let cpu_count = if factory_vehicle.1.cpu == 0 {
+                                cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data)).total as i32
+                            } else {
+                                factory_vehicle.1.cpu as i32
+                            };
                             crate::data::player_data::PlayerData {
                                 name: username.clone(),
                                 display_name: username.clone(),
@@ -367,7 +377,7 @@ impl UserData {
                                 team: team_num,
                                 has_premium: false,
                                 robot_uuid: uuid_str,
-                                cpu: 420,
+                                cpu: cpu_count,
                                 avatar_id: None, // not serialised
                                 weapon_order: weapons_guess,
                                 colour_map: factory_vehicle.0.colour_data,
@@ -391,6 +401,11 @@ impl UserData {
                 crate::persist::config::VehicleDescriptor::Database { garage } => {
                     match self.db.garage_by_id(*garage).await {
                         Ok(Some(db_vehicle)) => {
+                            let cpu_count = if db_vehicle.total_robot_cpu <= 0 {
+                                cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&db_vehicle.robot_data)).total as i32
+                            } else {
+                                db_vehicle.total_robot_cpu
+                            };
                             crate::data::player_data::PlayerData {
                                 name: username.clone(),
                                 display_name: username.clone(),
@@ -402,7 +417,7 @@ impl UserData {
                                 team: team_num,
                                 has_premium: false,
                                 robot_uuid: uuid_str,
-                                cpu: db_vehicle.total_robot_cpu as i32,
+                                cpu: cpu_count,
                                 avatar_id: None, // not serialised
                                 weapon_order: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
                                 colour_map: db_vehicle.colour_data,
@@ -430,6 +445,7 @@ impl UserData {
                     let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
                     let weapons_guess = vec![weapons_guess[0], 0, 0];
                     let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                    let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&cube_data));
                     crate::data::player_data::PlayerData {
                         name: username.clone(),
                         display_name: username.clone(),
@@ -441,7 +457,7 @@ impl UserData {
                         team: team_num,
                         has_premium: false,
                         robot_uuid: uuid_str,
-                        cpu: 420, // FIXME
+                        cpu: cpu_counts.total as i32,
                         avatar_id: None, // not serialised
                         weapon_order: weapons_guess,
                         colour_map: colour_data.to_owned(),
@@ -603,14 +619,17 @@ impl <C: Clone> super::User<C> for UserData {
         }
     }
 
-    async fn save_slot(&self, vehicle: crate::persist::user::VehicleData) -> Result<(), i16> {
+    async fn save_slot(&self, vehicle: crate::persist::user::VehicleData, cpu_counter: &crate::cubes::CpuListParser) -> Result<(), i16> {
         self.err_on_banned().await?;
+        let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&vehicle.robot_data));
         let entity = oj_rc_database::schema::garage::ActiveModel {
             weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&vehicle.weapon_order)),
             robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
             colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
             crf_id: if let Some(crf_id) = vehicle.crf_id { oj_rc_database::sea_orm::ActiveValue::Set(Some(crf_id)) } else { Default::default() },
             name: if let Some(new_name) = vehicle.name { oj_rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
+            total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.total as _),
+            total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.cosmetic as _),
             ..Default::default()
         };
         self.save_garage_by_slot(entity, vehicle.slot).await.map_err(|e| {
@@ -854,10 +873,10 @@ impl <C: Clone> super::User<C> for UserData {
         super::since_windows_epoch(self.account.creation_time)
     }
 
-    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig) ->  Result<polariton::operation::Typed<C>, i16> {
+    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) ->  Result<polariton::operation::Typed<C>, i16> {
         //self.err_on_banned().await?;
-        let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order, singleplayer_config).await?;
-        let user_bot = self.user_player_data().await?;
+        let mut vehicles = self.resolve_some_singleplayer_vehicles(factory, weapon_order, singleplayer_config, cpu_counter).await?;
+        let user_bot = self.user_player_data(cpu_counter).await?;
 
         // real user MUST be last
         vehicles.push(user_bot);
@@ -1121,8 +1140,8 @@ impl super::LobbyUser for UserData {
         self.account.id
     }
 
-    async fn player_data(&self) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
-        self.user_player_data().await.map_err(|e| {
+    async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
+        self.user_player_data(cpu_counter).await.map_err(|e| {
             if let Some(msg) = e.error_msg() {
                 polariton_server::operations::SimpleOpError::with_message(crate::data::error_codes::LobbyReasonCode::from_service_error(e.error_code()) as i16, msg.to_owned())
             } else {
