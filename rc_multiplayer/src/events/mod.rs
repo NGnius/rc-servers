@@ -49,6 +49,27 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::SpottingIds,
         >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::DamageCube as i16},
+            {rlnl::event_code::NetworkEvent::DestroyCubesFull as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::DestroyCubesFull,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::DamageCubeNoEffect as i16},
+            {rlnl::event_code::NetworkEvent::DestroyCubeNoEffect as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::DestroyCubeNoEffect,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::DamageCubeEffectOnly as i16},
+            {rlnl::event_code::NetworkEvent::DestroyCubeEffectOnly as i16},
+            {literustlib::packet::Property::Unreliable as u8},
+            rlnl::events::ingame::DestroyCubeEffectOnly,
+        >::handler(init_ctx))
 }
 
 #[inline]

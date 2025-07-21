@@ -30,7 +30,7 @@ impl <In: byteserde::des_slice::ByteDeserializeSlice<In> + Send, H: RlnlEventCod
                 self.handler.handle(rlnl_data, peer, user, sender).await;
             },
             Err(e) => {
-                log::error!("Bad deserialization: {}", e);
+                log::error!("Bad deserialization for {:?}, bytes {:?}: {}", H::CODE, &data[..], e);
             }
         }
     }
