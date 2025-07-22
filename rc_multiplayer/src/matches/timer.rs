@@ -8,7 +8,7 @@ pub fn time_to_game_end_payload(game_end: chrono::DateTime<chrono::Utc>) -> rlnl
     let now = chrono::Utc::now();
     let time_until_end = game_end.signed_duration_since(now);
     let time_until_end_f32 = (time_until_end.num_milliseconds().clamp(0, i64::MAX) as f32) / 1000.0;
-    rlnl::events::GameTime(time_until_end_f32 * 4.0)
+    rlnl::events::GameTime(time_until_end_f32)
 }
 
 async fn do_match_timer_async(players: Vec<(super::generic::UserSender, std::sync::Arc<super::generic::UserState>)>, game_start: chrono::DateTime<chrono::Utc>, game_end: chrono::DateTime<chrono::Utc>, extra_packets: Vec<super::RlnlPacket>) {
