@@ -23,7 +23,7 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {rlnl::event_code::NetworkEvent::OnPlayerInputChanged as i16},
             {rlnl::event_code::NetworkEvent::OnServerReceivedInputChange as i16},
             {literustlib::packet::Property::Unreliable as u8},
-            rlnl::events::ingame::MultiPlayerInputChanged,
+            rlnl::events::ingame::PlayerIdAndInputData,
         >::handler(init_ctx))
         .add(crate::handlers::DatalessBroadcaster::<
             true,
@@ -166,7 +166,7 @@ pub fn log_lnl_send_failure(result: std::io::Result<usize>) {
 mod _broadcast_impls {
     use crate::Broadcastable;
 
-    impl Broadcastable for rlnl::events::ingame::MultiPlayerInputChanged {}
+    impl Broadcastable for rlnl::events::ingame::PlayerIdAndInputData {}
     impl Broadcastable for rlnl::events::ingame::WeaponFireEffect {}
     impl Broadcastable for rlnl::events::ingame::FireMiss {}
     impl Broadcastable for rlnl::events::ingame::MultipleFireMisses {}

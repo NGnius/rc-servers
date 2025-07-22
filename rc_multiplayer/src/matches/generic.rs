@@ -268,7 +268,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         }
                                         is_engaged = has_active_connections;
                                     }
-                                    conn.connection.connection.disconnect();
+                                    conn.connection.connection.goodbye(&conn.connection.sender).await;
                                 }
                             }
 
