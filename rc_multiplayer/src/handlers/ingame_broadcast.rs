@@ -1,11 +1,11 @@
-pub struct Broadcaster<const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + byteserde::ser_heap::ByteSerializeHeap + Send + Sync + 'static> {
+pub struct Broadcaster<const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + crate::Broadcastable> {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
     code_out: rlnl::event_code::NetworkEvent,
     property: literustlib::packet::Property,
     _in: std::marker::PhantomData<InOut>,
 }
 
-impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + byteserde::ser_heap::ByteSerializeHeap + Send + Sync + 'static> Broadcaster<EXCLUDE_SENDER, CODE_IN, CODE_OUT, PROPERTY, InOut> {
+impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + crate::Broadcastable> Broadcaster<EXCLUDE_SENDER, CODE_IN, CODE_OUT, PROPERTY, InOut> {
     pub fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::simple_typed::SimpleRlnl<InOut, Self> {
         crate::handlers::simple_typed::SimpleRlnl::new(Broadcaster::new(init_ctx))
     }
@@ -21,7 +21,7 @@ impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const
 }
 
 #[async_trait::async_trait]
-impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + byteserde::ser_heap::ByteSerializeHeap + Send + Sync + 'static> crate::handlers::simple_typed::RlnlEventCodeHandler for Broadcaster<EXCLUDE_SENDER, CODE_IN, CODE_OUT, PROPERTY, InOut> {
+impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDeserializeSlice<InOut> + crate::Broadcastable> crate::handlers::simple_typed::RlnlEventCodeHandler for Broadcaster<EXCLUDE_SENDER, CODE_IN, CODE_OUT, PROPERTY, InOut> {
     type In = InOut;
     const CODE: rlnl::event_code::NetworkEvent = crate::handler::i16_to_event_or_panic(CODE_IN);
 

@@ -6,6 +6,9 @@ pub enum GameMessage {
         response: tokio::sync::oneshot::Sender<Option<ErrorMessage>>,
         sender: std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>,
     },
+    EndConnection {
+        user_id: i32,
+    },
     LoadingProgress {
         user_id: i32,
         user_name: String,
@@ -39,13 +42,13 @@ pub enum GameMessage {
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
         property: literustlib::packet::Property,
-        data: Option<Box<dyn byteserde::ser_heap::ByteSerializeHeap + Send + Sync>>,
+        data: Option<Box<dyn crate::Broadcastable>>,
     },
     RebroadcastRlnl {
         skip_user_id: i32,
         event: rlnl::event_code::NetworkEvent,
         property: literustlib::packet::Property,
-        data: Option<Box<dyn byteserde::ser_heap::ByteSerializeHeap + Send + Sync>>,
+        data: Option<Box<dyn crate::Broadcastable>>,
     },
     Motion {
         user_id: i32,
@@ -60,6 +63,7 @@ impl GameMessage {
             Self::NewConnection { user, .. } => {
                 user.user_id()
             }
+            Self::EndConnection { user_id, .. } => *user_id,
             Self::LoadingProgress { user_id, .. } => *user_id,
             Self::RequestLoadingProgress { user_id, .. } => *user_id,
             Self::WeaponSelect { user_id, .. } => *user_id,

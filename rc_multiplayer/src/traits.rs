@@ -14,3 +14,5 @@ pub trait EventCode: EventCodeHandler {
 pub trait RobotMotionHandler: Send + Sync {
     async fn handle(&self, data: &bytes::Bytes, user: &UserData);
 }
+
+pub trait Broadcastable: byteserde::ser_heap::ByteSerializeHeap + core::any::Any + Send + Sync + 'static {}

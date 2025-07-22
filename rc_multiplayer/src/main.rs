@@ -1,7 +1,7 @@
 mod cli;
 mod handler;
 mod traits;
-pub use traits::{EventCodeHandler, UserData, PacketData, EventCode, RobotMotionHandler};
+pub use traits::{EventCodeHandler, UserData, PacketData, EventCode, RobotMotionHandler, Broadcastable};
 mod data;
 mod events;
 mod handlers;

@@ -1,5 +1,5 @@
 mod engine;
-pub use engine::GamemodeEngine;
+pub(self) use engine::{CustomGameLogic, RlnlPacket};
 
 mod messages;
 pub use messages::GameMessage;
@@ -11,5 +11,7 @@ mod aggregate;
 pub use aggregate::GameMatches;
 
 mod countdown;
+
+pub mod modes;
 
 pub const CHANNEL_BOUND: usize = 16;

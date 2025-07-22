@@ -251,6 +251,7 @@ pub struct PlayerLobbyDescriptor {
     pub group: Option<i32>,
 }
 
+#[derive(Clone)]
 pub struct PlayerDescriptor {
     pub user_id: i32,
     pub player_id: u8,

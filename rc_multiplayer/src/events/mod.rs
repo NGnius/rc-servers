@@ -7,6 +7,7 @@ mod loading_done;
 //mod player_input;
 mod spot_player;
 mod kill_player;
+mod client_unregister;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -44,13 +45,13 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::FireMiss,
         >::handler(init_ctx))
-        /*.add(crate::handlers::Broadcaster::<
+        .add(crate::handlers::Broadcaster::<
             true,
-            {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
-            {rlnl::event_code::NetworkEvent::EnemySpotted as i16},
-            {literustlib::packet::Property::ReliableOrdered as u8},
-            rlnl::events::ingame::SpottingIds,
-        >::handler(init_ctx))*/
+            {rlnl::event_code::NetworkEvent::MultipleFireMisses as i16},
+            {rlnl::event_code::NetworkEvent::MultipleFireMisses as i16},
+            {literustlib::packet::Property::Unreliable as u8},
+            rlnl::events::ingame::MultipleFireMisses,
+        >::handler(init_ctx))
         .add(spot_player::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             false,
@@ -89,6 +90,63 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::Kill, // FIXME this is not a player ID -- it's actually sending 2 bytes not 1
         >::handler(init_ctx))
         .add(kill_player::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::EnergyModuleActivated as i16},
+            {rlnl::event_code::NetworkEvent::EnergyModuleActivated as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::RadarModuleActivated as i16},
+            {rlnl::event_code::NetworkEvent::RemoteRadarModuleActivated as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::ActivateTeleportEffect as i16},
+            {rlnl::event_code::NetworkEvent::ActivateTeleportEffect as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::SpawnEmpLocator as i16},
+            {rlnl::event_code::NetworkEvent::SpawnEmpLocator as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::SpawnEmpLocator,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::SpawnEmpMachineEffect as i16},
+            {rlnl::event_code::NetworkEvent::SpawnEmpMachineEffect as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::NetworkStunnedMachineEffect,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::SpawnShield as i16},
+            {rlnl::event_code::NetworkEvent::SpawnShield as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::ShieldModuleEvent,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::Taunt as i16},
+            {rlnl::event_code::NetworkEvent::Taunt as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::Taunt,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::CosmeticAction as i16},
+            {rlnl::event_code::NetworkEvent::CosmeticAction as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::CosmeticAction,
+        >::handler(init_ctx))
+        .add(client_unregister::handler(init_ctx))
 }
 
 #[inline]
@@ -103,4 +161,26 @@ pub fn log_lnl_send_failure(result: std::io::Result<usize>) {
     if let Err(e) = result {
         log::error!("Failed to send packet: {}", e);
     }
+}
+
+mod _broadcast_impls {
+    use crate::Broadcastable;
+
+    impl Broadcastable for rlnl::events::ingame::MultiPlayerInputChanged {}
+    impl Broadcastable for rlnl::events::ingame::WeaponFireEffect {}
+    impl Broadcastable for rlnl::events::ingame::FireMiss {}
+    impl Broadcastable for rlnl::events::ingame::MultipleFireMisses {}
+    impl Broadcastable for rlnl::events::ingame::DestroyCubesFull {}
+    impl Broadcastable for rlnl::events::ingame::DestroyCubeNoEffect {}
+    impl Broadcastable for rlnl::events::ingame::DestroyCubeEffectOnly {}
+    impl Broadcastable for rlnl::events::HealedCubes {}
+    impl Broadcastable for rlnl::events::ingame::PlayerId {}
+    impl Broadcastable for rlnl::events::ingame::SpawnEmpLocator {}
+    impl Broadcastable for rlnl::events::ingame::NetworkStunnedMachineEffect {}
+    impl Broadcastable for rlnl::events::ingame::ShieldModuleEvent {}
+    impl Broadcastable for rlnl::events::ingame::Taunt {}
+    impl Broadcastable for rlnl::events::ingame::CosmeticAction {}
+
+    impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
+    impl Broadcastable for rlnl::events::GameTime {}
 }
