@@ -8,6 +8,8 @@ mod loading_done;
 mod spot_player;
 mod kill_player;
 mod client_unregister;
+mod flipper_start;
+mod self_destruct_elimination;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -25,12 +27,14 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::PlayerIdAndInputData,
         >::handler(init_ctx))
-        .add(crate::handlers::DatalessBroadcaster::<
+        .add(flipper_start::handler(init_ctx))
+        /*.add(crate::handlers::Broadcaster::<
             true,
             {rlnl::event_code::NetworkEvent::AlignmentRectifierStarted as i16},
             {rlnl::event_code::NetworkEvent::AlignmentRectifierStarted as i16},
             {literustlib::packet::Property::Unreliable as u8},
-        >::handler(init_ctx))
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))*/
         .add(crate::handlers::Broadcaster::<
             true,
             {rlnl::event_code::NetworkEvent::FireWeaponEffect as i16},
@@ -106,28 +110,28 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             true,
-            {rlnl::event_code::NetworkEvent::ActivateTeleportEffect as i16},
+            {rlnl::event_code::NetworkEvent::BroadcastActivateTeleportEffect as i16},
             {rlnl::event_code::NetworkEvent::ActivateTeleportEffect as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
-            rlnl::events::ingame::PlayerId,
+            rlnl::events::ingame::TeleportActivateEffect,
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             true,
-            {rlnl::event_code::NetworkEvent::SpawnEmpLocator as i16},
+            {rlnl::event_code::NetworkEvent::BroadcastSpawnEmpLocator as i16},
             {rlnl::event_code::NetworkEvent::SpawnEmpLocator as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::SpawnEmpLocator,
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             true,
-            {rlnl::event_code::NetworkEvent::SpawnEmpMachineEffect as i16},
+            {rlnl::event_code::NetworkEvent::BroadcastSpawnEmpMachineEffect as i16},
             {rlnl::event_code::NetworkEvent::SpawnEmpMachineEffect as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::NetworkStunnedMachineEffect,
         >::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             true,
-            {rlnl::event_code::NetworkEvent::SpawnShield as i16},
+            {rlnl::event_code::NetworkEvent::ShieldSpawned as i16},
             {rlnl::event_code::NetworkEvent::SpawnShield as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::ShieldModuleEvent,
@@ -147,6 +151,28 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::CosmeticAction,
         >::handler(init_ctx))
         .add(client_unregister::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::BroadcastInvisible as i16},
+            {rlnl::event_code::NetworkEvent::MakeInvisible as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::BroadcastVisible as i16},
+            {rlnl::event_code::NetworkEvent::MakeVisible as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::PlayerId,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            true,
+            {rlnl::event_code::NetworkEvent::UpdateVotingAfterBattle as i16},
+            {rlnl::event_code::NetworkEvent::UpdateVotingAfterBattle as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::UpdateVotingAfterBattle,
+        >::handler(init_ctx))
+        .add(self_destruct_elimination::handler(init_ctx))
 }
 
 #[inline]
@@ -180,7 +206,10 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::ingame::ShieldModuleEvent {}
     impl Broadcastable for rlnl::events::ingame::Taunt {}
     impl Broadcastable for rlnl::events::ingame::CosmeticAction {}
+    impl Broadcastable for rlnl::events::ingame::UpdateVotingAfterBattle {}
+    impl Broadcastable for rlnl::events::ingame::TeleportActivateEffect {}
 
     impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
     impl Broadcastable for rlnl::events::GameTime {}
+    impl Broadcastable for rlnl::events::ingame::TeamBaseState {}
 }

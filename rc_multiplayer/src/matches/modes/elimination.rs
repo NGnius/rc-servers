@@ -40,19 +40,40 @@ impl PlayerTracker {
         }
         only_alive_team
     }
+
+    async fn teams(&self) -> std::collections::HashSet<u8> {
+        self.alive.lock().await.keys().map(|x| *x).collect()
+    }
 }
 
 pub struct EliminationLogic {
-    tracked: PlayerTracker
+    tracked: PlayerTracker,
+    game_duration: std::time::Duration,
+    game_end: std::sync::atomic::AtomicI64,
+    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl EliminationLogic {
     pub fn new() -> Self {
+        let dur = std::time::Duration::from_secs(300);
+        let fake_end = (chrono::Utc::now() + dur).timestamp();
         Self {
             tracked: PlayerTracker {
                 alive: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             },
+            game_duration: dur,
+            game_end: std::sync::atomic::AtomicI64::new(fake_end),
+            timer_task: tokio::sync::Mutex::new(None),
         }
+    }
+
+    async fn abort_timer_sync(&self) {
+        let mut lock = self.timer_task.lock().await;
+        if let Some(timer_t) = &*lock {
+            timer_t.abort();
+            log::debug!("Aborted elimination match timer task");
+        }
+        *lock = None;
     }
 }
 
@@ -64,6 +85,14 @@ impl CustomGameLogic for EliminationLogic {
     }
 
     async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool {
+        if generic.is_game_done() {
+            return true;
+        }
+        if chrono::Utc::now().timestamp() >= self.game_end.load(std::sync::atomic::Ordering::Relaxed) {
+            generic.game_done();
+            self.abort_timer_sync().await;
+            return true;
+        }
         self.tracked.destroy_vehicle(&player.descriptor).await;
         if let Some(winning_team) = self.tracked.winner_team().await {
             log::info!("Team {} has won sudden death game {} because player {} left", winning_team, generic.game_guid, player.descriptor.player_id);
@@ -86,6 +115,7 @@ impl CustomGameLogic for EliminationLogic {
                 ).await);
             }
             generic.game_done();
+            self.abort_timer_sync().await;
         }
         true
     }
@@ -142,6 +172,15 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
+    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, is_classic: bool) -> bool {
+        if is_classic {
+            self.on_vehicle_destroyed(generic, u8::MAX, user).await
+        } else {
+            log::warn!("Received non-elimination self destruct in elimination game mode");
+            false
+        }
+    }
+
     async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
         vec![
             crate::matches::RlnlPacket {
@@ -155,8 +194,48 @@ impl CustomGameLogic for EliminationLogic {
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(300.0)), // FIXME use value from config
+                data: Box::new(rlnl::events::GameTime(self.game_duration.as_millis() as f32 / 1000.0)), // FIXME use value from config
             },
         ]
+    }
+
+    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+        let mut senders = Vec::new();
+        for conn in generic.users.read().await.values() {
+            senders.push((conn.connection.clone(), conn.state.clone()));
+        }
+        let game_end = game_start + self.game_duration;
+        let teams = self.tracked.teams().await;
+        let extra_packets = teams.iter().map(|team| crate::matches::RlnlPacket {
+            event: rlnl::event_code::NetworkEvent::TeamBaseInitialise,
+            property: literustlib::packet::Property::ReliableOrdered,
+            data: Box::new(rlnl::events::ingame::TeamBaseState {
+                base_team_or_mining_point_index: *team,
+                current_progress: rlnl::types::ByteFloat::from(0.0),
+                max_progress: rlnl::types::ByteFloat::from(4.0),
+            }),
+        }).collect();
+        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets);
+        let mut timer_lock = self.timer_task.lock().await;
+        if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
+            log::warn!("Aborting an existing timer task for elimination mode suggests an assumption was wrong");
+            timer_t.abort();
+        }
+        *timer_lock = Some(new_timer_task);
+        self.game_end.store(game_end.timestamp(), std::sync::atomic::Ordering::Relaxed);
+        true
+    }
+
+    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+        self.abort_timer_sync().await;
+        true
+    }
+
+    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+        true
+    }
+
+    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion) -> bool {
+        true
     }
 }

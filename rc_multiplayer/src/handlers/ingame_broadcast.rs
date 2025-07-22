@@ -32,6 +32,7 @@ impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const
                 crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::RebroadcastRlnl {
                     skip_user_id: user_info.user_id(),
                     event: self.code_out,
+                    event_in: Self::CODE,
                     property: self.property,
                     data: Some(Box::new(data)),
                 }).await);
@@ -39,6 +40,7 @@ impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const
                 crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::BroadcastRlnl {
                     user_id: user_info.user_id(),
                     event: self.code_out,
+                    event_in: Self::CODE,
                     property: self.property,
                     data: Some(Box::new(data)),
                 }).await);

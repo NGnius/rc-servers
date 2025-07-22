@@ -34,12 +34,14 @@ impl UserState {
 
 pub(super) struct MachineState {
     pub(super) selected_weapon: WeaponInfo,
+    pub(super) location: Location,
 }
 
 impl MachineState {
     fn new() -> Self {
         Self {
             selected_weapon: WeaponInfo::new(),
+            location: Location::new(),
         }
     }
 }
@@ -54,6 +56,22 @@ impl WeaponInfo {
         Self {
             category: std::sync::atomic::AtomicU32::new(0),
             size: std::sync::atomic::AtomicU32::new(0),
+        }
+    }
+}
+
+pub(super) struct Location {
+    pub x: atomic_float::AtomicF32,
+    pub y: atomic_float::AtomicF32,
+    pub z: atomic_float::AtomicF32,
+}
+
+impl Location {
+    fn new() -> Self {
+        Self {
+            x: atomic_float::AtomicF32::new(0.0),
+            y: atomic_float::AtomicF32::new(0.0),
+            z: atomic_float::AtomicF32::new(0.0),
         }
     }
 }
@@ -267,6 +285,13 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             has_active_connections |= !matches!(mode, ConnectionMode::Disconnected);
                                         }
                                         is_engaged = has_active_connections;
+                                        if !has_active_connections {
+                                            if self.custom_logic_handler.on_game_completed(&self).await {
+                                                if let Err(e) = conn.user.complete_game(&self.game_guid).await {
+                                                    log::error!("Failed to mark game {} as complete: {}", self.game_guid, e);
+                                                }
+                                            }
+                                        }
                                     }
                                     conn.connection.connection.goodbye(&conn.connection.sender).await;
                                 }
@@ -437,13 +462,15 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             let player_count = self.player_count.load(std::sync::atomic::Ordering::Relaxed) as usize;
                             log::info!("All players ({}) are ready for game {}", player_count, self.game_guid);
                             tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
-                            let mut senders = Vec::new();
-                            for conn in self.users.read().await.values() {
-                                senders.push((conn.connection.clone(), conn.state.clone()));
-                            }
                             let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;
-                            self.game_start.store(game_start.timestamp(), std::sync::atomic::Ordering::Relaxed);
-                            super::countdown::match_countdown(senders, game_start);
+                            if self.custom_logic_handler.on_countdown_start(&self, game_start).await {
+                                let mut senders = Vec::new();
+                                for conn in self.users.read().await.values() {
+                                    senders.push((conn.connection.clone(), conn.state.clone()));
+                                }
+                                self.game_start.store(game_start.timestamp(), std::sync::atomic::Ordering::Relaxed);
+                                super::countdown::match_countdown(senders, game_start);
+                            }
                         }
                     },
                     super::GameMessage::SpotVehicle { user_id, remote_player } => {
@@ -466,31 +493,96 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         ).await;
                         log::info!("Player {} was destroyed by {} ({}) in game {}", remote_player, killer_player, user_id, self.game_guid);
                         self.custom_logic_handler.on_vehicle_destroyed(&self, killer_player, remote_player).await;
-                    }
-                    super::GameMessage::BroadcastRlnl { user_id: _, event, property, data } => {
-                        if let Some(data) = data {
-                            self.broadcast(event, property, &*data, true).await;
-                        } else {
-                            self.broadcast_dataless(event, property, true).await;
-                        }
                     },
-                    super::GameMessage::RebroadcastRlnl { skip_user_id, event, property, data } => {
-                        if let Some(data) = data {
-                            self.rebroadcast(skip_user_id, event, property, &*data, true).await;
-                        } else {
-                            self.rebroadcast_dataless(skip_user_id, event, property, true).await;
+                    super::GameMessage::SelfDestruct { user_id, is_classic } => {
+                        if let Some(player_id) = self.user_key_by_user_id(user_id).await {
+                            self.rebroadcast(
+                                user_id,
+                                rlnl::event_code::NetworkEvent::MachineDestroyedConfirmed,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &rlnl::events::ingame::Kill { killee_player_id: player_id, killer_player_id: player_id },
+                                true,
+                            ).await;
+                            log::info!("Player {} ({}) self-destructed in game {} (elimination? {})", player_id, user_id, self.game_guid, is_classic);
+                            if self.custom_logic_handler.on_vehicle_self_destruct(&self, player_id, is_classic).await {
+                                if is_classic {
+                                    self.rebroadcast(
+                                        user_id,
+                                        rlnl::event_code::NetworkEvent::OnAnotherClientDisconnected,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &rlnl::events::ingame::PlayerId { player: player_id },
+                                        true,
+                                    ).await;
+                                    if let Some(conn) = self.users.read().await.get(&player_id) {
+                                        crate::events::log_lnl_send_failure(conn.connection.rlnl().send_empty(
+                                            rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
+                                            literustlib::packet::Property::ReliableOrdered,
+                                            &conn.connection.connection
+                                        ).await);
+                                        conn.state.mode.store(ConnectionMode::Disconnected.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                                        conn.connection.connection.disconnect();
+                                    }
+                                }
+                            }
                         }
 
                     },
-                    super::GameMessage::Motion { user_id, data } => {
-                        for conn in self.users.read().await.values() {
-                            if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
-                            crate::events::log_lnl_send_failure(conn.connection.sender.send_data(crate::handler::EventData {
-                                message_ty: crate::data::MessageType::RobotMotion,
-                                variant: 0,
-                                data_size: data.len() as _,
-                                data: data.clone(),
-                            }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
+                    super::GameMessage::FlippingStarted { user_id } => {
+                        if let Some(user_key) = self.user_key_by_user_id(user_id).await {
+                            self.rebroadcast(
+                                user_id,
+                                rlnl::event_code::NetworkEvent::AlignmentRectifierStarted,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &rlnl::events::ingame::PlayerId { player: user_key },
+                                true,
+                            ).await;
+                        }
+                    },
+                    super::GameMessage::BroadcastRlnl { user_id, event, event_in, property, data } => {
+                        if self.custom_logic_handler.on_broadcast(&self, user_id, event, event_in, property, &data, false).await {
+                            if let Some(data) = data {
+                                self.broadcast(event, property, &*data, true).await;
+                            } else {
+                                self.broadcast_dataless(event, property, true).await;
+                            }
+                        }
+                    },
+                    super::GameMessage::RebroadcastRlnl { skip_user_id, event, event_in, property, data } => {
+                        if self.custom_logic_handler.on_broadcast(&self, skip_user_id, event, event_in, property, &data, true).await {
+                            if let Some(data) = data {
+                                self.rebroadcast(skip_user_id, event, property, &*data, true).await;
+                            } else {
+                                self.rebroadcast_dataless(skip_user_id, event, property, true).await;
+                            }
+                        }
+                    },
+                    super::GameMessage::Motion { user_id, motion } => {
+                        if self.custom_logic_handler.on_motion(&self, &motion).await {
+                            if let Some(conn) = self.users.read().await.get(&motion.player_id) {
+                                let (x, y, z) = motion.rb_state.rb_pos_rot.pos.into();
+                                conn.machine.location.x.store(x, std::sync::atomic::Ordering::Relaxed);
+                                conn.machine.location.y.store(y, std::sync::atomic::Ordering::Relaxed);
+                                conn.machine.location.z.store(z, std::sync::atomic::Ordering::Relaxed);
+                                //log::debug!("Player {} is at (x, y, z) ({}, {}, {})", motion.player_id, x, y, z);
+                                use byteserde::ser_heap::ByteSerializeHeap;
+                                let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
+                                if let Err(e) = motion.byte_serialize_heap(&mut ser) {
+                                    log::error!("Failed to serialize motion data from user {}: {}", user_id, e);
+                                } else {
+                                    let data = bytes::Bytes::copy_from_slice(ser.as_slice());
+                                    for conn in self.users.read().await.values() {
+                                        if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
+                                        crate::events::log_lnl_send_failure(conn.connection.sender.send_data(crate::handler::EventData {
+                                            message_ty: crate::data::MessageType::RobotMotion,
+                                            variant: 0,
+                                            data_size: data.len() as _,
+                                            data: data.clone(),
+                                        }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
+                                    }
+                                }
+                            } else {
+                                log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
+                            }
                         }
                     },
                     super::GameMessage::NoOp => {},
@@ -653,5 +745,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) fn game_done(&self) {
         self.is_complete.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub(super) fn is_game_done(&self) -> bool {
+        self.is_complete.load(std::sync::atomic::Ordering::SeqCst)
     }
 }

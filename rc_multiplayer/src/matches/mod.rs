@@ -14,4 +14,6 @@ mod countdown;
 
 pub mod modes;
 
+mod timer;
+
 pub const CHANNEL_BOUND: usize = 16;

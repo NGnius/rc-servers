@@ -7,6 +7,7 @@ mod search_clan;
 mod season_rewards;
 mod previous_battle_rewards;
 mod platoon_data;
+mod calculate_mmr;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -27,4 +28,5 @@ pub fn handler() -> OperationsHandler<crate::UserTy, crate::data::custom::Custom
         .add(previous_battle_rewards::pending_battle_rewards_provider())
         .add(platoon_data::platoon_provider())
         .add(polariton_server::operations::Ack::<6, _>::default()) // AvatarUpdatedRequest, sent on services_room avatar_set success (just needs to be ack-ed; no params)
+        .add(calculate_mmr::mmr_provider())
 }

@@ -16,7 +16,27 @@ impl CustomGameLogic for NoOpLogic {
         true
     }
 
+    async fn on_vehicle_self_destruct(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user: u8, _is_classic: bool) -> bool {
+        true
+    }
+
     async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
         Vec::default()
+    }
+
+    async fn on_countdown_start(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _game_start: chrono::DateTime<chrono::Utc>) -> bool {
+        true
+    }
+
+    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+        true
+    }
+
+    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+        true
+    }
+
+    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion) -> bool {
+        true
     }
 }

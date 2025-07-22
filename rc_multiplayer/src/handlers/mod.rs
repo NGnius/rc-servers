@@ -8,6 +8,7 @@ mod ingame_broadcast;
 pub use ingame_broadcast::Broadcaster;
 
 mod ingame_broadcast_dataless;
+#[allow(unused_imports)]
 pub use ingame_broadcast_dataless::DatalessBroadcaster;
 
 mod stub;

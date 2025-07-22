@@ -38,21 +38,30 @@ pub enum GameMessage {
         remote_player: u8,
         killer_player: u8,
     },
+    SelfDestruct {
+        user_id: i32,
+        is_classic: bool,
+    },
+    FlippingStarted { // flip yeah!
+        user_id: i32,
+    },
     BroadcastRlnl {
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
+        event_in: rlnl::event_code::NetworkEvent,
         property: literustlib::packet::Property,
         data: Option<Box<dyn crate::Broadcastable>>,
     },
     RebroadcastRlnl {
         skip_user_id: i32,
         event: rlnl::event_code::NetworkEvent,
+        event_in: rlnl::event_code::NetworkEvent,
         property: literustlib::packet::Property,
         data: Option<Box<dyn crate::Broadcastable>>,
     },
     Motion {
         user_id: i32,
-        data: bytes::Bytes,
+        motion: rlnl::machine_motion::MachineMotion,
     },
     NoOp,
 }
@@ -71,6 +80,8 @@ impl GameMessage {
             Self::LoadComplete { user_id, .. } => *user_id,
             Self::SpotVehicle { user_id, .. } => *user_id,
             Self::DestroyVehicle { user_id, .. } => *user_id,
+            Self::SelfDestruct { user_id, .. } => *user_id,
+            Self::FlippingStarted { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::Motion { user_id, .. } => *user_id,

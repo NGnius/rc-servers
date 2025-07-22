@@ -42,6 +42,7 @@ impl QueueHandler {
         use std::hash::Hasher;
         let mut hasher = std::hash::DefaultHasher::new();
         key.hash(&mut hasher);
+        chrono::Utc::now().timestamp().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
         let guid_str = oj_rc_core::persist::user::i64_as_uuid_str(guid);
         let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
