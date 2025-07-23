@@ -49,19 +49,23 @@ impl PlayerTracker {
 pub struct EliminationLogic {
     tracked: PlayerTracker,
     game_duration: std::time::Duration,
+    respawn_full_heal_duration: f32,
+    respawn_heal_duration: f32,
     game_end: std::sync::atomic::AtomicI64,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl EliminationLogic {
-    pub fn new() -> Self {
-        let dur = std::time::Duration::from_secs(300);
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig) -> Self {
+        let dur = std::time::Duration::from_secs((config.game_time_minutes as u64) * 60);
         let fake_end = (chrono::Utc::now() + dur).timestamp();
         Self {
             tracked: PlayerTracker {
                 alive: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             },
             game_duration: dur,
+            respawn_full_heal_duration: config.respawn_full_heal_duration,
+            respawn_heal_duration: config.respawn_heal_duration,
             game_end: std::sync::atomic::AtomicI64::new(fake_end),
             timer_task: tokio::sync::Mutex::new(None),
         }
@@ -186,15 +190,15 @@ impl CustomGameLogic for EliminationLogic {
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::sync::UpdateGameModeSettings { // FIXME use value from config
-                    respawn_heal_duration: 10.0,
-                    respawn_full_heal_duration: 10.0,
+                data: Box::new(rlnl::events::sync::UpdateGameModeSettings {
+                    respawn_heal_duration: self.respawn_heal_duration,
+                    respawn_full_heal_duration: self.respawn_full_heal_duration,
                 }),
             },
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(self.game_duration.as_millis() as f32 / 1000.0)), // FIXME use value from config
+                data: Box::new(rlnl::events::GameTime(self.game_duration.as_millis() as f32 / 1000.0)),
             },
         ]
     }

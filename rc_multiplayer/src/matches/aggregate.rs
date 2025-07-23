@@ -1,13 +1,15 @@
 pub struct GameMatches {
     matches: std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::GameMessage>>,
     routing: std::collections::HashMap<i32, String>, // user id to game guid
+    mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
 }
 
 impl GameMatches {
-    pub fn new() -> Self {
+    pub fn new(conf: &oj_rc_core::persist::config::ConfigImpl) -> Self {
         Self {
             matches: std::collections::HashMap::new(),
             routing: std::collections::HashMap::new(),
+            mode_configs: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemodes(conf),
         }
     }
 
@@ -19,7 +21,10 @@ impl GameMatches {
 
     async fn start_new_match_engine(&self, _user: &Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>, guid: &str) -> tokio::sync::mpsc::Sender<super::GameMessage> {
         // TODO figure out gamemode and act accordingly
-        let engine = super::GenericGamemodeEngine::new(guid.to_owned(), super::modes::EliminationLogic::new());
+        let engine = super::GenericGamemodeEngine::new(
+            guid.to_owned(),
+            super::modes::EliminationLogic::new(&self.mode_configs.elimination)
+        );
         engine.spawn()
     }
 

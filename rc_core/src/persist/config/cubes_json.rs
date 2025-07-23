@@ -304,6 +304,10 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
     }
 
+    fn gamemodes(&self) -> crate::data::game_mode::GameModeConfigs {
+        self.battle.games.clone().into()
+    }
+
     fn singleplayer_details(&self) -> super::SingleplayerConfig {
         self.battle.singleplayer.into_singleplayer_conf()
     }

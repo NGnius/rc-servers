@@ -25,6 +25,7 @@ pub trait ConfigProvider<C: Clone> {
     fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
     fn chat_system_config(&self) -> ChatSystemConfig;
     fn gamemode_events(&self) -> GameEventSequence;
+    fn gamemodes(&self) -> crate::data::game_mode::GameModeConfigs; // FIXME
     fn singleplayer_details(&self) -> SingleplayerConfig;
     fn players_per_game(&self) -> usize;
     fn is_multiplayer_enabled(&self) -> bool;
