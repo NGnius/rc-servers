@@ -345,4 +345,18 @@ impl Database {
         crate::schema::multiplayer_game_player::Entity::insert_many(entities.into_iter()).exec(&self.orm).await?;
         Ok(())
     }
+
+    pub async fn game_event_at_time(&self, time: i64, variant: crate::schema::game_event::EventVariant) -> Result<Option<crate::schema::game_event::Model>, sea_orm::DbErr> {
+        crate::schema::game_event::Entity::find()
+            .filter(crate::schema::game_event::Column::Start.lte(time))
+            .filter(crate::schema::game_event::Column::End.gte(time))
+            .filter(crate::schema::game_event::Column::Variant.eq(variant))
+            .order_by_desc(crate::schema::game_event::Column::Start)
+            .one(&self.orm)
+            .await
+    }
+
+    pub async fn insert_game_event(&self, entity: crate::schema::game_event::ActiveModel) -> Result<crate::schema::game_event::Model, sea_orm::DbErr> {
+        entity.insert(&self.orm).await
+    }
 }

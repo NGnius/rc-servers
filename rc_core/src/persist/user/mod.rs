@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::UnlockedParts;
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent};
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 

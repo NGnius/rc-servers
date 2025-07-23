@@ -81,6 +81,15 @@ pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
+    fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
+}
+
+#[async_trait::async_trait]
+pub trait GameEventSetter: Send + Sync + 'static {
+    async fn set_multiplayer(&self, event: CurrentGameEvent);
+    async fn get_multiplayer(&self) -> Option<CurrentGameEvent>;
+    async fn set_singleplayer(&self, event: CurrentGameEvent);
+    async fn get_singleplayer(&self) -> Option<CurrentGameEvent>;
 }
 
 pub struct UserSlots<C> {
@@ -232,6 +241,15 @@ pub trait LobbyUser {
     fn user_id(&self) -> i32;
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
     async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+}
+
+pub struct CurrentGameEvent {
+    pub map: String,
+    pub visibility: crate::data::game_mode::MapVisibility,
+    pub mode: crate::data::game_mode::GameMode,
+    pub auto_heal: bool,
+    pub start: i64, // seconds since Unix epoch
+    pub end: i64, // seconds since Unix epoch
 }
 
 pub struct GameDescriptor {

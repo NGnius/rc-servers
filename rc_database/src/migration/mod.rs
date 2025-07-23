@@ -9,6 +9,7 @@ mod m20250526_000001_add_garage_customisation;
 mod m20250529_000001_create_sanction_table;
 mod m20250713_000001_create_game_table;
 mod m20250713_000002_create_player_table;
+mod m20250722_000001_create_game_event_table;
 
 pub struct Migrator;
 
@@ -25,6 +26,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250529_000001_create_sanction_table::Migration),
             Box::new(m20250713_000001_create_game_table::Migration),
             Box::new(m20250713_000002_create_player_table::Migration),
+            Box::new(m20250722_000001_create_game_event_table::Migration),
         ]
     }
 }

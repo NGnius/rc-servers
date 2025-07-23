@@ -144,7 +144,7 @@ pub struct GameEventSequence {
 }
 
 impl GameEventSequence {
-    pub fn now(&mut self) -> GameEventTransmissible {
+    pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>) -> GameEventTransmissible {
         let time_now = chrono::Utc::now().timestamp();
         let mut item_now = &self.modes[self.index];
         if time_now >= (item_now.duration.as_secs() as i64) + self.started {
@@ -152,6 +152,26 @@ impl GameEventSequence {
             self.index = self.strategy.next(self.index, self.modes.len());
             item_now = &self.modes[self.index];
             self.started = time_now;
+            let mp = crate::persist::user::CurrentGameEvent {
+                map: crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().to_owned(),
+                visibility: crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility),
+                mode: crate::data::game_mode::GameMode::from_persist(item_now.multiplayer.mode),
+                auto_heal: item_now.multiplayer.auto_heal,
+                start: self.started,
+                end: self.started + item_now.duration.as_secs() as i64,
+            };
+            let sp = crate::persist::user::CurrentGameEvent {
+                map: crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().to_owned(),
+                visibility: crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility),
+                mode: crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode),
+                auto_heal: item_now.singleplayer.auto_heal,
+                start: self.started,
+                end: self.started + item_now.duration.as_secs() as i64,
+            };
+            tokio::spawn(async move {
+                updater.set_multiplayer(mp).await;
+                updater.set_singleplayer(sp).await;
+            });
         }
         let remaining_ticks = ((item_now.duration.as_secs() as i64) - (time_now - self.started)) * 10_000_000;
         GameEventTransmissible {

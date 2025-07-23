@@ -28,20 +28,33 @@ pub struct GameEventsParamsProvider {
 impl Operation<()> for GameEventsParamsProvider {
     type User = crate::UserTy;
 
-    async fn handle_async(&self, params: polariton::operation::ParameterTable<()>, _user: &Self::User) -> polariton::operation::OperationResponse<()> {
-        let mut params = params.to_dict();
-        let current_mode = self.sequence.lock().unwrap().now();
-        params.insert(MAP_NAMES_PARAM_KEY, current_mode.maps);
-        params.insert(VISIBILITY_PARAM_KEY, current_mode.visibilities);
-        params.insert(MODE_PARAM_KEY, current_mode.modes);
-        params.insert(AUTO_HEAL_PARAM_KEY, current_mode.auto_heals);
-        params.insert(REMAINING_TICKS_PARAM_KEY, current_mode.remaining_ticks);
-        polariton::operation::OperationResponse {
-            code: Self::op_code(),
-            return_code: 0,
-            message: polariton::operation::Typed::Null,
-            params: params.into(),
+    async fn handle_async(&self, params: polariton::operation::ParameterTable<()>, user: &Self::User) -> polariton::operation::OperationResponse<()> {
+        match user.user() {
+            Ok(user_info) => {
+                let mut params = params.to_dict();
+                let current_mode = self.sequence.lock().unwrap().now(user_info.current_game_event_setter());
+                params.insert(MAP_NAMES_PARAM_KEY, current_mode.maps);
+                params.insert(VISIBILITY_PARAM_KEY, current_mode.visibilities);
+                params.insert(MODE_PARAM_KEY, current_mode.modes);
+                params.insert(AUTO_HEAL_PARAM_KEY, current_mode.auto_heals);
+                params.insert(REMAINING_TICKS_PARAM_KEY, current_mode.remaining_ticks);
+                polariton::operation::OperationResponse {
+                    code: Self::op_code(),
+                    return_code: 0,
+                    message: polariton::operation::Typed::Null,
+                    params: params.into(),
+                }
+            },
+            Err(e) => {
+                polariton::operation::OperationResponse {
+                    code: Self::op_code(),
+                    return_code: e,
+                    message: polariton::operation::Typed::Null,
+                    params: params.into(),
+                }
+            }
         }
+
     }
 }
 

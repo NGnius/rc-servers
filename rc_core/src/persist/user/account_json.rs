@@ -978,6 +978,79 @@ impl <C: Clone> super::User<C> for UserData {
             })?;
         Ok(())
     }
+
+    fn current_game_event_setter(&self) -> Box<dyn super::GameEventSetter> {
+        Box::new(GameEventSetterImpl {
+            db: self.db.clone(),
+        })
+    }
+}
+
+struct GameEventSetterImpl {
+    db: std::sync::Arc<oj_rc_database::Database>,
+}
+
+impl GameEventSetterImpl {
+    async fn insert_event(&self, variant: oj_rc_database::schema::game_event::EventVariant, event: super::CurrentGameEvent) {
+        let now = chrono::Utc::now().timestamp();
+        let model = oj_rc_database::schema::game_event::ActiveModel {
+            id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+            map: oj_rc_database::sea_orm::ActiveValue::Set(event.map),
+            mode: oj_rc_database::sea_orm::ActiveValue::Set(event.mode.to_db()),
+            visibility: oj_rc_database::sea_orm::ActiveValue::Set(event.visibility.to_db()),
+            auto_heal: oj_rc_database::sea_orm::ActiveValue::Set(event.auto_heal),
+            start: oj_rc_database::sea_orm::ActiveValue::Set(event.start),
+            end: oj_rc_database::sea_orm::ActiveValue::Set(event.end),
+            variant: oj_rc_database::sea_orm::ActiveValue::Set(variant),
+        };
+        if let Err(e) = self.db.insert_game_event(model).await {
+            log::error!("Failed to save new game event: {}", e);
+        }
+    }
+
+    async fn select_event_now(&self, variant: oj_rc_database::schema::game_event::EventVariant) -> Option<super::CurrentGameEvent> {
+        let now = chrono::Utc::now().timestamp();
+        match self.db.game_event_at_time(now, variant).await {
+            Err(e) => {
+                log::error!("Failed to retrieve current game event: {}", e);
+                None
+            },
+            Ok(None) => {
+                log::warn!("Failed to find current game event");
+                None
+            },
+            Ok(Some(event)) => {
+                Some(super::CurrentGameEvent {
+                    map: event.map,
+                    visibility: crate::data::game_mode::MapVisibility::from_db(event.visibility),
+                    mode: crate::data::game_mode::GameMode::from_db(event.mode),
+                    auto_heal: event.auto_heal,
+                    start: event.start,
+                    end: event.end,
+                })
+            },
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl super::GameEventSetter for GameEventSetterImpl {
+    async fn set_multiplayer(&self, event: super::CurrentGameEvent) {
+        self.insert_event(oj_rc_database::schema::game_event::EventVariant::Multiplayer, event).await
+    }
+
+    async fn get_multiplayer(&self) -> Option<super::CurrentGameEvent> {
+        self.select_event_now(oj_rc_database::schema::game_event::EventVariant::Multiplayer).await
+    }
+
+    async fn set_singleplayer(&self, event: super::CurrentGameEvent) {
+        self.insert_event(oj_rc_database::schema::game_event::EventVariant::Singleplayer, event).await
+    }
+
+    async fn get_singleplayer(&self) -> Option<super::CurrentGameEvent> {
+        self.select_event_now(oj_rc_database::schema::game_event::EventVariant::Singleplayer).await
+    }
 }
 
 #[async_trait::async_trait]

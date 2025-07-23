@@ -36,14 +36,17 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                 params.insert(PERSONAL_RANKING_PARAM_KEY, Typed::Double(42.0));
                                 let events = user.event_sender();
                                 let user_info = user.user()?;
-                                self.queue_handler.join_queue(
-                                    "FIXME_map".to_owned(),
-                                    oj_rc_core::data::game_mode::GameMode::BattleArena, // FIXME
-                                    oj_rc_core::data::game_mode::MapVisibility::Good, // FIXME
-                                    true, // FIXME
-                                    user_info.as_ref().as_ref(),
-                                    events.to_owned(),
-                                ).await;
+                                if let Some(current_lobby) = user_info.current_game_event_setter().get_multiplayer().await {
+                                    self.queue_handler.join_queue(
+                                        current_lobby.map,
+                                        current_lobby.mode,
+                                        current_lobby.visibility,
+                                        current_lobby.auto_heal,
+                                        user_info.as_ref().as_ref(),
+                                        events.to_owned(),
+                                    ).await;
+                                }
+
                             }
                         }
                     }
