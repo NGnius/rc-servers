@@ -20,7 +20,7 @@ pub struct InitConfig {
     pub queue: std::sync::Arc<QueueHandler>,
 }
 
-pub type UserTy = oj_rc_core::UserState<()>;
+pub type UserTy = std::sync::Arc<oj_rc_core::UserState<()>>;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -49,11 +49,11 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server.clone(), init_ctx.users.clone()).await;
+        process_socket(socket, address, server.clone(), init_ctx.users.clone(), init_ctx.queue.clone()).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
-            tokio::spawn(process_socket(socket, address, server.clone(), init_ctx.users.clone()));
+            tokio::spawn(process_socket(socket, address, server.clone(), init_ctx.users.clone(), init_ctx.queue.clone()));
         }
     }
     server.join();
@@ -61,7 +61,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, queue: std::sync::Arc<QueueHandler>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -72,9 +72,14 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     };
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
-    let user_state = oj_rc_core::UserState::<()>::new(users, chann_tx.clone());
+    let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(users, chann_tx.clone()));
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
-    server.handle_async_with_channel(socket_r, socket_w, user_state, ctx, chann_tx, chann_rx).await;
+    server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
+    if let Ok(user_info) = user_state.user() {
+        queue.leave_queue(user_info.as_ref().as_ref()).await;
+    } else {
+        log::info!("Unauthenticated user disconnected");
+    }
     log::debug!("Goodbye connection from address {}", address);
 }
 

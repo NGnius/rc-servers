@@ -143,4 +143,15 @@ impl QueueHandler {
             }
         }
     }
+
+    pub async fn leave_queue(&self, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+        let user_id = user.user_id();
+        for queue in self.users_in_queue.lock().await.values_mut() {
+            if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
+                queue.remove(i);
+                log::info!("User {} was removed from a queue", user_id);
+                break;
+            }
+        }
+    }
 }
