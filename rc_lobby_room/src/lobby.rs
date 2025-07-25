@@ -1,5 +1,22 @@
 use std::{collections::HashMap, hash::Hash};
 
+#[derive(Clone, Copy)]
+pub enum GamemodeChangeStrategy {
+    Upgrade, // move enqueued players into newer gamemode
+    Notify, // send match change
+    Ignore, // do nothing
+}
+
+impl GamemodeChangeStrategy {
+    fn from_core(core: oj_rc_core::persist::config::QueueChangeMode) -> Self {
+        match core {
+            oj_rc_core::persist::config::QueueChangeMode::Upgrade => Self::Upgrade,
+            oj_rc_core::persist::config::QueueChangeMode::Notify => Self::Notify,
+            oj_rc_core::persist::config::QueueChangeMode::Ignore => Self::Ignore,
+        }
+    }
+}
+
 #[derive(Hash, Eq, PartialEq, Clone)]
 struct QueueKey {
     map: String,
@@ -22,10 +39,11 @@ pub struct QueueHandler {
     hostport: u16,
     network_conf: crate::data::network::NetworkConfigData,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+    change_strategy: GamemodeChangeStrategy,
 }
 
 impl QueueHandler {
-    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,) -> Self {
+    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         Self {
             users_in_queue: tokio::sync::Mutex::new(HashMap::new()),
@@ -35,6 +53,7 @@ impl QueueHandler {
             hostport: port_str.parse().expect("Invalid redirect port"),
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
             cpu_counter,
+            change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
         }
     }
 
@@ -42,7 +61,7 @@ impl QueueHandler {
         use std::hash::Hasher;
         let mut hasher = std::hash::DefaultHasher::new();
         key.hash(&mut hasher);
-        chrono::Utc::now().timestamp().hash(&mut hasher);
+        chrono::Utc::now().timestamp_micros().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
         let guid_str = oj_rc_core::persist::user::i64_as_uuid_str(guid);
         let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
@@ -120,6 +139,47 @@ impl QueueHandler {
                     user_id: user.user_id(),
                 };
                 let mut lock = self.users_in_queue.lock().await;
+                // handle game event change
+                if !lock.contains_key(&key) && lock.len() == 1 {
+                    log::debug!("Game event change detected");
+                    match self.change_strategy {
+                        GamemodeChangeStrategy::Upgrade => {
+                            let mut new_queue_map = std::collections::HashMap::<QueueKey, Vec<QueueUser>>::with_capacity(lock.len());
+                            let mut count = 0;
+                            for (_key, mut users) in lock.drain() {
+                                count += users.len();
+                                if let Some(values) = new_queue_map.get_mut(&key) {
+                                    values.append(&mut users);
+                                } else {
+                                    new_queue_map.insert(key.clone(), users);
+                                }
+
+                            }
+                            *lock = new_queue_map;
+                            if count != 0 {
+                                log::info!("Upgraded {} users in queue to new gamemode", count);
+                            }
+                        },
+                        GamemodeChangeStrategy::Notify => {
+                            let mut count = 0;
+                            for (_key, users) in lock.drain() {
+                                count += users.len();
+                                for player in users {
+                                    player.emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                                        code: oj_rc_core::data::error_codes::LobbyReasonCode::EventSystemExpired as i16,
+                                        text: "Please requeue".to_owned(),
+                                    });
+                                }
+                            }
+                            if count != 0 {
+                                log::info!("Notified {} users in queue of new gamemode", count);
+                            }
+                        },
+                        GamemodeChangeStrategy::Ignore => {
+                            log::debug!("Gamemode appears to have changed, ignoring already-queued players");
+                        }
+                    }
+                }
                 let players_len = if let Some(players) = lock.get_mut(&key) {
                     new_player.player.team = (players.len() % 2) as _; // alternate teams
                     players.push(new_player);

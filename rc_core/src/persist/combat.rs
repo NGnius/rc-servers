@@ -389,7 +389,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
+                    map: GameMap::Earth1,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
@@ -449,7 +449,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
+                    map: GameMap::Earth2,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,

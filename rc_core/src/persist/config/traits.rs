@@ -104,6 +104,23 @@ pub struct TypedDevMessage<C> {
 pub struct ServerConfig {
     pub database: String,
     pub auto_signup: bool,
+    pub queue_mode: QueueChangeMode,
+}
+
+pub enum QueueChangeMode {
+    Upgrade, // move enqueued players into newer gamemode
+    Notify, // send match change
+    Ignore, // do nothing
+}
+
+impl QueueChangeMode {
+    pub(super) fn from_persist(persist: crate::persist::settings::QueueMode) -> Self {
+        match persist {
+            crate::persist::settings::QueueMode::Upgrade => Self::Upgrade,
+            crate::persist::settings::QueueMode::Notify => Self::Notify,
+            crate::persist::settings::QueueMode::Ignore => Self::Ignore,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

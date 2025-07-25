@@ -27,7 +27,7 @@ mod client_config;
 pub use client_config::GameplaySettings;
 
 mod settings;
-pub use settings::Settings;
+pub use settings::{Settings, QueueMode};
 
 mod chat;
 pub use chat::{ChatConfig, ChatCommand, ChatOperation, BuiltInChatOperation};

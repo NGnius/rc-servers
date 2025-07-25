@@ -78,7 +78,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     if let Ok(user_info) = user_state.user() {
         queue.leave_queue(user_info.as_ref().as_ref()).await;
     } else {
-        log::info!("Unauthenticated user disconnected");
+        log::debug!("Unauthenticated user disconnected");
     }
     log::debug!("Goodbye connection from address {}", address);
 }
