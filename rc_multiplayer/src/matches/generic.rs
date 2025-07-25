@@ -563,7 +563,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 conn.machine.location.x.store(x, std::sync::atomic::Ordering::Relaxed);
                                 conn.machine.location.y.store(y, std::sync::atomic::Ordering::Relaxed);
                                 conn.machine.location.z.store(z, std::sync::atomic::Ordering::Relaxed);
-                                //log::debug!("Player {} is at (x, y, z) ({}, {}, {})", motion.player_id, x, y, z);
+                                log::debug!("Player {} is at (x, y, z) ({}, {}, {})", motion.player_id, x, y, z);
                                 use byteserde::ser_heap::ByteSerializeHeap;
                                 let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
                                 if let Err(e) = motion.byte_serialize_heap(&mut ser) {
@@ -685,7 +685,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             sender.send_data(
                 &rlnl::events::sync::SpawnPoint {
                     pos: rlnl::types::PosQuatPair {
-                        pos: rlnl::types::CompressedVec3 { x: i as _, y: 42, z: i as _ },
+                        pos: rlnl::types::CompressedVec3::from((10.0 * (i as f32), 100.0, 10.0 * (i as f32))),
                         rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
                     },
                     owner: i,
