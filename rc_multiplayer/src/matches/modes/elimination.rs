@@ -41,6 +41,17 @@ impl PlayerTracker {
         only_alive_team
     }
 
+    async fn alive_count(&self) -> std::collections::HashMap<u8, u8> {
+        let alive_lock = self.alive.lock().await;
+        let mut alive_players = std::collections::HashMap::new();
+        for (team, players) in alive_lock.iter() {
+            if !players.is_empty() {
+                alive_players.insert(*team, players.len() as u8);
+            }
+        }
+        alive_players
+    }
+
     async fn teams(&self) -> std::collections::HashSet<u8> {
         self.alive.lock().await.keys().map(|x| *x).collect()
     }
@@ -120,6 +131,10 @@ impl CustomGameLogic for EliminationLogic {
             }
             generic.game_done();
             self.abort_timer_sync().await;
+        } else if self.tracked.alive_count().await.is_empty() {
+            log::debug!("Everyone is dead, so long and thanks for all the fish");
+            generic.game_done();
+            self.abort_timer_sync().await;
         }
         true
     }
@@ -171,7 +186,10 @@ impl CustomGameLogic for EliminationLogic {
                     &conn.connection.connection
                 ).await);
             }
-
+        } else if self.tracked.alive_count().await.is_empty() {
+            log::debug!("Everyone is dead, this must be the West Seth was talking about!");
+            generic.game_done();
+            self.abort_timer_sync().await;
         }
         true
     }
