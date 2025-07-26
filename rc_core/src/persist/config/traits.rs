@@ -31,6 +31,7 @@ pub trait ConfigProvider<C: Clone> {
     fn is_multiplayer_enabled(&self) -> bool;
     // FIXME don't use serializable types in traits
     fn network_config(&self) -> crate::persist::NetworkConf;
+    fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;
 }
 
 pub struct CompleteCampaignProvider {
@@ -270,7 +271,7 @@ pub struct GameEvent {
     pub auto_heal: bool,
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Hash, PartialEq, Eq)]
 pub enum GameMap {
     Mars1,
     Mars2,
@@ -328,4 +329,23 @@ pub enum VehicleDescriptor {
         colour_data: Vec<u8>,
     }
     // TODO File
+}
+
+#[derive(Clone, Debug)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+#[derive(Clone, Debug)]
+pub struct Sphere {
+    pub radius: f32,
+    pub center: Point,
+}
+
+#[derive(Clone, Debug)]
+pub struct MapConfig {
+    pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
+    pub bases: std::collections::HashMap<u8, Sphere>, // team -> base
 }

@@ -370,4 +370,40 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn network_config(&self) -> crate::persist::NetworkConf {
         self.battle.multiplayer.network.clone()
     }
+
+    fn maps(&self) -> std::collections::HashMap<super::GameMap, super::MapConfig> {
+        self.battle.maps.map.iter().map(|(map, conf)| {
+            let mut spawns = std::collections::HashMap::<u8, Vec<super::Point>>::with_capacity(2); // usually 2 teams
+            for point in conf.spawn_points.iter() {
+                if let Some(list) = spawns.get_mut(&point.team) {
+                    list.push(super::Point {
+                        x: point.x,
+                        y: point.y,
+                        z: point.z,
+                    });
+                } else {
+                    let mut list = Vec::with_capacity(10); // usually 10 spawn points (suddent death has the most)
+                    list.push(super::Point {
+                        x: point.x,
+                        y: point.y,
+                        z: point.z,
+                    });
+                    spawns.insert(point.team, list);
+                }
+            }
+            let bases = conf.bases.iter().map(|base| (base.team, super::Sphere {
+                radius: base.radius,
+                center: super::Point {
+                    x: base.x,
+                    y: base.y,
+                    z: base.z,
+                },
+            })).collect();
+            let map_conf = super::MapConfig {
+                spawns,
+                bases,
+            };
+            (map.into_conf(), map_conf)
+        }).collect()
+    }
 }

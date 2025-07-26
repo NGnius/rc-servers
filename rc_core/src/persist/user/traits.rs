@@ -320,4 +320,5 @@ pub trait MultiplayerUser {
     async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
+    async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
 }

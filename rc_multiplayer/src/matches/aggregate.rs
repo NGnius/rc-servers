@@ -2,6 +2,7 @@ pub struct GameMatches {
     matches: std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::GameMessage>>,
     routing: std::collections::HashMap<i32, String>, // user id to game guid
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
+    map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
 }
 
 impl GameMatches {
@@ -10,6 +11,10 @@ impl GameMatches {
             matches: std::collections::HashMap::new(),
             routing: std::collections::HashMap::new(),
             mode_configs: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemodes(conf),
+            map_configs: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::maps(conf)
+                .into_iter()
+                .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
+                .collect(),
         }
     }
 
@@ -19,13 +24,44 @@ impl GameMatches {
         tx
     }
 
-    async fn start_new_match_engine(&self, _user: &Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>, guid: &str) -> tokio::sync::mpsc::Sender<super::GameMessage> {
-        // TODO figure out gamemode and act accordingly
-        let engine = super::GenericGamemodeEngine::new(
-            guid.to_owned(),
-            super::modes::EliminationLogic::new(&self.mode_configs.elimination)
-        );
-        engine.spawn()
+    async fn start_new_match_engine(&self, user: &Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>, guid: &str) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
+        let game_info = user.game_info(guid).await?
+        .ok_or_else(|| oj_rc_core::persist::user::MultiplayerError {
+            code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
+            message: format!("Failed to find game {}", guid),
+        })?;
+        let map_config = self.map_configs.get(&game_info.map)
+            .map(|x| x.to_owned())
+            .unwrap_or_else(|| {
+                log::warn!("No configuration found for map {}, game {} may not work correctly", game_info.map, guid);
+                oj_rc_core::persist::config::MapConfig {
+                    spawns: std::collections::HashMap::default(),
+                    bases: std::collections::HashMap::default(),
+                }
+            });
+        let players = user.game_players(guid).await?;
+        if players.is_empty() {
+            log::warn!("No players found to game {}, loading may not work correctly", guid);
+        }
+        match game_info.mode {
+            oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
+                let engine = super::GenericGamemodeEngine::new(
+                    game_info,
+                    map_config,
+                    players,
+                    super::modes::EliminationLogic::new(&self.mode_configs.elimination)
+                );
+                Ok(engine.spawn())
+            }
+            mode => {
+                // TODO support mode gamemodes
+                Err(oj_rc_core::persist::user::MultiplayerError {
+                    code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
+                    message: format!("Game mode {:?} is not supported (yet)", mode),
+                })
+            }
+        }
+
     }
 
     // create a new match
@@ -37,7 +73,18 @@ impl GameMatches {
         sender: std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>,
     ) {
         log::info!("Creating new game {}", game_guid);
-        let tx = self.start_new_match_engine(&user, &game_guid).await;
+        let tx = match self.start_new_match_engine(&user, &game_guid).await {
+            Ok(tx) => tx,
+            Err(e) => {
+                if response.send(Some(crate::matches::messages::ErrorMessage {
+                    message: e.message.clone(),
+                    inner: Some(Box::new(e)),
+                })).is_err() {
+                    log::error!("Failed to send NewConnection failure back to event handler");
+                }
+                return;
+            }
+        };
         self.matches.insert(game_guid.clone(), tx.clone());
         self.routing.insert(user.user_id(), game_guid.clone());
         if tx.send(super::GameMessage::NewConnection { user, game_guid, connection, response, sender }).await.is_err() {

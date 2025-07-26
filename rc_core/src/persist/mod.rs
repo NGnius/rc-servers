@@ -38,6 +38,9 @@ pub use vehicle_factory::{FactoryConfig, AdapterSettings, ArcFactorySettings};
 mod multiplayer;
 pub use multiplayer::{MultiplayerConfig, NetworkConf};
 
+mod maps;
+pub use maps::{MapsConfig, MapConfig};
+
 pub(self) const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

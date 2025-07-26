@@ -110,7 +110,7 @@ impl CustomGameLogic for EliminationLogic {
         }
         self.tracked.destroy_vehicle(&player.descriptor).await;
         if let Some(winning_team) = self.tracked.winner_team().await {
-            log::info!("Team {} has won sudden death game {} because player {} left", winning_team, generic.game_guid, player.descriptor.player_id);
+            log::info!("Team {} has won sudden death game {} because player {} left", winning_team, generic.game_guid(), player.descriptor.player_id);
             let data = rlnl::events::ingame::GameLoseWin {
                 winning_team,
                 end_reason: rlnl::types::GameEndReason::OneTeamRemaining,
@@ -153,7 +153,7 @@ impl CustomGameLogic for EliminationLogic {
                 true,
             ).await;
             if let Some(winning_team) = self.tracked.winner_team().await {
-                log::info!("Team {} has won sudden death game {}", winning_team, generic.game_guid);
+                log::info!("Team {} has won sudden death game {}", winning_team, generic.game_guid());
                 let data = rlnl::events::ingame::GameLoseWin {
                     winning_team,
                     end_reason: rlnl::types::GameEndReason::OneTeamRemaining,
@@ -174,7 +174,7 @@ impl CustomGameLogic for EliminationLogic {
                 }
                 generic.game_done();
             } else {
-                log::info!("Player {} has been destroyed in sudden death game {}", victim, generic.game_guid);
+                log::info!("Player {} has been destroyed in sudden death game {}", victim, generic.game_guid());
                 let data = rlnl::events::ingame::GameLoseWin {
                     winning_team: if conn.descriptor.team == 0 { 1 } else { 0 }, // always the other team
                     end_reason: rlnl::types::GameEndReason::NoPlayersRemaining,
@@ -261,3 +261,7 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 }
+
+// spawn points (best guess)
+// Mars 1: (16, 0, 19) and (355, 7, 372)
+// Earth vanguard 2: (-248, 10, -251) and (267, 10, 258)

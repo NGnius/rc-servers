@@ -55,14 +55,14 @@ impl GameMap {
     #[inline]
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Mars1 => "RC_Planet_Mars_01_CTF",
-            Self::Mars2 => "RC_Planet_Mars_02_BA",
-            Self::Mars3 => "RC_Planet_Mars_03_BA",
-            Self::Neptune1 => "RC_Planet_Neptune_01_CTF",
-            Self::Neptune2 => "RC_Planet_Neptune_02_BA",
-            Self::Neptune3 => "RC_Planet_Neptune_03_BA",
-            Self::Earth1 => "RC_Planet_Earth_01_BA",
-            Self::Earth2 => "RC_Planet_Earth_02_BA",
+            Self::Mars1 => "RC_Planet_Mars_01_CTF", // og flat mars
+            Self::Mars2 => "RC_Planet_Mars_02_BA", // the one with the bridge in the middle
+            Self::Mars3 => "RC_Planet_Mars_03_BA", // tharsis rift without the rift
+            Self::Neptune1 => "RC_Planet_Neptune_01_CTF", // og flat GJ1214b gliese lake without the lake
+            Self::Neptune2 => "RC_Planet_Neptune_02_BA", // the one with the cave
+            Self::Neptune3 => "RC_Planet_Neptune_03_BA", // spitzer dam
+            Self::Earth1 => "RC_Planet_Earth_01_BA", // birmingham power station
+            Self::Earth2 => "RC_Planet_Earth_02_BA", // vanguard
         }
     }
 
@@ -82,7 +82,7 @@ impl GameMap {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub enum GameMode {
     BattleArena = 0,
     SuddenDeath = 1,

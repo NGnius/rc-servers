@@ -273,6 +273,14 @@ impl Database {
         entity.insert(&self.orm).await
     }
 
+    pub async fn game_by_guid(&self, game_guid: i64) -> Result<Option<crate::schema::multiplayer_game::Model>, sea_orm::DbErr> {
+        crate::schema::multiplayer_game::Entity::find()
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .order_by_desc(crate::schema::multiplayer_game::Column::CreationTime)
+            .one(&self.orm)
+            .await
+    }
+
     pub async fn game_by_user_id_and_completion(&self, user_id: i32, is_complete: bool) -> Result<Option<crate::schema::multiplayer_game::Model>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game::Entity::find()
             .find_also_related(crate::schema::multiplayer_game_player::Entity)

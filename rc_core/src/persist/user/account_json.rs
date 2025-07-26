@@ -1367,4 +1367,32 @@ impl super::MultiplayerUser for UserData {
             })
         }
     }
+
+    async fn game_info(&self, guid: &str) -> Result<Option<super::GameDescriptor>, super::MultiplayerError> {
+        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
+            let game_opt = self.db.game_by_guid(guid.to_owned()).await
+                .map_err(|e| {
+                    log::error!("Failed to retrieve game {} with user {}: {}", guid, self.account.id, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to retrieve game {}: {}", guid, e),
+                    }
+                })?;
+            Ok(game_opt.map(|game| super::GameDescriptor {
+                guid: crate::persist::user::i64_as_uuid_str(game.guid),
+                map: game.map,
+                mode: crate::data::game_mode::GameMode::from_db(game.mode),
+                visibility: crate::data::game_mode::MapVisibility::from_db(game.visibility),
+                auto_heal: game.auto_heal,
+                is_ranked: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
+                is_custom: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
+                is_complete: game.is_complete,
+            }))
+        } else {
+            Err(super::MultiplayerError {
+                code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                message: format!("Failed to parse game GUID {}", guid),
+            })
+        }
+    }
 }

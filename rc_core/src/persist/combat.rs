@@ -14,6 +14,8 @@ pub struct BattleConfig {
     pub rotation: GameEventSequence,
     #[serde(default = "default_multiplayer")]
     pub multiplayer: super::MultiplayerConfig,
+    #[serde(default = "default_maps")]
+    pub maps: super::MapsConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -144,7 +146,7 @@ pub struct GameEvent {
 }
 
 impl GameEvent {
-    pub fn into_conf(self) -> crate::persist::config::GameEvent {
+    pub(super) fn into_conf(self) -> crate::persist::config::GameEvent {
         crate::persist::config::GameEvent {
             map: self.map.into_conf(),
             visibility: self.visibility.into_conf(),
@@ -154,7 +156,7 @@ impl GameEvent {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, Debug, Copy, Hash, Eq, PartialEq)]
 pub enum GameMap {
     // TODO put some more obvious aliases on these
     Mars1,
@@ -168,7 +170,7 @@ pub enum GameMap {
 }
 
 impl GameMap {
-    fn into_conf(self) -> crate::persist::config::GameMap {
+    pub(super) fn into_conf(self) -> crate::persist::config::GameMap {
         match self {
             Self::Mars1 => crate::persist::config::GameMap::Mars1,
             Self::Mars2 => crate::persist::config::GameMap::Mars2,
@@ -477,8 +479,14 @@ fn default_rotation() -> GameEventSequence {
 
 fn default_multiplayer() -> super::MultiplayerConfig {
     super::MultiplayerConfig {
-        players_per_game: 2,
+        players_per_game: 1,
         enabled: true,
         network: super::multiplayer::default_net_conf(),
+    }
+}
+
+fn default_maps() -> super::MapsConfig {
+    super::MapsConfig {
+        map: super::maps::default_map(),
     }
 }
