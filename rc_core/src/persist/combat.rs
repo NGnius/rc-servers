@@ -361,7 +361,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Neptune3,
+                    map: GameMap::Earth1,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
@@ -376,8 +376,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
-                    visibility: GameVisibility::Poor,
+                    map: GameMap::Earth2,
+                    visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
@@ -391,7 +391,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Earth1,
+                    map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
@@ -406,8 +406,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Neptune3,
-                    visibility: GameVisibility::Poor,
+                    map: GameMap::Mars2,
+                    visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
@@ -421,7 +421,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
+                    map: GameMap::Mars3,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
@@ -436,8 +436,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
-                    visibility: GameVisibility::Poor,
+                    map: GameMap::Neptune1,
+                    visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },
@@ -451,7 +451,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Earth2,
+                    map: GameMap::Neptune2,
                     visibility: GameVisibility::Poor,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
@@ -466,8 +466,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Mars1,
-                    visibility: GameVisibility::Poor,
+                    map: GameMap::Neptune3,
+                    visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
                     auto_heal: true,
                 },

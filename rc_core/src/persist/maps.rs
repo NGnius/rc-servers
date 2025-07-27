@@ -30,6 +30,9 @@ pub struct CaptureBase {
     pub percent_per_second: f32,
 }
 
+const DEFAULT_PERCENT_PER_SECOND: f32 = 2.5;
+const DEFAULT_BASE_RADIUS: f32 = 20.0;
+
 pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap, MapConfig> {
     let mut map = std::collections::HashMap::with_capacity(9);
     //let coords_t0 = corner_to_center((6.60, 4.09, 20.3), 10.0);
@@ -165,46 +168,165 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 x: 6.60,
                 y: 4.09,
                 z: 20.3,
-                radius: 20.0,
-                percent_per_second: 2.5,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
                 x: 364.60,
                 y: 10.63,
                 z: 372.20,
-                radius: 20.0,
-                percent_per_second: 2.5,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
             },
         ],
     });
     map.insert(super::combat::GameMap::Mars2, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: 230.520,
+                y: 21.140,
+                z: 187.560,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: 661.680,
+                y: 21.230,
+                z: 620.280,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Mars3, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: 50.880,
+                y: 32.340,
+                z: -309.720,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: 50.280,
+                y: 32.320,
+                z: 207.360,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Neptune1, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: -97.718,
+                y: 1.580,
+                z: -82.150,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: -453.065,
+                y: -0.110,
+                z: 292.956,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Neptune2, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: 195.972,
+                y: 18.370,
+                z: -181.488,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: -182.556,
+                y: 18.390,
+                z: 196.416,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Neptune3, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: 143.880,
+                y: 42.270,
+                z: -151.440,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: -149.520,
+                y: 42.290,
+                z: 147.240,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Earth1, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: -43.824,
+                y: 2.700,
+                z: -240.888,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: -52.356,
+                y: 2.770,
+                z: 243.600,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map.insert(super::combat::GameMap::Earth2, MapConfig {
         spawn_points: vec![],
-        bases: vec![],
+        bases: vec![
+            CaptureBase {
+                team: 0,
+                x: -256.680,
+                y: 13.900,
+                z: -253.920,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+            CaptureBase {
+                team: 1,
+                x: 258.000,
+                y: 13.900,
+                z: 259.200,
+                radius: DEFAULT_BASE_RADIUS,
+                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+            },
+        ],
     });
     map
 }
