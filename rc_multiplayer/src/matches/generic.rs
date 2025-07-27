@@ -554,31 +554,38 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         }
                     },
                     super::GameMessage::Motion { user_id, motion } => {
-                        if self.custom_logic_handler.on_motion(&self, &motion).await {
-                            if let Some(conn) = self.users.read().await.get(&motion.player_id) {
-                                let (x, y, z) = motion.rb_state.rb_pos_rot.pos.into();
-                                conn.machine.location.x.store(x, std::sync::atomic::Ordering::Relaxed);
-                                conn.machine.location.y.store(y, std::sync::atomic::Ordering::Relaxed);
-                                conn.machine.location.z.store(z, std::sync::atomic::Ordering::Relaxed);
-                                log::debug!("Player {} is at (x, y, z) ({}, {}, {})", motion.player_id, x, y, z);
-                                use byteserde::ser_heap::ByteSerializeHeap;
-                                let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
-                                if let Err(e) = motion.byte_serialize_heap(&mut ser) {
-                                    log::error!("Failed to serialize motion data from user {}: {}", user_id, e);
-                                } else {
-                                    let data = bytes::Bytes::copy_from_slice(ser.as_slice());
-                                    for conn in self.users.read().await.values() {
-                                        if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
-                                        crate::events::log_lnl_send_failure(conn.connection.sender.send_data(crate::handler::EventData {
-                                            message_ty: crate::data::MessageType::RobotMotion,
-                                            variant: 0,
-                                            data_size: data.len() as _,
-                                            data: data.clone(),
-                                        }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
+                        let (x, y, z) = motion.rb_state.rb_pos_rot.pos.into();
+                        let (x2, y2, z2) = motion.rb_state.center_of_mass.into();
+                        let (w3, x3, y3, z3) = motion.rb_state.rb_pos_rot.rot.into();
+                        let quat = num_quaternion::Quaternion::new(w3, x3, y3, z3);
+                        if let Some(unit_quat) = quat.normalize() {
+                            let coords = unit_quat.rotate_vector([x2, y2, z2]);
+                            let (x4, y4, z4) = (x + coords[0], y + coords[1], z + coords[2]);
+                            //log::debug!("Player {} world CoM is at (x, y, z) ({}, {}, {})", motion.player_id, x4, y4, z4);
+                            if self.custom_logic_handler.on_motion(&self, &motion, (x4, y4, z4)).await {
+                                if let Some(conn) = self.users.read().await.get(&motion.player_id) {
+                                    conn.machine.location.x.store(x4, std::sync::atomic::Ordering::Relaxed);
+                                    conn.machine.location.y.store(y4, std::sync::atomic::Ordering::Relaxed);
+                                    conn.machine.location.z.store(z4, std::sync::atomic::Ordering::Relaxed);
+                                    use byteserde::ser_heap::ByteSerializeHeap;
+                                    let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
+                                    if let Err(e) = motion.byte_serialize_heap(&mut ser) {
+                                        log::error!("Failed to serialize motion data from user {}: {}", user_id, e);
+                                    } else {
+                                        let data = bytes::Bytes::copy_from_slice(ser.as_slice());
+                                        for conn in self.users.read().await.values() {
+                                            if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
+                                            crate::events::log_lnl_send_failure(conn.connection.sender.send_data(crate::handler::EventData {
+                                                message_ty: crate::data::MessageType::RobotMotion,
+                                                variant: 0,
+                                                data_size: data.len() as _,
+                                                data: data.clone(),
+                                            }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
+                                        }
                                     }
+                                } else {
+                                    log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
                                 }
-                            } else {
-                                log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
                             }
                         }
                     },
@@ -797,5 +804,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) fn is_game_done(&self) -> bool {
         self.is_complete.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    #[inline]
+    pub(super) fn is_in(loc: &(f32, f32, f32), sphere: &oj_rc_core::persist::config::Sphere) -> bool {
+        let distance = (
+            (loc.0 - sphere.center.x).powi(2)
+            + (loc.1 - sphere.center.y).powi(2)
+            + (loc.2 - sphere.center.z).powi(2)
+        ).sqrt();
+        //log::info!("{} away from sphere", distance);
+        distance < sphere.radius
     }
 }

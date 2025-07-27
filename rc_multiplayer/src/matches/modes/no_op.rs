@@ -36,7 +36,7 @@ impl CustomGameLogic for NoOpLogic {
         true
     }
 
-    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion) -> bool {
+    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
         true
     }
 }

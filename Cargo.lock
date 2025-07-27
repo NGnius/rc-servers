@@ -2477,6 +2477,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-quaternion"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d7fa2cef9166a2dcb9f1aa92e0ce2c6ddef7d664cc6d4af93e7f210bfb8a19b"
+dependencies = [
+ "num-integer",
+ "num-traits 0.2.19",
+]
+
+[[package]]
 name = "num-rational"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3350,6 +3360,7 @@ dependencies = [
  "literustlib",
  "literustlib_server",
  "log",
+ "num-quaternion",
  "oj_rc_core",
  "rlnl",
  "tokio",

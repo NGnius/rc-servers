@@ -16,6 +16,6 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     async fn on_countdown_start(&self, generic: &super::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool;
     async fn on_game_completed(&self, generic: &super::GenericGamemodeEngine<Self>) -> bool;
     async fn on_broadcast(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, skip_user: bool) -> bool;
-    async fn on_motion(&self, generic: &super::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion) -> bool;
+    async fn on_motion(&self, generic: &super::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool;
 }
 

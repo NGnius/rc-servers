@@ -45,11 +45,12 @@ impl GameMatches {
         }
         match game_info.mode {
             oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
+                let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config);
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,
                     players,
-                    super::modes::EliminationLogic::new(&self.mode_configs.elimination)
+                    inner,
                 );
                 Ok(engine.spawn())
             }

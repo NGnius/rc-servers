@@ -347,5 +347,5 @@ pub struct Sphere {
 #[derive(Clone, Debug)]
 pub struct MapConfig {
     pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
-    pub bases: std::collections::HashMap<u8, Sphere>, // team -> base
+    pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> base
 }

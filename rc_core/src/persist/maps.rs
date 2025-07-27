@@ -27,12 +27,13 @@ pub struct CaptureBase {
     pub y: f32,
     pub z: f32,
     pub radius: f32,
+    pub percent_per_second: f32,
 }
 
 pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap, MapConfig> {
     let mut map = std::collections::HashMap::with_capacity(9);
-    let coords_t0 = corner_to_center((6.60, 4.09, 20.3), 10.0);
-    let coords_t1 = corner_to_center((364.60, 10.63, 372.20), 10.0);
+    //let coords_t0 = corner_to_center((6.60, 4.09, 20.3), 10.0);
+    //let coords_t1 = corner_to_center((364.60, 10.63, 372.20), 10.0);
     map.insert(super::combat::GameMap::Mars1, MapConfig {
         spawn_points: vec![
             // team 0
@@ -161,17 +162,19 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
         bases: vec![
             CaptureBase {
                 team: 0,
-                x: coords_t0.0,
-                y: coords_t0.1,
-                z: coords_t0.2,
-                radius: 10.0,
+                x: 6.60,
+                y: 4.09,
+                z: 20.3,
+                radius: 20.0,
+                percent_per_second: 2.5,
             },
             CaptureBase {
                 team: 1,
-                x: coords_t1.0,
-                y: coords_t1.1,
-                z: coords_t1.2,
-                radius: 10.0,
+                x: 364.60,
+                y: 10.63,
+                z: 372.20,
+                radius: 20.0,
+                percent_per_second: 2.5,
             },
         ],
     });
@@ -206,6 +209,6 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
     map
 }
 
-const fn corner_to_center(corner: (f32, f32, f32), radius: f32) -> (f32, f32, f32) {
+/*const fn corner_to_center(corner: (f32, f32, f32), radius: f32) -> (f32, f32, f32) {
     (corner.0 + radius, corner.1, corner.2 + radius)
-}
+}*/

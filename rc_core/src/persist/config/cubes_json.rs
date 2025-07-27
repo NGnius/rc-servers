@@ -391,14 +391,14 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                     spawns.insert(point.team, list);
                 }
             }
-            let bases = conf.bases.iter().map(|base| (base.team, super::Sphere {
+            let bases = conf.bases.iter().map(|base| (base.team, (super::Sphere {
                 radius: base.radius,
                 center: super::Point {
                     x: base.x,
                     y: base.y,
                     z: base.z,
                 },
-            })).collect();
+            }, base.percent_per_second))).collect();
             let map_conf = super::MapConfig {
                 spawns,
                 bases,

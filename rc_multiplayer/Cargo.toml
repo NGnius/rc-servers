@@ -18,6 +18,7 @@ bytes = "1.10"
 byteserde = "0.6.2"
 chrono.workspace = true
 atomic_float = "1.1"
+num-quaternion = "1.0"
 
 literustlib_server = { version = "0.1", path = "../../LiteRustLib/server" }
 literustlib = { version = "0.1", path = "../../LiteRustLib" }
