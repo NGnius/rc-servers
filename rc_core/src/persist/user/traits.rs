@@ -41,16 +41,21 @@ pub struct RegistrationInfo {
     pub steam_id: Option<u64>,
 }
 
+pub struct AuthError {
+    pub message: String,
+    pub code: crate::data::error_codes::AuthErrorCode,
+}
+
 #[async_trait::async_trait]
 pub trait UserProvider<C> {
-    async fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+    async fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
 
-    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn User<C> + Send + Sync>, String>;
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
 }
 
 #[async_trait::async_trait]
 pub trait UserAuthenticator {
-    async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, String>;
+    async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, AuthError>;
     async fn user_exists(&self, user: UserId) -> Result<bool, String>;
     async fn register(&self, info: RegistrationInfo) -> Result<i32, String>;
 }

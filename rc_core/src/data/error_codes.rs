@@ -101,3 +101,23 @@ impl LobbyReasonCode {
         }
     }
 }
+
+#[repr(u16)] // doesn't really matter
+#[derive(Debug)]
+pub enum AuthErrorCode {
+    Unknown = 0,
+    InvalidDisplayName = 122,
+    AccountBlocked202 = 202,
+    PasswordInvalidated = 203,
+    BadCredentials = 204,
+    DisplayeNameAlreadyInUse = 210,
+    AccountBlocked301 = 301,
+    AccountUnconfirmed = 302,
+    UnlinkedSteamAccount = 303,
+}
+
+impl AuthErrorCode {
+    pub fn to_str(self) -> String {
+        (self as u16).to_string()
+    }
+}

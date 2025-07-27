@@ -3,8 +3,6 @@ mod common;
 
 #[cfg(feature = "cardlife")]
 mod cardlife;
-#[cfg(feature = "robocraft")]
-mod robocraft;
 
 #[rocket::get("/")]
 fn index() -> String {
@@ -27,12 +25,7 @@ async fn rocket() -> _ {
 
     #[cfg(feature = "cardlife")]
     {builder = builder.attach(cardlife::stage());}
-    #[cfg(feature = "robocraft")]
-    {builder = builder.attach(robocraft::stage());}
 
     builder
 }
-
-#[cfg(all(feature = "steam", feature = "robocraft", feature = "cardlife"))]
-compile_error!("Feature \"steam\" cannot work with features \"cardlife\" and \"robocraft\" at the same time");
 

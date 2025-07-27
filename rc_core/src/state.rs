@@ -39,7 +39,7 @@ impl <C: Clone + Send + 'static> UserState<C> {
                             true
                         },
                         Err(e) => {
-                            log::error!("Failed to authenticate {}: {}", splits[0], e);
+                            log::error!("Failed to authenticate {}: ({:?}) {}", splits[0], e.code, e.message);
                             false
                         }
                     }

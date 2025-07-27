@@ -63,21 +63,36 @@ impl AccountProvider {
 
 #[async_trait::async_trait]
 impl <C: Clone> super::UserProvider<C> for AccountProvider {
-    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
+    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
         //let new_root = self.root.join(&token.uuid);
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
-        jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| e.to_string())?;
-        let user_info = if let Some(user_info) = self.db.user_by_any_unique_id(token.uuid.clone()).await.map_err(|e| e.to_string())? {
+        jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
+        let user_info = if let Some(user_info) = self.db.user_by_any_unique_id(token.uuid.clone()).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
             user_info
         } else {
-            return Err("User not found".to_owned());
+            return Err(super::AuthError {
+                message: "User not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
         };
-        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| e.to_string())? {
+        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown
+        })? {
             user_perms
         } else {
-            return Err("User permissions not found".to_owned());
+            return Err(super::AuthError {
+                message: "User permissions not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
         };
         //let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
         Ok(Box::new(UserData {
@@ -90,16 +105,28 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
         //Err("Unable to authenticate".to_string())
     }
 
-    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, String> {
-        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| e.to_string())? {
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
+        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
             user_info
         } else {
-            return Err("User not found".to_owned());
+            return Err(super::AuthError {
+                message: "User not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
         };
-        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| e.to_string())? {
+        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
             user_perms
         } else {
-            return Err("User permissions not found".to_owned());
+            return Err(super::AuthError {
+                message: "User permissions not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
         };
         Ok(Box::new(UserData {
             account: user_info,
@@ -113,14 +140,17 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
 
 #[async_trait::async_trait]
 impl super::UserAuthenticator for AccountProvider {
-    async fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, String> {
+    async fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, super::AuthError> {
         //let new_root = self.root.join(&info.payload.public_id);
         let is_new_user;
         let user_opt = match &info.extra {
             super::ExtraUserInfo::Steam { id } => self.db.user_by_steam_id(*id).await,
             super::ExtraUserInfo::Email { .. } => self.db.user_by_email(info.payload.email_address.clone()).await,
             super::ExtraUserInfo::Username { .. } => self.db.user_by_display_name(info.payload.display_name.clone()).await,
-        }.map_err(|e| e.to_string())?;
+        }.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
         let mut user_info = if let Some(user_info) = user_opt {
             is_new_user = false;
             user_info
@@ -128,11 +158,20 @@ impl super::UserAuthenticator for AccountProvider {
             is_new_user = true;
             if self.auto_signups {
                 log::info!("New user {}", info.payload.public_id);
-                super::setup_new_user(&info, &self.db).await.map_err(|e| e.to_string())?;
-                self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| e.to_string())?.unwrap()
+                super::setup_new_user(&info, &self.db).await.map_err(|e| super::AuthError {
+                    message: e.to_string(),
+                    code: crate::data::error_codes::AuthErrorCode::Unknown,
+                })?;
+                self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| super::AuthError {
+                    message: e.to_string(),
+                    code: crate::data::error_codes::AuthErrorCode::Unknown,
+                })?.unwrap()
             } else {
                 log::info!("Rejecting user sign-in for `{}` (set settings.server.auto_signup=true to disable this behaviour)", info.payload.public_id);
-                return Err(format!("User does not exist"));
+                return Err(super::AuthError {
+                    message: "User not found".to_owned(),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                });
             }
         };
         let override_password = user_info.password.is_empty() && user_info.steam_id.is_none();
@@ -141,10 +180,16 @@ impl super::UserAuthenticator for AccountProvider {
                 let id_str = id.to_string();
                 if let Some(expected_steam_id) = user_info.steam_id {
                     if expected_steam_id != id_str {
-                        return Err("SteamID does not match".to_owned())
+                        return Err(super::AuthError {
+                            message: "SteamID does not match".to_owned(),
+                            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                        });
                     }
                 } else {
-                    return Err("SteamID not supported for this user".to_owned());
+                    return Err(super::AuthError {
+                        message: "SteamID not supported for this user".to_owned(),
+                        code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                    });
                 }
             },
             super::ExtraUserInfo::Email { password }
@@ -153,16 +198,45 @@ impl super::UserAuthenticator for AccountProvider {
                 let argon2_algo = argon2::Argon2::default();
                 if override_password {
                     let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
-                    let password_hash = argon2_algo.hash_password(password.as_bytes(), &salt).map_err(|e| e.to_string())?.to_string();
+                    let password_hash = argon2_algo.hash_password(password.as_bytes(), &salt).map_err(|e| super::AuthError {
+                        message: e.to_string(),
+                        code: crate::data::error_codes::AuthErrorCode::Unknown,
+                    })?.to_string();
                     user_info.password = password_hash;
                 }
                 if !user_info.password.is_empty() {
-                    let expected = argon2::password_hash::PasswordHash::new(&user_info.password).map_err(|e| e.to_string())?;
-                    argon2_algo.verify_password(password.as_bytes(), &expected).map_err(|e| e.to_string())?;
+                    let expected = argon2::password_hash::PasswordHash::new(&user_info.password).map_err(|e| super::AuthError {
+                        message: e.to_string(),
+                        code: crate::data::error_codes::AuthErrorCode::Unknown,
+                    })?;
+                    argon2_algo.verify_password(password.as_bytes(), &expected).map_err(|e| super::AuthError {
+                        message: e.to_string(),
+                        code: crate::data::error_codes::AuthErrorCode::Unknown,
+                    })?;
                 } else {
-                    return Err("Password not supported for this user".to_owned())
+                    return Err(super::AuthError {
+                        message: "Password not supported for this user".to_owned(),
+                        code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                    });
                 }
             }
+        }
+        // check if user is banned
+        if let Some(perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
+            if perms.banned {
+                return Err(super::AuthError {
+                    message: "User is banned".to_owned(),
+                    code: crate::data::error_codes::AuthErrorCode::AccountBlocked301,
+                });
+            }
+        } else {
+            return Err(super::AuthError {
+                message: "User has no permissions".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
         }
         // authentication has now definitely succeeded
         // build token

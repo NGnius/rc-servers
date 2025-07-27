@@ -14,6 +14,7 @@ readme = "README.md"
 [workspace]
 members = [
     "auth", "cdn",
+    "rc_auth",
     "polariton_auth",
     "rc_services", "rc_services_room",
     "rc_microtransactions",

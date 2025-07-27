@@ -1495,6 +1495,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+ "walkdir",
 ]
 
 [[package]]
@@ -2595,7 +2596,6 @@ dependencies = [
  "jsonwebtoken",
  "libfj",
  "log",
- "oj_rc_core",
  "rocket",
  "rocket_dyn_templates",
  "serde",
@@ -3344,6 +3344,25 @@ checksum = "b08f3c9802962f7e1b25113931d94f43ed9725bebc59db9d0c3e9a23b67e15ff"
 dependencies = [
  "getrandom 0.3.1",
  "zerocopy 0.8.14",
+]
+
+[[package]]
+name = "rc_auth"
+version = "0.3.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "clap",
+ "env_logger",
+ "git-version",
+ "handlebars",
+ "hex",
+ "libfj",
+ "log",
+ "oj_rc_core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

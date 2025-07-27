@@ -9,9 +9,8 @@ authors.workspace = true
 
 [features]
 steam = ["steamworks"]
-robocraft = ["oj_rc_core"]
 cardlife = []
-default = ["robocraft", "cardlife"]
+default = ["cardlife"]
 
 [dependencies]
 rocket.workspace = true
@@ -24,6 +23,5 @@ steamworks = { version = "0.11", optional = true }
 hex = "0.4"
 jsonwebtoken = "9"
 clap.workspace = true
-oj_rc_core = { version = "*", optional = true, path = "../rc_core" }
 serde.workspace = true
 git-version.workspace = true

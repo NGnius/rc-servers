@@ -30,9 +30,6 @@ fn get_steam_id_from_ticket(ticket: &[u8]) -> u64 {
 #[cfg(all(feature = "steam", feature = "cardlife"))]
 const STEAM_ID: &str = "920690"; // Cardlife steam app id
 
-#[cfg(all(feature = "steam", feature = "robocraft"))]
-const STEAM_ID: &str = "301520"; // Robocraft steam app id
-
 #[cfg(feature = "steam")]
 static STEAM_SERVER: std::sync::OnceLock<steamworks::Server> = std::sync::OnceLock::new();
 
