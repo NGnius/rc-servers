@@ -66,6 +66,7 @@ pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
+    fn is_banned(&self) -> bool;
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;

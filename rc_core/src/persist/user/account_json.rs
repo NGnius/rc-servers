@@ -572,6 +572,10 @@ impl <C: Clone> super::User<C> for UserData {
         self.perms.developer
     }
 
+    fn is_banned(&self) -> bool {
+        self.perms.banned
+    }
+
     async fn unlocked_parts(&self) -> Vec<u32> {
         match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
             Ok(Some(parts)) => {
