@@ -23,7 +23,7 @@ impl User {
                         true
                     },
                     Err(e) => {
-                        log::error!("Failed to authenticate {}: {}", info.player_name.0, e);
+                        log::error!("Failed to authenticate {}: {}", info.player_name.0, e.message);
                         false
                     }
                 }
