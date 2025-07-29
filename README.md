@@ -1,8 +1,8 @@
 # OpenJam Servers
 
-![Revolt chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)
-![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)
-![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Fservers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)
+[![Revolt chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)](https://rvlt.gg/jtVE0pD5)
+[![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)](https://git.ngram.ca/OpenJam/servers/releases)
+[![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Fservers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
 
 
 A collection of open source servers for FreeJam games
