@@ -15,8 +15,12 @@ To get CardLife to use these servers, replace the `ServerConfig.json` file in th
 
 ### Robocraft
 
+NOTE: Please refer to the latest [release](./releases) for more detailed instructions for accessing the public OpenJam servers.
+
 To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
-You may need to change the `activegroup` from `dev` to `ngram` (or vice versa for locally-hosted servers).
+You may need to change the `activegroup` from `dev` to `ngram` (or another group name depending on which servers you want to connect to).
+
+Before you can login the first time, you will need to create an account through the `rc_auth` (aka `authUrl`) server: `http://<rc_auth server address>:<port (maybe)>/register` (unless you've enabled automatic sign ups)
 
 ## Privacy
 
@@ -24,8 +28,9 @@ The minimum amount of data is (and should be) collected to provide the expected 
 In most cases, this means no data is collected or logged except some debug log messages in development versions.
 Some personal identifiers, such as IP addresses and session tokens, are sent but only exist ephemerally.
 The exception is Robocraft servers, which store the minimum account info possible.
-This includes a unique user identifier, username, vehicle data, and user configuration data.
-If email and/or Steam account identifier are provided, those are also stored.
+This includes username, vehicle data, user configuration data, and other non-identifying gameplay data.
+If email and/or Steam account identifier are provided during registration, those are also stored.
+This information is all associated with a unique user identifier.
 The current PC's MAC address is also sent to the server (this is a Robocraft client feature, it is not recorded by any server).
 
 ## Development
