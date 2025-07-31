@@ -192,6 +192,7 @@ LOGIN_MESSAGES = [
     "Finally, how to craft Robo",
     "Warning, live without warning\nI say, warning, live without warning\nWithout, all right",
     "Spitzer Damn!",
+    "Stop Killing Games",
 ]
 
 def guess_category(name: str, sprite: str) -> str:
