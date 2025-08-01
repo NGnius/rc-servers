@@ -19,7 +19,7 @@ impl WeaponListParser {
     pub fn with_cubes<'a, I: std::iter::Iterator<Item=&'a crate::persist::Cube>>(iter: I) -> Self {
         let mut weapons = std::collections::HashMap::new();
         for item in iter {
-            if let crate::persist::ItemType::Weapon = item.info.type_ {
+            if matches!(item.info.type_, crate::persist::ItemType::Weapon | crate::persist::ItemType::Module){
                 weapons.insert(item.id, WeaponInfo {
                     category: item.info.category.into(),
                     tier: item.info.size.into(),
@@ -41,7 +41,9 @@ impl WeaponListParser {
                         if keys.len() == MAX_WEAPON_SLOTS { break; }
                     }
                 }
-                keys.into_iter().collect::<Vec<i32>>()
+                let mut result = keys.into_iter().collect::<Vec<i32>>();
+                result.sort();
+                result
             }
             Err(e) => {
                 log::error!("Failed to parse cube data to guess weapon order: {}", e);
