@@ -530,7 +530,130 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
         ],
     });
     map.insert(super::combat::GameMap::Mars2, MapConfig {
-        spawn_points: vec![],
+        spawn_points: vec![
+            // team 0
+            SpawnPoint {
+                team: 0,
+                x: -198.924,
+                y: -14.583,
+                z: -201.221,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -181.922,
+                y: -14.038,
+                z: -213.642,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -183.744,
+                y: -13.899,
+                z: -196.812,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -237.587,
+                y: -12.163,
+                z: -213.035,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -222.539,
+                y: -12.982,
+                z: -207.438,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -232.544,
+                y: -12.942,
+                z: -229.363,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -165.911,
+                y: -12.618,
+                z: -243.646,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -177.804,
+                y: -13.899,
+                z: -231.290,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -186.688,
+                y: -13.650,
+                z: -251.367,
+            },
+            SpawnPoint {
+                team: 0,
+                x: -219.357,
+                y: -13.650,
+                z: -252.358,
+            },
+            // team 1
+            SpawnPoint {
+                team: 1,
+                x: 202.422,
+                y: -14.396,
+                z: 199.954,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 214.672,
+                y: -13.189,
+                z: 181.421,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 252.463,
+                y: -14.752,
+                z: 221.509,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 237.125,
+                y: -13.703,
+                z: 179.705,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 255.156,
+                y: -14.128,
+                z: 176.603,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 255.433,
+                y: -10.939,
+                z: 197.208,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 217.628,
+                y: -11.689,
+                z: 241.903,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 234.023,
+                y: -8.302,
+                z: 233.468,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 207.966,
+                y: -13.330,
+                z: 226.684,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 197.538,
+                y: -13.869,
+                z: 184.945,
+            },
+        ],
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -551,7 +674,130 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
         ],
     });
     map.insert(super::combat::GameMap::Mars3, MapConfig {
-        spawn_points: vec![],
+        spawn_points: vec![
+            // team 0
+            SpawnPoint {
+                team: 0,
+                x: 86.581,
+                y: 36.306,
+                z: -234.321,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 73.656,
+                y: 38.254,
+                z: -248.292,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 103.320,
+                y: 38.896,
+                z: -232.269,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 121.271,
+                y: 38.397,
+                z: -244.241,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 129.254,
+                y: 37.3032,
+                z: -261.716,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 60.802,
+                y: 36.021,
+                z: -256.596,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 73.300,
+                y: 37.185,
+                z: -267.537,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 138.259,
+                y: 35.640,
+                z: -248.434,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 90.537,
+                y: 36.971,
+                z: -218.770,
+            },
+            SpawnPoint {
+                team: 0,
+                x: 82.328,
+                y: 38.016,
+                z: -279.655,
+            },
+            // team 1
+            SpawnPoint {
+                team: 1,
+                x: 72.801,
+                y: 38.373,
+                z: 521.072,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 85.298,
+                y: 38.302,
+                z: 237.315,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 105.043,
+                y: 38.397,
+                z: 234.796,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 121.877,
+                y: 38.005,
+                z: 246.166,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 128.399,
+                y: 38.254,
+                z: 264.461,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 92.902,
+                y: 37.874,
+                z: 222.394,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 69.902,
+                y: 37.304,
+                z: 269.355,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 57.143,
+                y: 37.767,
+                z: 256.845,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 139.115,
+                y: 36.745,
+                z: 249.598,
+            },
+            SpawnPoint {
+                team: 1,
+                x: 84.027,
+                y: 39.537,
+                z: 283.955,
+            },
+        ],
         bases: vec![
             CaptureBase {
                 team: 0,
