@@ -2671,6 +2671,7 @@ dependencies = [
  "jsonwebtoken",
  "libfj",
  "log",
+ "num-quaternion",
  "oj_rc_database",
  "oj_rc_factory",
  "polariton 0.3.0",

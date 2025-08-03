@@ -18,6 +18,7 @@ polariton_server.workspace = true
 tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util", "time" ] }
 async-trait.workspace = true
 rand.workspace = true
+num-quaternion.workspace = true
 
 # auth
 libfj.workspace = true

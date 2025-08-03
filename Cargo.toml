@@ -45,3 +45,4 @@ async-trait = "0.1"
 chrono = "0.4"
 git-version = "0.3"
 rand = { version = "0.9", features = [ "thread_rng" ] }
+num-quaternion = "1.0"

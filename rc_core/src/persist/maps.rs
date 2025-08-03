@@ -20,6 +20,25 @@ pub struct SpawnPoint {
     pub z: f32,
 }
 
+impl SpawnPoint {
+    const fn offset(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+        self
+    }
+
+    fn rotated_from(mut self, x: f32, y: f32, z: f32, rot: num_quaternion::Quaternion<f32>) -> Self {
+        if let Some(unit_rot) = rot.normalize() {
+            let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
+            self.x = rotated[0] + x;
+            self.y = rotated[1] + y;
+            self.z = rotated[2] + z;
+        }
+        self
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CaptureBase {
     pub team: u8,
@@ -43,7 +62,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             SpawnPoint {
                 team: 0,
                 x: -226.255,
-                y: -6.475,
+                y: -6.475 + 10.0,
                 z: -99.293,
             },
             SpawnPoint {
@@ -161,7 +180,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -6.159,
                 z: -383.094,
             },
-        ],
+        ].into_iter().map(|x| x.offset(156.360, 9.983, -129.000)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -365,7 +384,12 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -71.445,
                 z: 266.000,
             },
-        ],
+        ].into_iter().map(|x| x.rotated_from(0.0, 86.718, 0.0, num_quaternion::Quaternion {
+            x: 0.0,
+            y: 0.707107,
+            z: 0.0,
+            w: 0.707107,
+        })).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -653,7 +677,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -13.869,
                 z: 184.945,
             },
-        ],
+        ].into_iter().map(|x| x.offset(0.0, 36.0796, 0.0)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -741,7 +765,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 team: 1,
                 x: 72.801,
                 y: 38.373,
-                z: 521.072,
+                z: 251.072,
             },
             SpawnPoint {
                 team: 1,
@@ -797,7 +821,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 39.537,
                 z: 283.955,
             },
-        ],
+        ].into_iter().map(|x| x.offset(0.0, 4.1933, 0.0)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -941,7 +965,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -4.076,
                 z: 435.700,
             },
-        ],
+        ].into_iter().map(|x| x.offset(283.600 * 0.8, 4.592 * 0.8, -24.100 * 0.8)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -1085,7 +1109,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -84.908,
                 z: 208.982,
             },
-        ],
+        ].into_iter().map(|x| x.offset(387.552, 105.420, -16.572)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
