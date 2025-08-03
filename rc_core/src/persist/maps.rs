@@ -49,6 +49,15 @@ pub struct CaptureBase {
     pub percent_per_second: f32,
 }
 
+impl CaptureBase {
+    const fn offset(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+        self
+    }
+}
+
 const DEFAULT_PERCENT_PER_SECOND: f32 = 2.5;
 const DEFAULT_BASE_RADIUS: f32 = 20.0;
 
@@ -695,7 +704,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 radius: DEFAULT_BASE_RADIUS,
                 percent_per_second: DEFAULT_PERCENT_PER_SECOND,
             },
-        ],
+        ].into_iter().map(|x| x.offset(-434.640, 0.0, -414.720)).collect(),
     });
     map.insert(super::combat::GameMap::Mars3, MapConfig {
         spawn_points: vec![
@@ -839,7 +848,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 radius: DEFAULT_BASE_RADIUS,
                 percent_per_second: DEFAULT_PERCENT_PER_SECOND,
             },
-        ],
+        ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
     });
     map.insert(super::combat::GameMap::Neptune1, MapConfig {
         spawn_points: vec![
@@ -983,7 +992,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 radius: DEFAULT_BASE_RADIUS,
                 percent_per_second: DEFAULT_PERCENT_PER_SECOND,
             },
-        ],
+        ].into_iter().map(|x| x.offset(405.542, 0.0, 10.668)).collect(),
     });
     map.insert(super::combat::GameMap::Neptune2, MapConfig {
         spawn_points: vec![
