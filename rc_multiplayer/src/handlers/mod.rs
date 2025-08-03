@@ -12,4 +12,5 @@ mod ingame_broadcast_dataless;
 pub use ingame_broadcast_dataless::DatalessBroadcaster;
 
 mod stub;
+#[allow(unused_imports)]
 pub use stub::Stub;

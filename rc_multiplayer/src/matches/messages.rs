@@ -49,6 +49,24 @@ pub enum GameMessage {
         user_id: i32,
         ping: rlnl::events::ingame::MapPing,
     },
+    KillBonus {
+        user_id: i32,
+        shootee: u8,
+        shooter: u8,
+    },
+    AssistBonus {
+        user_id: i32,
+        shootee: u8,
+        shooters: Vec<u8>,
+    },
+    DestroyCubesBonus {
+        user_id: i32,
+        info: rlnl::events::ingame::DestroyedHealedCubesBonus,
+    },
+    HealCubesBonus {
+        user_id: i32,
+        info: rlnl::events::ingame::DestroyedHealedCubesBonus,
+    },
     BroadcastRlnl {
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
@@ -87,6 +105,10 @@ impl GameMessage {
             Self::SelfDestruct { user_id, .. } => *user_id,
             Self::FlippingStarted { user_id, .. } => *user_id,
             Self::MapPing { user_id, .. } => *user_id,
+            Self::KillBonus { user_id, .. } => *user_id,
+            Self::AssistBonus { user_id, .. } => *user_id,
+            Self::DestroyCubesBonus { user_id, .. } => *user_id,
+            Self::HealCubesBonus { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::Motion { user_id, .. } => *user_id,

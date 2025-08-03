@@ -3,6 +3,7 @@ pub struct Stub<const CODE_IN: i16, In: byteserde::des_slice::ByteDeserializeSli
 }
 
 impl <const CODE_IN: i16, In: byteserde::des_slice::ByteDeserializeSlice<In> + Send + Sync + 'static> Stub<CODE_IN, In> {
+    #[allow(dead_code)]
     pub fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::simple_typed::SimpleRlnl<In, Self> {
         crate::handlers::simple_typed::SimpleRlnl::new(Stub::new(init_ctx))
     }

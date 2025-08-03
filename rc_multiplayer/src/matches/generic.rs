@@ -4,6 +4,7 @@ pub(super) struct UserConnection {
     pub(super) state: std::sync::Arc<UserState>,
     pub(super) machine: MachineState,
     pub(super) descriptor: oj_rc_core::persist::user::PlayerDescriptor,
+    pub(super) counters: UserData,
 }
 
 #[derive(Clone)]
@@ -72,6 +73,57 @@ impl Location {
             x: atomic_float::AtomicF32::new(0.0),
             y: atomic_float::AtomicF32::new(0.0),
             z: atomic_float::AtomicF32::new(0.0),
+        }
+    }
+}
+
+pub(super) struct UserData {
+    pub kills: std::sync::atomic::AtomicU32,
+    pub deaths: std::sync::atomic::AtomicU32,
+    pub assists: std::sync::atomic::AtomicU32,
+    pub healed: std::sync::atomic::AtomicU32,
+    pub received_healed: std::sync::atomic::AtomicU32,
+    pub cubes: std::sync::atomic::AtomicU32,
+    pub received_cubes: std::sync::atomic::AtomicU32, // damage taken
+}
+
+impl UserData {
+    fn new() -> Self {
+        Self {
+            kills: std::sync::atomic::AtomicU32::new(0),
+            deaths: std::sync::atomic::AtomicU32::new(0),
+            assists: std::sync::atomic::AtomicU32::new(0),
+            healed: std::sync::atomic::AtomicU32::new(0),
+            received_healed: std::sync::atomic::AtomicU32::new(0),
+            cubes: std::sync::atomic::AtomicU32::new(0),
+            received_cubes: std::sync::atomic::AtomicU32::new(0),
+        }
+    }
+
+    pub(super) fn generic_score(&self) -> u32 {
+        self.kills.load(std::sync::atomic::Ordering::Relaxed) * 1_000
+        + self.assists.load(std::sync::atomic::Ordering::Relaxed) * 100
+        + self.healed.load(std::sync::atomic::Ordering::Relaxed)
+        + self.cubes.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub(super) fn get_generic_packet(&self, player_id: u8, stat: rlnl::types::IngameStatId, delta: Option<u32>) -> rlnl::events::ingame::UpdateGameStats {
+        let (stat_amount, backup_delta) = match stat {
+            rlnl::types::IngameStatId::DestroyedCubes
+            | rlnl::types::IngameStatId::DestroyedCubesInProtection
+            | rlnl::types::IngameStatId::DestroyedCubesDefendingTheBase => (self.cubes.load(std::sync::atomic::Ordering::SeqCst), 1),
+            rlnl::types::IngameStatId::Kill => (self.kills.load(std::sync::atomic::Ordering::Relaxed), 1_000),
+            rlnl::types::IngameStatId::KillAssist => (self.assists.load(std::sync::atomic::Ordering::Relaxed), 100),
+            rlnl::types::IngameStatId::HealCubes => (self.assists.load(std::sync::atomic::Ordering::SeqCst), 1),
+            rlnl::types::IngameStatId::RobotDestroyed => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 0),
+            s => panic!("Cannot generate game stat {:?}", s)
+        };
+        rlnl::events::ingame::UpdateGameStats {
+            player_id,
+            stat_id: stat,
+            amount: stat_amount,
+            score: self.generic_score(),
+            delta_score: delta.unwrap_or(backup_delta),
         }
     }
 }
@@ -252,6 +304,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 state: std::sync::Arc::new(UserState::new()),
                                 machine: MachineState::new(),
                                 descriptor: player_info.to_owned(),
+                                counters: UserData::new(),
                             };
                             if self.custom_logic_handler.on_player_join(&self, &new_user, &self.players_info).await {
                                 self.spawn_send_loading_events(&new_user, id, self.players_info.clone());
@@ -489,7 +542,19 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             true,
                         ).await;
                         log::info!("Player {} was destroyed by {} ({}) in game {}", remote_player, killer_player, user_id, self.game_guid());
-                        self.custom_logic_handler.on_vehicle_destroyed(&self, killer_player, remote_player).await;
+                        if self.custom_logic_handler.on_vehicle_destroyed(&self, killer_player, remote_player).await {
+                            // the kill tracking is initiated separately by the client with kill bonus event
+                            if let Some(killed) = self.users.read().await.get(&remote_player) {
+                                killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                let data = killed.counters.get_generic_packet(remote_player, rlnl::types::IngameStatId::RobotDestroyed, None);
+                                self.broadcast(
+                                    rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &data,
+                                    true,
+                                ).await;
+                            }
+                        }
                     },
                     super::GameMessage::SelfDestruct { user_id, is_classic } => {
                         if let Some(player_id) = self.user_key_by_user_id(user_id).await {
@@ -520,6 +585,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         conn.connection.connection.disconnect();
                                     }
                                 }
+                                if let Some(killed) = self.users.read().await.get(&player_id) {
+                                    killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                    let data = killed.counters.get_generic_packet(player_id, rlnl::types::IngameStatId::RobotDestroyed, None);
+                                    self.broadcast(
+                                        rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &data,
+                                        true,
+                                    ).await;
+                                }
                             }
                         }
 
@@ -546,7 +621,106 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 ).await);
                             }
                         }
-                    }
+                    },
+                    super::GameMessage::KillBonus { user_id: _, shootee, shooter } => {
+                        if let Some(to_reward) = self.users.read().await.get(&shooter) {
+                            to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+                                &rlnl::events::ingame::Kill {
+                                    killee_player_id: shootee,
+                                    killer_player_id: shooter,
+                                },
+                                rlnl::event_code::NetworkEvent::ConfirmedKill,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &to_reward.connection.connection
+                            ).await);
+                            let data = to_reward.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::Kill, None);
+                            self.broadcast(
+                                rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &data,
+                                true,
+                            ).await;
+                        }
+                    },
+                    super::GameMessage::AssistBonus { user_id: _, shootee, shooters } => {
+                        let lock = self.users.read().await;
+                        for shooter in shooters {
+                            if let Some(to_reward) = lock.get(&shooter) {
+                                to_reward.counters.assists.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+                                    &rlnl::events::ingame::Kill {
+                                        killee_player_id: shootee,
+                                        killer_player_id: shooter,
+                                    },
+                                    rlnl::event_code::NetworkEvent::ConfirmedAssist,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &to_reward.connection.connection
+                                ).await);
+                                let data = to_reward.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::KillAssist, None);
+                                self.broadcast(
+                                    rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &data,
+                                    true,
+                                ).await;
+                            }
+                        }
+                    },
+                    super::GameMessage::DestroyCubesBonus { user_id: _, info } => {
+                        let lock = self.users.read().await;
+                        for shooter in info.shooters {
+                            if let Some(to_reward) = lock.get(&shooter.shooting_player_id) {
+                                let mut total_cubes = 0;
+                                for target in shooter.shooter_targets {
+                                    if let Some(to_punish) = lock.get(&target.target_player_id) {
+                                        let mut total_cubes_received = 0;
+                                        for cubes in target.cube_amounts {
+                                            // TODO use cube_id for something!?
+                                            total_cubes += cubes.cube_count;
+                                            total_cubes_received += cubes.cube_count;
+                                        }
+                                        to_punish.counters.received_cubes.fetch_add(total_cubes_received, std::sync::atomic::Ordering::SeqCst);
+                                    }
+                                }
+                                to_reward.counters.cubes.fetch_add(total_cubes, std::sync::atomic::Ordering::SeqCst);
+                                let data = to_reward.counters.get_generic_packet(shooter.shooting_player_id, rlnl::types::IngameStatId::DestroyedCubes, Some(total_cubes));
+                                self.broadcast(
+                                    rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                    literustlib::packet::Property::Unreliable,
+                                    &data,
+                                    true,
+                                ).await;
+                            }
+                        }
+                    },
+                    super::GameMessage::HealCubesBonus { user_id: _, info } => {
+                        let lock = self.users.read().await;
+                        for shooter in info.shooters {
+                            if let Some(to_reward) = lock.get(&shooter.shooting_player_id) {
+                                let mut total_cubes = 0;
+                                for target in shooter.shooter_targets {
+                                    if let Some(to_punish) = lock.get(&target.target_player_id) {
+                                        let mut total_cubes_received = 0;
+                                        for cubes in target.cube_amounts {
+                                            // TODO use cube_id for something!?
+                                            total_cubes += cubes.cube_count;
+                                            total_cubes_received += cubes.cube_count;
+                                        }
+                                        to_punish.counters.received_healed.fetch_add(total_cubes_received, std::sync::atomic::Ordering::SeqCst);
+                                    }
+                                }
+                                to_reward.counters.healed.fetch_add(total_cubes, std::sync::atomic::Ordering::SeqCst);
+                                let data = to_reward.counters.get_generic_packet(shooter.shooting_player_id, rlnl::types::IngameStatId::HealCubes, Some(total_cubes));
+                                self.broadcast(
+                                    rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                    literustlib::packet::Property::Unreliable,
+                                    &data,
+                                    true,
+                                ).await;
+                            }
+                        }
+                    },
                     super::GameMessage::BroadcastRlnl { user_id, event, event_in, property, data } => {
                         if self.custom_logic_handler.on_broadcast(&self, user_id, event, event_in, property, &data, false).await {
                             if let Some(data) = data {

@@ -11,6 +11,10 @@ mod client_unregister;
 mod flipper_start;
 mod self_destruct_elimination;
 mod map_ping;
+mod kill_bonus;
+mod assist_bonus;
+mod damage_bonus;
+mod heal_bonus;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -79,10 +83,8 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::DestroyCubeEffectOnly,
         >::handler(init_ctx))
-        .add(crate::handlers::Stub::<
-            {rlnl::event_code::NetworkEvent::DestroyCubesBonusRequest as i16},
-            rlnl::events::ingame::DestroyedHealedCubesBonus,
-        >::handler(init_ctx))
+        .add(damage_bonus::handler(init_ctx))
+        .add(heal_bonus::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             false,
             {rlnl::event_code::NetworkEvent::HealSelf as i16},
@@ -90,10 +92,8 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::HealedCubes,
         >::handler(init_ctx))
-        .add(crate::handlers::Stub::<
-            {rlnl::event_code::NetworkEvent::KillBonusRequest as i16},
-            rlnl::events::ingame::Kill, // FIXME this is not a player ID -- it's actually sending 2 bytes not 1
-        >::handler(init_ctx))
+        .add(kill_bonus::handler(init_ctx))
+        .add(assist_bonus::handler(init_ctx))
         .add(kill_player::handler(init_ctx))
         .add(crate::handlers::Broadcaster::<
             true,
