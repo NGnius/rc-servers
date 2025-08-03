@@ -535,6 +535,18 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             ).await;
                         }
                     },
+                    super::GameMessage::MapPing { user_id: _, ping } => {
+                        for (id, conn) in self.users.read().await.iter() {
+                            if (*id as i32) != ping.sender && (conn.descriptor.team as i32) == ping.team_id {
+                                crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
+                                    &ping,
+                                    rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &conn.connection.connection
+                                ).await);
+                            }
+                        }
+                    }
                     super::GameMessage::BroadcastRlnl { user_id, event, event_in, property, data } => {
                         if self.custom_logic_handler.on_broadcast(&self, user_id, event, event_in, property, &data, false).await {
                             if let Some(data) = data {

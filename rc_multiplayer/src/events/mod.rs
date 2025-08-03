@@ -10,6 +10,7 @@ mod kill_player;
 mod client_unregister;
 mod flipper_start;
 mod self_destruct_elimination;
+mod map_ping;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -173,6 +174,7 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::UpdateVotingAfterBattle,
         >::handler(init_ctx))
         .add(self_destruct_elimination::handler(init_ctx))
+        .add(map_ping::handler(init_ctx))
 }
 
 #[inline]
@@ -208,6 +210,7 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::ingame::CosmeticAction {}
     impl Broadcastable for rlnl::events::ingame::UpdateVotingAfterBattle {}
     impl Broadcastable for rlnl::events::ingame::TeleportActivateEffect {}
+    impl Broadcastable for rlnl::events::ingame::MapPing {}
 
     impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
     impl Broadcastable for rlnl::events::GameTime {}

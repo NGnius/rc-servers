@@ -45,6 +45,10 @@ pub enum GameMessage {
     FlippingStarted { // flip yeah!
         user_id: i32,
     },
+    MapPing {
+        user_id: i32,
+        ping: rlnl::events::ingame::MapPing,
+    },
     BroadcastRlnl {
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
@@ -82,6 +86,7 @@ impl GameMessage {
             Self::DestroyVehicle { user_id, .. } => *user_id,
             Self::SelfDestruct { user_id, .. } => *user_id,
             Self::FlippingStarted { user_id, .. } => *user_id,
+            Self::MapPing { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::Motion { user_id, .. } => *user_id,
