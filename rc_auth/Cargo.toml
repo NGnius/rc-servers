@@ -1,5 +1,5 @@
 [package]
-name = "rc_auth"
+name = "oj_rc_auth"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

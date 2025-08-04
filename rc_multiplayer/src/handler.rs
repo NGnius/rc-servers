@@ -40,7 +40,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
                     }
                     #[cfg(not(debug_assertions))]
                     {
-                        log::warn!("Unsupported {:?} event variant {} ({}); {:?}, pls fix!!!", header.property, variant_pretty, data.variant);
+                        log::warn!("Unsupported {:?} event variant {} ({}), pls fix!!!", header.property, variant_pretty, data.variant);
                     }
                 }
             },
