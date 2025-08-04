@@ -20,6 +20,8 @@ chrono.workspace = true
 atomic_float = "1.1"
 num-quaternion.workspace = true
 
-literustlib_server = { version = "0.1", path = "../../LiteRustLib/server" }
-literustlib = { version = "0.1", path = "../../LiteRustLib" }
+#literustlib_server = { version = "0.1", path = "../../LiteRustLib/server" }
+#literustlib = { version = "0.1", path = "../../LiteRustLib" }
+literustlib_server = { version = "0.1" }
+literustlib = { version = "0.1" }
 rlnl = { version = "0.1", path = "../../rlnl" }

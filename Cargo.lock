@@ -2198,7 +2198,9 @@ checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
 name = "literustlib"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39f90b22fbdd31314879adafa4a3b3275f8b95b497b4c2ff494013c900218136"
 dependencies = [
  "bytes",
  "num_enum 0.7.4",
@@ -2207,6 +2209,8 @@ dependencies = [
 [[package]]
 name = "literustlib_server"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27644d09965c75336dbd98913a90b0b92971a98011b1da3684a5636b495c0a27"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -3118,6 +3122,8 @@ source = "git+https://git.ngram.ca/OpenJam/polariton.git?rev=a27e90106037555d4aa
 [[package]]
 name = "polariton"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e8f83852ae293ba0b4c7a188e1749d90cecf2b1b257bf3b7f74c8b344c3b81c"
 dependencies = [
  "tokio",
 ]
@@ -3125,6 +3131,8 @@ dependencies = [
 [[package]]
 name = "polariton_server"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8bccc3bc630fc4915278007d0bffe519d13ec7693068484c570ad371bf2190f"
 dependencies = [
  "async-trait",
  "log",
