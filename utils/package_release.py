@@ -37,7 +37,7 @@ BINARIES_TO_INCLUDE = {
     "oj_rc_singleplayer": lambda name: generate_ip_redirect_script(name, 4539), "oj_rc_singleplayer_room": generate_ip_script,
     "oj_rc_social": lambda name: generate_ip_redirect_script(name, 4535), "oj_rc_social_room": generate_ip_script,
     "oj_rc_lobby": lambda name: generate_ip_redirect_script(name, 4541), "oj_rc_lobby_room": lambda name: generate_ip_redirect_script(name, 4542),
-    "oj_rc_multiplayer": generate_plain_script,
+    "oj_rc_multiplayer": generate_ip_script,
 }
 
 PROJECT_FOLDERS_TO_INCLUDE = [
