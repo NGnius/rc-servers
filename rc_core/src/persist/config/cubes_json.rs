@@ -302,6 +302,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             }).collect(),
             index: first,
             started: chrono::Utc::now().timestamp(),
+            needs_to_be_saved: true,
         }
     }
 

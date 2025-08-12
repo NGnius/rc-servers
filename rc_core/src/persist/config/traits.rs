@@ -160,17 +160,22 @@ pub struct GameEventSequence {
     pub modes: Vec<GameEvents>,
     pub index: usize,
     pub started: i64,
+    pub(crate) needs_to_be_saved: bool,
 }
 
 impl GameEventSequence {
     pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>) -> GameEventTransmissible {
         let time_now = chrono::Utc::now().timestamp();
         let mut item_now = &self.modes[self.index];
-        if time_now >= (item_now.duration.as_secs() as i64) + self.started {
-            // needs refresh
-            self.index = self.strategy.next(self.index, self.modes.len());
+        let needs_refresh = time_now >= (item_now.duration.as_secs() as i64) + self.started;
+        if self.needs_to_be_saved || needs_refresh {
+            if needs_refresh {
+                self.index = self.strategy.next(self.index, self.modes.len());
+                self.started = time_now;
+            } else {
+                self.needs_to_be_saved = false;
+            }
             item_now = &self.modes[self.index];
-            self.started = time_now;
             let mp = crate::persist::user::CurrentGameEvent {
                 map: crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().to_owned(),
                 visibility: crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility),
