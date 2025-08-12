@@ -585,16 +585,6 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         conn.connection.connection.disconnect();
                                     }
                                 }
-                                if let Some(killed) = self.users.read().await.get(&player_id) {
-                                    killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                                    let data = killed.counters.get_generic_packet(player_id, rlnl::types::IngameStatId::RobotDestroyed, None);
-                                    self.broadcast(
-                                        rlnl::event_code::NetworkEvent::UpdateGameStats,
-                                        literustlib::packet::Property::ReliableOrdered,
-                                        &data,
-                                        true,
-                                    ).await;
-                                }
                             }
                         }
 
