@@ -1,4 +1,4 @@
-use actix_web::{get, web::{Data, Path}, Responder};
+use actix_web::{get, post, web::{Data, Path, Bytes}, Responder};
 
 #[get("/customavatar/Live/{name}")]
 pub async fn get(cli: Data<crate::cli::CliArgs>, name: Path<String>) -> impl Responder {
@@ -10,4 +10,13 @@ pub async fn get(cli: Data<crate::cli::CliArgs>, name: Path<String>) -> impl Res
         log::info!("Not found /customavatar/Live/{} -> {}, using default image", name, path.display());
         actix_files::NamedFile::open_async(std::path::PathBuf::from(&cli.assets_robocraft).join(super::DEFAULT_IMAGE)).await
     }
+}
+
+#[post("/customavatar/Live/{name}")]
+pub async fn post(cli: Data<crate::cli::CliArgs>, auth: Data<crate::robocraft::IntercomAuth>, name: Path<String>, body: Bytes, req: actix_web::HttpRequest) -> Result<actix_web::HttpResponse, super::IntercomOpError> {
+    auth.validate(&req, &name)?;
+    let path = std::path::PathBuf::from(&cli.data_robocraft).join("customavatars").join(format!("{}.jpg", *name));
+    log::debug!("Saving customavatar for {} to {}: {}B", name, path.display(), body.len());
+    std::fs::write(path, &body).map_err(super::IntercomOpError::Io)?;
+    Ok(actix_web::HttpResponse::NoContent().finish())
 }

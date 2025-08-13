@@ -2617,6 +2617,7 @@ dependencies = [
  "env_logger",
  "git-version",
  "log",
+ "oj_rc_core",
  "tokio",
  "zip",
 ]
@@ -2700,8 +2701,10 @@ dependencies = [
  "polariton 0.3.0",
  "polariton_server",
  "rand 0.9.0",
+ "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
@@ -3499,6 +3502,7 @@ checksum = "43e734407157c3c2034e0258f5e4473ddb361b1e85f95a66690d67264d7cd1da"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "encoding_rs",
  "futures-core",
  "futures-util",
  "http 1.2.0",

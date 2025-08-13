@@ -76,6 +76,8 @@ pub struct ServerSettings {
     pub auto_signup: bool,
     #[serde(default)]
     pub queue_mode: QueueMode,
+    #[serde(default = "default_cdn_root_url")]
+    pub cdn_url: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -95,5 +97,10 @@ fn default_server_conf() -> ServerSettings {
         database: default_db_conn(),
         auto_signup: false,
         queue_mode: QueueMode::Notify,
+        cdn_url: default_cdn_root_url(),
     }
+}
+
+fn default_cdn_root_url() -> String {
+    "http://127.0.0.1:8010".to_owned()
 }

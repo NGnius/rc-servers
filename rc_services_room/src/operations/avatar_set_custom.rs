@@ -9,12 +9,16 @@ pub(super) fn custom_avatar_upload_handler() -> CustomAvatarHandler {
     CustomAvatarHandler
 }
 
-async fn do_save(params: ParameterTable<()>, _user: &crate::UserTy) -> Result<ParameterTable, i16> {
+async fn do_save(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     //let user_info = user.user()?;
     if let Some(Typed::Bytes(image)) = params.remove(&IMG_PARAM_KEY) {
         if let Some(Typed::Int(format)) = params.remove(&FORMAT_PARAM_KEY) {
             log::debug!("Got custom avatar ({}B) with format {}", image.vec.len(), format);
+            if format != 0 {
+                log::warn!("Got non-jpg format {} for custom avatar, this was assumed to be impossible", format);
+            }
+            user.user()?.save_custom_avatar(image.vec).await?;
             // TODO actually save image
             /*let info = oj_rc_core::persist::user::AvatarInfo {
                 avatar_id: 0,

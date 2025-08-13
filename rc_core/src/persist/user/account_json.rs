@@ -6,7 +6,8 @@ pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
     garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     auto_signups: bool,
-    secret: Vec<u8>,
+    cdn: std::sync::Arc<String>,
+    secret: std::sync::Arc<Vec<u8>>,
     db: std::sync::Arc<oj_rc_database::Database>,
 }
 
@@ -22,7 +23,8 @@ impl AccountProvider {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
             auto_signups: server_settings.auto_signup,
-            secret: std::fs::read(&token_path)?,
+            cdn: std::sync::Arc::new(server_settings.cdn_url),
+            secret: std::sync::Arc::new(std::fs::read(&token_path)?),
             db: std::sync::Arc::new(db),
         })
     }
@@ -100,7 +102,9 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             perms: user_perms,
             cubes: self.cubes.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
+            cdn: self.cdn.clone(),
             db: self.db.clone(),
+            secret: self.secret.clone(),
         }))
         //Err("Unable to authenticate".to_string())
     }
@@ -133,7 +137,9 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             perms: user_perms,
             cubes: self.cubes.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
+            cdn: self.cdn.clone(),
             db: self.db.clone(),
+            secret: self.secret.clone(),
         }))
     }
 }
@@ -287,13 +293,14 @@ impl super::UserAuthenticator for AccountProvider {
     }
 }
 
-#[allow(dead_code)]
-struct UserData {
-    account: oj_rc_database::schema::user::Model,
-    perms: oj_rc_database::schema::permissions::Model,
-    cubes: std::sync::Arc<Vec<u32>>,
-    garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
-    db: std::sync::Arc<oj_rc_database::Database>,
+pub(super) struct UserData {
+    pub(super) account: oj_rc_database::schema::user::Model,
+    pub(super) perms: oj_rc_database::schema::permissions::Model,
+    pub(super) cubes: std::sync::Arc<Vec<u32>>,
+    pub(super) garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
+    pub(super) cdn: std::sync::Arc<String>,
+    pub(super) db: std::sync::Arc<oj_rc_database::Database>,
+    pub(super) secret: std::sync::Arc<Vec<u8>>,
 }
 
 impl UserData {
@@ -1365,7 +1372,6 @@ impl super::LobbyUser for UserData {
 
 #[async_trait::async_trait]
 impl super::MultiplayerUser for UserData {
-    // TODO
     fn user_id(&self) -> i32 {
         self.account.id
     }

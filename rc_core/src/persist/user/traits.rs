@@ -61,7 +61,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser {
+pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser + IntercomUser {
     fn public_id(&self) -> &'_ str;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
@@ -327,4 +327,9 @@ pub trait MultiplayerUser {
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
     async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
+}
+
+#[async_trait::async_trait]
+pub trait IntercomUser {
+    async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
 }

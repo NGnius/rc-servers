@@ -16,3 +16,5 @@ env_logger.workspace = true
 tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
 zip = "4"
 git-version.workspace = true
+
+oj_rc_core = { version = "*", path = "../rc_core" }
