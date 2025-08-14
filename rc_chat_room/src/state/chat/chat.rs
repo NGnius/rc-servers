@@ -2,28 +2,29 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct ChatProvider {
-    chat_system: std::sync::Arc<std::sync::RwLock<crate::state::chat::ChatSystem>>,
+    chat_system: std::sync::Arc<tokio::sync::RwLock<crate::state::chat::ChatSystem>>,
 }
 
 impl ChatProvider {
     pub fn new(conf: oj_rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
         Ok(Self {
-            chat_system: std::sync::Arc::new(std::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf)?)),
+            chat_system: std::sync::Arc::new(tokio::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf)?)),
         })
     }
 
-    pub fn system(&self) -> std::sync::RwLockReadGuard<'_, crate::state::chat::ChatSystem> {
-        self.chat_system.read().unwrap()
+    pub async fn system(&self) -> tokio::sync::RwLockReadGuard<'_, crate::state::chat::ChatSystem> {
+        self.chat_system.read().await
     }
 
-    pub fn system_mut(&self) -> std::sync::RwLockWriteGuard<'_, crate::state::chat::ChatSystem> {
-        self.chat_system.write().unwrap()
+    pub async fn system_mut(&self) -> tokio::sync::RwLockWriteGuard<'_, crate::state::chat::ChatSystem> {
+        self.chat_system.write().await
     }
 }
 
 pub struct ChatSystem {
     chats: HashMap<String, super::ChatRoom>,
     online_users: HashMap<String, super::UserHandle>,
+    battle_cache: tokio::sync::RwLock<HashMap<String, Vec<String>>>,
     config: super::ChatSystemConfig,
 }
 
@@ -83,7 +84,7 @@ impl ChatSystem {
         }
     }
 
-    pub fn handle_public_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+    pub async fn handle_public_message(&self, user: &(dyn oj_rc_core::persist::user::User<()> + Send + Sync), text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if self.config.is_command_channel(&channel) {
             if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty);
@@ -100,6 +101,58 @@ impl ChatSystem {
                 channel_ty,
             };
             room.send_public_message(event_params);
+        } else {
+            match channel_ty {
+                crate::data::channel::ChatChannelType::Battle | crate::data::channel::ChatChannelType::BattleTeam => {
+                    let relevant_players = if let Some(cached) = self.battle_cache.read().await.get(&channel) {
+                        cached.to_owned()
+                    } else if matches!(channel_ty, crate::data::channel::ChatChannelType::BattleTeam) {
+                        if let Ok(players) = user.get_teammates().await {
+                            self.battle_cache.write().await.insert(channel.clone(), players.clone());
+                            players
+                        } else {
+                            Vec::default()
+                        }
+                    } else {
+                        if let Ok(players) = user.get_gamemates().await {
+                            self.battle_cache.write().await.insert(channel.clone(), players.clone());
+                            players
+                        } else {
+                            Vec::default()
+                        }
+                    };
+                    if !relevant_players.is_empty() {
+                        let event_params = crate::events::chat_message::PublicMessage {
+                            sender_name: user.public_id().to_owned(),
+                            sender_display_name: user.display_name().to_owned(),
+                            text,
+                            is_dev: user.is_dev(),
+                            is_mod: user.is_mod(),
+                            is_admin: user.is_admin(),
+                            channel_name: channel,
+                            channel_ty,
+                        };
+                        let event = polariton::operation::Event {
+                            code: crate::events::chat_message::PublicMessage::CODE,
+                            params: event_params.as_event_params(),
+                        };
+                        for handle in self.online_users.values() {
+                            if handle.name() == user.public_id() { continue; }
+                            if relevant_players.contains(&handle.name().to_owned()) {
+                                handle.send(polariton_server::ToSend::Data {
+                                    data: polariton::packet::Data::Event(event.clone()),
+                                    encrypt: true,
+                                    channel: 0,
+                                    reliable: true,
+                                });
+                            }
+                        }
+                    }
+                },
+                _ => {
+                    log::warn!("Got message for non-existent chat room {} (variant: {:?})", channel, channel_ty);
+                }
+            }
         }
     }
 
@@ -165,6 +218,7 @@ impl ChatSystem {
         Ok(Self {
             chats: HashMap::new(),
             online_users: HashMap::new(),
+            battle_cache: tokio::sync::RwLock::new(HashMap::new()),
             config: super::ChatSystemConfig::from_persist(config)?,
         })
     }

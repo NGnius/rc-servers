@@ -294,6 +294,19 @@ impl Database {
             .map(|(x, _)| x))
     }
 
+    pub async fn game_and_player_by_user_id_and_completion(&self, user_id: i32, is_complete: bool) -> Result<Option<(crate::schema::multiplayer_game::Model, crate::schema::multiplayer_game_player::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game_player::Entity)
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game_player::Relation::Game.def())
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            .order_by_asc(crate::schema::multiplayer_game::Column::CreationTime)
+            //.into_model()
+            .one(&self.orm)
+            .await?
+            .and_then(|(game, player)| player.map(|player| (game, player))))
+    }
+
     pub async fn update_complete_game_by_game_guid(&self, game_guid: i64) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game::Entity::update_many()
             .col_expr(crate::schema::multiplayer_game::Column::IsComplete, sea_orm::sea_query::Expr::value(true))
@@ -334,6 +347,22 @@ impl Database {
             //.join(sea_orm::JoinType::InnerJoin, crate::schema::user::Relation::Player.def())
             .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
             .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            .all(&self.orm)
+            .await?
+            .into_iter()
+            .filter_map(|(player, user, _)| user.map(|user| (player, user)))
+            .collect())
+    }
+
+    pub async fn players_by_game_guid_and_completion_and_team_heavy(&self, game_guid: i64, team: i32, is_complete: bool) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game::Relation::Player.def())
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::user::Relation::Player.def())
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            .filter(crate::schema::multiplayer_game_player::Column::Team.eq(team))
             .all(&self.orm)
             .await?
             .into_iter()

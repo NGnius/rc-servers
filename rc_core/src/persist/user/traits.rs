@@ -211,6 +211,9 @@ pub trait ChatUser {
     //async fn has_pending_sanctions(&self) -> Result<bool, i16>;
     async fn get_sanctions(&self, username: String) -> Result<polariton::operation::Typed<()>, i16>;
     async fn set_sanction(&self, sanction: SetSanction) -> Result<(), i16>;
+    // multiplayer-related
+    async fn get_teammates(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError>;
+    async fn get_gamemates(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct SetSanction {

@@ -12,7 +12,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, chat_syst
     let name = user_info.public_id().to_owned();
     let channels = user_info.subscribed_channels_strings().await?;
     let event_tx = user.event_chann();
-    chat_system.system_mut().connect_user(name, channels, event_tx);
+    chat_system.system_mut().await.connect_user(name, channels, event_tx);
     params.insert(PARAM_KEY, user_info.subscribed_channels().await?);
     Ok(params.into())
 }
