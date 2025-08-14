@@ -113,7 +113,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(polariton_server::operations::Ack::<132, _>::default()) // verify user level
         .add(load_analytics::NoAnalytics)
         .add(polariton_server::operations::Ack::<131, _>::default()) // analytics updated notification
-        .add(platform_config::platform_config_provider())
+        .add(platform_config::platform_config_provider(&init_ctx.cubes))
         .add(tier_banding::tiers_banding_provider())
         .add(cube_list::cube_list_provider(&init_ctx.cubes))
         .add(special_items::special_item_list_provider())

@@ -1142,11 +1142,20 @@ impl super::GameEventSetter for GameEventSetterImpl {
 impl super::ChatUser for UserData {
     async fn subscribed_channels(&self) -> Result<polariton::operation::Typed<()>, i16> {
         let channels = self.subscribed_channels_strings().await?;
+        log::info!("User is subscribed to channels {:?}", channels);
         Ok(polariton::operation::Typed::Arr(polariton::operation::Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashtable
-            items: channels.iter().map(|name| crate::data::channel::ChatChannelInfo {
-                channel_name: name.to_owned(),
-                members: Vec::default(),
+            items: channels.into_iter().map(|name| crate::data::channel::ChatChannelInfo {
+                channel_name: name,
+                members: vec![
+                    crate::data::channel::ChatChannelMember {
+                        name: self.account.display_name.clone(),
+                        use_custom_avatar: false,
+                        state: crate::data::channel::ChatPlayerState::Idk0,
+                        custom_avatar: Vec::default(),
+                        avatar_id: 0,
+                    },
+                ],
                 channel_ty: crate::data::channel::ChatChannelType::Public,
             }.as_transmissible()).collect()
         }))

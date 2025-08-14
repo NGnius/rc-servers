@@ -7,6 +7,10 @@ pub struct ChatConfig {
     #[serde(default = "default_command_chann")]
     pub command_channel: String,
     pub commands: Vec<ChatCommand>,
+    #[serde(default = "default_selected_chann")]
+    pub default_channel: String,
+    #[serde(default = "default_true")]
+    pub can_create_channels: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -36,11 +40,19 @@ fn default_pub_channs() -> Vec<String> {
     vec![
         "main".to_owned(),
         "sys".to_owned(),
-        "openjam_worship".to_owned(),
+        "jam_club".to_owned(),
     ]
 }
 
 
 fn default_command_chann() -> String {
     "sys".to_owned()
+}
+
+fn default_selected_chann() -> String {
+    "jam_club".to_owned()
+}
+
+fn default_true() -> bool {
+    true
 }

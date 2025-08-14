@@ -22,7 +22,7 @@ fn default_gameplay_settings() -> super::GameplaySettings {
         shield_hps: 2_000,
         request_review_level: 10_000,
         critical_ratio: 5.0,
-        cross_promo_image: "https://git.ngram.ca/OpenJam/servers/raw/branch/main/assets/robocraft/favicon.jpg".to_owned(),
+        cross_promo_image: "https://git.ngram.ca/OpenJam/servers/raw/branch/main/assets/robocraft/default.png".to_owned(),
         cross_promo_link: "https://git.ngram.ca/OpenJam/servers".to_owned(),
     }
 }
@@ -78,6 +78,12 @@ pub struct ServerSettings {
     pub queue_mode: QueueMode,
     #[serde(default = "default_cdn_root_url")]
     pub cdn_url: String,
+    #[serde(default = "default_feedback_url")]
+    pub feedback_url: String,
+    #[serde(default = "default_support_url")]
+    pub support_url: String,
+    #[serde(default = "default_wiki_url")]
+    pub wiki_url: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -98,9 +104,24 @@ fn default_server_conf() -> ServerSettings {
         auto_signup: false,
         queue_mode: QueueMode::Notify,
         cdn_url: default_cdn_root_url(),
+        feedback_url: default_feedback_url(),
+        support_url: default_support_url(),
+        wiki_url: default_wiki_url(),
     }
 }
 
 fn default_cdn_root_url() -> String {
     "http://127.0.0.1:8010".to_owned()
+}
+
+fn default_feedback_url() -> String {
+    "https://mstdn.ca/@ngram".to_owned()
+}
+
+fn default_support_url() -> String {
+    "https://rvlt.gg/jtVE0pD5".to_owned()
+}
+
+fn default_wiki_url() -> String {
+    "https://git.ngram.ca/OpenJam/servers/wiki".to_owned()
 }

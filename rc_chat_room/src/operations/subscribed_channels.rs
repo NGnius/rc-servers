@@ -1,11 +1,12 @@
 //use oj_rc_core::persist::user::ChatUser;
 use polariton::operation::{ParameterTable, OperationResponse};
 
-const CODE: u8 = 12;
+const CODE: u8 = 12; // get all subscribed
 
 const PARAM_KEY: u8 = 18;
 
 async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy) -> Result<ParameterTable, i16> {
+    log::info!("Getting subscribed user's channels");
     let mut params = params.to_dict();
     let user_info = user.user()?;
     params.insert(PARAM_KEY, user_info.subscribed_channels().await?);

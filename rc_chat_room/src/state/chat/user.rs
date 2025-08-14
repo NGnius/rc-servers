@@ -24,6 +24,17 @@ impl UserHandle {
         }
     }
 
+    /*pub fn send_later(&self, to_send: polariton_server::ToSend, wait: std::time::Duration) {
+        tokio::spawn(Self::send_after(self.event_tx.clone(), to_send, wait));
+    }
+
+    async fn send_after(event_tx: tokio::sync::mpsc::WeakUnboundedSender<polariton_server::ToSend>, to_send: polariton_server::ToSend, wait: std::time::Duration) {
+        tokio::time::sleep(wait).await;
+        if let Some(event_tx) = event_tx.upgrade() {
+            event_tx.send(to_send).unwrap_or_default();
+        }
+    }*/
+
     pub fn send_private_message(&self, message: crate::events::chat_message::PrivateMessage) {
         let event = polariton::operation::Event {
             code: 2,

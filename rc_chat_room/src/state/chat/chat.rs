@@ -91,7 +91,7 @@ impl ChatSystem {
         } else if let Some(room) = self.chats.get(&channel) {
             let event_params = crate::events::chat_message::PublicMessage {
                 sender_name: user.public_id().to_owned(),
-                sender_display_name: user.public_id().to_owned(),
+                sender_display_name: user.display_name().to_owned(),
                 text,
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),

@@ -32,6 +32,7 @@ pub trait ConfigProvider<C: Clone> {
     // FIXME don't use serializable types in traits
     fn network_config(&self) -> crate::persist::NetworkConf;
     fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;
+    fn url_links(&self) -> LinksConfig;
 }
 
 pub struct CompleteCampaignProvider {
@@ -153,6 +154,8 @@ impl GarageUpgrades {
 pub struct ChatSystemConfig {
     pub command_channel: String,
     pub commands: Vec<crate::persist::ChatCommand>,
+    pub default_channel: String,
+    pub can_create_channels: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -354,4 +357,11 @@ pub struct Sphere {
 pub struct MapConfig {
     pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
     pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> base
+}
+
+#[derive(Clone, Debug)]
+pub struct LinksConfig {
+    pub feedback_url: String,
+    pub support_url: String,
+    pub wiki_url: String,
 }

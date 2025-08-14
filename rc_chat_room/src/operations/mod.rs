@@ -15,10 +15,10 @@ use polariton_server::operations::OperationsHandler;
 pub fn handler(chat_system: crate::state::chat::ChatImpl, conf: &oj_rc_core::persist::config::ConfigImpl) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
         .modify(oj_rc_core::polariton::RcOpModifier)
-        .add(more_auth::MoreLobbyAuth::new(chat_system.clone()))
+        .add(more_auth::MoreLobbyAuth::new())
         .add(chat_ignores::ignores_provider())
         .add(pending_sanctions::pending_sanctions_checker())
-        .add(all_joined_channels::all_channels_provider())
+        .add(all_joined_channels::all_channels_provider(chat_system.clone()))
         //.add(polariton_server::operations::Ack::<12, _>::default())
         .add(send_message::send_public_message_handler(chat_system.clone()))
         .add(public_channels::public_channels_provider(conf))

@@ -288,6 +288,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         super::ChatSystemConfig {
             command_channel: self.chat.command_channel.clone(),
             commands: self.chat.commands.clone(),
+            default_channel: self.chat.default_channel.clone(),
+            can_create_channels: self.chat.can_create_channels,
         }
     }
 
@@ -407,5 +409,13 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             };
             (map.into_conf(), map_conf)
         }).collect()
+    }
+
+    fn url_links(&self) -> super::LinksConfig {
+        super::LinksConfig {
+            feedback_url: self.settings.server.feedback_url.clone(),
+            support_url: self.settings.server.support_url.clone(),
+            wiki_url: self.settings.server.wiki_url.clone(),
+        }
     }
 }

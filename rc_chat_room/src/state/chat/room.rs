@@ -1,5 +1,6 @@
 pub struct ChatRoom {
     name: String,
+    #[allow(dead_code)]
     channel: crate::data::channel::ChatChannelType,
     online_users: Vec<super::UserHandle>,
 }
@@ -35,11 +36,13 @@ impl ChatRoom {
     }
 
     pub fn send_public_message(&self, message: crate::events::chat_message::PublicMessage) {
+        let user_id = &message.sender_display_name;
         let event = polariton::operation::Event {
             code: 1,
             params: message.as_event_params(),
         };
         for user in self.online_users.iter() {
+            if user.name() == user_id { continue; }
             user.send(polariton_server::ToSend::Data {
                 data: polariton::packet::Data::Event(event.clone()),
                       encrypt: true,
@@ -60,22 +63,20 @@ impl ChatRoom {
     pub fn connect_user(&mut self, handle: super::UserHandle) {
         self.cleanup();
         let event = polariton::operation::Event {
-            code: 1,
-            params: crate::events::chat_message::PublicMessage {
-                sender_name: "system".to_owned(),
-                sender_display_name: "system".to_owned(),
+            code: crate::events::room_join::RoomJoined::CODE,
+            params: crate::events::room_join::RoomJoined {
                 channel_name: self.name.clone(),
-                channel_ty: self.channel,
-                text: "joined".to_owned(),
-                is_dev: false,
-                is_mod: false,
-                is_admin: false,
+                player_name: handle.name().to_owned(),
+                player_state: oj_rc_core::data::channel::ChatPlayerState::Idk0,
+                use_custom_avatar: false,
+                custom_avatar: Vec::default(),
+                avatar_id: 0,
             }.as_event_params(),
         };
         handle.send(polariton_server::ToSend::Data {
             data: polariton::packet::Data::Event(event),
                     encrypt: true,
-                    channel: 0,
+                    channel: crate::events::room_join::RoomJoined::CHANNEL,
                     reliable: true,
         });
         self.online_users.push(handle);
