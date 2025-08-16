@@ -249,7 +249,11 @@ impl SanctionType {
 pub trait LobbyUser {
     fn user_id(&self) -> i32;
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
-    async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
+}
+
+pub struct FakePlayers {
+    pub players: Vec<crate::data::player_data::PlayerData>
 }
 
 pub struct CurrentGameEvent {
@@ -275,12 +279,14 @@ pub struct GameDescriptor {
 pub struct PlayerLobbyDescriptor {
     pub user_id: i32,
     pub team: i32,
+    pub public_id: String,
+    pub display_name: String,
     pub group: Option<i32>,
 }
 
 #[derive(Clone)]
 pub struct PlayerDescriptor {
-    pub user_id: i32,
+    pub user_id: Option<i32>,
     pub player_id: u8,
     pub team: i32,
     pub group: Option<i32>,

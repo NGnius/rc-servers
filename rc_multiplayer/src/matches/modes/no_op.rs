@@ -1,5 +1,6 @@
 use crate::matches::CustomGameLogic;
 
+#[allow(dead_code)]
 pub struct NoOpLogic;
 
 #[async_trait::async_trait]

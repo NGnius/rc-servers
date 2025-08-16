@@ -68,6 +68,8 @@ impl QueueHandler {
             user_id: x.user_id,
             team: x.player.team,
             group: None, // TODO support platoons
+            public_id: x.player.name.clone(),
+            display_name: x.player.display_name.clone(),
         }).collect();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
@@ -80,8 +82,8 @@ impl QueueHandler {
             is_complete: false,
         };
         match user.start_game(game_desc, player_descs).await {
-            Ok(_) => {
-                let player_datas = players.iter().map(|x| x.player.clone()).collect();
+            Ok(fakes) => {
+                let player_datas = players.iter().map(|x| x.player.clone()).chain(fakes.players.into_iter()).collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
                     host: self.hostname.clone(),
                     port: self.hostport,

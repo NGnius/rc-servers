@@ -10,6 +10,7 @@ mod m20250529_000001_create_sanction_table;
 mod m20250713_000001_create_game_table;
 mod m20250713_000002_create_player_table;
 mod m20250722_000001_create_game_event_table;
+mod m20250816_000001_add_fake_players;
 
 pub struct Migrator;
 
@@ -27,6 +28,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250713_000001_create_game_table::Migration),
             Box::new(m20250713_000002_create_player_table::Migration),
             Box::new(m20250722_000001_create_game_event_table::Migration),
+            Box::new(m20250816_000001_add_fake_players::Migration),
         ]
     }
 }

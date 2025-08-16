@@ -1,5 +1,5 @@
 mod more_auth;
-mod eac;
+//mod eac;
 mod no_quit;
 mod join_queue;
 

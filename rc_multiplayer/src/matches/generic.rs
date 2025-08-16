@@ -7,6 +7,28 @@ pub(super) struct UserConnection {
     pub(super) counters: UserData,
 }
 
+#[allow(dead_code)]
+pub(super) struct FakeUser {
+    pub(super) state: std::sync::Arc<UserState>,
+    pub(super) machine: MachineState,
+    pub(super) descriptor: oj_rc_core::persist::user::PlayerDescriptor,
+    pub(super) counters: UserData,
+}
+
+impl FakeUser {
+    fn new(descriptor: oj_rc_core::persist::user::PlayerDescriptor) -> Self {
+        Self {
+            state: std::sync::Arc::new(UserState {
+                mode: std::sync::atomic::AtomicU8::new(ConnectionMode::InGame.to_u8()),
+                progress: std::sync::atomic::AtomicU8::new(100),
+            }),
+            machine: MachineState::new(),
+            descriptor,
+            counters: UserData::new(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(super) struct UserSender {
     pub(super) connection: std::sync::Arc<literustlib_server::Connection<crate::PacketData>>,
@@ -171,6 +193,7 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub game_descriptor: oj_rc_core::persist::user::GameDescriptor,
     pub players_info: std::sync::Arc<Vec<oj_rc_core::persist::user::PlayerDescriptor>>,
     pub custom_logic_handler: L,
+    pub fake_users: std::collections::HashMap<u8, FakeUser>,
 }
 
 impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
@@ -184,6 +207,10 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         custom: L
     ) -> Self {
 
+        let fake_users = players.iter()
+            .filter(|player| player.user_id.is_none())
+            .map(|player| (player.team as u8, FakeUser::new(player.to_owned())))
+            .collect();
         Self {
             users: tokio::sync::RwLock::new(std::collections::HashMap::new()),
             user_id_map: tokio::sync::RwLock::new(std::collections::HashMap::new()),
@@ -193,6 +220,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             game_descriptor: game,
             players_info: std::sync::Arc::new(players),
             custom_logic_handler: custom,
+            fake_users,
         }
     }
 
@@ -293,7 +321,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             //tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                             //let id = users.len() as u8;
                             let user_id = user.user_id();
-                            let player_info = self.players_info.iter().filter(|p| p.user_id == user_id).next().unwrap();
+                            let player_info = self.players_info.iter().filter(|p| p.user_id == Some(user_id)).next().unwrap();
                             let id = player_info.player_id;
                             let new_user = UserConnection {
                                 user,
@@ -371,10 +399,12 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             match mode {
                                 ConnectionMode::Loading | ConnectionMode::Disconnected => {},
                                 ConnectionMode::WaitingForSync | ConnectionMode::Sync | ConnectionMode::WaitingToStart => {
-                                    if user_id != conn.user.user_id() {
-                                        crate::events::log_lnl_send_failure(conn.connection.rlnl()
-                                            .send_data(&progress_data, rlnl::event_code::NetworkEvent::BroadcastLoadingProgress, literustlib::packet::Property::ReliableOrdered, &conn.connection.connection).await);
-                                    }
+                                    self.broadcast(
+                                        rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &progress_data,
+                                        false,
+                                    ).await;
                                     /*if progress > 0.95 {
                                         log::info!("User {} is ready, ending sync", user_id);
                                         crate::events::log_lnl_send_failure(crate::handlers::simple_typed::RlnlSender::new(&conn.sender)
@@ -421,12 +451,34 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             let sender = crate::handlers::RlnlSender::new(&user_info.0.sender);
                             for conn in self.users.read().await.values() {
                                 if user_id == conn.user.user_id() { continue; }
-                                crate::events::log_lnl_send_failure(sender.send_data(
+                                /*crate::events::log_lnl_send_failure(sender.send_data(
                                     &user_info.1,
                                     rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
                                     literustlib::packet::Property::ReliableOrdered,
                                     &user_info.0.connection,
-                                ).await);
+                                ).await);*/
+                                let event = rlnl::events::loading::LoadingProgress {
+                                    user_name: rlnl::types::BinaryWriterString(conn.user.user_name().to_owned()),
+                                    progress: (conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
+                                };
+                                crate::events::log_lnl_send_failure(sender.send_data(
+                                    &event,
+                                    rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &user_info.0.connection,
+                                ).await)
+                            }
+                            for fake in self.fake_users.values() {
+                                let event = rlnl::events::loading::LoadingProgress {
+                                    user_name: rlnl::types::BinaryWriterString("FakeUser".to_owned()),
+                                    progress: (fake.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
+                                };
+                                crate::events::log_lnl_send_failure(sender.send_data(
+                                    &event,
+                                    rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &user_info.0.connection,
+                                ).await)
                             }
                         } else {
                             log::error!("Failed to find user {} in connected users for match {}", user_id, self.game_guid());
@@ -466,7 +518,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 }
                             }
                         }
-                        let player_count = self.players_info.len();
+                        let player_count = self.players_info.iter().filter(|x| x.user_id.is_some()).count();
                         if ready_count == player_count {
                             log::info!("All players ({}) awaiting sync for game {}", player_count, self.game_guid());
                             for (user_key, conn) in self.users.read().await.iter() {
@@ -480,18 +532,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             if let Some(conn) = self.users.read().await.get(&user_key) {
                                 log::info!("Loading complete for game {}, user {} ({})", self.game_guid(), user_id, user_key);
                                 conn.state.progress.store(100, std::sync::atomic::Ordering::Relaxed);
-                                conn.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
-                                /*let game_start = chrono::DateTime::from_timestamp(self.game_start.load(std::sync::atomic::Ordering::Relaxed), 0).unwrap();
-                                let payload = super::countdown::time_to_game_start_payload(game_start);
-                                let sender = conn.connection.rlnl();
-                                if let Err(e) = sender.send_data(
-                                    &payload,
-                                    rlnl::event_code::NetworkEvent::TimeToGameStart,
-                                    literustlib::packet::Property::ReliableOrdered,
-                                    &conn.connection.connection)
-                                .await {
-                                    log::error!("Failed to send updated TimeToGameStart to a user: {}", e);
-                                }*/
+                                if matches!(ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Sync) {
+                                    conn.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                                }
                                 self.spawn_initial_ingame_events(conn, user_id);
                             } else {
                                 log::warn!("Invalid LoadComplete user key {} for game {}", user_key, self.game_guid());
@@ -509,7 +552,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         }
                         // trigger game start
                         if all_users_loading_complete {
-                            let player_count = self.players_info.len();
+                            let player_count = self.players_info.iter().filter(|x| x.user_id.is_some()).count();
                             log::info!("All players ({}) are ready for game {}", player_count, self.game_guid());
                             tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
                             let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;

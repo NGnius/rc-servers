@@ -5,13 +5,15 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub user_id: i32,
+    pub user_id: Option<i32>,
     pub game_id: i32,
     pub creation_time: i64, // seconds since unix epoch
     pub player_id: i16, // actually u8
     pub team: i32,
     pub group: Option<i32>, // probably a user id
     pub is_claimed: bool,
+    pub public_id: String,
+    pub display_name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

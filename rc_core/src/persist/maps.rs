@@ -28,6 +28,13 @@ impl SpawnPoint {
         self
     }
 
+    const fn scale(mut self, scale: f32) -> Self {
+        self.x *= scale;
+        self.y *= scale;
+        self.z *= scale;
+        self
+    }
+
     fn rotated_from(mut self, x: f32, y: f32, z: f32, rot: num_quaternion::Quaternion<f32>) -> Self {
         if let Some(unit_rot) = rot.normalize() {
             let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
@@ -974,7 +981,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -4.076,
                 z: 435.700,
             },
-        ].into_iter().map(|x| x.offset(283.600 * 0.8, 4.592 * 0.8, -24.100 * 0.8)).collect(),
+        ].into_iter().map(|x| x.offset(283.600, 4.592, -24.100).scale(0.8)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,

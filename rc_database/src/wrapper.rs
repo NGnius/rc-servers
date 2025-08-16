@@ -1,5 +1,5 @@
 use sea_orm_migration::MigratorTrait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait, RelationTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait};
 
 pub struct Database {
     orm: sea_orm::DatabaseConnection,
@@ -330,16 +330,19 @@ impl Database {
     }
 
     pub async fn players_by_game_guid_and_completion(&self, game_guid: i64, is_complete: bool) -> Result<Vec<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
-        crate::schema::multiplayer_game_player::Entity::find()
-            .join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game::Relation::Player.def())
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game::Entity)
             .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
             .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
-            .into_model::<crate::schema::multiplayer_game_player::Model>()
+            //.into_model::<crate::schema::multiplayer_game_player::Model>()
             .all(&self.orm)
-            .await
+            .await?
+            .into_iter()
+            .map(|(player, _)| player)
+            .collect())
     }
 
-    pub async fn players_by_game_guid_and_completion_heavy(&self, game_guid: i64, is_complete: bool) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+    /*pub async fn players_by_game_guid_and_completion_heavy(&self, game_guid: i64, is_complete: bool) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game_player::Entity::find()
             .find_also_related(crate::schema::user::Entity)
             .find_also_related(crate::schema::multiplayer_game::Entity)
@@ -352,9 +355,9 @@ impl Database {
             .into_iter()
             .filter_map(|(player, user, _)| user.map(|user| (player, user)))
             .collect())
-    }
+    }*/
 
-    pub async fn players_by_game_guid_and_completion_and_team_heavy(&self, game_guid: i64, team: i32, is_complete: bool) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+    /*pub async fn players_by_game_guid_and_completion_and_team_heavy(&self, game_guid: i64, team: i32, is_complete: bool) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game_player::Entity::find()
             .find_also_related(crate::schema::user::Entity)
             .find_also_related(crate::schema::multiplayer_game::Entity)
@@ -368,14 +371,32 @@ impl Database {
             .into_iter()
             .filter_map(|(player, user, _)| user.map(|user| (player, user)))
             .collect())
+    }*/
+
+    pub async fn players_by_game_guid_and_completion_and_team(&self, game_guid: i64, team: i32, is_complete: bool) -> Result<Vec<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game::Relation::Player.def())
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::user::Relation::Player.def())
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            .filter(crate::schema::multiplayer_game_player::Column::Team.eq(team))
+            .all(&self.orm)
+            .await?
+            .into_iter()
+            .map(|(player, _)| player)
+            .collect())
     }
 
     pub async fn players_by_game_id_and_completion(&self, game_id: i32) -> Result<Vec<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
-        crate::schema::multiplayer_game_player::Entity::find()
-            .join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game::Relation::Player.def())
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game::Entity)
             .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
             .all(&self.orm)
-            .await
+            .await?
+            .into_iter()
+            .map(|(player, _)| player)
+            .collect())
     }
 
     pub async fn insert_players(&self, entities: Vec<crate::schema::multiplayer_game_player::ActiveModel>) -> Result<(), sea_orm::DbErr> {
