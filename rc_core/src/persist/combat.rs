@@ -158,14 +158,21 @@ impl GameEvent {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy, Hash, Eq, PartialEq)]
 pub enum GameMap {
-    // TODO put some more obvious aliases on these
+    #[serde(alias = "Hellion", alias = "HellionCrater")]
     Mars1,
+    #[serde(alias = "Tihonium", alias = "TihoniumCanyon")]
     Mars2,
+    #[serde(alias = "Tharsis", alias = "TharsisRift")]
     Mars3,
+    #[serde(alias = "Gliese", alias = "GlieseLake")]
     Neptune1,
+    #[serde(alias = "Ophiuchus", alias = "OphiuchusValley")]
     Neptune2,
+    #[serde(alias = "Spitzer", alias = "SpitzerDam")]
     Neptune3,
+    #[serde(alias = "Birmingham", alias = "BirminghamPowerStation")]
     Earth1,
+    #[serde(alias = "Vanguard", alias = "VanguardsEnd")]
     Earth2,
 }
 
