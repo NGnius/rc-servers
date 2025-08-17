@@ -16,6 +16,8 @@ pub struct BattleConfig {
     pub multiplayer: super::MultiplayerConfig,
     #[serde(default = "default_maps")]
     pub maps: super::MapsConfig,
+    #[serde(default = "default_energy")]
+    pub energy: EnergyConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -232,6 +234,12 @@ impl GameType {
             Self::Campaign => crate::persist::config::GameType::Campaign,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub struct EnergyConfig {
+    pub refill_rate_per_s: f32,
+    pub total: u32,
 }
 
 fn default_game_modes() -> GameModes {
@@ -496,5 +504,12 @@ fn default_multiplayer() -> super::MultiplayerConfig {
 fn default_maps() -> super::MapsConfig {
     super::MapsConfig {
         map: super::maps::default_map(),
+    }
+}
+
+fn default_energy() -> EnergyConfig {
+    EnergyConfig {
+        refill_rate_per_s: 0.1, // should take 10s to refill
+        total: 12_550,
     }
 }

@@ -34,6 +34,7 @@ pub trait ConfigProvider<C: Clone> {
     fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;
     fn url_links(&self) -> LinksConfig;
     fn fake_players(&self) -> Vec<FakePlayer>;
+    fn energy(&self) -> EnergyConfig;
 }
 
 pub struct CompleteCampaignProvider {
@@ -378,4 +379,10 @@ pub struct FakePlayer {
 #[derive(Clone, Copy, Debug)]
 pub enum ClientEmulator {
     Experiment,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnergyConfig {
+    pub refill_rate: f32,
+    pub total: u32,
 }

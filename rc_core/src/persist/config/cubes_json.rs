@@ -434,4 +434,11 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             implementation: player.implementation.clone().to_config(),
         }).collect()
     }
+
+    fn energy(&self) -> super::EnergyConfig {
+        super::EnergyConfig {
+            refill_rate: self.battle.energy.refill_rate_per_s,
+            total: self.battle.energy.total,
+        }
+    }
 }

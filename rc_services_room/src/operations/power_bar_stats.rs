@@ -1,16 +1,17 @@
-use polariton_server::operations::SimpleFunc;
+use polariton_server::operations::Immediate;
 use polariton::operation::{ParameterTable, Typed};
 
 const PARAM_KEY: u8 = 61;
 
-pub(super) fn power_bar_provider() -> SimpleFunc<51, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
+pub(super) fn power_bar_provider(conf: &oj_rc_core::ConfigImpl) -> Immediate<51, crate::UserTy> {
+    let energy_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::energy(conf);
+    Immediate::new(|| {
+        let mut params = ParameterTable::with_capacity(2);
         params.insert(PARAM_KEY, Typed::HashMap(vec![
-                (Typed::Str("refillRatePerSecond".into()), Typed::Float(0.10)), // should take 10s to refill
-                (Typed::Str("powerForAllRobots".into()), Typed::Int(12_550 /* converted to u32 */)),
+                (Typed::Str("refillRatePerSecond".into()), Typed::Float(energy_conf.refill_rate)),
+                (Typed::Str("powerForAllRobots".into()), Typed::Int(energy_conf.total as _)),
             ].into()
         ));
-        Ok(params.into())
+        params
     })
 }
