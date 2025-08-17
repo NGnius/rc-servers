@@ -2785,6 +2785,7 @@ dependencies = [
  "log",
  "num-quaternion",
  "oj_rc_core",
+ "rand 0.9.0",
  "rlnl",
  "tokio",
 ]

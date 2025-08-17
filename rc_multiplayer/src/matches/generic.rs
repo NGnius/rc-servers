@@ -194,6 +194,7 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub players_info: std::sync::Arc<Vec<oj_rc_core::persist::user::PlayerDescriptor>>,
     pub custom_logic_handler: L,
     pub fake_users: std::collections::HashMap<u8, FakeUser>,
+    pub fakes_handler: super::fake::Handler,
 }
 
 impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
@@ -204,7 +205,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         game: oj_rc_core::persist::user::GameDescriptor,
         map: oj_rc_core::persist::config::MapConfig,
         players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
-        custom: L
+        custom: L,
+        fakes_handler: super::fake::Handler,
     ) -> Self {
 
         let fake_users = players.iter()
@@ -221,6 +223,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             players_info: std::sync::Arc::new(players),
             custom_logic_handler: custom,
             fake_users,
+            fakes_handler,
         }
     }
 
@@ -470,7 +473,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             }
                             for fake in self.fake_users.values() {
                                 let event = rlnl::events::loading::LoadingProgress {
-                                    user_name: rlnl::types::BinaryWriterString("FakeUser".to_owned()),
+                                    user_name: rlnl::types::BinaryWriterString(fake.descriptor.public_id.clone()),
                                     progress: (fake.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
                                 };
                                 crate::events::log_lnl_send_failure(sender.send_data(
@@ -555,6 +558,11 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             let player_count = self.players_info.iter().filter(|x| x.user_id.is_some()).count();
                             log::info!("All players ({}) are ready for game {}", player_count, self.game_guid());
                             tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
+                            self.fakes_handler.on_ready(
+                                self.users.read().await.iter()
+                                    .map(|(id, real_player)| (*id, real_player.connection.clone()))
+                                    .collect()
+                            );
                             let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;
                             if self.custom_logic_handler.on_countdown_start(&self, game_start).await {
                                 let mut senders = Vec::new();
@@ -812,6 +820,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
             }
         }
+        self.fakes_handler.stop();
         log::info!("Game {} has exited", self.game_guid());
     }
 

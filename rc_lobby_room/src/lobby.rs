@@ -39,11 +39,12 @@ pub struct QueueHandler {
     hostport: u16,
     network_conf: crate::data::network::NetworkConfigData,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+    weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
     change_strategy: GamemodeChangeStrategy,
 }
 
 impl QueueHandler {
-    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> Self {
+    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         Self {
             users_in_queue: tokio::sync::Mutex::new(HashMap::new()),
@@ -53,6 +54,7 @@ impl QueueHandler {
             hostport: port_str.parse().expect("Invalid redirect port"),
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
             cpu_counter,
+            weapon_guesser,
             change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
         }
     }
@@ -81,7 +83,7 @@ impl QueueHandler {
             is_custom: false,
             is_complete: false,
         };
-        match user.start_game(game_desc, player_descs).await {
+        match user.start_game(game_desc, player_descs, &self.cpu_counter, &self.weapon_guesser).await {
             Ok(fakes) => {
                 let player_datas = players.iter().map(|x| x.player.clone()).chain(fakes.players.into_iter()).collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {

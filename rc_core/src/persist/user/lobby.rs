@@ -17,7 +17,7 @@ impl super::LobbyUser for UserData {
         })
     }
 
-    async fn start_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
+    async fn start_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
         let guid = crate::persist::user::str_to_i64(&game.guid)
             .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
@@ -32,7 +32,7 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let fake_players = self.generate_fake_players_data(guid).await;
+        let fake_players = self.generate_fake_players_data(guid, cpu_counter, weapon_lister).await;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,

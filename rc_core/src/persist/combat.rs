@@ -489,6 +489,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         players_per_game: 2,
         enabled: true,
         network: super::multiplayer::default_net_conf(),
+        fakes: super::multiplayer::default_fake_users(),
     }
 }
 

@@ -6,6 +6,8 @@ pub struct MultiplayerConfig {
     pub enabled: bool,
     #[serde(default = "default_net_conf")]
     pub network: NetworkConf,
+    #[serde(default = "default_fake_users")]
+    pub fakes: Vec<FakePlayerConf>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,5 +46,40 @@ pub(super) fn default_net_conf() -> NetworkConf {
         resend_delay_rtt_mult: 0.5,
         network_peer_update_interval: 1,
         max_delay_for_disconnect_ms: 1000,
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FakePlayerConf {
+    pub public_id: String,
+    pub display_name: String,
+    pub team: u8,
+    #[serde(flatten)]
+    pub implementation: ClientEmulation,
+}
+
+pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
+    //Vec::default()
+    vec![
+        FakePlayerConf {
+            public_id: "ServerExperiment01".to_owned(),
+            display_name: "Server".to_owned(),
+            team: 1,
+            implementation: ClientEmulation::Experimental,
+        }
+    ]
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "impl")]
+pub enum ClientEmulation {
+    Experimental,
+}
+
+impl ClientEmulation {
+    pub(super) fn to_config(self) -> super::config::ClientEmulator {
+        match self {
+            Self::Experimental => super::config::ClientEmulator::Experiment,
+        }
     }
 }

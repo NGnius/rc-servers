@@ -418,4 +418,13 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             wiki_url: self.settings.server.wiki_url.clone(),
         }
     }
+
+    fn fake_players(&self) -> Vec<super::FakePlayer> {
+        self.battle.multiplayer.fakes.iter().map(|player| super::FakePlayer {
+            public_id: player.public_id.clone(),
+            display_name: player.display_name.clone(),
+            team: player.team,
+            implementation: player.implementation.clone().to_config(),
+        }).collect()
+    }
 }

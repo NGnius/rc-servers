@@ -3,6 +3,7 @@ pub struct GameMatches {
     routing: std::collections::HashMap<i32, String>, // user id to game guid
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
+    fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
 }
 
 impl GameMatches {
@@ -15,6 +16,7 @@ impl GameMatches {
                 .into_iter()
                 .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
                 .collect(),
+            fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
         }
     }
 
@@ -22,6 +24,26 @@ impl GameMatches {
         let (tx, rx) = tokio::sync::mpsc::channel(super::CHANNEL_BOUND);
         tokio::spawn(self.run(rx));
         tx
+    }
+
+    fn build_player_emulator(&self, emu: oj_rc_core::persist::config::ClientEmulator) -> Box<dyn super::fake::FakeUser> {
+        match emu {
+            oj_rc_core::persist::config::ClientEmulator::Experiment => Box::new(super::fake::ExperimentalPlayer::new()),
+        }
+    }
+
+    fn build_fake_players(&self, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<u8, Box<dyn super::fake::FakeUser>> {
+        let mut fake_player_i = 0;
+        let mut fakes = std::collections::HashMap::with_capacity(self.fake_players.len());
+        for player in players.iter() {
+            if fake_player_i >= self.fake_players.len() { break; }
+            if player.user_id.is_none() {
+                let fake = self.build_player_emulator(self.fake_players[fake_player_i].implementation);
+                fakes.insert(player.player_id, fake);
+                fake_player_i += 1;
+            }
+        }
+        fakes
     }
 
     async fn start_new_match_engine(&self, user: &Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>, guid: &str) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
@@ -41,8 +63,10 @@ impl GameMatches {
             });
         let players = user.game_players(guid).await?;
         if players.is_empty() {
-            log::warn!("No players found to game {}, loading may not work correctly", guid);
+            log::warn!("No players found for game {}, loading may not work correctly", guid);
         }
+        let fakes = self.build_fake_players(&players);
+        let fakes_handler = super::fake::Handler::start(fakes, players.clone()).await;
         match game_info.mode {
             oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
                 let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config);
@@ -51,6 +75,7 @@ impl GameMatches {
                     map_config,
                     players,
                     inner,
+                    fakes_handler,
                 );
                 Ok(engine.spawn())
             }

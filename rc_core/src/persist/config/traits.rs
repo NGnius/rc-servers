@@ -33,6 +33,7 @@ pub trait ConfigProvider<C: Clone> {
     fn network_config(&self) -> crate::persist::NetworkConf;
     fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;
     fn url_links(&self) -> LinksConfig;
+    fn fake_players(&self) -> Vec<FakePlayer>;
 }
 
 pub struct CompleteCampaignProvider {
@@ -364,4 +365,17 @@ pub struct LinksConfig {
     pub feedback_url: String,
     pub support_url: String,
     pub wiki_url: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct FakePlayer {
+    pub public_id: String,
+    pub display_name: String,
+    pub team: u8,
+    pub implementation: ClientEmulator,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ClientEmulator {
+    Experiment,
 }

@@ -1,30 +1,30 @@
 use super::account_json::UserData;
 
 impl UserData {
-    pub(super) async fn generate_fake_players_data(&self, _guid: i64) -> Vec<crate::data::player_data::PlayerData> {
-        vec![
-            crate::data::player_data::PlayerData {
-                name: "FakeUser".to_owned(),
-                display_name: "Server".to_owned(),
+    pub(super) async fn generate_fake_players_data(&self, _guid: i64, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Vec<crate::data::player_data::PlayerData> {
+        self.fake_players.iter()
+            .map(|fake| crate::data::player_data::PlayerData {
+                name: fake.public_id.clone(),
+                display_name: fake.display_name.clone(),
                 mastery: 1,
                 tier: 1,
-                robot_name: "Very bad but very good".to_owned(),
+                robot_name: "fake".to_owned(),
                 robot_map: crate::persist::VALID_ROBOT.into(),
                 group: None,
-                team: 2,
+                team: fake.team as _,
                 has_premium: true,
                 robot_uuid: "1234_1234".to_owned(),
-                cpu: 42,
+                cpu: cpu_counter.calculate_cpu(&mut std::io::Cursor::new(crate::persist::VALID_ROBOT)).total as _,
                 avatar_id: Some(0),
-                weapon_order: vec![0,0,0],
+                weapon_order: weapon_lister.guess_weapons(&mut std::io::Cursor::new(crate::persist::VALID_ROBOT)),
                 colour_map: crate::persist::VALID_COLOUR.into(),
                 is_ai: false,
                 spawn_effect: "Spawn".into(),
                 death_effect: "Explosion".into(),
                 player_rank: 1,
                 weapon_rank: Default::default(),
-            }
-        ]
+            })
+            .collect()
     }
 }
 
