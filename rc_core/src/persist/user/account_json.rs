@@ -560,54 +560,6 @@ impl UserData {
         }
         Ok(players)
     }
-
-    async fn get_players_in_current_game(&self) -> Result<Vec<oj_rc_database::schema::multiplayer_game_player::Model>, polariton_server::operations::SimpleOpError> {
-        let current_game = self.db.game_by_user_id_and_completion(self.account.id, false).await
-            .map_err(|e| {
-                log::error!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e);
-                polariton_server::operations::SimpleOpError::with_message(
-                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
-                    format!("Failed to retrieve ongoing game for user {}", self.account.id),
-                )
-            })?;
-        if let Some(current_game) = current_game {
-            let guid = current_game.guid;
-            self.db.players_by_game_guid_and_completion(current_game.guid, false).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve players for game {} for user {}: {}", guid, self.account.id, e);
-                    polariton_server::operations::SimpleOpError::with_message(
-                        crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
-                        format!("Failed to retrieve ongoing game {} for user {}", guid, self.account.id),
-                    )
-                })
-        } else {
-            Ok(Vec::default())
-        }
-    }
-
-    async fn get_teammates_in_current_game(&self) -> Result<Vec<oj_rc_database::schema::multiplayer_game_player::Model>, polariton_server::operations::SimpleOpError> {
-        let current_game_info = self.db.game_and_player_by_user_id_and_completion(self.account.id, false).await
-            .map_err(|e| {
-                log::error!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e);
-                polariton_server::operations::SimpleOpError::with_message(
-                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
-                    format!("Failed to retrieve ongoing game for user {}", self.account.id),
-                )
-            })?;
-        if let Some((current_game, current_player)) = current_game_info {
-            let guid = current_game.guid;
-            self.db.players_by_game_guid_and_completion_and_team(current_game.guid, current_player.team, false).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve players for game {} for user {}: {}", guid, self.account.id, e);
-                    polariton_server::operations::SimpleOpError::with_message(
-                        crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
-                        format!("Failed to retrieve ongoing game {} for user {}", guid, self.account.id),
-                    )
-                })
-        } else {
-            Ok(Vec::default())
-        }
-    }
 }
 
 const INVALID_ROBOT_ERR: i16 = crate::data::error_codes::WebServicesError::InvalidRobot as i16; // 140
@@ -1351,23 +1303,5 @@ impl super::ChatUser for UserData {
         } else {
             Err(crate::data::error_codes::ChatErrorCodes::DoesNotExist as i16)
         }
-    }
-
-    async fn get_teammates(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError> {
-        Ok(
-            self.get_teammates_in_current_game().await?
-                .into_iter()
-                .map(|player| player.public_id)
-                .collect()
-        )
-    }
-
-    async fn get_gamemates(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError> {
-        Ok(
-            self.get_players_in_current_game().await?
-                .into_iter()
-                .map(|player| player.public_id)
-                .collect()
-        )
     }
 }
