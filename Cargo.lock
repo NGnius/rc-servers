@@ -2198,9 +2198,7 @@ checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
 name = "literustlib"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39f90b22fbdd31314879adafa4a3b3275f8b95b497b4c2ff494013c900218136"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "num_enum 0.7.4",
@@ -2208,9 +2206,7 @@ dependencies = [
 
 [[package]]
 name = "literustlib_server"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27644d09965c75336dbd98913a90b0b92971a98011b1da3684a5636b495c0a27"
+version = "0.2.0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -2628,7 +2624,7 @@ version = "0.4.0"
 dependencies = [
  "log",
  "num",
- "polariton 0.3.0",
+ "polariton",
  "rand 0.9.0",
  "ring",
  "simple-rijndael",
@@ -2661,7 +2657,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2676,7 +2672,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "regex",
  "serde",
@@ -2698,7 +2694,7 @@ dependencies = [
  "num-quaternion",
  "oj_rc_database",
  "oj_rc_factory",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "rand 0.9.0",
  "reqwest",
@@ -2737,7 +2733,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2753,7 +2749,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2798,7 +2794,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2818,7 +2814,7 @@ dependencies = [
  "oj_polariton_auth",
  "oj_rc_core",
  "oj_rc_factory",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "rand 0.9.0",
  "serde",
@@ -2834,7 +2830,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2849,7 +2845,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2862,7 +2858,7 @@ dependencies = [
  "env_logger",
  "log",
  "oj_polariton_auth",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -2877,7 +2873,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
- "polariton 0.3.0",
+ "polariton",
  "polariton_server",
  "tokio",
 ]
@@ -3120,11 +3116,6 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "polariton"
-version = "0.2.0"
-source = "git+https://git.ngram.ca/OpenJam/polariton.git?rev=a27e90106037555d4aa10059270df9bdc9080d76#a27e90106037555d4aa10059270df9bdc9080d76"
-
-[[package]]
-name = "polariton"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e8f83852ae293ba0b4c7a188e1749d90cecf2b1b257bf3b7f74c8b344c3b81c"
@@ -3140,7 +3131,7 @@ checksum = "d8bccc3bc630fc4915278007d0bffe519d13ec7693068484c570ad371bf2190f"
 dependencies = [
  "async-trait",
  "log",
- "polariton 0.3.0",
+ "polariton",
  "tokio",
 ]
 
@@ -3590,7 +3581,6 @@ dependencies = [
  "bitflags 2.9.1",
  "byteserde",
  "byteserde_derive",
- "polariton 0.2.0",
  "sealed",
  "strum 0.27.1",
 ]

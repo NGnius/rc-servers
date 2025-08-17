@@ -47,6 +47,8 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                                 literustlib::packet::Property::ReliableOrdered,
                                 &peer).await);
                             peer.disconnect();
+                        } else {
+                            peer.certify();
                         }
                     } else {
                         log::error!("Registered game GUID does not match sent GUID (got: {}, expected: {}) [disconnecting...]", game_guid, current_game.guid);
