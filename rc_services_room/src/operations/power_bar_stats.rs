@@ -7,7 +7,7 @@ pub(super) fn power_bar_provider() -> SimpleFunc<51, crate::UserTy, impl (Fn(Par
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::HashMap(vec![
-                (Typed::Str("refillRatePerSecond".into()), Typed::Float(1255.0)),
+                (Typed::Str("refillRatePerSecond".into()), Typed::Float(0.10)), // should take 10s to refill
                 (Typed::Str("powerForAllRobots".into()), Typed::Int(12_550 /* converted to u32 */)),
             ].into()
         ));

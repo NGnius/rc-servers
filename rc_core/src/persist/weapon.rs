@@ -29,6 +29,7 @@ pub struct WeaponData {
     pub repeat_fire_inaccuracy_decay: Option<f32>,
     #[serde(alias="repeat_fire_inaccuracy_recovery_time")]
     pub repeat_fire_innaccuracy_recovery: Option<f32>,
+    #[serde(alias="fire_instant_accuracy_decay_degrees")]
     pub fire_instant_accuracy_decay: Option<f32>, // degrees
     pub accuracy_non_recover_time: Option<f32>,
     #[serde(alias="accuracy_decay_time")]
