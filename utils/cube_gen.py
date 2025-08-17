@@ -322,7 +322,7 @@ def is_variant_guess(name: str, sprite: str) -> bool:
     return False
 
 FIELD_NAME_EXCEPTIONS = {
-    "verticalTopSpeed": "max_vertical_velocity",
+    #"verticalTopSpeed": "vertical_top_speed",
 }
 
 def rename_field(original: str) -> str:

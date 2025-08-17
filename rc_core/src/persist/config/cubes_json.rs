@@ -25,6 +25,13 @@ impl CubeConfig {
         let file = std::fs::File::open(root.as_ref().join(CUBE_CONFIG_FILENAME))?;
         let buffered = std::io::BufReader::new(file);
         let result = serde_json::from_reader(buffered)?;
+        #[cfg(debug_assertions)]
+        {
+            let filename = root.as_ref().join(format!("{}.dump.json", CUBE_CONFIG_FILENAME.trim_end_matches(".json")));
+            let file = std::fs::File::create(filename)?;
+            let buffered = std::io::BufWriter::new(file);
+            serde_json::to_writer_pretty(buffered, &result)?;
+        }
         Ok(result)
     }
 }
