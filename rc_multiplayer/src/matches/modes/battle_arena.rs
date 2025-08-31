@@ -47,6 +47,28 @@ impl PlayerTracker {
         self.in_point.write().await.insert(player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX));
         self.respawning.write().await.insert(player.player_id, std::sync::atomic::AtomicI64::new(i64::MIN));
     }
+
+    async fn disconnect_player(&self, player_id: u8) {
+        let mut conn_lock = self.connected.lock().await;
+        for team_members in conn_lock.values_mut() {
+            team_members.remove(&player_id);
+        }
+    }
+
+    async fn single_remaining_team(&self) -> Option<u8> {
+        let conn_lock = self.connected.lock().await;
+        let mut first_remaining_team = None;
+        for (team, team_members) in conn_lock.iter() {
+            if !team_members.is_empty() {
+                if first_remaining_team.is_some() {
+                    return None;
+                } else {
+                    first_remaining_team = Some(*team)
+                }
+            }
+        }
+        first_remaining_team
+    }
 }
 
 struct PointInfo {
@@ -430,6 +452,7 @@ impl BaseInfo {
 enum WinMode {
     BaseFull,
     OutOfTime,
+    OutOfPlayers,
 }
 
 pub struct BattleArenaLogic {
@@ -535,7 +558,8 @@ impl BattleArenaLogic {
     async fn do_win(&self, winning_team: u8, ty: WinMode, generic: &crate::matches::GenericGamemodeEngine<Self>) {
         generic.game_done();
         let end_reason = match ty {
-            WinMode::BaseFull => rlnl::types::GameEndReason::BaseDestroyed,
+            WinMode::BaseFull
+            | WinMode::OutOfPlayers => rlnl::types::GameEndReason::BaseDestroyed,
             WinMode::OutOfTime => rlnl::types::GameEndReason::TimeOut,
         };
         let payload = rlnl::events::ingame::GameLoseWin {
@@ -545,7 +569,8 @@ impl BattleArenaLogic {
         for player in generic.users.read().await.values() {
             let is_winner = player.descriptor.team == winning_team as i32;
             let net_event = match ty {
-                WinMode::BaseFull => {
+                WinMode::BaseFull
+                | WinMode::OutOfPlayers => {
                     if is_winner { rlnl::event_code::NetworkEvent::GameWonBaseDestroyed } else { rlnl::event_code::NetworkEvent::GameLostBaseDestroyed }
                 },
                 WinMode::OutOfTime => {
@@ -563,6 +588,15 @@ impl BattleArenaLogic {
             );
         }
     }
+
+    async fn do_destruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+        if let Some(player_team) = self.player_tracking.team(player_id).await {
+            let was_in_point = self.player_tracking.swap_is_in_point(player_id, None).await;
+            if let Some(was_in_point) = was_in_point {
+                self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team as i8, self.config.num_segments as f32).await;
+            }
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -573,22 +607,25 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_player_end(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
+    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool {
+        let player_id = player.descriptor.player_id;
+        self.do_destruct_tasks(generic, player_id).await;
+        self.player_tracking.disconnect_player(player_id).await;
+        if let Some(winning_team) = self.player_tracking.single_remaining_team().await {
+            self.do_win(winning_team, WinMode::OutOfPlayers, generic).await;
+        }
         true
     }
 
     async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, victim: u8) -> bool {
-        if let Some(player_team) = self.player_tracking.team(victim).await {
-            let was_in_point = self.player_tracking.swap_is_in_point(victim, None).await;
-            if let Some(was_in_point) = was_in_point {
-                self.capture_tracking.on_exit(generic, was_in_point, victim, player_team as i8, self.config.num_segments as f32).await;
-            }
-        }
+        self.do_destruct_tasks(generic, victim).await;
         // TODO handle respawn
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user: u8, _is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
+        self.do_destruct_tasks(generic, user).await;
+        // TODO handle respawn
         true
     }
 

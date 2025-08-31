@@ -390,6 +390,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     super::GameMessage::RequestLeave { user_id } => {
                         log::info!("User {} wants to leave game {}", user_id, self.game_guid());
                         if let Some(player_id) = self.user_key_by_user_id(user_id).await {
+                            self.rebroadcast(
+                                user_id,
+                                rlnl::event_code::NetworkEvent::MachineDestroyedConfirmed,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &rlnl::events::ingame::Kill {
+                                    killee_player_id: player_id,
+                                    killer_player_id: player_id,
+                                },
+                                true,
+                            ).await;
                             if let Some(conn) = self.users.read().await.get(&player_id) {
                                 crate::events::log_lnl_send_failure(conn.connection.rlnl().send_empty(
                                     rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
@@ -498,6 +508,11 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         let mut ready_count = 0;
                         for user in self.users.read().await.values() {
                             if user.user.user_id() == user_id {
+                                if !matches!(ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Loading | ConnectionMode::Disconnected) {
+                                    log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
+                                    continue;
+                                }
+                                log::info!("User {} is awaiting sync", user_id);
                                 user.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
                                 ready_count += 1;
                             } else {
@@ -520,9 +535,11 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             if let Some(conn) = self.users.read().await.get(&user_key) {
                                 log::info!("Loading complete for game {}, user {} (player {})", self.game_guid(), user_id, user_key);
                                 conn.state.progress.store(100, std::sync::atomic::Ordering::Relaxed);
-                                if matches!(ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Sync) {
-                                    conn.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                                let mode = ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+                                if !matches!(mode, ConnectionMode::Sync) {
+                                    log::warn!("Player {} completed loading but is in mode {:?} (should be Sync)", conn.descriptor.player_id, mode);
                                 }
+                                conn.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
                                 self.spawn_initial_ingame_events(conn, user_id);
                             } else {
                                 log::warn!("Invalid LoadComplete user key {} for game {}", user_key, self.game_guid());
@@ -800,7 +817,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
                                         }
                                     }
-                                    if self.game_start.load(std::sync::atomic::Ordering::Relaxed) == -1 {
+                                    /*if self.game_start.load(std::sync::atomic::Ordering::Relaxed) == -1 {
                                         let mut all_users_loading_complete = true;
                                         for conn in self.users.read().await.values() {
                                             let mode = ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
@@ -819,7 +836,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                                 }
                                             }
                                         }
-                                    }
+                                    }*/
                                 } else {
                                     log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
                                 }
@@ -1009,6 +1026,14 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             literustlib::packet::Property::ReliableOrdered,
             &user.connection)
         .await?;*/
+
+        tokio::time::sleep(GenericGamemodeEngine::<super::modes::NoOpLogic>::END_OF_SYNC_DELAY).await;
+
+        sender.send_empty(
+            rlnl::event_code::NetworkEvent::EndOfSync,
+            literustlib::packet::Property::ReliableOrdered,
+            &connection.connection
+        ).await?;
         Ok(())
     }
 
