@@ -185,6 +185,16 @@ pub struct PrefabVehicle {
     pub id: PrefabId,
 }
 
+impl PrefabVehicle {
+    pub(super) fn into_conf(&self) -> super::config::VehicleInfo {
+        crate::persist::config::VehicleInfo {
+            name: self.name.clone(),
+            username: self.username.clone(),
+            id: self.id.clone().into(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum PrefabId {

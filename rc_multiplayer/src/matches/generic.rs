@@ -338,7 +338,13 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 counters: UserData::new(),
                             };
                             if self.custom_logic_handler.on_player_join(&self, &new_user, &self.players_info).await {
-                                self.spawn_send_loading_events(&new_user, id, self.players_info.clone());
+                                //self.spawn_send_loading_events(&new_user, id, self.players_info.clone());
+                                crate::events::log_lnl_send_failure(new_user.connection.rlnl().send_data(
+                                    &rlnl::events::ingame::PlayerId { player: id },
+                                    rlnl::event_code::NetworkEvent::GameGuidValidated,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &new_user.connection.connection
+                                ).await);
                                 log::debug!("User {} is validated to play game {}", new_user.user.user_id(), game_guid);
                                 self.user_id_map.write().await.insert(new_user.user.user_id(), id);
                                 users.insert(id, new_user);
@@ -360,18 +366,18 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             &rlnl::events::ingame::PlayerId { player: player_id },
                                             true,
                                         ).await;
-                                    } else {
-                                        let mut has_active_connections = false;
-                                        for user in self.users.read().await.values() {
-                                            let mode = ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed));
-                                            has_active_connections |= !matches!(mode, ConnectionMode::Disconnected);
-                                        }
-                                        is_engaged = has_active_connections;
-                                        if !has_active_connections {
-                                            if self.custom_logic_handler.on_game_completed(&self).await {
-                                                if let Err(e) = conn.user.complete_game(self.game_guid()).await {
-                                                    log::error!("Failed to mark game {} as complete: {}", self.game_guid(), e);
-                                                }
+                                    }
+                                    let mut has_active_connections = false;
+                                    for user in self.users.read().await.values() {
+                                        let mode = ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+                                        has_active_connections |= !matches!(mode, ConnectionMode::Disconnected);
+                                    }
+                                    is_engaged = has_active_connections;
+                                    if !has_active_connections {
+                                        self.is_complete.store(true, std::sync::atomic::Ordering::Relaxed);
+                                        if self.custom_logic_handler.on_game_completed(&self).await {
+                                            if let Err(e) = conn.user.complete_game(self.game_guid()).await {
+                                                log::error!("Failed to mark game {} as complete: {}", self.game_guid(), e);
                                             }
                                         }
                                     }
@@ -381,107 +387,86 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
                         }
                     },
+                    super::GameMessage::RequestLeave { user_id } => {
+                        log::info!("User {} wants to leave game {}", user_id, self.game_guid());
+                        if let Some(player_id) = self.user_key_by_user_id(user_id).await {
+                            if let Some(conn) = self.users.read().await.get(&player_id) {
+                                crate::events::log_lnl_send_failure(conn.connection.rlnl().send_empty(
+                                    rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &conn.connection.connection,
+                                ).await);
+                            }
+                        }
+                    }
                     super::GameMessage::LoadingProgress { user_id, user_name, progress } => {
                         let progress_data = rlnl::events::loading::LoadingProgress {
                             user_name: rlnl::types::BinaryWriterString(user_name),
                             progress,
                         };
-                        let mut all_users_loading_complete = true;
                         for conn in self.users.read().await.values() {
                             if user_id == conn.user.user_id() {
                                 let progress_percent = ((progress * 100.0).ceil() as u8).clamp(0, 100);
-                                log::debug!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
+                                log::info!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
                                 conn.state.progress.store(progress_percent, std::sync::atomic::Ordering::Relaxed);
-                                if progress_percent != 100 {
-                                    all_users_loading_complete = false;
-                                }
-                            } else {
-                                all_users_loading_complete &= conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) == 100;
+                                continue;
                             }
                             let mode = ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
                             match mode {
                                 ConnectionMode::Loading | ConnectionMode::Disconnected => {},
                                 ConnectionMode::WaitingForSync | ConnectionMode::Sync | ConnectionMode::WaitingToStart => {
-                                    self.broadcast(
+                                    crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
+                                        &progress_data,
                                         rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
                                         literustlib::packet::Property::ReliableOrdered,
-                                        &progress_data,
-                                        false,
-                                    ).await;
-                                    /*if progress > 0.95 {
-                                        log::info!("User {} is ready, ending sync", user_id);
-                                        crate::events::log_lnl_send_failure(crate::handlers::simple_typed::RlnlSender::new(&conn.sender)
-                                            .send_empty(
-                                                rlnl::event_code::NetworkEvent::EndOfSync,
-                                                literustlib::packet::Property::ReliableOrdered,
-                                                &conn.connection,
-                                            )
-                                        .await);
-                                        conn.mode.store(ConnectionMode::InGame.to_u8(), std::sync::atomic::Ordering::Relaxed);
-                                    }*/
+                                        &conn.connection.connection,
+                                    ).await);
                                 },
                                 ConnectionMode::InGame => {
                                     log::warn!("Got loading progress for user {} who is supposed to be already in-game", user_id);
                                 },
                             }
                         }
-                        if all_users_loading_complete {
-                            for (id, conn) in self.users.read().await.iter() {
-                                if let Err(e) = conn.connection.rlnl().send_empty(
-                                    rlnl::event_code::NetworkEvent::EndOfSync,
-                                    literustlib::packet::Property::ReliableOrdered,
-                                    &conn.connection.connection
-                                ).await {
-                                    log::error!("Failed to send EndOfSync event to user {}: {}", id, e);
-                                }
-                            }
-                        }
                     }
                     super::GameMessage::RequestLoadingProgress { user_id } => {
-                        let mut user_info = None;
-                        for conn in self.users.read().await.values() {
-                            if user_id == conn.user.user_id() {
-                                user_info = Some((
-                                    conn.connection.to_owned(),
-                                    rlnl::events::loading::LoadingProgress {
+                        log::info!("Got request loading progress");
+                        if let Some(user_key) = self.user_key_by_user_id(user_id).await {
+                            if let Some(user_info) = self.users.read().await.get(&user_key) {
+                                self.spawn_send_loading_events(user_info, user_key, self.players_info.clone());
+                                let sender = user_info.connection.rlnl();
+                                for conn in self.users.read().await.values() {
+                                    if user_id == conn.user.user_id() { continue; }
+                                    /*crate::events::log_lnl_send_failure(sender.send_data(
+                                        &user_info.1,
+                                        rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &user_info.0.connection,
+                                    ).await);*/
+                                    let event = rlnl::events::loading::LoadingProgress {
                                         user_name: rlnl::types::BinaryWriterString(conn.user.user_name().to_owned()),
                                         progress: (conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
-                                    },
-                                ));
-                            }
-                        }
-                        if let Some(user_info) = user_info {
-                            let sender = crate::handlers::RlnlSender::new(&user_info.0.sender);
-                            for conn in self.users.read().await.values() {
-                                if user_id == conn.user.user_id() { continue; }
-                                /*crate::events::log_lnl_send_failure(sender.send_data(
-                                    &user_info.1,
-                                    rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
-                                    literustlib::packet::Property::ReliableOrdered,
-                                    &user_info.0.connection,
-                                ).await);*/
-                                let event = rlnl::events::loading::LoadingProgress {
-                                    user_name: rlnl::types::BinaryWriterString(conn.user.user_name().to_owned()),
-                                    progress: (conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
-                                };
-                                crate::events::log_lnl_send_failure(sender.send_data(
-                                    &event,
-                                    rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
-                                    literustlib::packet::Property::ReliableOrdered,
-                                    &user_info.0.connection,
-                                ).await)
-                            }
-                            for fake in self.fake_users.values() {
-                                let event = rlnl::events::loading::LoadingProgress {
-                                    user_name: rlnl::types::BinaryWriterString(fake.descriptor.public_id.clone()),
-                                    progress: (fake.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
-                                };
-                                crate::events::log_lnl_send_failure(sender.send_data(
-                                    &event,
-                                    rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
-                                    literustlib::packet::Property::ReliableOrdered,
-                                    &user_info.0.connection,
-                                ).await)
+                                    };
+                                    crate::events::log_lnl_send_failure(sender.send_data(
+                                        &event,
+                                        rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &user_info.connection.connection,
+                                    ).await)
+                                }
+                                for fake in self.fake_users.values() {
+                                    let event = rlnl::events::loading::LoadingProgress {
+                                        user_name: rlnl::types::BinaryWriterString(fake.descriptor.public_id.clone()),
+                                        progress: (fake.state.progress.load(std::sync::atomic::Ordering::Relaxed) as f32) / 100.0,
+                                    };
+                                    crate::events::log_lnl_send_failure(sender.send_data(
+                                        &event,
+                                        rlnl::event_code::NetworkEvent::BroadcastLoadingProgress,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &user_info.connection.connection,
+                                    ).await)
+                                }
+                            } else {
+                                log::error!("Failed to find player {} in connected users for match {}", user_key, self.game_guid());
                             }
                         } else {
                             log::error!("Failed to find user {} in connected users for match {}", user_id, self.game_guid());
@@ -533,7 +518,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     super::GameMessage::LoadComplete { user_id } => {
                         if let Some(user_key) = self.user_key_by_user_id(user_id).await {
                             if let Some(conn) = self.users.read().await.get(&user_key) {
-                                log::info!("Loading complete for game {}, user {} ({})", self.game_guid(), user_id, user_key);
+                                log::info!("Loading complete for game {}, user {} (player {})", self.game_guid(), user_id, user_key);
                                 conn.state.progress.store(100, std::sync::atomic::Ordering::Relaxed);
                                 if matches!(ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Sync) {
                                     conn.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
@@ -780,7 +765,12 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             }
                         }
                     },
+                    super::GameMessage::CustomLogicRlnl { user_id, event, property, data } => {
+                        self.custom_logic_handler.on_custom(&self, user_id, event, property, data).await;
+                    },
                     super::GameMessage::Motion { user_id, motion } => {
+                        //let (looking_at_x, looking_at_y, looking_at_z) = motion.target_point.clone().into();
+                        //log::info!("Player {} looking at ({}, {}, {})", motion.player_id, looking_at_x, looking_at_y, looking_at_z);
                         let (x, y, z) = motion.rb_state.rb_pos_rot.pos.into();
                         let (x2, y2, z2) = motion.rb_state.center_of_mass.into();
                         let (w3, x3, y3, z3) = motion.rb_state.rb_pos_rot.rot.into();
@@ -810,6 +800,26 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
                                         }
                                     }
+                                    if self.game_start.load(std::sync::atomic::Ordering::Relaxed) == -1 {
+                                        let mut all_users_loading_complete = true;
+                                        for conn in self.users.read().await.values() {
+                                            let mode = ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+                                            let is_in_sync = matches!(mode, ConnectionMode::Sync);
+                                            log::info!("Player {} is in mode {:?}", conn.descriptor.player_id, mode);
+                                            all_users_loading_complete &= is_in_sync && conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) == 100;
+                                        }
+                                        if all_users_loading_complete {
+                                            for (id, conn) in self.users.read().await.iter() {
+                                                if let Err(e) = conn.connection.rlnl().send_empty(
+                                                    rlnl::event_code::NetworkEvent::EndOfSync,
+                                                    literustlib::packet::Property::ReliableOrdered,
+                                                    &conn.connection.connection
+                                                ).await {
+                                                    log::error!("Failed to send EndOfSync event to user {}: {}", id, e);
+                                                }
+                                            }
+                                        }
+                                    }
                                 } else {
                                     log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
                                 }
@@ -836,14 +846,15 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    async fn send_loading_events(user: &UserSender, player_id: u8, players: std::sync::Arc<Vec<oj_rc_core::persist::user::PlayerDescriptor>>) -> std::io::Result<()> {
+    async fn send_loading_events(user: &UserSender, _player_id: u8, players: std::sync::Arc<Vec<oj_rc_core::persist::user::PlayerDescriptor>>) -> std::io::Result<()> {
+        //tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         let sender = user.rlnl();
-        sender.send_data(
+        /*sender.send_data(
             &rlnl::events::ingame::PlayerId { player: player_id },
             rlnl::event_code::NetworkEvent::GameGuidValidated,
             literustlib::packet::Property::ReliableOrdered,
             &user.connection
-        ).await?;
+        ).await?;*/
         sender.send_data(
             &rlnl::events::loading::PlayerIDsAndNames {
                 num_players: players.len() as _,

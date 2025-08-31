@@ -15,6 +15,7 @@ pub mod channel;
 pub mod sanction;
 pub mod robot_data;
 pub mod lobby;
+pub mod battle_arena_config;
 
 pub mod error_codes;
 

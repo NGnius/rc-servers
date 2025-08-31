@@ -9,6 +9,9 @@ pub enum GameMessage {
     EndConnection {
         user_id: i32,
     },
+    RequestLeave {
+        user_id: i32,
+    },
     LoadingProgress {
         user_id: i32,
         user_name: String,
@@ -81,6 +84,12 @@ pub enum GameMessage {
         property: literustlib::packet::Property,
         data: Option<Box<dyn crate::Broadcastable>>,
     },
+    CustomLogicRlnl {
+        user_id: i32,
+        event: rlnl::event_code::NetworkEvent,
+        property: literustlib::packet::Property,
+        data: Box<dyn crate::Broadcastable>,
+    },
     Motion {
         user_id: i32,
         motion: rlnl::machine_motion::MachineMotion,
@@ -95,6 +104,7 @@ impl GameMessage {
                 user.user_id()
             }
             Self::EndConnection { user_id, .. } => *user_id,
+            Self::RequestLeave { user_id, .. } => *user_id,
             Self::LoadingProgress { user_id, .. } => *user_id,
             Self::RequestLoadingProgress { user_id, .. } => *user_id,
             Self::WeaponSelect { user_id, .. } => *user_id,
@@ -111,6 +121,7 @@ impl GameMessage {
             Self::HealCubesBonus { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
+            Self::CustomLogicRlnl { user_id, .. } => *user_id,
             Self::Motion { user_id, .. } => *user_id,
             Self::NoOp => unreachable!("NoOp is irrelevant for user ID"),
         }

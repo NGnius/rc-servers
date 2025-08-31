@@ -27,6 +27,7 @@ impl <In: byteserde::des_slice::ByteDeserializeSlice<In> + Send, H: RlnlEventCod
         let mut des = byteserde::des_slice::ByteDeserializerSlice::new(&data);
         match In::byte_deserialize(&mut des) {
             Ok(rlnl_data) => {
+                //log::info!("Received {:?} message", H::CODE);
                 self.handler.handle(rlnl_data, peer, user, sender).await;
             },
             Err(e) => {
@@ -54,6 +55,7 @@ impl <'a> RlnlSender<'a> {
 
     pub async fn send_data<D: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, data: &D, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
         let mut ser = byteserde::ser_heap::ByteSerializerHeap::default();
+        //log::info!("Sending dataful event {:?} {:?}", event, property);
         data.byte_serialize_heap(&mut ser).map_err(|e| std::io::Error::new(std::io::ErrorKind::Unsupported, e.message))?;
         let event_data = crate::handler::EventData::with_data(
             crate::data::MessageType::ServerMsg,
@@ -64,6 +66,7 @@ impl <'a> RlnlSender<'a> {
     }
 
     pub async fn send_empty(&self, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, conn: &literustlib_server::Connection<crate::PacketData>) -> std::io::Result<usize> {
+        //log::info!("Sending dataless event {:?} {:?}", event, property);
         let event_data = crate::handler::EventData::without_data(crate::data::MessageType::ServerMsg, event);
         self.sender.send_data(event_data, property, conn).await
     }

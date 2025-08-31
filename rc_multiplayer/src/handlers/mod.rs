@@ -11,6 +11,10 @@ mod ingame_broadcast_dataless;
 #[allow(unused_imports)]
 pub use ingame_broadcast_dataless::DatalessBroadcaster;
 
+mod gamemode_specific;
+#[allow(unused_imports)]
+pub use gamemode_specific::GamemodeSpecific;
+
 mod stub;
 #[allow(unused_imports)]
 pub use stub::Stub;

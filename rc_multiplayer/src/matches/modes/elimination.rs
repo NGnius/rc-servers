@@ -497,10 +497,12 @@ impl CustomGameLogic for EliminationLogic {
     }
 
     async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
-        let mut senders = Vec::new();
-        for conn in generic.users.read().await.values() {
+        let read_lock = generic.users.read().await;
+        let mut senders = Vec::with_capacity(read_lock.len());
+        for conn in read_lock.values() {
             senders.push((conn.connection.clone(), conn.state.clone()));
         }
+        drop(read_lock);
         let game_end = game_start + self.game_duration;
         let teams = self.bases.teams();
         let extra_packets = teams.iter().map(|team| crate::matches::RlnlPacket {
@@ -512,7 +514,16 @@ impl CustomGameLogic for EliminationLogic {
                 max_progress: rlnl::types::ByteFloat::from(4.0),
             }),
         }).collect();
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets);
+        let end_packets = vec![
+            crate::matches::RlnlPacket {
+                event: rlnl::event_code::NetworkEvent::EndGame,
+                property: literustlib::packet::Property::ReliableOrdered,
+                data: Box::new(rlnl::events::ingame::GameEnd {
+                    reason: rlnl::types::GameEndReason::TimeOut,
+                }),
+            }
+        ];
+        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets, end_packets);
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for elimination mode suggests an assumption was wrong");
@@ -534,6 +545,7 @@ impl CustomGameLogic for EliminationLogic {
 
     async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool {
         if generic.is_game_done() {
+            self.abort_timer_sync().await;
             return true;
         }
         if self.bases.is_baseless {
@@ -548,34 +560,21 @@ impl CustomGameLogic for EliminationLogic {
                     break;
                 }
             }
-            let in_base = self.tracked.swap_is_in_base(motion.player_id, now_in_base).await;
-            if let Some(team) = in_base {
-                // was in a base
-                if let Some(now_team) = now_in_base {
-                    if now_team != team {
-                        // changed bases !?
-                        self.bases.on_exit(generic, team, player_team == team, motion.player_id).await;
-                        self.bases.on_enter(generic, now_team, player_team == now_team, motion.player_id).await;
-                    }
-                    // still in same base
-                } else {
-                    // player has left the base
-                    self.bases.on_exit(generic, team, player_team == team, motion.player_id).await;
+            let was_in_base = self.tracked.swap_is_in_base(motion.player_id, now_in_base).await;
+            if now_in_base != was_in_base {
+                if let Some(was_in_base) = was_in_base {
+                    self.bases.on_exit(generic, was_in_base, player_team == was_in_base, motion.player_id).await;
                 }
-            } else {
-                if let Some(now_team) = now_in_base {
-                    // player entered a base
-                    self.bases.on_enter(generic, now_team, player_team == now_team, motion.player_id).await;
+                if let Some(now_in_base) = now_in_base {
+                    self.bases.on_enter(generic, now_in_base, player_team == now_in_base, motion.player_id).await;
                 }
-                // still outside of base
             }
         }
         self.bases.tick(generic).await;
-        if generic.is_game_done() {
-            self.abort_timer_sync().await;
-        }
         true
     }
+
+    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
 }
 
 // spawn points (best guess)

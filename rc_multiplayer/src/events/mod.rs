@@ -15,6 +15,7 @@ mod kill_bonus;
 mod assist_bonus;
 mod damage_bonus;
 mod heal_bonus;
+mod player_leave;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -175,6 +176,23 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
         >::handler(init_ctx))
         .add(self_destruct_elimination::handler(init_ctx))
         .add(map_ping::handler(init_ctx))
+        // battle arena
+        .add(crate::handlers::GamemodeSpecific::<
+            {rlnl::event_code::NetworkEvent::SendDamagedByEnemyShield as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::DamagedByEnemyShield,
+        >::handler(init_ctx))
+        .add(crate::handlers::GamemodeSpecific::<
+            {rlnl::event_code::NetworkEvent::SurrenderRequest as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::InitiateSurrender,
+        >::handler(init_ctx))
+        .add(crate::handlers::GamemodeSpecific::<
+            {rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::AwardProtoniumDestroyedCubes,
+        >::handler(init_ctx))
+        .add(player_leave::handler(init_ctx))
 }
 
 #[inline]
@@ -211,8 +229,17 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::ingame::UpdateVotingAfterBattle {}
     impl Broadcastable for rlnl::events::ingame::TeleportActivateEffect {}
     impl Broadcastable for rlnl::events::ingame::MapPing {}
+    impl Broadcastable for rlnl::events::ingame::DamagedByEnemyShield {}
+    impl Broadcastable for rlnl::events::ingame::InitiateSurrender {}
+    impl Broadcastable for rlnl::events::ingame::AwardProtoniumDestroyedCubes {}
 
     impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
+    impl Broadcastable for rlnl::events::sync::GetTeamBase {}
+    impl Broadcastable for rlnl::events::sync::GetCapturePoints {}
+    impl Broadcastable for rlnl::events::sync::GetEqualizer {}
+    impl Broadcastable for rlnl::events::sync::FusionShieldState {}
+    impl Broadcastable for rlnl::events::sync::EqualizerNotification {}
     impl Broadcastable for rlnl::events::GameTime {}
     impl Broadcastable for rlnl::events::ingame::TeamBaseState {}
+    impl Broadcastable for rlnl::events::ingame::GameEnd {}
 }

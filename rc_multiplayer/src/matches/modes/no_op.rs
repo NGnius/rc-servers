@@ -40,4 +40,6 @@ impl CustomGameLogic for NoOpLogic {
     async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
         true
     }
+
+    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
 }

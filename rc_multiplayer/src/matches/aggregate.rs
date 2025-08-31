@@ -4,10 +4,13 @@ pub struct GameMatches {
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
     fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
+    cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
+    ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
 impl GameMatches {
-    pub fn new(conf: &oj_rc_core::persist::config::ConfigImpl) -> Self {
+    pub fn new(conf: &oj_rc_core::persist::config::ConfigImpl, cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>, factory: std::sync::Arc<oj_rc_core::factory::Factory>) -> Self {
         Self {
             matches: std::collections::HashMap::new(),
             routing: std::collections::HashMap::new(),
@@ -17,6 +20,9 @@ impl GameMatches {
                 .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
                 .collect(),
             fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
+            cube_parsers,
+            ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
+            factory,
         }
     }
 
@@ -59,6 +65,7 @@ impl GameMatches {
                 oj_rc_core::persist::config::MapConfig {
                     spawns: std::collections::HashMap::default(),
                     bases: std::collections::HashMap::default(),
+                    capture_points: Vec::default(),
                 }
             });
         let players = user.game_players(guid).await?;
@@ -70,6 +77,27 @@ impl GameMatches {
         match game_info.mode {
             oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
                 let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config);
+                let engine = super::GenericGamemodeEngine::new(
+                    game_info,
+                    map_config,
+                    players,
+                    inner,
+                    fakes_handler,
+                );
+                Ok(engine.spawn())
+            },
+            oj_rc_core::data::game_mode::GameMode::BattleArena => {
+                log::warn!("Game {}: Battle Arena is experimental", guid);
+                let resolved_ba_conf = self.ba_settings.resolve(
+                    user.as_ref(),
+                    self.factory.as_ref(),
+                    &self.cube_parsers.weapon_order(),
+                    &self.cube_parsers.cpu_counter(),
+                ).await.map_err(|e| oj_rc_core::persist::user::MultiplayerError {
+                     code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
+                     message: e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to resolve special settings for Battle Arena".to_owned()),
+                })?;
+                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &self.cube_parsers, resolved_ba_conf);
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,

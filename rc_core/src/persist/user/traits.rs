@@ -61,7 +61,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser + IntercomUser {
+pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser + IntercomUser + CommonUser {
     fn public_id(&self) -> &'_ str;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
@@ -203,7 +203,7 @@ pub struct AvatarInfo {
 }
 
 #[async_trait::async_trait]
-pub trait ChatUser {
+pub trait ChatUser: CommonUser {
     async fn subscribed_channels(&self) -> Result<polariton::operation::Typed<()>, i16>;
     async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16>;
     async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<polariton::operation::Typed<()>, i16>;
@@ -325,7 +325,7 @@ pub enum MultiplayerErrorCode {
 }
 
 #[async_trait::async_trait]
-pub trait MultiplayerUser {
+pub trait MultiplayerUser: CommonUser {
     fn user_id(&self) -> i32;
     fn user_name(&self) -> &'_ str;
     fn display_name(&self) -> &'_ str;
@@ -338,4 +338,23 @@ pub trait MultiplayerUser {
 #[async_trait::async_trait]
 pub trait IntercomUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
+}
+
+pub struct ResolvedVehicle {
+    pub mastery: i32,
+    pub tier: i32,
+    pub robot_name: String,
+    pub robot_map: Vec<u8>,
+    pub robot_uuid: String,
+    pub cpu: i32,
+    pub weapon_order: Vec<i32>,
+    pub colour_map: Vec<u8>,
+    pub spawn_effect: String,
+    pub death_effect: String,
+    pub weapon_rank: std::collections::HashMap<i32, i32>,
+}
+
+#[async_trait::async_trait]
+pub trait CommonUser: Send + Sync {
+    async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
 }

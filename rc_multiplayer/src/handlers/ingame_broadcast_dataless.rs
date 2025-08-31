@@ -44,7 +44,7 @@ impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const
             }
 
         } else {
-            log::error!("Failed to rebroadcast OnPlayerInputChanged for user (no auth!)");
+            log::error!("Failed to rebroadcast {:?}-?{:?} for user (no auth!)", Self::CODE, self.code_out);
         }
     }
 }

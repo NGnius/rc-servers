@@ -81,7 +81,7 @@ async fn erratic_behaviour(send_to: Vec<crate::matches::generic::UserSender>, is
             for conn in send_to.iter() {
                 send_motion_data_to(conn, motion_data.clone()).await;
             }
-            log::info!("Moved experimental bot to ({}, {}, {})", pos_x, pos_y, pos_z);
+            log::debug!("Moved experimental bot to ({}, {}, {})", pos_x, pos_y, pos_z);
         }
         fake_timestamp += 1.0;
         tokio::time::sleep(SLEEP_PERIOD).await;

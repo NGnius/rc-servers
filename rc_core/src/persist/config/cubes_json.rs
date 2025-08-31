@@ -410,9 +410,18 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                     z: base.z,
                 },
             }, base.percent_per_second))).collect();
+            let capture_points = conf.capture_points.iter().map(|point| (super::Sphere {
+                radius: point.radius,
+                center: super::Point {
+                    x: point.x,
+                    y: point.y,
+                    z: point.z,
+                }
+            }, point.percent_per_second)).collect();
             let map_conf = super::MapConfig {
                 spawns,
                 bases,
+                capture_points,
             };
             (map.into_conf(), map_conf)
         }).collect()
@@ -439,6 +448,12 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         super::EnergyConfig {
             refill_rate: self.battle.energy.refill_rate_per_s,
             total: self.battle.energy.total,
+        }
+    }
+
+    fn ba_settings(&self) -> super::BattleArenaResolver {
+        super::BattleArenaResolver {
+            data: self.battle.multiplayer.battle_arena.clone(),
         }
     }
 }

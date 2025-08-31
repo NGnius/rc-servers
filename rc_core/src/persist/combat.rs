@@ -248,7 +248,7 @@ fn default_game_modes() -> GameModes {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
-            game_time_m: 20,
+            game_time_m: 5,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,
@@ -370,6 +370,21 @@ fn default_rotation() -> GameEventSequence {
         modes: vec![
             GameEvents {
                 singleplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                duration_s: 5*60, // 5 minutes
+            }
+            /*GameEvents {
+                singleplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
@@ -487,7 +502,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 5*60,
-            },
+            },*/
         ]
     }
 }
@@ -498,6 +513,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         enabled: true,
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),
+        battle_arena: super::multiplayer::default_ba_conf(),
     }
 }
 

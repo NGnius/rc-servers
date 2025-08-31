@@ -22,11 +22,7 @@ impl SingleplayerConfig {
         crate::persist::config::SingleplayerConfig {
             max_teammates: self.max_teammates,
             max_enemies: self.max_enemies,
-            vehicles: self.vehicles.iter().map(|v| crate::persist::config::VehicleInfo {
-                name: v.name.clone(),
-                username: v.username.clone(),
-                id: v.id.clone().into(),
-            }).collect()
+            vehicles: self.vehicles.iter().map(|v| v.into_conf()).collect()
         }
     }
 }

@@ -35,6 +35,7 @@ pub trait ConfigProvider<C: Clone> {
     fn url_links(&self) -> LinksConfig;
     fn fake_players(&self) -> Vec<FakePlayer>;
     fn energy(&self) -> EnergyConfig;
+    fn ba_settings(&self) -> BattleArenaResolver;
 }
 
 pub struct CompleteCampaignProvider {
@@ -358,7 +359,8 @@ pub struct Sphere {
 #[derive(Clone, Debug)]
 pub struct MapConfig {
     pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
-    pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> base
+    pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> (base, capture speed)
+    pub capture_points: Vec<(Sphere, f32)>, // (capture point, capture speed)
 }
 
 #[derive(Clone, Debug)]
@@ -385,4 +387,39 @@ pub enum ClientEmulator {
 pub struct EnergyConfig {
     pub refill_rate: f32,
     pub total: u32,
+}
+
+pub struct BattleArenaResolver {
+    pub(super) data: crate::persist::multiplayer::BattleArenaConfig,
+}
+
+impl BattleArenaResolver {
+    pub async fn resolve(&self, user: &dyn crate::persist::user::CommonUser, factory: &crate::factory::Factory, weapon_list: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::battle_arena_config::BattleArenaData, polariton_server::operations::SimpleOpError> {
+        let equalizer_data = user.resolve_config_vehicle(&self.data.equalizer.clone().into_conf(), factory, weapon_list, cpu_counter).await?;
+        let base_data = user.resolve_config_vehicle(&self.data.base.clone().into_conf(), factory, weapon_list, cpu_counter).await?;
+        Ok(crate::data::battle_arena_config::BattleArenaData {
+            protonium_health: self.data.crystal_health as i64,
+            respawn_time_seconds: self.data.respawn_time_s as i64,
+            heal_over_time_per_tower: vec![10, 10, 10, 10], // Unused?
+            base_machine_map: base_data.robot_map,
+            equalizer_model: equalizer_data.robot_map,
+            equalizer_health: self.data.equalizer_health as i64,
+            equalizer_trigger_time_seconds: vec![10, 10, 10, 10, 10], // TODO
+            equalizer_warning_seconds: self.data.equalizer_warning_s as i64, // TODO
+            equalizer_duration_seconds: vec![20, 20, 20, 20, 20], // TODO
+            capture_time_seconds_per_player: vec![30, 20, 10, 5, 1], // TODO
+            num_segments: self.data.num_segments as i32,
+            heal_escalation_time_seconds: 5, // Unused?
+        })
+    }
+
+    pub async fn resolve_typed<C>(&self, user: &dyn crate::persist::user::CommonUser, factory: &crate::factory::Factory, weapon_list: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<Typed<C>, polariton_server::operations::SimpleOpError> {
+        Ok(Typed::Dict(polariton::operation::Dict {
+            key_ty: polariton::serdes::TypePrefix::Str, // str
+            val_ty: polariton::serdes::TypePrefix::HashMap, // hashmap
+            items: vec![
+                (Typed::Str("BattleArenaSettings".into()), self.resolve(user, factory, weapon_list, cpu_counter).await?.as_transmissible())
+            ],
+        }))
+    }
 }

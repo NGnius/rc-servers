@@ -7,7 +7,7 @@ pub mod crf_config;
 pub use oj_rc_core::data::weapon_list;
 //pub use oj_rc_core::data::movement_list;
 pub mod damage_boost;
-pub mod battle_arena_config;
+//pub mod battle_arena_config;
 pub mod cpu_limits;
 pub mod cosmetic_limits;
 pub mod taunts_config;

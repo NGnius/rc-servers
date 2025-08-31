@@ -125,7 +125,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(movement_stats::movement_config_provider(&init_ctx.cubes))
         .add(power_bar_stats::power_bar_provider(&init_ctx.cubes))
         .add(damage_boost_stats::damage_boost_provider())
-        .add(battle_arena_config::battle_arena_config_provider())
+        .add(battle_arena_config::battle_arena_config_provider(&init_ctx.cubes, &init_ctx.factory, init_ctx.parsers.weapon_order(), init_ctx.parsers.cpu_counter()))
         .add(cpu_limits_config::cpu_config_provider())
         .add(cosmetic_config::cosmetic_limits_config_provider())
         .add(taunts_config::taunts_config_provider())

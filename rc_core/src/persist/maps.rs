@@ -10,6 +10,7 @@ pub struct MapsConfig {
 pub struct MapConfig {
     pub spawn_points: Vec<SpawnPoint>,
     pub bases: Vec<CaptureBase>,
+    pub capture_points: Vec<CapturePoint>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -35,13 +36,12 @@ impl SpawnPoint {
         self
     }
 
-    fn rotated_from(mut self, x: f32, y: f32, z: f32, rot: num_quaternion::Quaternion<f32>) -> Self {
-        if let Some(unit_rot) = rot.normalize() {
-            let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
-            self.x = rotated[0] + x;
-            self.y = rotated[1] + y;
-            self.z = rotated[2] + z;
-        }
+    fn rotated(mut self, rot: num_quaternion::Quaternion<f32>) -> Self {
+        let unit_rot = rot.normalize().expect("Bad rotation quaternion for SpawnPoint");
+        let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
+        self.x = rotated[0];
+        self.y = rotated[1];
+        self.z = rotated[2];
         self
     }
 }
@@ -65,8 +65,37 @@ impl CaptureBase {
     }
 }
 
-const DEFAULT_PERCENT_PER_SECOND: f32 = 2.5;
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CapturePoint {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub radius: f32,
+    pub percent_per_second: f32,
+}
+
+impl CapturePoint {
+    const fn offset(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+        self
+    }
+
+    fn rotated(mut self, rot: num_quaternion::Quaternion<f32>) -> Self {
+        let unit_rot = rot.normalize().expect("Bad rotation quaternion for CapturePoint");
+        let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
+        self.x = rotated[0];
+        self.y = rotated[1];
+        self.z = rotated[2];
+        self
+    }
+}
+
+const DEFAULT_BASE_PERCENT_PER_SECOND: f32 = 2.5;
 const DEFAULT_BASE_RADIUS: f32 = 20.0;
+const DEFAULT_CAPTURE_PERCENT_PER_SECOND: f32 = DEFAULT_BASE_PERCENT_PER_SECOND * 1.5;
+const DEFAULT_CAPTURE_RADIUS: f32 = 14.0;
 
 pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap, MapConfig> {
     let mut map = std::collections::HashMap::with_capacity(9);
@@ -204,7 +233,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 2.700,
                 z: -240.888,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -212,9 +241,37 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 2.770,
                 z: 243.600,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
+        capture_points: vec![
+            CapturePoint {
+                x: 177.240,
+                y: -0.264,
+                z: 141.540,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+            CapturePoint {
+                x: -9.480,
+                y: 30.396,
+                z: -164.676,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+            CapturePoint {
+                x: -197.400,
+                y: -0.228,
+                z: 142.452,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }
+        ].into_iter().map(|p| p.rotated(num_quaternion::Quaternion {
+            w: 0.707107,
+            x: 0.0,
+            y: 0.707107,
+            z: 0.0,
+        }).offset(13.320, 0.0, -9.84)).collect(),
     });
     map.insert(super::combat::GameMap::Earth2, MapConfig { // level4
         spawn_points: vec![
@@ -400,12 +457,12 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -71.445,
                 z: 266.000,
             },
-        ].into_iter().map(|x| x.rotated_from(0.0, 86.718, 0.0, num_quaternion::Quaternion {
+        ].into_iter().map(|x| x.rotated(num_quaternion::Quaternion {
             x: 0.0,
             y: 0.707107,
             z: 0.0,
             w: 0.707107,
-        })).collect(),
+        }).offset(0.0, 86.718, 0.0)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
@@ -413,7 +470,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 13.900,
                 z: -253.920,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -421,9 +478,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 13.900,
                 z: 259.200,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Mars1, MapConfig {
         spawn_points: vec![
@@ -557,7 +615,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 4.09,
                 z: 20.3,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -565,9 +623,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 10.63,
                 z: 372.20,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Mars2, MapConfig {
         spawn_points: vec![
@@ -701,7 +760,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 21.140,
                 z: 187.560,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -709,9 +768,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 21.230,
                 z: 620.280,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(-434.640, 0.0, -414.720)).collect(),
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Mars3, MapConfig {
         spawn_points: vec![
@@ -845,7 +905,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 32.340,
                 z: -309.720,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -853,9 +913,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 32.320,
                 z: 207.360,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Neptune1, MapConfig {
         spawn_points: vec![
@@ -989,7 +1050,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 1.580,
                 z: -82.150,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -997,9 +1058,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: -0.110,
                 z: 292.956,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(405.542, 0.0, 10.668)).collect(),
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Neptune2, MapConfig {
         spawn_points: vec![
@@ -1133,7 +1195,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 18.370,
                 z: -181.488,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -1141,9 +1203,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 18.390,
                 z: 196.416,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
+        capture_points: vec![], // TODO
     });
     map.insert(super::combat::GameMap::Neptune3, MapConfig {
         spawn_points: vec![
@@ -1277,7 +1340,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 42.270,
                 z: -151.440,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
             CaptureBase {
                 team: 1,
@@ -1285,9 +1348,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 y: 42.290,
                 z: 147.240,
                 radius: DEFAULT_BASE_RADIUS,
-                percent_per_second: DEFAULT_PERCENT_PER_SECOND,
+                percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
+        capture_points: vec![], // TODO
     });
     map
 }

@@ -1,33 +1,38 @@
-use polariton_server::operations::SimpleFunc;
-use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
+use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
+use polariton::operation::ParameterTable;
 
-use crate::data::battle_arena_config::*;
+const CODE: u8 = 53;
 
 const PARAM_KEY: u8 = 1;
 
-pub(super) fn battle_arena_config_provider() -> SimpleFunc<53, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
+pub(super) struct BattleArenaConfigurer {
+    factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+    weapon_list: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
+    cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+    ba_conf: oj_rc_core::persist::config::BattleArenaResolver,
+}
+
+#[async_trait::async_trait]
+impl <C: Send + 'static> SimpleOperation<C> for BattleArenaConfigurer {
+    type User = crate::UserTy;
+    const CODE: u8 = CODE;
+
+    async fn handle(&self, params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
+        let user_info = user.user()?;
+        let data = self.ba_conf.resolve_typed(user_info.as_ref().as_ref(), self.factory.as_ref(), &self.weapon_list, &self.cpu_counter).await?;
         let mut params = params.to_dict();
-        params.insert(PARAM_KEY, Typed::Dict(Dict {
-            key_ty: TypePrefix::Str, // str
-            val_ty: TypePrefix::HashMap, // hashmap
-            items: vec![
-                (Typed::Str("BattleArenaSettings".into()), BattleArenaData {
-                    protonium_health: 1_000,
-                    respawn_time_seconds: 10,
-                    heal_over_time_per_tower: vec![10, 10, 10, 10],
-                    base_machine_map: Vec::default(),
-                    equalizer_model: Vec::default(),
-                    equalizer_health: 1_000_000,
-                    equalizer_trigger_time_seconds: vec![10, 10, 10, 10, 10],
-                    equalizer_warning_seconds: 10,
-                    equalizer_duration_seconds: vec![20, 20, 20, 20, 20],
-                    capture_time_seconds_per_player: vec![30, 20, 10, 5, 1],
-                    num_segments: 4,
-                    heal_escalation_time_seconds: 5,
-                }.as_transmissible())
-            ],
-        }));
+        params.insert(PARAM_KEY, data);
         Ok(params.into())
+    }
+}
+
+pub(super) fn battle_arena_config_provider<C: Send + 'static>(conf: &oj_rc_core::ConfigImpl, factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_list: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
+    cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> SimpleOpImpl<C, crate::UserTy, BattleArenaConfigurer> {
+    let ba_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf);
+    SimpleOpImpl::new(BattleArenaConfigurer {
+        factory: factory.to_owned(),
+        weapon_list,
+        cpu_counter,
+        ba_conf
     })
 }

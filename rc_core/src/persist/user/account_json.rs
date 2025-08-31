@@ -417,6 +417,130 @@ impl UserData {
         })
     }
 
+    pub(super) async fn resolve_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<super::ResolvedVehicle, polariton_server::operations::SimpleOpError> {
+        match &vehicle.id {
+            crate::persist::config::VehicleDescriptor::Factory { factory: factory_id } => {
+                match factory.vehicle(*factory_id).await {
+                    Ok(Some(factory_vehicle)) => {
+                        let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 30, *factory_id)));
+                        let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
+                        let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
+                        let weapons_guess = vec![weapons_guess[0], 0, 0];
+                        let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                        let cpu_count = if factory_vehicle.1.cpu == 0 {
+                            cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data)).total as i32
+                        } else {
+                            factory_vehicle.1.cpu as i32
+                        };
+                        Ok(super::ResolvedVehicle {
+                            mastery: 1,
+                            tier: 1, // FIXME
+                            robot_name: vehicle.name.clone().unwrap_or_else(|| factory_vehicle.1.name.clone()),
+                            robot_map: factory_vehicle.0.cube_data,
+                            robot_uuid: uuid_str,
+                            cpu: cpu_count,
+                            weapon_order: weapons_guess,
+                            colour_map: factory_vehicle.0.colour_data,
+                            spawn_effect: "Spawn".to_owned(),
+                            death_effect: "Explosion".to_owned(),
+                            weapon_rank: weapon_ranks,
+                        })
+                    },
+                    Ok(None) => {
+                        log::error!("Prefab vehicle {} does not exist in factory", factory_id);
+                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16,
+                            format!("Prefab vehicle {} does not exist in factory", factory_id),
+                        ));
+                    },
+                    Err(e) => {
+                        log::error!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e);
+                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16,
+                            format!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e),
+                        ));
+                    }
+                }
+            },
+            crate::persist::config::VehicleDescriptor::Database { garage } => {
+                match self.db.garage_by_id(*garage).await {
+                    Ok(Some(db_vehicle)) => {
+                        let cpu_count = if db_vehicle.total_robot_cpu <= 0 {
+                            cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&db_vehicle.robot_data)).total as i32
+                        } else {
+                            db_vehicle.total_robot_cpu
+                        };
+                        let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 31, *garage as u32)));
+                        let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
+                        Ok(super::ResolvedVehicle {
+                            mastery: 1,
+                            tier: 1, // FIXME
+                            robot_name: vehicle.name.clone().unwrap_or_else(|| db_vehicle.name.clone()),
+                            robot_map: db_vehicle.robot_data,
+                            robot_uuid: uuid_str,
+                            cpu: cpu_count,
+                            weapon_order: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
+                            colour_map: db_vehicle.colour_data,
+                            spawn_effect: db_vehicle.spawn_animation_id,
+                            death_effect: db_vehicle.death_animation_id,
+                            weapon_rank: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
+                        })
+                    },
+                    Ok(None) => {
+                        log::error!("Prefab vehicle {} does not exist in main garage database", garage);
+                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16,
+                            format!("Prefab vehicle {} does not exist in main garage database", garage),
+                        ));
+                    }
+                    Err(e) => {
+                        log::error!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e);
+                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16,
+                            format!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e),
+                        ));
+                    }
+                }
+            },
+            crate::persist::config::VehicleDescriptor::Raw {
+                cube_data,
+                colour_data,
+            } => {
+                use sha2::Digest;
+                let sha_bytes = sha2::Sha256::digest(&cube_data);
+                let u32_bytes = [
+                    sha_bytes[0],
+                    sha_bytes[1],
+                    sha_bytes[2],
+                    sha_bytes[3],
+                ];
+                let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 29, u32::from_le_bytes(u32_bytes))));
+                let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
+                let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
+                let weapons_guess = vec![
+                    weapons_guess.get(0).map(|x| *x).unwrap_or(0),
+                    weapons_guess.get(1).map(|x| *x).unwrap_or(0),
+                    weapons_guess.get(2).map(|x| *x).unwrap_or(0),
+                ];
+                let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+                let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&cube_data));
+                Ok(super::ResolvedVehicle {
+                    mastery: 1,
+                    tier: 1, // FIXME
+                    robot_name: vehicle.name.clone().unwrap_or_else(|| "Raw Robot".to_owned()),
+                    robot_map: cube_data.to_owned(),
+                    robot_uuid: uuid_str,
+                    cpu: cpu_counts.total as i32,
+                    weapon_order: weapons_guess,
+                    colour_map: colour_data.to_owned(),
+                    spawn_effect: "Spawn".to_owned(),
+                    death_effect: "Explosion".to_owned(),
+                    weapon_rank: weapon_ranks,
+                })
+            }
+        }
+    }
+
     async fn resolve_some_singleplayer_vehicles(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<Vec<crate::data::player_data::PlayerData>, i16> {
         use rand::seq::IndexedRandom;
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
@@ -439,121 +563,29 @@ impl UserData {
             };
             seen_usernames.insert(username.clone());
             let team_num = if i < singleplayer_config.max_enemies { 1 } else { 0 };
-            let enemy = match &vehicle.id {
-                crate::persist::config::VehicleDescriptor::Factory { factory: factory_id } => {
-                    //use oj_rc_factory::VehicleFactoryAdapter;
-                    match factory.vehicle(*factory_id).await {
-                        Ok(Some(factory_vehicle)) => {
-                            let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
-                            let weapons_guess = vec![weapons_guess[0], 0, 0];
-                            let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
-                            let cpu_count = if factory_vehicle.1.cpu == 0 {
-                                cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data)).total as i32
-                            } else {
-                                factory_vehicle.1.cpu as i32
-                            };
-                            crate::data::player_data::PlayerData {
-                                name: username.clone(),
-                                display_name: username.clone(),
-                                mastery: 1,
-                                tier: 1, // FIXME
-                                robot_name: vehicle.name.clone().unwrap_or_else(|| factory_vehicle.1.name.clone()),
-                                robot_map: factory_vehicle.0.cube_data,
-                                group: None,
-                                team: team_num,
-                                has_premium: false,
-                                robot_uuid: uuid_str,
-                                cpu: cpu_count,
-                                avatar_id: None, // not serialised
-                                weapon_order: weapons_guess,
-                                colour_map: factory_vehicle.0.colour_data,
-                                is_ai: true,
-                                spawn_effect: "Spawn".to_owned(),
-                                death_effect: "Explosion".to_owned(),
-                                player_rank: 1,
-                                weapon_rank: weapon_ranks,
-                            }
-                        },
-                        Ok(None) => {
-                            log::error!("Prefab vehicle {} does not exist in factory", factory_id);
-                            return Err(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16);
-                        },
-                        Err(e) => {
-                            log::error!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e);
-                            return Err(crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16);
-                        }
-                    }
-                },
-                crate::persist::config::VehicleDescriptor::Database { garage } => {
-                    match self.db.garage_by_id(*garage).await {
-                        Ok(Some(db_vehicle)) => {
-                            let cpu_count = if db_vehicle.total_robot_cpu <= 0 {
-                                cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&db_vehicle.robot_data)).total as i32
-                            } else {
-                                db_vehicle.total_robot_cpu
-                            };
-                            crate::data::player_data::PlayerData {
-                                name: username.clone(),
-                                display_name: username.clone(),
-                                mastery: 1,
-                                tier: 1, // FIXME
-                                robot_name: vehicle.name.clone().unwrap_or_else(|| db_vehicle.name.clone()),
-                                robot_map: db_vehicle.robot_data,
-                                group: None,
-                                team: team_num,
-                                has_premium: false,
-                                robot_uuid: uuid_str,
-                                cpu: cpu_count,
-                                avatar_id: None, // not serialised
-                                weapon_order: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>(),
-                                colour_map: db_vehicle.colour_data,
-                                is_ai: true,
-                                spawn_effect: "Spawn".to_owned(),
-                                death_effect: "Explosion".to_owned(),
-                                player_rank: 1,
-                                weapon_rank: oj_rc_database::schema::parse_int_csv(&db_vehicle.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect(),
-                            }
-                        },
-                        Ok(None) => {
-                            log::error!("Prefab vehicle {} does not exist in main garage database", garage);
-                            return Err(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16);
-                        }
-                        Err(e) => {
-                            log::error!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e);
-                            return Err(crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16);
-                        }
-                    }
-                },
-                crate::persist::config::VehicleDescriptor::Raw {
-                    cube_data,
-                    colour_data,
-                } => {
-                    let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
-                    let weapons_guess = vec![weapons_guess[0], 0, 0];
-                    let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
-                    let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&cube_data));
-                    crate::data::player_data::PlayerData {
-                        name: username.clone(),
-                        display_name: username.clone(),
-                        mastery: 1,
-                        tier: 1, // FIXME
-                        robot_name: vehicle.name.clone().unwrap_or_else(|| "Raw Robot".to_owned()),
-                        robot_map: cube_data.to_owned(),
-                        group: None,
-                        team: team_num,
-                        has_premium: false,
-                        robot_uuid: uuid_str,
-                        cpu: cpu_counts.total as i32,
-                        avatar_id: None, // not serialised
-                        weapon_order: weapons_guess,
-                        colour_map: colour_data.to_owned(),
-                        is_ai: true,
-                        spawn_effect: "Spawn".to_owned(),
-                        death_effect: "Explosion".to_owned(),
-                        player_rank: 1,
-                        weapon_rank: weapon_ranks,
-                    }
-                }
+            let enemy_vehicle = self.resolve_vehicle(vehicle, factory, weapon_order, cpu_counter).await?;
+            let weapons = vec![enemy_vehicle.weapon_order[0], 0, 0];
+            let weapon_ranks = weapons.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
+            let enemy = crate::data::player_data::PlayerData {
+                name: username.clone(),
+                display_name: username.clone(),
+                mastery: enemy_vehicle.mastery,
+                tier: enemy_vehicle.tier,
+                robot_name: enemy_vehicle.robot_name,
+                robot_map: enemy_vehicle.robot_map,
+                group: None,
+                team: team_num,
+                has_premium: false,
+                robot_uuid: uuid_str,
+                cpu: enemy_vehicle.cpu,
+                avatar_id: None, // not serialised
+                weapon_order: weapons,
+                colour_map: enemy_vehicle.colour_map,
+                is_ai: true,
+                spawn_effect: enemy_vehicle.spawn_effect,
+                death_effect: enemy_vehicle.death_effect,
+                player_rank: 1,
+                weapon_rank: weapon_ranks,
             };
             next_id += 1;
             players.push(enemy);

@@ -16,16 +16,16 @@ pub struct BattleArenaData {
     pub heal_escalation_time_seconds: i64,
 }
 
-fn to_obj_arr_u(slice: &[u64]) -> Typed {
-    Typed::ObjArr(slice.iter().map(|x| Typed::Long(*x as i64)).collect::<Vec<Typed>>().into())
+fn to_obj_arr_u<C>(slice: &[u64]) -> Typed<C> {
+    Typed::<C>::ObjArr(slice.iter().map(|x| Typed::<C>::Long(*x as i64)).collect::<Vec<Typed<C>>>().into())
 }
 
-fn to_obj_arr_i(slice: &[i64]) -> Typed {
-    Typed::ObjArr(slice.iter().map(|x| Typed::Long(*x)).collect::<Vec<Typed>>().into())
+fn to_obj_arr_i<C>(slice: &[i64]) -> Typed<C> {
+    Typed::<C>::ObjArr(slice.iter().map(|x| Typed::<C>::Long(*x)).collect::<Vec<Typed<C>>>().into())
 }
 
 impl BattleArenaData {
-    pub fn as_transmissible(&self) -> Typed {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("protoniumHealth".into()), Typed::Long(self.protonium_health)),
             (Typed::Str("respawnTimeSeconds".into()), Typed::Long(self.respawn_time_seconds)),
