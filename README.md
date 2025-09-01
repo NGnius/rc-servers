@@ -47,7 +47,10 @@ If you'd like to discuss, join the [Signal group](https://signal.group/#CjQKIEPi
 
 # Acknowledgements
 
-A big thanks to the RC15 team for their work on deobfuscating Robocraft .NET assemblies and specifically to RandomScientist for hooking me up with a deobfuscated assembly. Without them, progress would have been too slow and frustrating.
+A big thanks to the [RC15](https://discord.gg/jZHDAaacS5) team for their work on reverse-engineering early Robocraft .NET assemblies.
+Thanks to KptKosmit91 (a RC15 team member) for giving me a working battle arena team base.
+Thanks to RandomScientist for hooking me up with a deobfuscated assembly.
+Without them, progress would have been too slow and frustrating.
 
 Thanks for the moral support from community members who reached out and the few IRL people who I went into unnecessary detail with.
 
