@@ -597,6 +597,73 @@ impl BattleArenaLogic {
             }
         }
     }
+
+    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+        log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
+        let respawn_time = std::time::Duration::from_secs(self.config.respawn_time_seconds as u64);
+        let now = chrono::Utc::now();
+        let respawn_timestamp = now + respawn_time;
+        if let Some(player_respawn) = self.player_tracking.respawning.read().await.get(&player_id) {
+            player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
+        }
+        let respawn_payload = rlnl::events::ingame::RespawnTime {
+            owner: player_id,
+            waiting_time: self.config.respawn_time_seconds as i16,
+        };
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::SetRespawnWaitingTime,
+            literustlib::packet::Property::ReliableOrdered,
+            &respawn_payload,
+            true
+        ).await;
+        if let Some(player_team) = self.player_tracking.team(player_id).await {
+            let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&player_team) {
+                if team_spawns.is_empty() {
+                    oj_rc_core::persist::config::Point {
+                        x: 10.0 * (player_id as f32),
+                        y: 100.0,
+                        z: 10.0 * (player_team as f32) + 10.0,
+                    }
+                } else {
+                    let index = (player_id as usize) % team_spawns.len();
+                    team_spawns[index].clone()
+                }
+            } else {
+                oj_rc_core::persist::config::Point {
+                    x: 10.0 * (player_id as f32),
+                    y: 100.0,
+                    z: 10.0 * (player_team as f32) + 10.0,
+                }
+            };
+        let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+        tokio::task::spawn(Self::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
+        } else {
+            log::error!("Player {} cannot respawn because they are not in a team!?", player_id);
+        }
+    }
+
+    async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8) {
+        let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
+        tokio::time::sleep(sleep_dur).await;
+        let spawn_payload = rlnl::events::sync::SpawnPoint {
+            pos: rlnl::types::PosQuatPair {
+                pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
+                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+            },
+            owner: player_id,
+        };
+        log::debug!("Respawning player {} after {}ms", player_id, sleep_dur.as_millis());
+        for player in players {
+            if !player.connection.is_connected() { continue; }
+            crate::events::log_lnl_send_failure(player.rlnl().send_data(
+                &spawn_payload,
+                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
+                literustlib::packet::Property::ReliableOrdered,
+                &player.connection,
+            ).await);
+        }
+
+    }
 }
 
 #[async_trait::async_trait]
@@ -619,13 +686,13 @@ impl CustomGameLogic for BattleArenaLogic {
 
     async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, victim: u8) -> bool {
         self.do_destruct_tasks(generic, victim).await;
-        // TODO handle respawn
+        self.do_respawn_tasks(generic, victim).await;
         true
     }
 
     async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
         self.do_destruct_tasks(generic, user).await;
-        // TODO handle respawn
+        self.do_respawn_tasks(generic, user).await;
         true
     }
 

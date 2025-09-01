@@ -594,7 +594,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             &rlnl::events::ingame::Kill { killee_player_id: remote_player, killer_player_id: killer_player },
                             true,
                         ).await;
-                        log::info!("Player {} was destroyed by {} ({}) in game {}", remote_player, killer_player, user_id, self.game_guid());
+                        log::info!("Player {} was destroyed by player {} (user {}) in game {}", remote_player, killer_player, user_id, self.game_guid());
                         if self.custom_logic_handler.on_vehicle_destroyed(&self, killer_player, remote_player).await {
                             // the kill tracking is initiated separately by the client with kill bonus event
                             if let Some(killed) = self.users.read().await.get(&remote_player) {
@@ -817,26 +817,6 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             }, literustlib::packet::Property::Unreliable, &conn.connection.connection).await);
                                         }
                                     }
-                                    /*if self.game_start.load(std::sync::atomic::Ordering::Relaxed) == -1 {
-                                        let mut all_users_loading_complete = true;
-                                        for conn in self.users.read().await.values() {
-                                            let mode = ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
-                                            let is_in_sync = matches!(mode, ConnectionMode::Sync);
-                                            log::info!("Player {} is in mode {:?}", conn.descriptor.player_id, mode);
-                                            all_users_loading_complete &= is_in_sync && conn.state.progress.load(std::sync::atomic::Ordering::Relaxed) == 100;
-                                        }
-                                        if all_users_loading_complete {
-                                            for (id, conn) in self.users.read().await.iter() {
-                                                if let Err(e) = conn.connection.rlnl().send_empty(
-                                                    rlnl::event_code::NetworkEvent::EndOfSync,
-                                                    literustlib::packet::Property::ReliableOrdered,
-                                                    &conn.connection.connection
-                                                ).await {
-                                                    log::error!("Failed to send EndOfSync event to user {}: {}", id, e);
-                                                }
-                                            }
-                                        }
-                                    }*/
                                 } else {
                                     log::warn!("Received machine motion with unknown player id {} from user {}", motion.player_id, user_id);
                                 }
@@ -986,7 +966,6 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         .await?;
                         continue;
                     }
-
                 }
                 // fallback
                 log::warn!("No spawn point found for player {} on team {}, using bad fallback", player.player_id, team);
@@ -1063,7 +1042,12 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     }
 
     pub(super) fn game_done(&self) {
-        self.is_complete.store(true, std::sync::atomic::Ordering::SeqCst);
+        let old = self.is_complete.swap(true, std::sync::atomic::Ordering::SeqCst);
+        if old {
+            log::warn!("Game {} was marked as done again", self.game_guid());
+        } else {
+            log::debug!("Game {} is marked done (handler will exit once all players have disconnected)", self.game_guid());
+        }
     }
 
     pub(super) fn is_game_done(&self) -> bool {
