@@ -300,6 +300,17 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
+    /*pub(super) async fn send_to_player<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, player_id: u8, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T) {
+        if let Some(player) = self.users.read().await.get(&player_id) {
+            crate::events::log_lnl_send_failure(player.connection.rlnl().send_data(
+                data,
+                code,
+                property,
+                &player.connection.connection,
+            ).await);
+        }
+    }*/
+
     pub(super) fn spawn(self) -> tokio::sync::mpsc::Sender<super::GameMessage> {
         let (tx, rx) = tokio::sync::mpsc::channel(super::CHANNEL_BOUND);
         tokio::spawn(self.run(rx));

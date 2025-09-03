@@ -265,6 +265,7 @@ impl PointTracker {
                 let current_enemies = point.enemies_on_point(player_team_u8).await;
                 if old_friendlies == 0 {
                     // something is out of sync, let's just ignore it and try to undo any underflow
+                    log::warn!("Team {} players on point {} counting error", player_team, point_i);
                     point.on_point.read().await[&player_team_u8].store(0, std::sync::atomic::Ordering::SeqCst);
                 } else {
                     if old_friendlies == 1 && current_enemies != 0 {
@@ -286,9 +287,11 @@ impl PointTracker {
                 //let current_friendlies = point.friendlies.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 if old_enemies == 0 {
                     // something is out of sync, let's just ignore it and try to undo any underflow
+                    log::warn!("Team {} players on point {} counting error", player_team, point_i);
                     point.on_point.read().await[&player_team_u8].store(0, std::sync::atomic::Ordering::SeqCst);
                 } else {
                     if old_enemies == 1 {
+                        //log::info!("Enemy has left the capture point");
                         generic.broadcast(
                             rlnl::event_code::NetworkEvent::CapturePointNotification,
                             literustlib::packet::Property::ReliableOrdered,
@@ -352,11 +355,11 @@ impl PointTracker {
             let stealing_team = cap_point.stealers_team().await;
             if stealing_team.is_none() { continue; }
             let stealing_team = stealing_team.unwrap();
+            //log::info!("Team {} is capturing point {} (# of players: {})", stealing_team, i, enemies);
             let to_add = (delta as f32) * (Self::TICK_MS as f32) * cap_point.percent_per_second * max_progress / (100.0 * 1000.0);
             let pre_add = cap_point.capture.fetch_add(to_add, std::sync::atomic::Ordering::SeqCst);
             let post_add = pre_add + to_add;
             if post_add >= max_progress {
-                // ASSUMPTION: there are only 2 teams
                 let new_team = stealing_team as i8;
                 log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
                 cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
@@ -906,7 +909,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     break;
                 }
             }
-            let was_in_point = self.player_tracking.swap_is_in_point(player_team, now_in_point).await;
+            let was_in_point = self.player_tracking.swap_is_in_point(motion.player_id, now_in_point).await;
             if was_in_point != now_in_point {
                 //log::info!("Player {}'s occupied capture point changed from {:?} to {:?}", motion.player_id, was_in_point, now_in_point);
                 if let Some(now_in_point) = now_in_point {
