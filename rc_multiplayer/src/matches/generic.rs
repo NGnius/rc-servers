@@ -658,7 +658,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             if (*id as i32) != ping.sender && (conn.descriptor.team as i32) == ping.team_id {
                                 crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
                                     &ping,
-                                    rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
+                                    rlnl::event_code::NetworkEvent::MapPingEvent,
                                     literustlib::packet::Property::ReliableOrdered,
                                     &conn.connection.connection
                                 ).await);
