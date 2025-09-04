@@ -377,6 +377,15 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                             &rlnl::events::ingame::PlayerId { player: player_id },
                                             true,
                                         ).await;
+                                    } else {
+                                        // in every other case this packet would've already been sent
+                                        // this makes the end-of-match "continue" button send you back to the main menu a bit sooner
+                                        // (otherwise it waits for the multiplayer server to disconnect via timeout)
+                                        crate::events::log_lnl_send_failure(conn.connection.rlnl().send_empty(
+                                            rlnl::event_code::NetworkEvent::PlayerQuitRequestComplete,
+                                            literustlib::packet::Property::ReliableOrdered,
+                                            &conn.connection.connection,
+                                        ).await);
                                     }
                                     let mut has_active_connections = false;
                                     for user in self.users.read().await.values() {
