@@ -30,13 +30,13 @@ impl <C: Clone> CubeInfo<C> {
             (Typed::Str("cpuRating".into()), Typed::Int(self.cpu as i32)),
             (Typed::Str("health".into()), Typed::Int(self.health as i32)),
             (Typed::Str("healthBoost".into()), Typed::Float(self.health_boost)),
-            (Typed::Str("GreyOutInTutorial".into()), Typed::Bool(self.grey_out_in_tutorial.into())),
+            (Typed::Str("GreyOutInTutorial".into()), Typed::Bool(self.grey_out_in_tutorial)),
             (Typed::Str("buildVisibility".into()), Typed::Str(self.visibility.as_str().into())),
-            (Typed::Str("isIndestructible".into()), Typed::Bool(self.indestructible.into())),
+            (Typed::Str("isIndestructible".into()), Typed::Bool(self.indestructible)),
             (Typed::Str("ItemCategory".into()), Typed::Int(self.category as i32)),
             (Typed::Str("PlacementFaces".into()), Typed::Int(self.placements as i32)),
-            (Typed::Str("protoniumCrystal".into()), Typed::Bool(self.protonium.into())),
-            (Typed::Str("UnlockedByLeague".into()), Typed::Bool(self.unlocked_by_league.into())),
+            (Typed::Str("protoniumCrystal".into()), Typed::Bool(self.protonium)),
+            (Typed::Str("UnlockedByLeague".into()), Typed::Bool(self.unlocked_by_league)),
             (Typed::Str("LeagueUnlockIndex".into()), Typed::Int(self.league_unlock_index)),
             (Typed::Str("DisplayStats".into()), {
                 let items: Vec<(Typed<C>, Typed<C>)> = self.stats.iter().map(|(key, val)| (Typed::<C>::Str(key.into()), val.to_owned())).collect();
@@ -51,9 +51,9 @@ impl <C: Clone> CubeInfo<C> {
             (Typed::Str("ItemSize".into()), Typed::Int(self.size as i32)),
             (Typed::Str("ItemType".into()), Typed::Str(self.type_.as_str().into())),
             (Typed::Str("robotRanking".into()), Typed::Int(self.ranking)),
-            (Typed::Str("isCosmetic".into()), Typed::Bool(self.cosmetic.into())),
+            (Typed::Str("isCosmetic".into()), Typed::Bool(self.cosmetic)),
             (Typed::Str("variantOf".into()), Typed::Str(self.variant_of.clone().into())),
-            (Typed::Str("ignoreInWeaponsList".into()), Typed::Bool(self.ignore_in_weapon_list.into())), // optional
+            (Typed::Str("ignoreInWeaponsList".into()), Typed::Bool(self.ignore_in_weapon_list)), // optional
         ].into())
     }
 

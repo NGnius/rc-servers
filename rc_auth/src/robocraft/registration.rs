@@ -78,13 +78,13 @@ fn registration_err(form: RegisterForm, error: String , renderer: &handlebars::H
 pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>, handlebars_ref: Data<handlebars::Handlebars<'_>>) -> Result<Html, actix_web::error::Error> {
     // password confirmation validation
     if form.password != form.password_c {
-        return Ok(registration_err(form.into_inner(), "Passwords do not match".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Passwords do not match".to_owned(), &handlebars_ref));
     }
     if form.password.len() < 8 {
-        return Ok(registration_err(form.into_inner(), "Password too short (minimum 8 characters)".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Password too short (minimum 8 characters)".to_owned(), &handlebars_ref));
     }
     if form.password.len() > 128 {
-        return Ok(registration_err(form.into_inner(), "Password too long (maximum 128 characters)".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Password too long (maximum 128 characters)".to_owned(), &handlebars_ref));
     }
 
     // email validation
@@ -94,7 +94,7 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
             actual_email = None;
         } else {
             if !email.contains('@') {
-                return Ok(registration_err(form.into_inner(), "Email must contain @".to_owned(), &*handlebars_ref));
+                return Ok(registration_err(form.into_inner(), "Email must contain @".to_owned(), &handlebars_ref));
             }
             let email_exists = config.account_provider.user_exists(oj_rc_core::persist::user::UserId::Email(email.to_owned()))
                 .await
@@ -103,7 +103,7 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
                     actix_web::error::ErrorInternalServerError(e)
                 })?;
             if email_exists {
-                return Ok(registration_err(form.into_inner(), "Email already registered".to_owned(), &*handlebars_ref));
+                return Ok(registration_err(form.into_inner(), "Email already registered".to_owned(), &handlebars_ref));
             }
             actual_email = Some(email.to_owned());
         }
@@ -119,10 +119,10 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
         } else {
             let steam_id = match steam_id.parse() {
                 Ok(id) => id,
-                Err(_e) => return Ok(registration_err(form.into_inner(), "Invalid SteamID (not an integer)".to_owned(), &*handlebars_ref)),
+                Err(_e) => return Ok(registration_err(form.into_inner(), "Invalid SteamID (not an integer)".to_owned(), &handlebars_ref)),
             };
-            if steam_id >= 7656120_0000000000 || steam_id < 7656119_0000000000 {
-                return Ok(registration_err(form.into_inner(), "Invalid SteamID (should be like 7656119XXXXXXXXXX)".to_owned(), &*handlebars_ref));
+            if !(7656119_0000000000..7656120_0000000000).contains(&steam_id) {
+                return Ok(registration_err(form.into_inner(), "Invalid SteamID (should be like 7656119XXXXXXXXXX)".to_owned(), &handlebars_ref));
             }
             let steam_exists = config.account_provider.user_exists(oj_rc_core::persist::user::UserId::SteamId(steam_id))
                 .await
@@ -131,7 +131,7 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
                     actix_web::error::ErrorInternalServerError(e)
                 })?;
             if steam_exists {
-                return Ok(registration_err(form.into_inner(), "SteamID already registered".to_owned(), &*handlebars_ref));
+                return Ok(registration_err(form.into_inner(), "SteamID already registered".to_owned(), &handlebars_ref));
             }
             actual_steam_id = Some(steam_id);
         }
@@ -141,13 +141,13 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
 
     // username validation
     if form.display_name.len() < 4 {
-        return Ok(registration_err(form.into_inner(), "Username too short (minimum 4 characters)".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Username too short (minimum 4 characters)".to_owned(), &handlebars_ref));
     }
     if form.display_name.len() > 32 {
-        return Ok(registration_err(form.into_inner(), "Username too long (maximum 32 characters)".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Username too long (maximum 32 characters)".to_owned(), &handlebars_ref));
     }
     if !all_valid_chars(&form.display_name.to_lowercase()) {
-        return Ok(registration_err(form.into_inner(), "Invalid username (only alphanumerics and _ allowed)".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Invalid username (only alphanumerics and _ allowed)".to_owned(), &handlebars_ref));
     }
     let username_exists = config.account_provider.user_exists(oj_rc_core::persist::user::UserId::Username(form.display_name.to_owned()))
         .await
@@ -156,7 +156,7 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
             actix_web::error::ErrorInternalServerError(e)
         })?;
     if username_exists {
-        return Ok(registration_err(form.into_inner(), "Username already registered".to_owned(), &*handlebars_ref));
+        return Ok(registration_err(form.into_inner(), "Username already registered".to_owned(), &handlebars_ref));
     }
 
     let user_id = match config.account_provider.register(oj_rc_core::persist::user::RegistrationInfo {
@@ -167,7 +167,7 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
     }).await {
         Ok(id) => id,
         Err(e) => {
-            return Ok(registration_err(form.into_inner(), format!("Registration failed: {}", e), &*handlebars_ref));
+            return Ok(registration_err(form.into_inner(), format!("Registration failed: {}", e), &handlebars_ref));
         }
     };
 
@@ -187,7 +187,7 @@ pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>) -> Html
         password_c: "".to_owned(),
         email: None,
         steam_id: None,
-    }, &*handlebars_ref)
+    }, &handlebars_ref)
 }
 
 #[get("/robocraft/favicon")]

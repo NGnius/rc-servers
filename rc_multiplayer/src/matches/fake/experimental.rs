@@ -17,8 +17,8 @@ impl ExperimentalPlayer {
 
 #[async_trait::async_trait]
 impl super::FakeUser for ExperimentalPlayer {
-    async fn on_init(&self, descriptors: &Vec<oj_rc_core::persist::user::PlayerDescriptor>, player_id: u8) {
-        if let Some(my_desc) = descriptors.iter().filter(|x| x.player_id == player_id).next() {
+    async fn on_init(&self, descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], player_id: u8) {
+        if let Some(my_desc) = descriptors.iter().find(|x| x.player_id == player_id) {
             *self.me.write().await = Some(my_desc.to_owned());
         }
     }

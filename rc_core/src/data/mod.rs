@@ -24,7 +24,7 @@ pub fn encode_7_bit_i32(mut src: i32) -> Vec<u8> {
     let mut out = Vec::with_capacity(5);
     while src != 0 {
         let last_7 = (src & 0x7F) as u8;
-        src = src >> 7;
+        src >>= 7;
         if src != 0 {
             out.push(last_7 | 0x80);
         } else {
@@ -65,5 +65,5 @@ pub fn read_str_for_binwriter(reader: &mut dyn std::io::Read) -> std::io::Result
 }
 
 pub fn cube_id_to_str(id: u32) -> String {
-    hex::encode(id.to_be_bytes()).into()
+    hex::encode(id.to_be_bytes())
 }

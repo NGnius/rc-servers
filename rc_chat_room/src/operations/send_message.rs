@@ -24,7 +24,7 @@ impl <C: Send + 'static> SimpleOperation<C> for PublicMessageSender {
             if let Some(Typed::Str(channel_name)) = params.remove(&CHANNEL_NAME_PARAM_KEY) {
                 if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
                     let user = user.user()?;
-                    if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
+                    if message_text.string.len() > MAX_MESSAGE_LEN {
                         log::warn!("Rejecting too long chat message from {}", user.public_id());
                         return Err((oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16).into())
                     }
@@ -65,7 +65,7 @@ impl <C: Send + 'static> SimpleOperation<C> for PrivateMessageSender {
         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
             if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
                 let user = user.user()?;
-                if message_text.string.bytes().len() > MAX_MESSAGE_LEN {
+                if message_text.string.len() > MAX_MESSAGE_LEN {
                     log::warn!("Rejecting too long chat message from {}", user.public_id());
                     return Err((oj_rc_core::data::error_codes::ChatErrorCodes::Flood as i16).into())
                 }

@@ -25,7 +25,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for PlayerUpdate
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: Self::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for &PlayerUpdat
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: PlayerUpdated::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }

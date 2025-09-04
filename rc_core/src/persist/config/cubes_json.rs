@@ -64,7 +64,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
         let mut movement_cat_stats = Vec::with_capacity(self.movement.len());
         for (k, v) in self.movement.iter() {
-            let stats: Vec<_> = if let Some(stats) = movements_stats.get(&k) {
+            let stats: Vec<_> = if let Some(stats) = movements_stats.get(k) {
                 stats.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
             } else {
                 Vec::default()
@@ -250,7 +250,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             val_ty: TypePrefix::HashMap,
             items: vec![
                 (Typed::Str("GameplaySettings".into()), conf_data.as_transmissible()),
-            ].into(),
+            ],
         })
     }
 
@@ -317,7 +317,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     }
 
     fn gamemodes(&self) -> crate::data::game_mode::GameModeConfigs {
-        self.battle.games.clone().into()
+        self.battle.games.into()
     }
 
     fn singleplayer_details(&self) -> super::SingleplayerConfig {

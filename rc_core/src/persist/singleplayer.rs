@@ -86,17 +86,17 @@ pub struct CampaignDifficulty {
     pub damage_boost_wave_increase: f32,
 }
 
-impl std::convert::Into<crate::data::campaign::CampaignDifficultyData> for CampaignDifficulty {
-    fn into(self) -> crate::data::campaign::CampaignDifficultyData {
+impl std::convert::From<CampaignDifficulty> for crate::data::campaign::CampaignDifficultyData {
+    fn from(val: CampaignDifficulty) -> Self {
         crate::data::campaign::CampaignDifficultyData {
-            level: self.level,
-            lives: self.lives,
-            auto_heal: self.auto_heal,
-            single_wave_bonus: self.single_wave_bonus,
-            initial_health_boost: self.initial_health_boost,
-            health_boost_wave_increase: self.health_boost_wave_increase,
-            initial_damage_boost: self.initial_damage_boost,
-            damage_boost_wave_increase: self.damage_boost_wave_increase,
+            level: val.level,
+            lives: val.lives,
+            auto_heal: val.auto_heal,
+            single_wave_bonus: val.single_wave_bonus,
+            initial_health_boost: val.initial_health_boost,
+            health_boost_wave_increase: val.health_boost_wave_increase,
+            initial_damage_boost: val.initial_damage_boost,
+            damage_boost_wave_increase: val.damage_boost_wave_increase,
         }
     }
 }
@@ -128,22 +128,22 @@ pub struct Wave {
     pub time_max: i32,
 }
 
-impl std::convert::Into<crate::data::campaign::WaveData> for Wave {
-    fn into(self) -> crate::data::campaign::WaveData {
+impl std::convert::From<Wave> for crate::data::campaign::WaveData {
+    fn from(val: Wave) -> Self {
         crate::data::campaign::WaveData {
-            robots_in_wave: self.robots_in_wave.into_iter().map(|x| x.into()).collect(),
+            robots_in_wave: val.robots_in_wave.into_iter().map(|x| x.into()).collect(),
         }
     }
 }
 
-impl std::convert::Into<crate::data::campaign::CompleteWaveData> for Wave {
-    fn into(self) -> crate::data::campaign::CompleteWaveData {
+impl std::convert::From<Wave> for crate::data::campaign::CompleteWaveData {
+    fn from(val: Wave) -> Self {
         crate::data::campaign::CompleteWaveData {
-            player_spawn_location: self.player_spawn_location,
-            robots_in_wave: self.robots_in_wave.into_iter().map(|x| x.into()).collect(),
-            kill_target: self.kill_target,
-            time_min: self.time_min,
-            time_max: self.time_max,
+            player_spawn_location: val.player_spawn_location,
+            robots_in_wave: val.robots_in_wave.into_iter().map(|x| x.into()).collect(),
+            kill_target: val.kill_target,
+            time_min: val.time_min,
+            time_max: val.time_max,
         }
     }
 }
@@ -185,35 +185,35 @@ fn default_1() -> i32 {
     1
 }
 
-impl std::convert::Into<crate::data::campaign::WaveRobotData> for WaveRobot {
-    fn into(self) -> crate::data::campaign::WaveRobotData {
+impl std::convert::From<WaveRobot> for crate::data::campaign::WaveRobotData {
+    fn from(val: WaveRobot) -> Self {
         crate::data::campaign::WaveRobotData {
-            name: self.name,
-            weapon: self.weapon,
-            movement: self.movement,
-            rank: self.rank,
-            count: self.count,
+            name: val.name,
+            weapon: val.weapon,
+            movement: val.movement,
+            rank: val.rank,
+            count: val.count,
         }
     }
 }
 
-impl std::convert::Into<crate::data::campaign::CompleteWaveRobotData> for WaveRobot {
-    fn into(self) -> crate::data::campaign::CompleteWaveRobotData {
+impl std::convert::From<WaveRobot> for crate::data::campaign::CompleteWaveRobotData {
+    fn from(val: WaveRobot) -> Self {
         crate::data::campaign::CompleteWaveRobotData {
-            name: self.name,
-            robot_data: self.robot_data,
-            colour_data: self.colour_data,
-            time_to_spawn: self.time_to_spawn,
-            kills_to_spawn: self.kills_to_spawn,
-            time_to_despawn: self.time_to_despawn,
-            kills_to_despawn: self.kills_to_despawn,
-            initial_robot_amount: self.initial_robot_amount,
-            periodic_robot_amount: self.periodic_robot_amount,
-            spawn_interval: self.spawn_interval,
-            min_robot_amount: self.min_robot_amount,
-            max_robot_amount: self.max_robot_amount,
-            is_boss: self.is_boss,
-            is_kill_requirement: self.is_kill_requirement,
+            name: val.name,
+            robot_data: val.robot_data,
+            colour_data: val.colour_data,
+            time_to_spawn: val.time_to_spawn,
+            kills_to_spawn: val.kills_to_spawn,
+            time_to_despawn: val.time_to_despawn,
+            kills_to_despawn: val.kills_to_despawn,
+            initial_robot_amount: val.initial_robot_amount,
+            periodic_robot_amount: val.periodic_robot_amount,
+            spawn_interval: val.spawn_interval,
+            min_robot_amount: val.min_robot_amount,
+            max_robot_amount: val.max_robot_amount,
+            is_boss: val.is_boss,
+            is_kill_requirement: val.is_kill_requirement,
         }
     }
 }
@@ -225,12 +225,12 @@ pub enum CampaignType {
     Elimination = 2,
 }
 
-impl std::convert::Into<crate::data::campaign::CampaignType> for CampaignType {
-    fn into(self) -> crate::data::campaign::CampaignType {
-        match self {
-            Self::TimedElimination => crate::data::campaign::CampaignType::TimedElimination,
-            Self::Survival => crate::data::campaign::CampaignType::Survival,
-            Self::Elimination => crate::data::campaign::CampaignType::Elimination,
+impl std::convert::From<CampaignType> for crate::data::campaign::CampaignType {
+    fn from(val: CampaignType) -> Self {
+        match val {
+            CampaignType::TimedElimination => crate::data::campaign::CampaignType::TimedElimination,
+            CampaignType::Survival => crate::data::campaign::CampaignType::Survival,
+            CampaignType::Elimination => crate::data::campaign::CampaignType::Elimination,
         }
     }
 }

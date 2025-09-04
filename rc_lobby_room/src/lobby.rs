@@ -76,8 +76,8 @@ impl QueueHandler {
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
             map: key.map.clone(),
-            mode: key.mode.clone(),
-            visibility: key.visibility.clone(),
+            mode: key.mode,
+            visibility: key.visibility,
             auto_heal: key.auto_heal,
             is_ranked: false,
             is_custom: false,

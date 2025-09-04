@@ -19,7 +19,7 @@ async fn do_handling(params: ParameterTable<()>, _user: &crate::UserTy, factory:
             log::error!("Failed to retrieve vehicles from factory: {}", e);
             oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
         })?;
-        let vehicles: Vec<_> = vehicles.into_iter().map(|x| crate::data::crf::ItemResult::from(x)).collect();
+        let vehicles: Vec<_> = vehicles.into_iter().map(crate::data::crf::ItemResult::from).collect();
         params.insert(ITEMS_PARAM_KEY, crate::data::crf::ItemResult::as_transmissible(&vehicles));
     }
     Ok(params.into())

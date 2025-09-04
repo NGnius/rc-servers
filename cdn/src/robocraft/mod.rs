@@ -8,4 +8,4 @@ pub mod favicon;
 mod internal_auth;
 pub use internal_auth::{IntercomAuth, IntercomOpError};
 
-pub(self) const DEFAULT_IMAGE: &str = "default.jpg";
+ const DEFAULT_IMAGE: &str = "default.jpg";

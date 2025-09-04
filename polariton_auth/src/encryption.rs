@@ -26,18 +26,18 @@ pub fn generate_encryption_details(client_pub_key: &[u8]) -> Keys {
     let big_0 = BigInt::from(0);
     let prime_root = BigInt::from(PRIME_ROOT);
     let my_prime = BigInt::from_bytes_be(num::bigint::Sign::Plus, PRIME_768);
-    log::debug!("Generating keys for client pub key {}", client_num.to_string());
+    log::debug!("Generating keys for client pub key {}", client_num);
     let mut rng = rand::rng();
     let mut bytes = rng.random::<[u8; SECRET_LEN]>();
     let mut my_secret = BigInt::from_bytes_be(num::bigint::Sign::Plus, &bytes);
     while my_secret >= &my_prime - 1 || my_secret == big_0 {
         bytes = rng.random::<[u8; SECRET_LEN]>();
         my_secret = BigInt::from_bytes_be(num::bigint::Sign::Plus, &bytes);
-        log::debug!("Generated secret {} (prime to beat: {})", my_secret.to_string(), my_prime.to_string());
+        log::debug!("Generated secret {} (prime to beat: {})", my_secret, my_prime);
     }
     let my_pub_key = prime_root.modpow(&my_secret, &my_prime);
     let shared_key = client_num.modpow(&my_secret, &my_prime);
-    log::debug!("Generated shared key {} and pub key {}", shared_key.to_string(), my_pub_key.to_string());
+    log::debug!("Generated shared key {} and pub key {}", shared_key, my_pub_key);
     let shared_key = shared_key.to_bytes_be().1;
     let enc_key: Vec<u8> = ring::digest::digest(&ring::digest::SHA256, &shared_key).as_ref().into();
     log::debug!("Encryption key is {:?}", enc_key.as_slice());

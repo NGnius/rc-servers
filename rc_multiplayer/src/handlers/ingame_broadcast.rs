@@ -15,7 +15,7 @@ impl <const EXCLUDE_SENDER: bool, const CODE_IN: i16, const CODE_OUT: i16, const
             msg_router: init_ctx.matches_chann.clone(),
             code_out: crate::handler::i16_to_event_or_panic(CODE_OUT),
             property: literustlib::packet::Property::try_from(PROPERTY).expect("Invalid literustlib packet property"),
-            _in: std::marker::PhantomData::default(),
+            _in: std::marker::PhantomData,
         }
     }
 }

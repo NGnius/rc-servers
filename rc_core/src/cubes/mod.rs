@@ -1,4 +1,4 @@
-pub(self) mod parser;
+ mod parser;
 
 mod weapon_list;
 pub use weapon_list::WeaponListParser;

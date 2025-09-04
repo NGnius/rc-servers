@@ -31,7 +31,7 @@ impl ChatChannelMember {
     pub fn as_transmissible(&self) -> Typed {
         Typed::HashMap(vec![
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
-            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar.into())),
+            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("state".into()), Typed::Int(self.state as _)),
             if self.use_custom_avatar {
                 (Typed::Str("customAvatar".into()), Typed::Bytes(self.custom_avatar.clone().into()))

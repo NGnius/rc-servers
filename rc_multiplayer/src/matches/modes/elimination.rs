@@ -332,7 +332,7 @@ impl BaseTracker {
     }
 
     fn teams(&self) -> std::collections::HashSet<u8> {
-        self.bases.keys().map(|x| *x).collect()
+        self.bases.keys().copied().collect()
     }
 }
 

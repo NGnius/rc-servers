@@ -29,10 +29,10 @@ impl GarageSlotInfo {
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
             (Typed::Str("numberCubes".into()), Typed::Int(self.cubes as i32)),
             (Typed::Str("crfId".into()), Typed::Int(self.crf_id as i32)),
-            (Typed::Str("wasRated".into()), Typed::Bool(self.was_rated.into())),
+            (Typed::Str("wasRated".into()), Typed::Bool(self.was_rated)),
             (Typed::Str("movementCategories".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Int, // int
-                items: self.movement_categories.iter().map(|x| Typed::Int(x.but_bigger() as i32)).collect(),
+                items: self.movement_categories.iter().map(|x| Typed::Int(x.but_bigger())).collect(),
             })),
             (Typed::Str("uniqueId1".into()), Typed::Int(self.uuid.0 as i32)),
             (Typed::Str("uniqueId2".into()), Typed::Int(self.uuid.1 as i32)),
@@ -41,7 +41,7 @@ impl GarageSlotInfo {
             (Typed::Str("totalCosmeticCPU".into()), Typed::Int(self.total_cosmetic_cpu as i32)),
             (Typed::Str("totalRobotRanking".into()), Typed::Int(self.total_robot_ranking as i32)),
             (Typed::Str("bayCpu".into()), Typed::Int(self.bay_cpu as i32)),
-            (Typed::Str("tutorialRobot".into()), Typed::Bool(self.tutorial_robot.into())),
+            (Typed::Str("tutorialRobot".into()), Typed::Bool(self.tutorial_robot)),
             (Typed::Str("starterRobotIndex".into()), Typed::Int(self.starter_robot_index)),
             (Typed::Str("controlType".into()), Typed::Int(self.control_type as i32)),
             (Typed::Str("controlOptions".into()), self.control_options.as_transmissible()),
@@ -86,9 +86,9 @@ impl ControlOptions {
         Typed::Arr(Arr {
             ty: TypePrefix::Bool, // bool
             items: vec![
-                Typed::Bool(self.vertical_strafing.into()),
-                Typed::Bool(self.sideways_driving.into()),
-                Typed::Bool(self.tracks_turn_on_spot.into()),
+                Typed::Bool(self.vertical_strafing),
+                Typed::Bool(self.sideways_driving),
+                Typed::Bool(self.tracks_turn_on_spot),
             ],
         })
     }

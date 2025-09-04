@@ -34,7 +34,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for PublicMessag
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: Self::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }
@@ -47,7 +47,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for &PublicMessa
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: PublicMessage::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }
@@ -84,7 +84,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for PrivateMessa
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: Self::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }
@@ -97,7 +97,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for &PrivateMess
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: PrivateMessage::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }

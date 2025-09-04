@@ -20,7 +20,7 @@ impl VehicleMotionHandler {
 impl crate::RobotMotionHandler for VehicleMotionHandler {
     async fn handle(&self, data: &bytes::Bytes, user: &crate::UserData) {
         if let Some(user_info) = user.user().await {
-            let mut des = byteserde::des_slice::ByteDeserializerSlice::new(&data);
+            let mut des = byteserde::des_slice::ByteDeserializerSlice::new(data);
             match rlnl::machine_motion::MachineMotion::byte_deserialize(&mut des) {
                 Ok(motion_data) => {
                     crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::Motion {

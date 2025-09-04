@@ -38,53 +38,53 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                         log::debug!("Sent NewConnection message to matches handler");
                         if let Ok(Some(e)) = rx.await {
                             log::error!("Failed {:?} event: {} [disconnecting...]", Self::CODE, e);
-                            super::log_lnl_send_failure(crate::handlers::RlnlSender::new(&sender)
+                            super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                                 .send_data(&rlnl::types::StringCode {
                                     ty: rlnl::types::GameServerErrorCodes::StrErrCustomString,
                                     custom: Some(rlnl::types::BinaryWriterString(e.message)),
                                 },
                                 rlnl::event_code::NetworkEvent::OnFailedToConnectToServer,
                                 literustlib::packet::Property::ReliableOrdered,
-                                &peer).await);
+                                peer).await);
                             peer.disconnect();
                         } else {
                             peer.certify();
                         }
                     } else {
                         log::error!("Registered game GUID does not match sent GUID (got: {}, expected: {}) [disconnecting...]", game_guid, current_game.guid);
-                        super::log_lnl_send_failure(crate::handlers::RlnlSender::new(&sender)
+                        super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                             .send_data(&rlnl::types::StringCode {
                                 ty: rlnl::types::GameServerErrorCodes::StrErrIncorrectGameGuid,
                                 custom: Some(rlnl::types::BinaryWriterString(format!("Send game guid does not equal expected guid; {} != {}", game_guid, current_game.guid))),
                             },
                             rlnl::event_code::NetworkEvent::OnFailedToConnectToServer,
                             literustlib::packet::Property::ReliableOrdered,
-                            &peer).await);
+                            peer).await);
                         peer.disconnect();
                     }
                 },
                 Ok(None) => {
                     log::warn!("Cannot validate game guid for user {} with no ongoing game [disconnecting...]", user_info.user_id());
-                    super::log_lnl_send_failure(crate::handlers::RlnlSender::new(&sender)
+                    super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: rlnl::types::GameServerErrorCodes::StrErrIncorrectGameGuid,
                             custom: None,
                         },
                         rlnl::event_code::NetworkEvent::OnFailedToConnectToServer,
                         literustlib::packet::Property::ReliableOrdered,
-                        &peer).await);
+                        peer).await);
                     peer.disconnect();
                 },
                 Err(e) => {
                     log::error!("Failed to get current game for user {}: {} [disconnecting...]", user_info.user_id(), e.message);
-                    super::log_lnl_send_failure(crate::handlers::RlnlSender::new(&sender)
+                    super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: core_to_rlnl_mp_error_code(e.code),
                             custom: Some(rlnl::types::BinaryWriterString(e.message)),
                         },
                         rlnl::event_code::NetworkEvent::OnFailedToConnectToServer,
                         literustlib::packet::Property::ReliableOrdered,
-                        &peer).await);
+                        peer).await);
                     peer.disconnect();
                 },
             }

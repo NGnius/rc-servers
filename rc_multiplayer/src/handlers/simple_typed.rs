@@ -24,7 +24,7 @@ pub trait RlnlEventCodeHandler: Sync + Send {
 #[async_trait::async_trait]
 impl <In: byteserde::des_slice::ByteDeserializeSlice<In> + Send, H: RlnlEventCodeHandler<In=In>> crate::EventCodeHandler for SimpleRlnl<In, H> {
     async fn handle(&self, data: &bytes::Bytes, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
-        let mut des = byteserde::des_slice::ByteDeserializerSlice::new(&data);
+        let mut des = byteserde::des_slice::ByteDeserializerSlice::new(data);
         match In::byte_deserialize(&mut des) {
             Ok(rlnl_data) => {
                 //log::info!("Received {:?} message", H::CODE);

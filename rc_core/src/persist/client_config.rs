@@ -14,19 +14,19 @@ pub struct GameplaySettings {
     pub cross_promo_link: String, // url
 }
 
-impl std::convert::Into<crate::data::client_config::GameplaySettings> for GameplaySettings {
-    fn into(self) -> crate::data::client_config::GameplaySettings {
+impl std::convert::From<GameplaySettings> for crate::data::client_config::GameplaySettings {
+    fn from(val: GameplaySettings) -> Self {
         crate::data::client_config::GameplaySettings {
-            show_tutorial_after_date: self.show_tutorial_after_date,
-            health_threshold: self.health_threshold,
-            microbot_sphere: self.microbot_sphere,
-            misfire_angle: self.misfire_angle,
-            shield_dps: self.shield_dps,
-            shield_hps: self.shield_hps,
-            request_review_level: self.request_review_level,
-            critical_ratio: self.critical_ratio,
-            cross_promo_image: self.cross_promo_image,
-            cross_promo_link: self.cross_promo_link,
+            show_tutorial_after_date: val.show_tutorial_after_date,
+            health_threshold: val.health_threshold,
+            microbot_sphere: val.microbot_sphere,
+            misfire_angle: val.misfire_angle,
+            shield_dps: val.shield_dps,
+            shield_hps: val.shield_hps,
+            request_review_level: val.request_review_level,
+            critical_ratio: val.critical_ratio,
+            cross_promo_image: val.cross_promo_image,
+            cross_promo_link: val.cross_promo_link,
         }
     }
 }

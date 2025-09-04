@@ -36,7 +36,7 @@ impl <'a> Handshake<Start<'a>> {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::InitStart(info) = &conn.data {
                     if info.app_id != self.state.app_id {
-                        let err = ConnectError::WrongAppId { got: &info.app_id, expected: &self.state.app_id };
+                        let err = ConnectError::WrongAppId { got: &info.app_id, expected: self.state.app_id };
                         return Err(HandshakeAnd {
                             handshake: self,
                             extra: err,
@@ -75,7 +75,7 @@ pub enum EncryptError {
 impl Handshake<Connected> {
     const PUBLIC_KEY_PARAM_KEY: u8 = 1;
 
-    pub fn encrypt<'a>(self, packet: &'a Packet) -> Result<HandshakeAnd<Encrypted, (Packet, crate::encryption::CryptoImpl)>, HandshakeAnd<Connected, EncryptError>> {
+    pub fn encrypt(self, packet: &Packet) -> Result<HandshakeAnd<Encrypted, (Packet, crate::encryption::CryptoImpl)>, HandshakeAnd<Connected, EncryptError>> {
         if let Packet::Packet(packet) = &packet {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::InternalOpReq(req) = &conn.data {
@@ -153,7 +153,7 @@ impl <T: AuthProvider<E>, E> Handshake<Auth<T, E>> {
     const AUTH_REQUEST_CODE: u8 = 230;
     const USER_ID_KEY: u8 = 225;
     const NICKNAME_KEY: u8 = 225;
-    pub fn authenticate<'a>(mut self, packet: &'a Packet, serdes_ctx: &polariton::packet::SerdesContext<(), polariton::serdes::NoCustomSerdes>) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
+    pub fn authenticate(mut self, packet: &Packet, serdes_ctx: &polariton::packet::SerdesContext<(), polariton::serdes::NoCustomSerdes>) -> Result<Packet, HandshakeAnd<Auth<T, E>, AuthError<E>>> {
         if let Packet::Packet(packet) = &packet {
             if let Message::Standard(conn) = &packet.message {
                 if let Data::OpReq(req) = &conn.data {

@@ -137,8 +137,8 @@ impl literustlib::packet::PacketData for EventData {
         use std::io::Write;
         let mut buf = Vec::new();
         buf.write_all(&(self.message_ty as i16).to_le_bytes()).unwrap();
-        buf.write_all(&(self.variant as i16).to_le_bytes()).unwrap();
-        buf.write_all(&(self.data_size as u16).to_le_bytes()).unwrap();
+        buf.write_all(&self.variant.to_le_bytes()).unwrap();
+        buf.write_all(&self.data_size.to_le_bytes()).unwrap();
         buf.write_all(&self.data).unwrap();
         buf.into()
     }

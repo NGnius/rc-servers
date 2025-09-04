@@ -233,7 +233,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     }
 
     pub(super) async fn user_key_by_user_id(&self, user_id: i32) -> Option<u8> {
-        self.user_id_map.read().await.get(&user_id).map(|x| *x)
+        self.user_id_map.read().await.get(&user_id).copied()
     }
 
     pub(super) async fn rebroadcast<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, user_id: i32, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T, in_game: bool) {
@@ -335,7 +335,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             //tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                             //let id = users.len() as u8;
                             let user_id = user.user_id();
-                            let player_info = self.players_info.iter().filter(|p| p.user_id == Some(user_id)).next().unwrap();
+                            let player_info = self.players_info.iter().find(|p| p.user_id == Some(user_id)).unwrap();
                             let id = player_info.player_id;
                             let new_user = UserConnection {
                                 user,
@@ -535,10 +535,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 log::info!("User {} is awaiting sync", user_id);
                                 user.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
                                 ready_count += 1;
-                            } else {
-                                if matches!(ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
-                                    ready_count += 1;
-                                }
+                            } else if matches!(ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
+                                ready_count += 1;
                             }
                         }
                         let player_count = self.players_info.iter().filter(|x| x.user_id.is_some()).count();
@@ -675,7 +673,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     },
                     super::GameMessage::MapPing { user_id: _, ping } => {
                         for (id, conn) in self.users.read().await.iter() {
-                            if (*id as i32) != ping.sender && (conn.descriptor.team as i32) == ping.team_id {
+                            if (*id as i32) != ping.sender && conn.descriptor.team == ping.team_id {
                                 crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
                                     &ping,
                                     rlnl::event_code::NetworkEvent::MapPingEvent,
@@ -931,7 +929,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         sender.send_data(
             &rlnl::events::sync::InitialiseGameStats {
                 num_players,
-                stats: (0..num_players).into_iter()
+                stats: (0..num_players)
                     .map(|i| rlnl::types::IngamePlayerStats {
                         player_name: i,
                         num_stats: 0,

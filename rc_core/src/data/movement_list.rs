@@ -21,13 +21,13 @@ pub struct MovementCategoryData {
 impl MovementCategoryData {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
-        self.horizontal_top_speed.map(|x| out.push((Typed::Str("horizontalTopSpeed".into()), Typed::Float(x))));
-        self.vertical_top_speed.map(|x| out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))));
-        self.min_required_items.map(|x| out.push((Typed::Str("minRequiredItems".into()), Typed::Int(x))));
-        self.min_item_modifier.map(|x| out.push((Typed::Str("minItemsModifier".into()), Typed::Float(x))));
-        self.max_hover_height.map(|x| out.push((Typed::Str("maxHoverHeight".into()), Typed::Float(x))));
-        self.light_machine_mass.map(|x| out.push((Typed::Str("lightMachineMass".into()), Typed::Float(x))));
-        self.heavy_machine_mass.map(|x| out.push((Typed::Str("heavyMachineMass".into()), Typed::Float(x))));
+        if let Some(x) = self.horizontal_top_speed { out.push((Typed::Str("horizontalTopSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.vertical_top_speed { out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.min_required_items { out.push((Typed::Str("minRequiredItems".into()), Typed::Int(x))) }
+        if let Some(x) = self.min_item_modifier { out.push((Typed::Str("minItemsModifier".into()), Typed::Float(x))) }
+        if let Some(x) = self.max_hover_height { out.push((Typed::Str("maxHoverHeight".into()), Typed::Float(x))) }
+        if let Some(x) = self.light_machine_mass { out.push((Typed::Str("lightMachineMass".into()), Typed::Float(x))) }
+        if let Some(x) = self.heavy_machine_mass { out.push((Typed::Str("heavyMachineMass".into()), Typed::Float(x))) }
         out.append(&mut self.specifics.as_transmissible());
         for (tier, mov_data) in self.stats.iter() {
             out.push((Typed::Str(tier.as_str().into()), mov_data.as_transmissible()));
@@ -35,7 +35,7 @@ impl MovementCategoryData {
         Typed::Dict(Dict {
             key_ty: TypePrefix::Str,
             val_ty: TypePrefix::Any,
-            items: out.into(),
+            items: out,
         })
     }
 }
@@ -136,15 +136,15 @@ pub struct MovementData {
 impl MovementData {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
-        self.speed_boost.map(|x| out.push((Typed::Str("speedBoost".into()), Typed::Float(x))));
-        self.max_carry_mass.map(|x| out.push((Typed::Str("maxCarryMass".into()), Typed::Float(x))));
-        self.horizontal_top_speed.map(|x| out.push((Typed::Str("horizontalTopSpeed".into()), Typed::Float(x))));
-        self.vertical_top_speed.map(|x| out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))));
+        if let Some(x) = self.speed_boost { out.push((Typed::Str("speedBoost".into()), Typed::Float(x))) }
+        if let Some(x) = self.max_carry_mass { out.push((Typed::Str("maxCarryMass".into()), Typed::Float(x))) }
+        if let Some(x) = self.horizontal_top_speed { out.push((Typed::Str("horizontalTopSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.vertical_top_speed { out.push((Typed::Str("verticalTopSpeed".into()), Typed::Float(x))) }
         out.append(&mut self.specifics.as_transmissible());
         Typed::Dict(Dict {
             key_ty: TypePrefix::Str, // str
             val_ty: TypePrefix::Any, // any
-            items: out.into(),
+            items: out,
         })
     }
 }

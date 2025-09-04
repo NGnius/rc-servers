@@ -25,6 +25,7 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     /// Called when the game is marked as complete
     async fn on_game_completed(&self, generic: &super::GenericGamemodeEngine<Self>) -> bool;
     /// Called when various network events are broadcast from one client but before they are sent to the rest of the clients
+    #[allow(clippy::too_many_arguments)]
     async fn on_broadcast(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, skip_user: bool) -> bool;
     /// Called when a vehicle motion event is received from a client
     async fn on_motion(&self, generic: &super::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool;

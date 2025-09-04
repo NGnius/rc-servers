@@ -71,47 +71,47 @@ impl WeaponData {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut out = Vec::new();
 
-        self.damage_inflicted.map(|x| out.push((Typed::Str("damageInflicted".into()), Typed::Int(x))));
-        self.protonium_damage_scale.map(|x| out.push((Typed::Str("protoniumDamageScale".into()), Typed::Float(x))));
-        self.projectile_speed.map(|x| out.push((Typed::Str("projectileSpeed".into()), Typed::Float(x))));
-        self.projectile_range.map(|x| out.push((Typed::Str("projectileRange".into()), Typed::Float(x))));
-        self.base_inaccuracy.map(|x| out.push((Typed::Str("baseInaccuracy".into()), Typed::Float(x))));
-        self.base_air_inaccuracy.map(|x| out.push((Typed::Str("baseAirInaccuracy".into()), Typed::Float(x))));
-        self.movement_inaccuracy.map(|x| out.push((Typed::Str("movementInaccuracy".into()), Typed::Float(x))));
-        self.movement_max_speed.map(|x| out.push((Typed::Str("movementMaxThresholdSpeed".into()), Typed::Float(x))));
-        self.movement_min_speed.map(|x| out.push((Typed::Str("movementMinThresholdSpeed".into()), Typed::Float(x))));
-        self.gun_rotation_slow.map(|x| out.push((Typed::Str("gunRotationThresholdSlow".into()), Typed::Float(x))));
-        self.movement_inaccuracy_decay.map(|x| out.push((Typed::Str("movementInaccuracyDecayTime".into()), Typed::Float(x))));
-        self.slow_rotation_decay.map(|x| out.push((Typed::Str("slowRotationInaccuracyDecayTime".into()), Typed::Float(x))));
-        self.quick_rotation_decay.map(|x| out.push((Typed::Str("quickRotationInaccuracyDecayTime".into()), Typed::Float(x))));
-        self.movement_inaccuracy_recovery.map(|x| out.push((Typed::Str("movementInaccuracyRecoveryTime".into()), Typed::Float(x))));
-        self.repeat_fire_inaccuracy_total_degrees.map(|x| out.push((Typed::Str("repeatFireInaccuracyTotalDegrees".into()), Typed::Float(x))));
-        self.repeat_fire_inaccuracy_decay.map(|x| out.push((Typed::Str("repeatFireInaccuracyDecayTime".into()), Typed::Float(x))));
-        self.repeat_fire_innaccuracy_recovery.map(|x| out.push((Typed::Str("repeatFireInaccuracyRecoveryTime".into()), Typed::Float(x))));
-        self.fire_instant_accuracy_decay.map(|x| out.push((Typed::Str("fireInstantAccuracyDecayDegrees".into()), Typed::Float(x)))); // degrees
-        self.accuracy_non_recover_time.map(|x| out.push((Typed::Str("accuracyNonRecoverTime".into()), Typed::Float(x))));
-        self.accuracy_decay.map(|x| out.push((Typed::Str("accuracyDecayTime".into()), Typed::Float(x))));
-        self.damage_radius.map(|x| out.push((Typed::Str("damageRadius".into()), Typed::Float(x))));
-        self.plasma_time_to_full_damage.map(|x| out.push((Typed::Str("plasmaTimeToFullDamage".into()), Typed::Float(x))));
-        self.plasma_starting_radius_scale.map(|x| out.push((Typed::Str("plasmaStartingRadiusScale".into()), Typed::Float(x))));
-        self.nano_dps.map(|x| out.push((Typed::Str("nanoDPS".into()), Typed::Float(x))));
-        self.nano_hps.map(|x| out.push((Typed::Str("nanoHPS".into()), Typed::Float(x))));
-        self.tesla_damage.map(|x| out.push((Typed::Str("teslaDamage".into()), Typed::Float(x))));
-        self.tesla_charges.map(|x| out.push((Typed::Str("teslaCharges".into()), Typed::Float(x))));
-        self.aeroflak_proximity_damage.map(|x| out.push((Typed::Str("aeroflakProximityDamage".into()), Typed::Float(x))));
-        self.aeroflak_damage_radius.map(|x| out.push((Typed::Str("aeroflakDamageRadius".into()), Typed::Float(x))));
-        self.aeroflak_explosion_radius.map(|x| out.push((Typed::Str("aeroflakExplosionRadius".into()), Typed::Float(x))));
-        self.aeroflak_ground_clearance.map(|x| out.push((Typed::Str("aeroflakGroundClearance".into()), Typed::Float(x))));
-        self.aeroflak_max_stacks.map(|x| out.push((Typed::Str("aeroflakBuffMaxStacks".into()), Typed::Int(x))));
-        self.aeroflak_damage_per_stack.map(|x| out.push((Typed::Str("aeroflakBuffDamagePerStack".into()), Typed::Int(x))));
-        self.aeroflak_stack_expire.map(|x| out.push((Typed::Str("aeroflakBuffTimeToExpire".into()), Typed::Float(x))));
-        self.shot_cooldown.map(|x| out.push((Typed::Str("cooldownBetweenShots".into()), Typed::Float(x))));
-        self.smart_rotation_cooldown.map(|x| out.push((Typed::Str("smartRotationCooldown".into()), Typed::Float(x))));
-        self.smart_rotation_cooldown_extra.map(|x| out.push((Typed::Str("smartRotationExtraCooldownTime".into()), Typed::Float(x))));
-        self.smart_rotation_max_stacks.map(|x| out.push((Typed::Str("smartRotationMaxStacks".into()), Typed::Float(x))));
-        self.spin_up_time.map(|x| out.push((Typed::Str("spinUpTime".into()), Typed::Float(x))));
-        self.spin_down_time.map(|x| out.push((Typed::Str("spinDownTime".into()), Typed::Float(x))));
-        self.spin_initial_cooldown.map(|x| out.push((Typed::Str("spinInitialCooldown".into()), Typed::Float(x))));
+        if let Some(x) = self.damage_inflicted { out.push((Typed::Str("damageInflicted".into()), Typed::Int(x))) }
+        if let Some(x) = self.protonium_damage_scale { out.push((Typed::Str("protoniumDamageScale".into()), Typed::Float(x))) }
+        if let Some(x) = self.projectile_speed { out.push((Typed::Str("projectileSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.projectile_range { out.push((Typed::Str("projectileRange".into()), Typed::Float(x))) }
+        if let Some(x) = self.base_inaccuracy { out.push((Typed::Str("baseInaccuracy".into()), Typed::Float(x))) }
+        if let Some(x) = self.base_air_inaccuracy { out.push((Typed::Str("baseAirInaccuracy".into()), Typed::Float(x))) }
+        if let Some(x) = self.movement_inaccuracy { out.push((Typed::Str("movementInaccuracy".into()), Typed::Float(x))) }
+        if let Some(x) = self.movement_max_speed { out.push((Typed::Str("movementMaxThresholdSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.movement_min_speed { out.push((Typed::Str("movementMinThresholdSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.gun_rotation_slow { out.push((Typed::Str("gunRotationThresholdSlow".into()), Typed::Float(x))) }
+        if let Some(x) = self.movement_inaccuracy_decay { out.push((Typed::Str("movementInaccuracyDecayTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.slow_rotation_decay { out.push((Typed::Str("slowRotationInaccuracyDecayTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.quick_rotation_decay { out.push((Typed::Str("quickRotationInaccuracyDecayTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.movement_inaccuracy_recovery { out.push((Typed::Str("movementInaccuracyRecoveryTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.repeat_fire_inaccuracy_total_degrees { out.push((Typed::Str("repeatFireInaccuracyTotalDegrees".into()), Typed::Float(x))) }
+        if let Some(x) = self.repeat_fire_inaccuracy_decay { out.push((Typed::Str("repeatFireInaccuracyDecayTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.repeat_fire_innaccuracy_recovery { out.push((Typed::Str("repeatFireInaccuracyRecoveryTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.fire_instant_accuracy_decay { out.push((Typed::Str("fireInstantAccuracyDecayDegrees".into()), Typed::Float(x))) } // degrees
+        if let Some(x) = self.accuracy_non_recover_time { out.push((Typed::Str("accuracyNonRecoverTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.accuracy_decay { out.push((Typed::Str("accuracyDecayTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.damage_radius { out.push((Typed::Str("damageRadius".into()), Typed::Float(x))) }
+        if let Some(x) = self.plasma_time_to_full_damage { out.push((Typed::Str("plasmaTimeToFullDamage".into()), Typed::Float(x))) }
+        if let Some(x) = self.plasma_starting_radius_scale { out.push((Typed::Str("plasmaStartingRadiusScale".into()), Typed::Float(x))) }
+        if let Some(x) = self.nano_dps { out.push((Typed::Str("nanoDPS".into()), Typed::Float(x))) }
+        if let Some(x) = self.nano_hps { out.push((Typed::Str("nanoHPS".into()), Typed::Float(x))) }
+        if let Some(x) = self.tesla_damage { out.push((Typed::Str("teslaDamage".into()), Typed::Float(x))) }
+        if let Some(x) = self.tesla_charges { out.push((Typed::Str("teslaCharges".into()), Typed::Float(x))) }
+        if let Some(x) = self.aeroflak_proximity_damage { out.push((Typed::Str("aeroflakProximityDamage".into()), Typed::Float(x))) }
+        if let Some(x) = self.aeroflak_damage_radius { out.push((Typed::Str("aeroflakDamageRadius".into()), Typed::Float(x))) }
+        if let Some(x) = self.aeroflak_explosion_radius { out.push((Typed::Str("aeroflakExplosionRadius".into()), Typed::Float(x))) }
+        if let Some(x) = self.aeroflak_ground_clearance { out.push((Typed::Str("aeroflakGroundClearance".into()), Typed::Float(x))) }
+        if let Some(x) = self.aeroflak_max_stacks { out.push((Typed::Str("aeroflakBuffMaxStacks".into()), Typed::Int(x))) }
+        if let Some(x) = self.aeroflak_damage_per_stack { out.push((Typed::Str("aeroflakBuffDamagePerStack".into()), Typed::Int(x))) }
+        if let Some(x) = self.aeroflak_stack_expire { out.push((Typed::Str("aeroflakBuffTimeToExpire".into()), Typed::Float(x))) }
+        if let Some(x) = self.shot_cooldown { out.push((Typed::Str("cooldownBetweenShots".into()), Typed::Float(x))) }
+        if let Some(x) = self.smart_rotation_cooldown { out.push((Typed::Str("smartRotationCooldown".into()), Typed::Float(x))) }
+        if let Some(x) = self.smart_rotation_cooldown_extra { out.push((Typed::Str("smartRotationExtraCooldownTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.smart_rotation_max_stacks { out.push((Typed::Str("smartRotationMaxStacks".into()), Typed::Float(x))) }
+        if let Some(x) = self.spin_up_time { out.push((Typed::Str("spinUpTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.spin_down_time { out.push((Typed::Str("spinDownTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.spin_initial_cooldown { out.push((Typed::Str("spinInitialCooldown".into()), Typed::Float(x))) }
 
         if !self.group_fire_scales.is_empty() {
             let typed_arr: Vec<Typed<C>> = self.group_fire_scales.iter().map(|x| Typed::Float(*x)).collect();
@@ -121,26 +121,26 @@ impl WeaponData {
             })));
         }
 
-        self.mana_cost.map(|x| out.push((Typed::Str("manaCost".into()), Typed::Float(x))));
-        self.lock_time.map(|x| out.push((Typed::Str("lockTime".into()), Typed::Float(x))));
-        self.full_lock_release.map(|x| out.push((Typed::Str("fullLockRelease".into()), Typed::Float(x))));
-        self.change_lock_time.map(|x| out.push((Typed::Str("changeLockTime".into()), Typed::Float(x))));
-        self.max_rotation_speed.map(|x| out.push((Typed::Str("maxRotationSpeed".into()), Typed::Float(x))));
-        self.initial_rotation_speed.map(|x| out.push((Typed::Str("initialRotationSpeed".into()), Typed::Float(x))));
-        self.rotation_acceleration.map(|x| out.push((Typed::Str("rotationAcceleration".into()), Typed::Float(x))));
-        self.nano_healing_priority_time.map(|x| out.push((Typed::Str("nanoHealingPriorityTime".into()), Typed::Float(x))));
-        self.module_range.map(|x| out.push((Typed::Str("moduleRange".into()), Typed::Float(x))));
-        self.shield_lifetime.map(|x| out.push((Typed::Str("shieldLifetime".into()), Typed::Float(x))));
-        self.teleport_time.map(|x| out.push((Typed::Str("teleportTime".into()), Typed::Float(x))));
-        self.camera_time.map(|x| out.push((Typed::Str("cameraTime".into()), Typed::Float(x))));
-        self.camera_delay.map(|x| out.push((Typed::Str("cameraDelay".into()), Typed::Float(x))));
-        self.to_invisible_speed.map(|x| out.push((Typed::Str("toInvisibleSpeed".into()), Typed::Float(x))));
-        self.to_invisible_duration.map(|x| out.push((Typed::Str("toInvisibleDuration".into()), Typed::Float(x))));
-        self.to_visible_duration.map(|x| out.push((Typed::Str("toVisibleDuration".into()), Typed::Float(x))));
-        self.countdown_time.map(|x| out.push((Typed::Str("countdownTime".into()), Typed::Float(x))));
-        self.stun_time.map(|x| out.push((Typed::Str("stunTime".into()), Typed::Float(x))));
-        self.stun_radius.map(|x| out.push((Typed::Str("stunRadius".into()), Typed::Float(x))));
-        self.effect_duration.map(|x| out.push((Typed::Str("effectDuration".into()), Typed::Float(x))));
+        if let Some(x) = self.mana_cost { out.push((Typed::Str("manaCost".into()), Typed::Float(x))) }
+        if let Some(x) = self.lock_time { out.push((Typed::Str("lockTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.full_lock_release { out.push((Typed::Str("fullLockRelease".into()), Typed::Float(x))) }
+        if let Some(x) = self.change_lock_time { out.push((Typed::Str("changeLockTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.max_rotation_speed { out.push((Typed::Str("maxRotationSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.initial_rotation_speed { out.push((Typed::Str("initialRotationSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.rotation_acceleration { out.push((Typed::Str("rotationAcceleration".into()), Typed::Float(x))) }
+        if let Some(x) = self.nano_healing_priority_time { out.push((Typed::Str("nanoHealingPriorityTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.module_range { out.push((Typed::Str("moduleRange".into()), Typed::Float(x))) }
+        if let Some(x) = self.shield_lifetime { out.push((Typed::Str("shieldLifetime".into()), Typed::Float(x))) }
+        if let Some(x) = self.teleport_time { out.push((Typed::Str("teleportTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.camera_time { out.push((Typed::Str("cameraTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.camera_delay { out.push((Typed::Str("cameraDelay".into()), Typed::Float(x))) }
+        if let Some(x) = self.to_invisible_speed { out.push((Typed::Str("toInvisibleSpeed".into()), Typed::Float(x))) }
+        if let Some(x) = self.to_invisible_duration { out.push((Typed::Str("toInvisibleDuration".into()), Typed::Float(x))) }
+        if let Some(x) = self.to_visible_duration { out.push((Typed::Str("toVisibleDuration".into()), Typed::Float(x))) }
+        if let Some(x) = self.countdown_time { out.push((Typed::Str("countdownTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.stun_time { out.push((Typed::Str("stunTime".into()), Typed::Float(x))) }
+        if let Some(x) = self.stun_radius { out.push((Typed::Str("stunRadius".into()), Typed::Float(x))) }
+        if let Some(x) = self.effect_duration { out.push((Typed::Str("effectDuration".into()), Typed::Float(x))) }
         Typed::HashMap(out.into())
     }
 }

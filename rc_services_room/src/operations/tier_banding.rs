@@ -14,7 +14,7 @@ pub(super) fn tiers_banding_provider() -> SimpleFunc<7, crate::UserTy, impl (Fn(
                     1
                 ].into())),
                 (Typed::Str("maximumRobotRankingARobotCanObtain".into()), Typed::Int(1)),
-            ].into(),
+            ],
         }));
         Ok(params.into())
     })

@@ -10,7 +10,7 @@ impl AvatarInfo {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::HashMap(vec![
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
-            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar.into())),
+            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),
         ].into())
     }

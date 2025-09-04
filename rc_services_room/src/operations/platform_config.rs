@@ -47,7 +47,7 @@ impl <C: Send + 'static> SimpleOperation<C> for PlatformConfigProvider {
                 (Typed::Str("FeedbackURL".into()), Typed::Str(self.links.feedback_url.clone().into())),
                 (Typed::Str("SupportURL".into()), Typed::Str(self.links.support_url.clone().into())),
                 (Typed::Str("WikiURL".into()), Typed::Str(self.links.wiki_url.clone().into())),
-            ].into(),
+            ],
         }));
         Ok(params.into())
     }

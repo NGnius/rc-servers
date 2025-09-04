@@ -41,7 +41,7 @@ pub use multiplayer::{MultiplayerConfig, NetworkConf};
 mod maps;
 pub use maps::{MapsConfig, MapConfig};
 
-pub(self) const VALID_ROBOT: &[u8] = &[64,
+ const VALID_ROBOT: &[u8] = &[64,
     0,
     0,
     0,
@@ -558,7 +558,7 @@ pub(self) const VALID_ROBOT: &[u8] = &[64,
     15,
     6];
 
-pub(self) const VALID_COLOUR: &[u8] = &[64,
+ const VALID_COLOUR: &[u8] = &[64,
     0,
     0,
     0,

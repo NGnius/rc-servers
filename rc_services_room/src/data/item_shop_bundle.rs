@@ -67,7 +67,7 @@ impl ItemShopBundle {
     pub fn as_transmissible_vec(items: Vec<Self>) -> Typed {
         let mut buf = Vec::new();
         let mut writer = std::io::Cursor::new(&mut buf);
-        writer.write(&(items.len() as i32).to_le_bytes()).unwrap();
+        writer.write_all(&(items.len() as i32).to_le_bytes()).unwrap();
         for item in items.iter() {
             item.dump(&mut writer).unwrap();
         }

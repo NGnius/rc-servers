@@ -9,11 +9,11 @@ pub struct ColourValue {
 impl ColourValue {
     fn read_no_alpha<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         let mut buf = [0u8; 1];
-        reader.read(&mut buf)?;
+        reader.read_exact(&mut buf)?;
         let r = buf[0];
-        reader.read(&mut buf)?;
+        reader.read_exact(&mut buf)?;
         let g = buf[0];
-        reader.read(&mut buf)?;
+        reader.read_exact(&mut buf)?;
         let b = buf[0];
         Ok(Self {
             r, g, b, a: u8::MAX,
@@ -39,7 +39,7 @@ impl Colour {
         let specular = ColourValue::read_no_alpha(reader)?;
         let overlay = ColourValue::read_no_alpha(reader)?;
         let mut buf = [0u8; 1];
-        reader.read(&mut buf)?;
+        reader.read_exact(&mut buf)?;
         let premium = buf[0] != 0;
         Ok(Self {
             index, diffuse, specular, overlay, premium,
@@ -48,7 +48,7 @@ impl Colour {
 
     pub fn read_many<R: std::io::Read>(reader: &mut R) -> std::io::Result<Vec<Self>> {
         let mut buf = [0u8; 4];
-        reader.read(&mut buf)?;
+        reader.read_exact(&mut buf)?;
         let count = i32::from_le_bytes(buf);
         let mut results = Vec::with_capacity(count as _);
         for i in 0..count {

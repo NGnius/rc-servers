@@ -11,8 +11,8 @@ pub struct SimpleChatFunc<const CODE: u8, U: Send + Sync, F: (Fn(ParameterTable<
 impl <C: Send + Sync + 'static, const CODE: u8, U: Send + Sync, F: (Fn(ParameterTable<C>, &U, &crate::state::ChatImpl) -> Result<ParameterTable<C>, i16>) + Send + Sync> SimpleChatFunc<CODE, U, F, C> {
     pub fn new(f: F, chat: crate::state::ChatImpl) -> Self {
         Self {
-            _user_ty: std::marker::PhantomData::default(),
-            _custom_ty: std::marker::PhantomData::default(),
+            _user_ty: std::marker::PhantomData,
+            _custom_ty: std::marker::PhantomData,
             chat,
             func: f,
         }

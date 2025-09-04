@@ -19,13 +19,13 @@ impl <C: Send + 'static> Operation<C> for UserFlagsTeller {
 
     fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = std::collections::HashMap::new();
-        resp_params.insert(Self::REMOVE_OBSOLETE_CUBES_KEY, polariton::operation::Typed::Bool(false.into()));
-        resp_params.insert(Self::REMOVE_UNOWNED_CUBES_KEY, polariton::operation::Typed::Bool(false.into()));
+        resp_params.insert(Self::REMOVE_OBSOLETE_CUBES_KEY, polariton::operation::Typed::Bool(false));
+        resp_params.insert(Self::REMOVE_UNOWNED_CUBES_KEY, polariton::operation::Typed::Bool(false));
         resp_params.insert(Self::REWARD_TITLE_KEY, polariton::operation::Typed::Str("".into()));
         resp_params.insert(Self::REWARD_BODY_KEY, polariton::operation::Typed::Str("".into())); // set this to non-empty to display pop-up at login
-        resp_params.insert(Self::REFUND_OBSOLETE_CUBES_KEY, polariton::operation::Typed::Bool(false.into()));
-        resp_params.insert(Self::CUBES_ARE_REPLACED_KEY, polariton::operation::Typed::Bool(false.into()));
-        resp_params.insert(Self::NEW_USER_KEY, polariton::operation::Typed::Bool(false.into()));
+        resp_params.insert(Self::REFUND_OBSOLETE_CUBES_KEY, polariton::operation::Typed::Bool(false));
+        resp_params.insert(Self::CUBES_ARE_REPLACED_KEY, polariton::operation::Typed::Bool(false));
+        resp_params.insert(Self::NEW_USER_KEY, polariton::operation::Typed::Bool(false));
         resp_params.insert(Self::AB_TEST_KEY, polariton::operation::Typed::Str("".into()));
         resp_params.insert(Self::AB_GROUP_KEY, polariton::operation::Typed::Str("".into()));
         polariton::operation::OperationResponse {

@@ -1,5 +1,3 @@
-use std::i64;
-
 #[allow(dead_code)]
 pub struct ShopItemListFilters {
     pub page: u32,

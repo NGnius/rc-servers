@@ -34,7 +34,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for RoomJoined {
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: Self::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }
@@ -47,7 +47,7 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for &RoomJoined 
     fn into_event(self) -> polariton::operation::Event<C> {
         polariton::operation::Event {
             code: RoomJoined::CODE,
-            params: self.as_event_params().into(),
+            params: self.as_event_params(),
         }
     }
 }

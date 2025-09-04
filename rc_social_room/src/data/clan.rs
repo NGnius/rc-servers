@@ -18,10 +18,10 @@ impl ClanMember {
             (Typed::Str("userName".into()), Typed::Str(self.username.clone().into())),
             (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
             (Typed::Str("memberState".into()), Typed::Int(self.member_state as i32)),
-            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar.into())),
+            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),
             (Typed::Str("rank".into()), Typed::Int(self.rank as i32)),
-            (Typed::Str("isOnline".into()), Typed::Bool(self.is_online.into())),
+            (Typed::Str("isOnline".into()), Typed::Bool(self.is_online)),
             (Typed::Str("seasonXP".into()), Typed::Int(self.season_xp)),
         ].into())
     }

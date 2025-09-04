@@ -112,12 +112,10 @@ impl PointInfo {
         let team = self.team.load(std::sync::atomic::Ordering::SeqCst);
         if team < 0 {
             0
+        } else if let Some(counter) = self.on_point.read().await.get(&(team as u8)) {
+            counter.load(std::sync::atomic::Ordering::SeqCst)
         } else {
-            if let Some(counter) = self.on_point.read().await.get(&(team as u8)) {
-                counter.load(std::sync::atomic::Ordering::SeqCst)
-            } else {
-                0
-            }
+            0
         }
     }
 
@@ -212,7 +210,7 @@ impl PointTracker {
                             notification: rlnl::types::CapturePointNotificationType::CaptureLocked,
                             id: point_i,
                             defending_team: point_team,
-                            attacking_team: player_team as i8,
+                            attacking_team: player_team,
                         },
                         true,
                     ).await;
@@ -228,7 +226,7 @@ impl PointTracker {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
                             id: point_i,
                             defending_team: point_team,
-                            attacking_team: player_team as i8,
+                            attacking_team: player_team,
                         },
                         true,
                     ).await;
@@ -240,7 +238,7 @@ impl PointTracker {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureLocked,
                                 id: point_i,
                                 defending_team: point_team,
-                                attacking_team: player_team as i8,
+                                attacking_team: player_team,
                             },
                             true,
                         ).await;
@@ -267,20 +265,18 @@ impl PointTracker {
                     // something is out of sync, let's just ignore it and try to undo any underflow
                     log::warn!("Team {} players on point {} counting error", player_team, point_i);
                     point.on_point.read().await[&player_team_u8].store(0, std::sync::atomic::Ordering::SeqCst);
-                } else {
-                    if old_friendlies == 1 && current_enemies != 0 {
-                        generic.broadcast(
-                            rlnl::event_code::NetworkEvent::CapturePointNotification,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &rlnl::events::ingame::CapturePointNotification {
-                                notification: rlnl::types::CapturePointNotificationType::CaptureUnlocked,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: player_team as i8,
-                            },
-                            true,
-                        ).await;
-                    }
+                } else if old_friendlies == 1 && current_enemies != 0 {
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::CaptureUnlocked,
+                            id: point_i,
+                            defending_team: point_team,
+                            attacking_team: player_team,
+                        },
+                        true,
+                    ).await;
                 }
             } else {
                 let old_enemies = point.on_point.read().await[&player_team_u8].fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
@@ -289,34 +285,32 @@ impl PointTracker {
                     // something is out of sync, let's just ignore it and try to undo any underflow
                     log::warn!("Team {} players on point {} counting error", player_team, point_i);
                     point.on_point.read().await[&player_team_u8].store(0, std::sync::atomic::Ordering::SeqCst);
-                } else {
-                    if old_enemies == 1 {
-                        //log::info!("Enemy has left the capture point");
-                        generic.broadcast(
-                            rlnl::event_code::NetworkEvent::CapturePointNotification,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &rlnl::events::ingame::CapturePointNotification {
-                                notification: rlnl::types::CapturePointNotificationType::CaptureStoppedNoAttackers,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: player_team as i8,
-                            },
-                            true,
-                        ).await;
-                        let progress_now = point.capture.load(std::sync::atomic::Ordering::SeqCst).floor();
-                        point.capture.store(progress_now, std::sync::atomic::Ordering::SeqCst);
-                        let data = rlnl::events::ingame::TeamBaseState {
-                            base_team_or_mining_point_index: point_i,
-                            current_progress: rlnl::types::ByteFloat::from(progress_now),
-                            max_progress: rlnl::types::ByteFloat::from(max_progress),
-                        };
-                        generic.broadcast(
-                            rlnl::event_code::NetworkEvent::CapturePointProgress,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &data,
-                            true
-                        ).await;
-                    }
+                } else if old_enemies == 1 {
+                    //log::info!("Enemy has left the capture point");
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::CaptureStoppedNoAttackers,
+                            id: point_i,
+                            defending_team: point_team,
+                            attacking_team: player_team,
+                        },
+                        true,
+                    ).await;
+                    let progress_now = point.capture.load(std::sync::atomic::Ordering::SeqCst).floor();
+                    point.capture.store(progress_now, std::sync::atomic::Ordering::SeqCst);
+                    let data = rlnl::events::ingame::TeamBaseState {
+                        base_team_or_mining_point_index: point_i,
+                        current_progress: rlnl::types::ByteFloat::from(progress_now),
+                        max_progress: rlnl::types::ByteFloat::from(max_progress),
+                    };
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointProgress,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &data,
+                        true
+                    ).await;
                 }
             }
         }
@@ -364,7 +358,7 @@ impl PointTracker {
                 log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
                 cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
                 cap_point.team.store(new_team, std::sync::atomic::Ordering::SeqCst);
-                if owned_points.get(&(new_team as u8)).map(|x| *x).unwrap_or(0) == 0 {
+                if owned_points.get(&(new_team as u8)).copied().unwrap_or(0) == 0 {
                     captured_firsts.insert(new_team as u8);
                 }
                 if point_owner >= 0 && *owned_points.get(&(point_owner as u8)).unwrap() == 1 {
@@ -738,7 +732,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     property: literustlib::packet::Property::ReliableOrdered,
                     data: Box::new(rlnl::events::sync::GetCapturePoints {
                         points: [
-                            generic.map_config.capture_points.get(0).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
+                            generic.map_config.capture_points.first().map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
                             generic.map_config.capture_points.get(1).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
                             generic.map_config.capture_points.get(2).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
                         ]
@@ -758,7 +752,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 }),
             }),
             // SetShieldState
-            if generic.map_config.bases.get(&0).is_some() {
+            if generic.map_config.bases.contains_key(&0) {
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::SetShieldState,
                     property: literustlib::packet::Property::ReliableOrdered,
@@ -770,7 +764,7 @@ impl CustomGameLogic for BattleArenaLogic {
             } else {
                 None
             },
-            if generic.map_config.bases.get(&1).is_some() {
+            if generic.map_config.bases.contains_key(&1) {
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::SetShieldState,
                     property: literustlib::packet::Property::ReliableOrdered,
@@ -852,7 +846,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     health: 7,
                 }),
             },*/
-        ].into_iter().filter_map(|x| x).collect()
+        ].into_iter().flatten().collect()
     }
 
     async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {

@@ -67,21 +67,21 @@ fn default_true() -> bool {
     true
 }
 
-impl <C: Clone> std::convert::Into<crate::data::cube_list::CubeInfo<C>> for CubeInfo {
-    fn into(self) -> crate::data::cube_list::CubeInfo<C> {
+impl <C: Clone> std::convert::From<CubeInfo> for crate::data::cube_list::CubeInfo<C> {
+    fn from(val: CubeInfo) -> Self {
         crate::data::cube_list::CubeInfo {
-            cpu: self.cpu,
-            health: self.health,
-            health_boost: self.health_boost,
-            grey_out_in_tutorial: self.grey_out_in_tutorial,
-            visibility: self.visibility.into(),
-            indestructible: self.indestructible,
-            category: self.category.into(),
-            placements: self.placements, // default 63
-            protonium: self.protonium,
-            unlocked_by_league: self.unlocked_by_league,
-            league_unlock_index: self.league_unlock_index,
-            stats: self.stats.into_iter().map(|(k, v)| {
+            cpu: val.cpu,
+            health: val.health,
+            health_boost: val.health_boost,
+            grey_out_in_tutorial: val.grey_out_in_tutorial,
+            visibility: val.visibility.into(),
+            indestructible: val.indestructible,
+            category: val.category.into(),
+            placements: val.placements, // default 63
+            protonium: val.protonium,
+            unlocked_by_league: val.unlocked_by_league,
+            league_unlock_index: val.league_unlock_index,
+            stats: val.stats.into_iter().map(|(k, v)| {
                 let new_v = match v {
                     serde_json::Value::Bool(b) => Typed::Bool(b),
                     serde_json::Value::Number(n) => if let Some(n_i64) = n.as_i64() {
@@ -96,13 +96,13 @@ impl <C: Clone> std::convert::Into<crate::data::cube_list::CubeInfo<C>> for Cube
                 };
                 (k, new_v)
             }).collect(),
-            description: self.description,
-            size: self.size.into(),
-            type_: self.type_.into(),
-            ranking: self.ranking,
-            cosmetic: self.cosmetic,
-            variant_of: hex::encode(self.variant_of.to_be_bytes()).into(),
-            ignore_in_weapon_list: self.ignore_in_weapon_list,
+            description: val.description,
+            size: val.size.into(),
+            type_: val.type_.into(),
+            ranking: val.ranking,
+            cosmetic: val.cosmetic,
+            variant_of: hex::encode(val.variant_of.to_be_bytes()),
+            ignore_in_weapon_list: val.ignore_in_weapon_list,
         }
     }
 }
@@ -116,13 +116,13 @@ pub enum VisibilityMode {
     None,
 }
 
-impl std::convert::Into<crate::data::cube_list::VisibilityMode> for VisibilityMode {
-    fn into(self) -> crate::data::cube_list::VisibilityMode {
-        match self {
-            Self::Mothership => crate::data::cube_list::VisibilityMode::Mothership,
-            Self::All => crate::data::cube_list::VisibilityMode::All,
-            Self::Tutorial => crate::data::cube_list::VisibilityMode::Tutorial,
-            Self::None => crate::data::cube_list::VisibilityMode::None,
+impl std::convert::From<VisibilityMode> for crate::data::cube_list::VisibilityMode {
+    fn from(val: VisibilityMode) -> Self {
+        match val {
+            VisibilityMode::Mothership => crate::data::cube_list::VisibilityMode::Mothership,
+            VisibilityMode::All => crate::data::cube_list::VisibilityMode::All,
+            VisibilityMode::Tutorial => crate::data::cube_list::VisibilityMode::Tutorial,
+            VisibilityMode::None => crate::data::cube_list::VisibilityMode::None,
         }
     }
 }
@@ -139,16 +139,16 @@ pub enum ItemTier {
     T5 = 600,
 }
 
-impl std::convert::Into<crate::data::cube_list::ItemTier> for ItemTier {
-    fn into(self) -> crate::data::cube_list::ItemTier {
-        match self {
-            Self::NoTier => crate::data::cube_list::ItemTier::NoTier,
-            Self::T0 => crate::data::cube_list::ItemTier::T0,
-            Self::T1 => crate::data::cube_list::ItemTier::T1,
-            Self::T2 => crate::data::cube_list::ItemTier::T2,
-            Self::T3 => crate::data::cube_list::ItemTier::T3,
-            Self::T4 => crate::data::cube_list::ItemTier::T4,
-            Self::T5 => crate::data::cube_list::ItemTier::T5,
+impl std::convert::From<ItemTier> for crate::data::cube_list::ItemTier {
+    fn from(val: ItemTier) -> Self {
+        match val {
+            ItemTier::NoTier => crate::data::cube_list::ItemTier::NoTier,
+            ItemTier::T0 => crate::data::cube_list::ItemTier::T0,
+            ItemTier::T1 => crate::data::cube_list::ItemTier::T1,
+            ItemTier::T2 => crate::data::cube_list::ItemTier::T2,
+            ItemTier::T3 => crate::data::cube_list::ItemTier::T3,
+            ItemTier::T4 => crate::data::cube_list::ItemTier::T4,
+            ItemTier::T5 => crate::data::cube_list::ItemTier::T5,
         }
     }
 }
@@ -163,14 +163,14 @@ pub enum ItemType {
     Cosmetic,
 }
 
-impl std::convert::Into<crate::data::cube_list::ItemType> for ItemType {
-    fn into(self) -> crate::data::cube_list::ItemType {
-        match self {
-            Self::NotAFunctionalItem => crate::data::cube_list::ItemType::NoFunction,
-            Self::Weapon => crate::data::cube_list::ItemType::Weapon,
-            Self::Module => crate::data::cube_list::ItemType::Module,
-            Self::Movement => crate::data::cube_list::ItemType::Movement,
-            Self::Cosmetic => crate::data::cube_list::ItemType::Cosmetic,
+impl std::convert::From<ItemType> for crate::data::cube_list::ItemType {
+    fn from(val: ItemType) -> Self {
+        match val {
+            ItemType::NotAFunctionalItem => crate::data::cube_list::ItemType::NoFunction,
+            ItemType::Weapon => crate::data::cube_list::ItemType::Weapon,
+            ItemType::Module => crate::data::cube_list::ItemType::Module,
+            ItemType::Movement => crate::data::cube_list::ItemType::Movement,
+            ItemType::Cosmetic => crate::data::cube_list::ItemType::Cosmetic,
         }
     }
 }
@@ -209,38 +209,38 @@ pub enum ItemCategory {
     EnergyModule = 900,
 }
 
-impl std::convert::Into<crate::data::weapon_list::ItemCategory> for ItemCategory {
-    fn into(self) -> crate::data::weapon_list::ItemCategory {
-        match self {
-            Self::NotAFunctionalItem => crate::data::weapon_list::ItemCategory::NoFunction,
-            Self::Wheel => crate::data::weapon_list::ItemCategory::Wheel,
-            Self::Hover => crate::data::weapon_list::ItemCategory::Hover,
-            Self::Wing => crate::data::weapon_list::ItemCategory::Wing,
-            Self::Rudder => crate::data::weapon_list::ItemCategory::Rudder,
-            Self::Thruster => crate::data::weapon_list::ItemCategory::Thruster,
-            Self::InsectLeg => crate::data::weapon_list::ItemCategory::InsectLeg,
-            Self::MechLeg => crate::data::weapon_list::ItemCategory::MechLeg,
-            Self::Ski => crate::data::weapon_list::ItemCategory::Ski,
-            Self::TankTrack => crate::data::weapon_list::ItemCategory::TankTrack,
-            Self::Rotor => crate::data::weapon_list::ItemCategory::Rotor,
-            Self::SprinterLeg => crate::data::weapon_list::ItemCategory::SprinterLeg,
-            Self::Propeller => crate::data::weapon_list::ItemCategory::Propeller,
-            Self::Laser => crate::data::weapon_list::ItemCategory::Laser,
-            Self::Plasma => crate::data::weapon_list::ItemCategory::Plasma,
-            Self::Mortar => crate::data::weapon_list::ItemCategory::Mortar,
-            Self::Rail => crate::data::weapon_list::ItemCategory::Rail,
-            Self::Nano => crate::data::weapon_list::ItemCategory::Nano,
-            Self::Tesla => crate::data::weapon_list::ItemCategory::Tesla,
-            Self::Aeroflak => crate::data::weapon_list::ItemCategory::Aeroflak,
-            Self::Ion => crate::data::weapon_list::ItemCategory::Ion,
-            Self::Seeker => crate::data::weapon_list::ItemCategory::Seeker,
-            Self::Chaingun => crate::data::weapon_list::ItemCategory::Chaingun,
-            Self::ShieldModule => crate::data::weapon_list::ItemCategory::ShieldModule,
-            Self::GhostModule => crate::data::weapon_list::ItemCategory::GhostModule,
-            Self::BlinkModule => crate::data::weapon_list::ItemCategory::BlinkModule,
-            Self::EmpModule => crate::data::weapon_list::ItemCategory::EmpModule,
-            Self::WindowmakerModule => crate::data::weapon_list::ItemCategory::WindowmakerModule,
-            Self::EnergyModule => crate::data::weapon_list::ItemCategory::EnergyModule,
+impl std::convert::From<ItemCategory> for crate::data::weapon_list::ItemCategory {
+    fn from(val: ItemCategory) -> Self {
+        match val {
+            ItemCategory::NotAFunctionalItem => crate::data::weapon_list::ItemCategory::NoFunction,
+            ItemCategory::Wheel => crate::data::weapon_list::ItemCategory::Wheel,
+            ItemCategory::Hover => crate::data::weapon_list::ItemCategory::Hover,
+            ItemCategory::Wing => crate::data::weapon_list::ItemCategory::Wing,
+            ItemCategory::Rudder => crate::data::weapon_list::ItemCategory::Rudder,
+            ItemCategory::Thruster => crate::data::weapon_list::ItemCategory::Thruster,
+            ItemCategory::InsectLeg => crate::data::weapon_list::ItemCategory::InsectLeg,
+            ItemCategory::MechLeg => crate::data::weapon_list::ItemCategory::MechLeg,
+            ItemCategory::Ski => crate::data::weapon_list::ItemCategory::Ski,
+            ItemCategory::TankTrack => crate::data::weapon_list::ItemCategory::TankTrack,
+            ItemCategory::Rotor => crate::data::weapon_list::ItemCategory::Rotor,
+            ItemCategory::SprinterLeg => crate::data::weapon_list::ItemCategory::SprinterLeg,
+            ItemCategory::Propeller => crate::data::weapon_list::ItemCategory::Propeller,
+            ItemCategory::Laser => crate::data::weapon_list::ItemCategory::Laser,
+            ItemCategory::Plasma => crate::data::weapon_list::ItemCategory::Plasma,
+            ItemCategory::Mortar => crate::data::weapon_list::ItemCategory::Mortar,
+            ItemCategory::Rail => crate::data::weapon_list::ItemCategory::Rail,
+            ItemCategory::Nano => crate::data::weapon_list::ItemCategory::Nano,
+            ItemCategory::Tesla => crate::data::weapon_list::ItemCategory::Tesla,
+            ItemCategory::Aeroflak => crate::data::weapon_list::ItemCategory::Aeroflak,
+            ItemCategory::Ion => crate::data::weapon_list::ItemCategory::Ion,
+            ItemCategory::Seeker => crate::data::weapon_list::ItemCategory::Seeker,
+            ItemCategory::Chaingun => crate::data::weapon_list::ItemCategory::Chaingun,
+            ItemCategory::ShieldModule => crate::data::weapon_list::ItemCategory::ShieldModule,
+            ItemCategory::GhostModule => crate::data::weapon_list::ItemCategory::GhostModule,
+            ItemCategory::BlinkModule => crate::data::weapon_list::ItemCategory::BlinkModule,
+            ItemCategory::EmpModule => crate::data::weapon_list::ItemCategory::EmpModule,
+            ItemCategory::WindowmakerModule => crate::data::weapon_list::ItemCategory::WindowmakerModule,
+            ItemCategory::EnergyModule => crate::data::weapon_list::ItemCategory::EnergyModule,
         }
     }
 }

@@ -25,26 +25,26 @@ async fn try_find_file(zip_path: std::path::PathBuf, id: u32) -> HttpResponse {
             match e {
                 zip::result::ZipError::Io(e) => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("zip io error: {}", e.to_string()))
+                        .body(format!("zip io error: {}", e))
                 },
                 zip::result::ZipError::InvalidArchive(e) => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("invalid zip file: {}", e.to_string()))
+                        .body(format!("invalid zip file: {}", e))
                 },
                 zip::result::ZipError::UnsupportedArchive(e) => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("unsupported zip file: {}", e.to_string()))
+                        .body(format!("unsupported zip file: {}", e))
                 },
                 zip::result::ZipError::FileNotFound => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::NOT_FOUND)
-                        .body(format!("file not found in zip archive"))
+                        .body("file not found in zip archive".to_string())
                 },
                 zip::result::ZipError::InvalidPassword => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("invalid zip password"))
+                        .body("invalid zip password".to_string())
                 },
                 _ => actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("unknown zip error")),
+                        .body("unknown zip error".to_string()),
             }
         }
     }

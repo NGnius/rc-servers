@@ -404,7 +404,7 @@ impl UserData {
             group: None, // no platoon
             team: 0,
             has_premium: false, // FIXME
-            robot_uuid: super::i64_as_uuid_str(current_slot.uuid).into(),
+            robot_uuid: super::i64_as_uuid_str(current_slot.uuid),
             cpu: cpu_count,
             avatar_id: avatar_id.ok(),
             weapon_order: weapon_orders,
@@ -448,17 +448,17 @@ impl UserData {
                     },
                     Ok(None) => {
                         log::error!("Prefab vehicle {} does not exist in factory", factory_id);
-                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                        Err(polariton_server::operations::SimpleOpError::with_message(
                             crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16,
                             format!("Prefab vehicle {} does not exist in factory", factory_id),
-                        ));
+                        ))
                     },
                     Err(e) => {
                         log::error!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e);
-                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                        Err(polariton_server::operations::SimpleOpError::with_message(
                             crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16,
                             format!("Failed to retrieve prefab vehicle {} from factory: {}", factory_id, e),
-                        ));
+                        ))
                     }
                 }
             },
@@ -488,17 +488,17 @@ impl UserData {
                     },
                     Ok(None) => {
                         log::error!("Prefab vehicle {} does not exist in main garage database", garage);
-                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                        Err(polariton_server::operations::SimpleOpError::with_message(
                             crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16,
                             format!("Prefab vehicle {} does not exist in main garage database", garage),
-                        ));
+                        ))
                     }
                     Err(e) => {
                         log::error!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e);
-                        return Err(polariton_server::operations::SimpleOpError::with_message(
+                        Err(polariton_server::operations::SimpleOpError::with_message(
                             crate::data::error_codes::SingleplayerErrorCode::DatabaseError as i16,
                             format!("Failed to retrieve prefab vehicle {} from main garage database: {}", garage, e),
-                        ));
+                        ))
                     }
                 }
             },
@@ -507,7 +507,7 @@ impl UserData {
                 colour_data,
             } => {
                 use sha2::Digest;
-                let sha_bytes = sha2::Sha256::digest(&cube_data);
+                let sha_bytes = sha2::Sha256::digest(cube_data);
                 let u32_bytes = [
                     sha_bytes[0],
                     sha_bytes[1],
@@ -518,9 +518,9 @@ impl UserData {
                 let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
                 let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
                 let weapons_guess = vec![
-                    weapons_guess.get(0).map(|x| *x).unwrap_or(0),
-                    weapons_guess.get(1).map(|x| *x).unwrap_or(0),
-                    weapons_guess.get(2).map(|x| *x).unwrap_or(0),
+                    weapons_guess.first().copied().unwrap_or(0),
+                    weapons_guess.get(1).copied().unwrap_or(0),
+                    weapons_guess.get(2).copied().unwrap_or(0),
                 ];
                 let weapon_ranks = weapons_guess.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
                 let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&cube_data));
@@ -546,6 +546,7 @@ impl UserData {
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
         let mut next_id = 0;
         let mut seen_usernames = std::collections::HashSet::<String>::new();
+        #[allow(clippy::explicit_counter_loop)] // this is really bad to read with this suggested refactor
         for i in 0..(singleplayer_config.max_enemies + singleplayer_config.max_teammates) {
             let vehicle = singleplayer_config.vehicles.choose(&mut rand::rng())
                 .ok_or(crate::data::error_codes::SingleplayerErrorCode::UnexpectedError as i16)?;
@@ -723,7 +724,7 @@ impl <C: Clone> super::User<C> for UserData {
                     movement_categories: polariton::operation::Typed::IntArr(oj_rc_database::schema::parse_int_csv(&slot.movement_categories).into_iter().map(|x| x as i32).collect::<Vec<_>>().into()),
                     control_type: polariton::operation::Typed::Int(control_ty as _),
                     control_options: control_options.as_transmissible(),
-                    mastery_level: polariton::operation::Typed::Int(slot.mastery_level as i32),
+                    mastery_level: polariton::operation::Typed::Int(slot.mastery_level),
                     robot_rank: polariton::operation::Typed::Int(slot.total_robot_ranking as _),
                     cpu: polariton::operation::Typed::Int(slot.total_robot_cpu as _),
                     cosmetic_cpu: polariton::operation::Typed::Int(slot.total_cosmetic_cpu as _),
@@ -899,7 +900,7 @@ impl <C: Clone> super::User<C> for UserData {
             log::error!("No selected vehicle slot for user_id {}", self.account.id);
             DATABASE_ERR
         })?;
-        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu as u32).last();
+        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu as u32).next_back();
         if let Some((i, _)) = inc_opt {
             let max_upgrade = self.garage_upgrades.increments.len() - 1;
             let upgrade_to = i + (increments as usize);

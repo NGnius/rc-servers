@@ -16,7 +16,7 @@ impl <const EVENT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDes
             msg_router: init_ctx.matches_chann.clone(),
             event: crate::handler::i16_to_event_or_panic(EVENT),
             property: literustlib::packet::Property::try_from(PROPERTY).expect("Invalid literustlib packet property"),
-            _in: std::marker::PhantomData::default(),
+            _in: std::marker::PhantomData,
         }
     }
 }

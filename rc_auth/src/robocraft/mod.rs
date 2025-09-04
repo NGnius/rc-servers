@@ -20,7 +20,7 @@ impl RcConfig {
     }
 }
 
-pub(self) struct ErrorTy {
+ struct ErrorTy {
     json: libfj::robocraft::ErrorInfo,
 }
 

@@ -97,6 +97,7 @@ const DEFAULT_BASE_RADIUS: f32 = 20.0;
 const DEFAULT_CAPTURE_PERCENT_PER_SECOND: f32 = DEFAULT_BASE_PERCENT_PER_SECOND * 1.5;
 const DEFAULT_CAPTURE_RADIUS: f32 = 14.0;
 
+#[allow(clippy::approx_constant)]
 pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap, MapConfig> {
     let mut map = std::collections::HashMap::with_capacity(9);
     //let coords_t0 = corner_to_center((6.60, 4.09, 20.3), 10.0);

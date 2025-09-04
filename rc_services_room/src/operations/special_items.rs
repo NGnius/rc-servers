@@ -18,7 +18,7 @@ pub(super) fn special_item_list_provider() -> SimpleFunc<6, crate::UserTy, impl 
                     sprite: "chair".to_string(),
                     size: 1,
                 }.as_transmissible())
-            ].into(),
+            ],
         }));
         Ok(params.into())
     })

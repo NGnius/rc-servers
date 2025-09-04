@@ -17,7 +17,7 @@ impl PlayerRoboPassSeasonInfo {
             items: vec![
                 (Typed::Str("deltaXpToShow".into()), Typed::Int(self.delta_xp_to_show)),
                 (Typed::Str("grade".into()), Typed::Int(self.grade)),
-                (Typed::Str("hasDeluxe".into()), Typed::Bool(self.has_deluxe.into())),
+                (Typed::Str("hasDeluxe".into()), Typed::Bool(self.has_deluxe)),
                 (Typed::Str("progressInGrade".into()), Typed::Float(self.progress_in_grade)),
                 (Typed::Str("xpFromSeasonStart".into()), Typed::Int(self.xp_from_start)),
             ],

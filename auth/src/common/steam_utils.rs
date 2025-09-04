@@ -24,7 +24,7 @@ fn get_steam_id_from_ticket_hex(hex_ticket: &str) -> Result<u64, hex::FromHexErr
 
 #[allow(dead_code)]
 fn get_steam_id_from_ticket(ticket: &[u8]) -> u64 {
-    get_u64_with_offset(&ticket, 12 /* also at 64 ??? */) // should be 76600000000000000 > number > 76500000000000000
+    get_u64_with_offset(ticket, 12 /* also at 64 ??? */) // should be 76600000000000000 > number > 76500000000000000
 }
 
 #[cfg(all(feature = "steam", feature = "cardlife"))]
@@ -61,7 +61,7 @@ pub fn authenticate_steam_ticket(hex_ticket: &str) -> Result<u64, ()> {
     get_steam_id_from_ticket_hex(hex_ticket)
         .map_err(|e| {
             log::error!("Failed to parse steamId: {}", e);
-            ()
+            
         })
 }
 

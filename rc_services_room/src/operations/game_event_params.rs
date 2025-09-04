@@ -50,7 +50,7 @@ impl Operation<()> for GameEventsParamsProvider {
                     code: Self::op_code(),
                     return_code: e,
                     message: polariton::operation::Typed::Null,
-                    params: params.into(),
+                    params,
                 }
             }
         }

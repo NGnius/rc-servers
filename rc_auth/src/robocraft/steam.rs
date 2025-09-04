@@ -5,7 +5,7 @@ fn authenticate_steam_ticket(hex_ticket: &str) -> Result<u64, ()> {
     get_steam_id_from_ticket_hex(hex_ticket)
         .map_err(|e| {
             log::error!("Failed to parse steamId: {}", e);
-            ()
+            
         })
 }
 
@@ -19,7 +19,7 @@ fn get_steam_id_from_ticket_hex(hex_ticket: &str) -> Result<u64, hex::FromHexErr
 }
 
 fn get_steam_id_from_ticket(ticket: &[u8]) -> u64 {
-    get_u64_with_offset(&ticket, 12 /* also at 64 ??? */) // should be 76600000000000000 > number > 76500000000000000
+    get_u64_with_offset(ticket, 12 /* also at 64 ??? */) // should be 76600000000000000 > number > 76500000000000000
 }
 
 fn get_u64_with_offset(arr: &[u8], start: usize) -> u64 {

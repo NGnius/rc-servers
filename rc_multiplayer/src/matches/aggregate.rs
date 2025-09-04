@@ -52,7 +52,7 @@ impl GameMatches {
         fakes
     }
 
-    async fn start_new_match_engine(&self, user: &Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>, guid: &str) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
+    async fn start_new_match_engine(&self, user: &(dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static), guid: &str) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
         let game_info = user.game_info(guid).await?
         .ok_or_else(|| oj_rc_core::persist::user::MultiplayerError {
             code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
@@ -89,7 +89,7 @@ impl GameMatches {
             oj_rc_core::data::game_mode::GameMode::BattleArena => {
                 log::warn!("Game {}: Battle Arena is experimental", guid);
                 let resolved_ba_conf = self.ba_settings.resolve(
-                    user.as_ref(),
+                    user,
                     self.factory.as_ref(),
                     &self.cube_parsers.weapon_order(),
                     &self.cube_parsers.cpu_counter(),
@@ -127,7 +127,7 @@ impl GameMatches {
         sender: std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>,
     ) {
         log::info!("Creating new game {}", game_guid);
-        let tx = match self.start_new_match_engine(&user, &game_guid).await {
+        let tx = match self.start_new_match_engine(user.as_ref().as_ref(), &game_guid).await {
             Ok(tx) => tx,
             Err(e) => {
                 if response.send(Some(crate::matches::messages::ErrorMessage {
@@ -190,10 +190,8 @@ impl GameMatches {
                             if let Some(tx) = self.matches.get(guid) {
                                 if tx.is_closed() {
                                     to_clean = Some(guid.to_owned());
-                                } else {
-                                    if tx.send(msg).await.is_err() {
-                                        log::error!("Failed to route game message from user {} to match {}", user_id, guid);
-                                    }
+                                } else if tx.send(msg).await.is_err() {
+                                    log::error!("Failed to route game message from user {} to match {}", user_id, guid);
                                 }
                             } else {
                                 self.routing.remove(&user_id);

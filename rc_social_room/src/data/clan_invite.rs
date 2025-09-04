@@ -16,7 +16,7 @@ impl ClanInviteInfo {
             (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
             (Typed::Str("clanName".into()), Typed::Str(self.clan_name.clone().into())),
             (Typed::Str("clanSize".into()), Typed::Int(self.clan_size)),
-            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar.into())),
+            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),
         ].into())
     }

@@ -74,27 +74,27 @@ impl GarageSlot {
     }
 }
 
-impl std::convert::Into<crate::data::garage_bay::GarageSlotInfo> for GarageSlot {
-    fn into(self) -> crate::data::garage_bay::GarageSlotInfo {
+impl std::convert::From<GarageSlot> for crate::data::garage_bay::GarageSlotInfo {
+    fn from(val: GarageSlot) -> Self {
         crate::data::garage_bay::GarageSlotInfo {
-            name: self.name,
-            cubes: self.cubes,
-            crf_id: self.crf_id as u32,
-            was_rated: self.was_rated,
-            movement_categories: self.movement_categories.into_iter().map(|x| x.into()).collect(),
-            uuid: self.uuid,
-            thumbnail_version: self.thumbnail_version as u32,
-            total_robot_cpu: self.total_robot_cpu as u32,
-            total_cosmetic_cpu: self.total_cosmetic_cpu as u32,
-            total_robot_ranking: self.total_robot_ranking as u32,
-            bay_cpu: self.bay_cpu as u32,
-            tutorial_robot: self.tutorial_robot,
-            starter_robot_index: self.starter_robot_index,
-            control_type: self.control_type.into(),
-            control_options: self.control_options.into(),
-            mastery_level: self.mastery_level,
-            bay_skin_id: self.bay_skin_id,
-            weapon_order: self.weapon_order,
+            name: val.name,
+            cubes: val.cubes,
+            crf_id: val.crf_id as u32,
+            was_rated: val.was_rated,
+            movement_categories: val.movement_categories.into_iter().map(|x| x.into()).collect(),
+            uuid: val.uuid,
+            thumbnail_version: val.thumbnail_version as u32,
+            total_robot_cpu: val.total_robot_cpu as u32,
+            total_cosmetic_cpu: val.total_cosmetic_cpu as u32,
+            total_robot_ranking: val.total_robot_ranking as u32,
+            bay_cpu: val.bay_cpu as u32,
+            tutorial_robot: val.tutorial_robot,
+            starter_robot_index: val.starter_robot_index,
+            control_type: val.control_type.into(),
+            control_options: val.control_options.into(),
+            mastery_level: val.mastery_level,
+            bay_skin_id: val.bay_skin_id,
+            weapon_order: val.weapon_order,
         }
     }
 }
@@ -114,14 +114,14 @@ pub fn db_into_data(garage: oj_rc_database::schema::garage::Model) -> crate::dat
         total_robot_ranking: garage.total_robot_ranking as u32,
         bay_cpu: garage.bay_cpu as u32,
         tutorial_robot: garage.tutorial_robot,
-        starter_robot_index: garage.starter_robot_index.map(|x| x as i32).unwrap_or(-1),
+        starter_robot_index: garage.starter_robot_index.unwrap_or(-1),
         control_type: control_ty_into_data(garage.control_type),
         control_options: crate::data::garage_bay::ControlOptions {
             vertical_strafing: garage.vertical_strafing,
             sideways_driving: garage.sideways_driving,
             tracks_turn_on_spot: garage.tracks_turn_on_spot,
         },
-        mastery_level: garage.mastery_level as i32,
+        mastery_level: garage.mastery_level,
         bay_skin_id: garage.bay_skin_id,
         weapon_order: oj_rc_database::schema::parse_int_csv(&garage.weapon_order).into_iter().map(|x| x as i32).collect(),
     }
@@ -150,12 +150,12 @@ pub enum ControlType {
     Count,
 }
 
-impl std::convert::Into<crate::data::garage_bay::ControlType> for ControlType {
-    fn into(self) -> crate::data::garage_bay::ControlType {
-        match self {
-            Self::Camera => crate::data::garage_bay::ControlType::Camera,
-            Self::Keyboard => crate::data::garage_bay::ControlType::Keyboard,
-            Self::Count => crate::data::garage_bay::ControlType::Count,
+impl std::convert::From<ControlType> for crate::data::garage_bay::ControlType {
+    fn from(val: ControlType) -> Self {
+        match val {
+            ControlType::Camera => crate::data::garage_bay::ControlType::Camera,
+            ControlType::Keyboard => crate::data::garage_bay::ControlType::Keyboard,
+            ControlType::Count => crate::data::garage_bay::ControlType::Count,
         }
     }
 }
@@ -167,12 +167,12 @@ pub struct GarageControls {
     pub tracks_turn_on_spot: bool,
 }
 
-impl std::convert::Into<crate::data::garage_bay::ControlOptions> for GarageControls {
-    fn into(self) -> crate::data::garage_bay::ControlOptions {
+impl std::convert::From<GarageControls> for crate::data::garage_bay::ControlOptions {
+    fn from(val: GarageControls) -> Self {
         crate::data::garage_bay::ControlOptions {
-            vertical_strafing: self.vertical_strafing,
-            sideways_driving: self.sideways_driving,
-            tracks_turn_on_spot: self.tracks_turn_on_spot,
+            vertical_strafing: val.vertical_strafing,
+            sideways_driving: val.sideways_driving,
+            tracks_turn_on_spot: val.tracks_turn_on_spot,
         }
     }
 }
@@ -212,12 +212,12 @@ pub enum PrefabId {
     // TODO File
 }
 
-impl std::convert::Into<crate::persist::config::VehicleDescriptor> for PrefabId {
-    fn into(self) -> crate::persist::config::VehicleDescriptor {
-        match self {
-            Self::Factory { factory } => crate::persist::config::VehicleDescriptor::Factory { factory },
-            Self::Database { garage } => crate::persist::config::VehicleDescriptor::Database { garage },
-            Self::Raw { cube_data, colour_data } => crate::persist::config::VehicleDescriptor::Raw { cube_data , colour_data },
+impl std::convert::From<PrefabId> for crate::persist::config::VehicleDescriptor {
+    fn from(val: PrefabId) -> Self {
+        match val {
+            PrefabId::Factory { factory } => crate::persist::config::VehicleDescriptor::Factory { factory },
+            PrefabId::Database { garage } => crate::persist::config::VehicleDescriptor::Database { garage },
+            PrefabId::Raw { cube_data, colour_data } => crate::persist::config::VehicleDescriptor::Raw { cube_data , colour_data },
         }
     }
 }

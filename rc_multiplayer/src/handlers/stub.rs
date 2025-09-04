@@ -10,7 +10,7 @@ impl <const CODE_IN: i16, In: byteserde::des_slice::ByteDeserializeSlice<In> + S
 
     fn new(_init_ctx: &crate::InitConfig) -> Self {
         Self {
-            _in: std::marker::PhantomData::default(),
+            _in: std::marker::PhantomData,
         }
     }
 }

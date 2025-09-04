@@ -9,7 +9,7 @@ impl <C: Send + 'static> Operation<C> for MaintenanceModeTeller {
 
     fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = HashMap::new();
-        resp_params.insert(20 /* is in maintenance mode? */, polariton::operation::Typed::Bool(false.into()));
+        resp_params.insert(20 /* is in maintenance mode? */, polariton::operation::Typed::Bool(false));
         resp_params.insert(19 /* maintenace mode message */, polariton::operation::Typed::Str("OpenJam's servers are currently undergoing maintenance".into()));
         polariton::operation::OperationResponse {
             code: 20,

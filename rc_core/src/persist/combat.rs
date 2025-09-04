@@ -28,13 +28,13 @@ pub struct AutoRegenHealth {
     pub auto_heal: bool,
 }
 
-impl std::convert::Into<crate::data::auto_regen::AutoRegenHealthConfig> for AutoRegenHealth {
-    fn into(self) -> crate::data::auto_regen::AutoRegenHealthConfig {
+impl std::convert::From<AutoRegenHealth> for crate::data::auto_regen::AutoRegenHealthConfig {
+    fn from(val: AutoRegenHealth) -> Self {
         crate::data::auto_regen::AutoRegenHealthConfig {
-            seconds_to_wait_for_heal: self.wait_for_heal_s,
-            seconds_to_full_heal: self.wait_full_heal_s,
-            threshold_to_start_sound: self.sound_start_s,
-            enable_auto_heal: self.auto_heal,
+            seconds_to_wait_for_heal: val.wait_for_heal_s,
+            seconds_to_full_heal: val.wait_full_heal_s,
+            threshold_to_start_sound: val.sound_start_s,
+            enable_auto_heal: val.auto_heal,
         }
     }
 }
@@ -47,13 +47,13 @@ pub struct VoteThreshold {
     pub votes_required: i32,
 }
 
-impl std::convert::Into<crate::data::voting::VoteThresholdData> for VoteThreshold {
-    fn into(self) -> crate::data::voting::VoteThresholdData {
+impl std::convert::From<VoteThreshold> for crate::data::voting::VoteThresholdData {
+    fn from(val: VoteThreshold) -> Self {
         crate::data::voting::VoteThresholdData {
-            name: self.name,
-            localised_name: self.localised_name,
-            color: self.color,
-            votes_required: self.votes_required,
+            name: val.name,
+            localised_name: val.localised_name,
+            color: val.color,
+            votes_required: val.votes_required,
         }
     }
 }
@@ -64,11 +64,11 @@ pub enum Vote {
     BestLooking,
 }
 
-impl std::convert::Into<crate::data::voting::Vote> for Vote {
-    fn into(self) -> crate::data::voting::Vote {
-        match self {
-            Self::BestPlayed => crate::data::voting::Vote::BestPlayed,
-            Self::BestLooking => crate::data::voting::Vote::BestLooking,
+impl std::convert::From<Vote> for crate::data::voting::Vote {
+    fn from(val: Vote) -> Self {
+        match val {
+            Vote::BestPlayed => crate::data::voting::Vote::BestPlayed,
+            Vote::BestLooking => crate::data::voting::Vote::BestLooking,
         }
     }
 }
@@ -81,13 +81,13 @@ pub struct GameMode {
     pub game_time_m: i32,
 }
 
-impl std::convert::Into<crate::data::game_mode::GameModeConfig> for GameMode {
-    fn into(self) -> crate::data::game_mode::GameModeConfig {
+impl std::convert::From<GameMode> for crate::data::game_mode::GameModeConfig {
+    fn from(val: GameMode) -> Self {
         crate::data::game_mode::GameModeConfig {
-            respawn_heal_duration: self.respawn_heal_duration,
-            respawn_full_heal_duration: self.respawn_full_heal_duration,
-            kill_limit: self.kill_limit,
-            game_time_minutes: self.game_time_m,
+            respawn_heal_duration: val.respawn_heal_duration,
+            respawn_full_heal_duration: val.respawn_full_heal_duration,
+            kill_limit: val.kill_limit,
+            game_time_minutes: val.game_time_m,
         }
     }
 }
@@ -100,13 +100,13 @@ pub struct GameModes {
     pub team_deathmatch: GameMode,
 }
 
-impl std::convert::Into<crate::data::game_mode::GameModeConfigs> for GameModes {
-    fn into(self) -> crate::data::game_mode::GameModeConfigs {
+impl std::convert::From<GameModes> for crate::data::game_mode::GameModeConfigs {
+    fn from(val: GameModes) -> Self {
         crate::data::game_mode::GameModeConfigs {
-            battle_arena: self.battle_arena.into(),
-            elimination: self.elimination.into(),
-            the_pit: self.pit.into(),
-            team_deathmatch: self.team_deathmatch.into(),
+            battle_arena: val.battle_arena.into(),
+            elimination: val.elimination.into(),
+            the_pit: val.pit.into(),
+            team_deathmatch: val.team_deathmatch.into(),
         }
     }
 }
@@ -332,7 +332,7 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
                         ],
                         kill_target: 1,
                         time_min: 1,
-                        time_max: 1 * 60,
+                        time_max: 60,
                     }
                 ],
             }

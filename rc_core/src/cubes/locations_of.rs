@@ -45,7 +45,7 @@ impl CubeLocationsParser {
     pub fn locations_of_by_distance_to_first(&self, r: &mut dyn std::io::Read, locations_of_id: u32, distance_to_id: u32) -> Vec<CubeLocationInfo> {
         match super::parser::Cube::parse_list(r) {
             Ok(cubes) => {
-                if let Some(target) = cubes.iter().filter(|x| x.id == distance_to_id).next() {
+                if let Some(target) = cubes.iter().find(|x| x.id == distance_to_id) {
                     let target_x = target.x as f32;
                     let target_y = target.y as f32;
                     let target_z = target.z as f32;

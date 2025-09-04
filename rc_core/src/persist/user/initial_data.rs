@@ -52,11 +52,7 @@ fn default_user_data(info: &super::RegistrationInfo) -> oj_rc_database::schema::
             Ok(password) => password.to_string(),
         }
     };
-    let steam_id = if let Some(id) = info.steam_id {
-        Some(id.to_string())
-    } else {
-        None
-    };
+    let steam_id = info.steam_id.map(|id| id.to_string());
     oj_rc_database::schema::user::ActiveModel {
         id: Default::default(),
         creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_unix_time()),

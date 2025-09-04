@@ -7,7 +7,7 @@ pub(super) fn chat_settings_provider() -> SimpleFunc<18, crate::UserTy, impl (Fn
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::HashMap(vec![
-            (Typed::Str("chatEnabled".into()), Typed::Bool(true.into())),
+            (Typed::Str("chatEnabled".into()), Typed::Bool(true)),
         ].into()));
         Ok(params.into())
     })

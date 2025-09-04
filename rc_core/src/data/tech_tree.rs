@@ -16,8 +16,8 @@ impl TechTreeNode {
             (Typed::Str("mainCubeId".into()), Typed::Str(hex::encode(self.main_cube_id.to_be_bytes()).into())),
             (Typed::Str("positionX".into()), Typed::Int(self.position_x)),
             (Typed::Str("positionY".into()), Typed::Int(self.position_y)),
-            (Typed::Str("isUnlocked".into()), Typed::Bool(self.is_unlocked.into())),
-            (Typed::Str("isUnlockable".into()), Typed::Bool(self.is_unlockable.into())),
+            (Typed::Str("isUnlocked".into()), Typed::Bool(self.is_unlocked)),
+            (Typed::Str("isUnlockable".into()), Typed::Bool(self.is_unlockable)),
             (Typed::Str("tp".into()), Typed::Int(self.tech_points as i32)),
             (Typed::Str("neighbours".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Str, // str

@@ -36,7 +36,7 @@ impl ChatSystemConfig {
                 return result;
             }
         }
-        return "Invalid command".to_owned()
+        "Invalid command".to_owned()
     }
 
     pub fn is_command_channel(&self, channel: &str) -> bool {
@@ -66,11 +66,7 @@ impl ChatCommand {
     }
 
     fn perform_if_match(&self, text: &str, ctx: CommandContext) -> Option<String> {
-        if let Some(cap) = self.regex.captures(text) {
-            Some(self.op.perform_command(cap, ctx))
-        } else {
-            None
-        }
+        self.regex.captures(text).map(|cap| self.op.perform_command(cap, ctx))
     }
 }
 
@@ -122,7 +118,7 @@ impl BuiltIn {
                 }
             },
             Self::TotalUsers => {
-                format!("User count is not supported")
+                "User count is not supported".to_string()
             },
         }
     }
