@@ -248,7 +248,7 @@ fn default_game_modes() -> GameModes {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
-            game_time_m: 5,
+            game_time_m: 20,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,

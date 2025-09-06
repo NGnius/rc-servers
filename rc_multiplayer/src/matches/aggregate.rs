@@ -80,6 +80,7 @@ impl GameMatches {
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,
+                    &self.mode_configs.elimination,
                     players,
                     inner,
                     fakes_handler,
@@ -101,6 +102,7 @@ impl GameMatches {
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,
+                    &self.mode_configs.battle_arena,
                     players,
                     inner,
                     fakes_handler,

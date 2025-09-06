@@ -339,7 +339,6 @@ impl BaseTracker {
 pub struct EliminationLogic {
     tracked: PlayerTracker,
     bases: BaseTracker,
-    game_duration: std::time::Duration,
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
     game_end: std::sync::atomic::AtomicI64,
@@ -360,7 +359,6 @@ impl EliminationLogic {
                 last_tick: std::sync::atomic::AtomicI64::new(i64::MIN),
                 is_baseless: map.bases.is_empty(),
             },
-            game_duration: dur,
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
             game_end: std::sync::atomic::AtomicI64::new(fake_end),
@@ -478,7 +476,7 @@ impl CustomGameLogic for EliminationLogic {
         }
     }
 
-    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
         vec![
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -491,7 +489,7 @@ impl CustomGameLogic for EliminationLogic {
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(self.game_duration.as_millis() as f32 / 1000.0)),
+                data: Box::new(rlnl::events::GameTime(generic.game_duration.as_millis() as f32 / 1000.0)),
             },
         ]
     }
@@ -503,7 +501,7 @@ impl CustomGameLogic for EliminationLogic {
             senders.push((conn.connection.clone(), conn.state.clone()));
         }
         drop(read_lock);
-        let game_end = game_start + self.game_duration;
+        let game_end = game_start + generic.game_duration;
         let teams = self.bases.teams();
         let extra_packets = teams.iter().map(|team| crate::matches::RlnlPacket {
             event: rlnl::event_code::NetworkEvent::TeamBaseInitialise,

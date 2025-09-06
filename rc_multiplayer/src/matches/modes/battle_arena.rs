@@ -1,4 +1,4 @@
-use crate::matches::CustomGameLogic;
+use crate::matches::{modes::trackers::SurrenderGameTracker, CustomGameLogic};
 
 struct PlayerTracker {
     connected: tokio::sync::Mutex<std::collections::HashMap<u8, std::collections::HashSet<u8>>>, // team -> set of player_id
@@ -68,6 +68,14 @@ impl PlayerTracker {
             }
         }
         first_remaining_team
+    }
+
+    async fn players_on_team(&self, team: u8) -> Vec<u8> {
+        if let Some(members) = self.connected.lock().await.get(&team) {
+            members.iter().map(|x| *x).collect()
+        } else {
+            Vec::default()
+        }
     }
 }
 
@@ -517,10 +525,10 @@ enum WinMode {
     BaseFull,
     OutOfTime,
     OutOfPlayers,
+    Surrender,
 }
 
 pub struct BattleArenaLogic {
-    game_duration: std::time::Duration,
     game_end: std::sync::atomic::AtomicI64,
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
@@ -528,6 +536,7 @@ pub struct BattleArenaLogic {
     player_tracking: PlayerTracker,
     capture_tracking: PointTracker,
     base_tracking: BaseTracker,
+    surrender_tracking: super::trackers::SurrenderGameTracker,
     //cube_parser: std::sync::Arc<oj_rc_core::cubes::CubeLocationsParser>,
     crystals: Vec<oj_rc_core::cubes::CubeLocationInfo>,
     config: oj_rc_core::data::battle_arena_config::BattleArenaData,
@@ -543,13 +552,13 @@ impl BattleArenaLogic {
         let cube_parser = parsers.locations_of();
         let crystals = cube_parser.locations_of_by_distance_to_first(&mut std::io::Cursor::new(&ba_config.base_machine_map), Self::CRYSTAL_ID, Self::CLASP_ID);
         Self {
-            game_duration: dur,
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
             game_end: std::sync::atomic::AtomicI64::new(fake_end),
             timer_task: tokio::sync::Mutex::new(None),
             player_tracking: PlayerTracker::new(),
             capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
+            surrender_tracking: super::trackers::SurrenderGameTracker::new(),
             base_tracking: BaseTracker::new(map.bases.keys(), &crystals),
             //cube_parser,
             //ba_base: teambase,
@@ -622,8 +631,9 @@ impl BattleArenaLogic {
     async fn do_win(&self, winning_team: u8, ty: WinMode, generic: &crate::matches::GenericGamemodeEngine<Self>) {
         generic.game_done();
         let end_reason = match ty {
-            WinMode::BaseFull
-            | WinMode::OutOfPlayers => rlnl::types::GameEndReason::BaseDestroyed,
+            WinMode::BaseFull => rlnl::types::GameEndReason::BaseDestroyed,
+            WinMode::OutOfPlayers => rlnl::types::GameEndReason::OneTeamRemaining,
+            WinMode::Surrender => rlnl::types::GameEndReason::Surrendered,
             WinMode::OutOfTime => rlnl::types::GameEndReason::TimeOut,
         };
         let payload = rlnl::events::ingame::GameLoseWin {
@@ -634,7 +644,8 @@ impl BattleArenaLogic {
             let is_winner = player.descriptor.team == winning_team as i32;
             let net_event = match ty {
                 WinMode::BaseFull
-                | WinMode::OutOfPlayers => {
+                | WinMode::OutOfPlayers
+                | WinMode::Surrender => {
                     if is_winner { rlnl::event_code::NetworkEvent::GameWonBaseDestroyed } else { rlnl::event_code::NetworkEvent::GameLostBaseDestroyed }
                 },
                 WinMode::OutOfTime => {
@@ -902,7 +913,7 @@ impl CustomGameLogic for BattleArenaLogic {
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(self.game_duration.as_millis() as f32 / 1000.0)),
+                data: Box::new(rlnl::events::GameTime(generic.game_duration.as_millis() as f32 / 1000.0)),
             }),
             // SyncTeamBaseCubes
             // TODO ???
@@ -978,7 +989,7 @@ impl CustomGameLogic for BattleArenaLogic {
             senders.push((conn.connection.clone(), conn.state.clone()));
         }
         drop(read_lock);
-        let game_end = game_start + self.game_duration;
+        let game_end = game_start + generic.game_duration;
         let extra_packets = Vec::default();
         let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets, Vec::default());
         let mut timer_lock = self.timer_task.lock().await;
@@ -988,6 +999,12 @@ impl CustomGameLogic for BattleArenaLogic {
         }
         *timer_lock = Some(new_timer_task);
         self.game_end.store(game_end.timestamp(), std::sync::atomic::Ordering::Relaxed);
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::SetSurrenderTimes,
+            literustlib::packet::Property::ReliableOrdered,
+            &SurrenderGameTracker::surrender_times(),
+            false,
+        ).await;
         true
     }
 
@@ -1013,21 +1030,6 @@ impl CustomGameLogic for BattleArenaLogic {
                     true
                 }
             },
-            /*(rlnl::event_code::NetworkEvent::DamageCubeEffectOnly, Some(data)) => {
-                let maybe_cube_dmg = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubeEffectOnly>(data.as_ref());
-                if let Some(cube_damage) = maybe_cube_dmg {
-                    if matches!(cube_damage.target_type, rlnl::types::TargetType::TeamBase) {
-                        log::info!("Got team base DamageCubeEffectOnly for pos ({}, {}, {})", cube_damage.hit_cube.x, cube_damage.hit_cube.y, cube_damage.hit_cube.z);
-                        false
-                    } else {
-                        log::info!("Got non-base DamageCubeEffectOnly {:?}", cube_damage.target_type);
-                        true
-                    }
-                } else {
-                    log::warn!("Got DamageCubeEffectOnly event with bad serialization type");
-                    true
-                }
-            },*/
             _ => true
         }
     }
@@ -1099,7 +1101,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 if let Some(owned_points) = tick_info.owned.get(base_id) {
                     if let Some(tracked_base) = self.base_tracking.bases.get(base_id) {
                         let one_tick = (self.crystals.len() as f32)
-                        * ((PointTracker::TICK_MS as f32) / (self.game_duration.as_millis() as f32))
+                        * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                         * ((self.base_tracking.bases.len() as f32) / (self.capture_tracking.points.len() as f32));
                         let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick;
                         let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
@@ -1164,11 +1166,14 @@ impl CustomGameLogic for BattleArenaLogic {
                     }
                 }
             }
+
+            // handle surrender vote tick
+            self.surrender_tracking.tick(generic).await;
         }
         true
     }
 
-    async fn on_custom(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>) {
+    async fn on_custom(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>) {
         match (event, property) {
             (rlnl::event_code::NetworkEvent::SendDamagedByEnemyShield, literustlib::packet::Property::ReliableOrdered) => {
                 generic.broadcast(
@@ -1180,8 +1185,35 @@ impl CustomGameLogic for BattleArenaLogic {
             },
             (rlnl::event_code::NetworkEvent::SurrenderRequest, literustlib::packet::Property::ReliableOrdered) => {
                 // TODO
-                log::warn!("Ignoring SurrenderRequest because it's not implemented (yet)");
-            }
+                let maybe_init_surr = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::InitiateSurrender>(data.as_ref());
+                if let Some(init_surr) = maybe_init_surr {
+                    if let Some(team) = self.player_tracking.team(init_surr.player_id).await {
+                        let team_members = self.player_tracking.players_on_team(team).await;
+                        let result = self.surrender_tracking.request_new(team, init_surr.player_id, team_members.into_iter(), generic).await;
+                        if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
+                            let winning_team = if team == 0 { 1 } else { 0 };
+                            self.do_win(winning_team, WinMode::Surrender, generic).await;
+                        }
+                    }
+                } else {
+                    log::warn!("Bad SurrenderRequest data");
+                }
+            },
+            (rlnl::event_code::NetworkEvent::SurrenderVoteCast, literustlib::packet::Property::ReliableOrdered) => {
+                if let Some(player_id) = generic.user_key_by_user_id(user_id).await {
+                    if let Some(team) = self.player_tracking.team(player_id).await {
+                        let maybe_vote = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::SurrenderVoteCast>(data.as_ref());
+                        if let Some(vote) = maybe_vote {
+                            let result = self.surrender_tracking.vote(team, player_id, vote.surrender != 0, generic).await;
+                            if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
+                                let winning_team = if team == 0 { 1 } else { 0 };
+                                self.do_win(winning_team, WinMode::Surrender, generic).await;
+                            }
+                        }
+                    }
+                }
+
+            },
             (rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_crystal_bonus = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::AwardProtoniumDestroyedCubes>(data.as_ref());
                 if let Some(crystal_destroyed) = maybe_crystal_bonus {

@@ -197,6 +197,7 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub game_start: std::sync::atomic::AtomicI64,
     pub map_config: std::sync::Arc<oj_rc_core::persist::config::MapConfig>,
     pub game_descriptor: oj_rc_core::persist::user::GameDescriptor,
+    pub game_duration: std::time::Duration,
     pub players_info: std::sync::Arc<Vec<oj_rc_core::persist::user::PlayerDescriptor>>,
     pub custom_logic_handler: L,
     pub fake_users: std::collections::HashMap<u8, FakeUser>,
@@ -210,6 +211,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     pub fn new(
         game: oj_rc_core::persist::user::GameDescriptor,
         map: oj_rc_core::persist::config::MapConfig,
+        config: &oj_rc_core::data::game_mode::GameModeConfig,
         players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
         custom: L,
         fakes_handler: super::fake::Handler,
@@ -226,6 +228,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             game_start: std::sync::atomic::AtomicI64::new(-1),
             map_config: std::sync::Arc::new(map),
             game_descriptor: game,
+            game_duration: std::time::Duration::from_secs((config.game_time_minutes as u64) * 60),
             players_info: std::sync::Arc::new(players),
             custom_logic_handler: custom,
             fake_users,
@@ -304,6 +307,14 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 &conn.connection.connection,
             ).await);
         }
+    }
+
+    pub(super) fn elapsed_game_time(&self) -> f32 {
+        let game_start = self.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        //let game_end = (game_start as u64) + self.game_duration.as_secs();
+        let duration = self.game_duration.as_secs();
+        let now = chrono::Utc::now().timestamp();
+        ((now - game_start) as f32) / duration as f32
     }
 
     /*pub(super) async fn send_to_player<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, player_id: u8, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T) {

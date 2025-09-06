@@ -188,6 +188,11 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::InitiateSurrender,
         >::handler(init_ctx))
         .add(crate::handlers::GamemodeSpecific::<
+            {rlnl::event_code::NetworkEvent::SurrenderVoteCast as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::SurrenderVoteCast,
+        >::handler(init_ctx))
+        .add(crate::handlers::GamemodeSpecific::<
             {rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest as i16},
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::AwardProtoniumDestroyedCubes,
@@ -231,6 +236,7 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::ingame::MapPing {}
     impl Broadcastable for rlnl::events::ingame::DamagedByEnemyShield {}
     impl Broadcastable for rlnl::events::ingame::InitiateSurrender {}
+    impl Broadcastable for rlnl::events::ingame::SurrenderVoteCast {}
     impl Broadcastable for rlnl::events::ingame::AwardProtoniumDestroyedCubes {}
 
     impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
