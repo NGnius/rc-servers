@@ -107,6 +107,8 @@ pub(super) struct UserData {
     pub received_healed: std::sync::atomic::AtomicU32,
     pub cubes: std::sync::atomic::AtomicU32,
     pub received_cubes: std::sync::atomic::AtomicU32, // damage taken
+    //pub segments_captured: std::sync::atomic::AtomicU32, // TODO
+    pub crystals: std::sync::atomic::AtomicU32, // crystals destroyed
 }
 
 impl UserData {
@@ -119,6 +121,8 @@ impl UserData {
             received_healed: std::sync::atomic::AtomicU32::new(0),
             cubes: std::sync::atomic::AtomicU32::new(0),
             received_cubes: std::sync::atomic::AtomicU32::new(0),
+            //segments_captured: std::sync::atomic::AtomicU32::new(0),
+            crystals: std::sync::atomic::AtomicU32::new(0),
         }
     }
 
@@ -127,6 +131,7 @@ impl UserData {
         + self.assists.load(std::sync::atomic::Ordering::Relaxed) * 100
         + self.healed.load(std::sync::atomic::Ordering::Relaxed)
         + self.cubes.load(std::sync::atomic::Ordering::Relaxed)
+        + self.crystals.load(std::sync::atomic::Ordering::Relaxed) * 25
     }
 
     pub(super) fn get_generic_packet(&self, player_id: u8, stat: rlnl::types::IngameStatId, delta: Option<u32>) -> rlnl::events::ingame::UpdateGameStats {
@@ -138,6 +143,7 @@ impl UserData {
             rlnl::types::IngameStatId::KillAssist => (self.assists.load(std::sync::atomic::Ordering::Relaxed), 100),
             rlnl::types::IngameStatId::HealCubes => (self.assists.load(std::sync::atomic::Ordering::SeqCst), 1),
             rlnl::types::IngameStatId::RobotDestroyed => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 0),
+            rlnl::types::IngameStatId::DestroyedProtoniumCubes => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 25),
             s => panic!("Cannot generate game stat {:?}", s)
         };
         rlnl::events::ingame::UpdateGameStats {

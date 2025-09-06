@@ -28,12 +28,11 @@ impl <const EVENT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDes
 
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
-            crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::RebroadcastRlnl {
-                skip_user_id: user_info.user_id(),
+            crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::CustomLogicRlnl {
+                user_id: user_info.user_id(),
                 event: self.event,
-                event_in: Self::CODE,
                 property: self.property,
-                data: Some(Box::new(data)),
+                data: Box::new(data),
             }).await);
         } else {
             log::error!("Failed to send gamemode specifc event {:?} for user (no auth!)", self.event);
