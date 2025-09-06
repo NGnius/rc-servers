@@ -752,7 +752,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 }),
             }),
             // SetShieldState
-            if generic.map_config.bases.contains_key(&0) {
+            /*if generic.map_config.bases.contains_key(&0) {
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::SetShieldState,
                     property: literustlib::packet::Property::ReliableOrdered,
@@ -775,7 +775,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 })
             } else {
                 None
-            },
+            },*/
             // CurrentGameTime
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
