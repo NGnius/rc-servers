@@ -97,7 +97,7 @@ pub struct BattleArenaConfig {
     pub equalizer: super::garage::PrefabVehicle,
     #[serde(default = "default_equalizer_health")]
     pub equalizer_health: u64,
-    //pub equalizer_trigger_time_s: Vec<u64>,
+    pub equalizer_trigger_time_s: Option<u64>,
     #[serde(default = "default_equalizer_warning")]
     pub equalizer_warning_s: u64,
     #[serde(default = "default_equalizer_duration")]
@@ -114,6 +114,7 @@ pub(super) fn default_ba_conf() -> BattleArenaConfig {
         respawn_time_s: default_respawn_time(),
         equalizer: default_equalizer(),
         equalizer_health: default_equalizer_health(),
+        equalizer_trigger_time_s: None,
         equalizer_warning_s: default_equalizer_warning(),
         equalizer_duration_s: default_equalizer_duration(),
         base: default_ba_base(),
@@ -154,7 +155,7 @@ fn default_respawn_time() -> u64 {
 }
 
 fn default_equalizer_health() -> u64 {
-    1_000
+    1_000_000
 }
 
 fn default_equalizer_warning() -> u64 {

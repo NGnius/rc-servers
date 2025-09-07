@@ -178,22 +178,28 @@ impl PointInfo {
 struct PointTracker {
     points: Vec<PointInfo>,
     ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
+    last_capture_team: std::sync::atomic::AtomicU8,
+    last_capture_time: std::sync::atomic::AtomicI64,
 }
 
 struct PointTickInfo {
     owned: std::collections::HashMap<u8, u8>, // team -> capture point count
     captured_firsts: std::collections::HashSet<u8>, // team
     lost_lasts: std::collections::HashSet<u8>, // team
+    dominating: Option<u8>,
     delta: u16,
 }
 
 impl PointTracker {
     const TICK_MS: i64 = 50;
+    const TIME_BEFORE_DOMINANT_S: i64 = 30;
 
     fn new(points: impl Iterator<Item=f32>) -> Self {
         Self {
             points: points.map(PointInfo::new).collect(),
             ticker: super::trackers::TickTracker::new(),
+            last_capture_team: std::sync::atomic::AtomicU8::new(u8::MAX),
+            last_capture_time: std::sync::atomic::AtomicI64::new(i64::MIN),
         }
     }
 
@@ -356,6 +362,8 @@ impl PointTracker {
                 log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
                 cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
                 cap_point.team.store(new_team, std::sync::atomic::Ordering::SeqCst);
+                self.last_capture_team.store(stealing_team, std::sync::atomic::Ordering::Relaxed);
+                self.last_capture_time.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::Relaxed);
                 if owned_points.get(&(new_team as u8)).copied().unwrap_or(0) == 0 {
                     captured_firsts.insert(new_team as u8);
                 }
@@ -387,17 +395,251 @@ impl PointTracker {
                 true
             ).await;
         }
+        let last_capture_team = self.last_capture_team.load(std::sync::atomic::Ordering::Relaxed);
+        let dominating = if last_capture_team != u8::MAX && self.points.iter().all(|p| p.team.load(std::sync::atomic::Ordering::SeqCst) == (last_capture_team as i8)) {
+            let last_capture_time = self.last_capture_time.load(std::sync::atomic::Ordering::Relaxed);
+            let now = chrono::Utc::now().timestamp();
+            if now > last_capture_time && now - last_capture_time >= Self::TIME_BEFORE_DOMINANT_S {
+                Some(last_capture_team)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         Some(PointTickInfo {
             owned: owned_points,
             captured_firsts,
             lost_lasts,
+            dominating,
             delta,
         })
     }
 }
 
+struct EqualizerTracker {
+    is_disabled: bool,
+    start: std::sync::atomic::AtomicI64,
+    activated: std::sync::atomic::AtomicBool,
+    cancelled: std::sync::atomic::AtomicBool,
+    losing_team: std::sync::atomic::AtomicU8,
+    winning_team: std::sync::atomic::AtomicU8,
+    trigger_index: std::sync::atomic::AtomicU8,
+    health: std::sync::atomic::AtomicU64,
+}
+
+impl EqualizerTracker {
+    fn new(ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
+        let is_disabled = ba_config.equalizer_health <= 0
+                || ba_config.equalizer_model.is_empty()
+                //|| ba_config.equalizer_trigger_time_seconds.is_empty()
+                || ba_config.equalizer_duration_seconds.is_empty()
+                || ba_config.equalizer_duration_seconds.iter().any(|&x| x == 0);
+        if is_disabled {
+            log::info!("Battle Arena equalizer is disabled by config (model ok? {}, health ok? {}, duration ok? {})",
+                       !ba_config.equalizer_model.is_empty(),
+                       ba_config.equalizer_health > 0,
+                       !ba_config.equalizer_duration_seconds.is_empty() && !ba_config.equalizer_duration_seconds.iter().any(|&x| x == 0)
+            );
+        }
+        Self {
+            is_disabled,
+            start: std::sync::atomic::AtomicI64::new(i64::MIN),
+            activated: std::sync::atomic::AtomicBool::new(false),
+            cancelled: std::sync::atomic::AtomicBool::new(false),
+            losing_team: std::sync::atomic::AtomicU8::new(u8::MAX),
+            winning_team: std::sync::atomic::AtomicU8::new(u8::MAX),
+            trigger_index: std::sync::atomic::AtomicU8::new(0),
+            health: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, bases: &std::collections::HashMap<u8, BaseInfo>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) {
+        if self.is_disabled { return; }
+        let trigger_index = self.trigger_index.load(std::sync::atomic::Ordering::Relaxed) as usize;
+        let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        if game_start == i64::MIN { return; }
+        let mut eq_start = self.start.load(std::sync::atomic::Ordering::Relaxed);
+        if eq_start == i64::MIN {
+            eq_start = if let Some(trigger_time_s) = ba_config.equalizer_trigger_time_seconds.get(trigger_index) {
+                game_start + (*trigger_time_s as i64)
+            } else {
+                game_start + ((generic.game_duration.as_secs() / 2) as i64)
+            };
+            self.start.store(eq_start, std::sync::atomic::Ordering::Relaxed);
+        }
+        let eq_start = eq_start; // no longer mutable
+        let now = chrono::Utc::now().timestamp();
+        if now >= eq_start {
+            let eq_end = if let Some(duration_s) = ba_config.equalizer_duration_seconds.get(trigger_index) {
+                eq_start + (*duration_s as i64)
+            } else {
+                i64::MAX
+            };
+            let is_activated = self.activated.load(std::sync::atomic::Ordering::Relaxed);
+            let is_cancelled = self.cancelled.load(std::sync::atomic::Ordering::Relaxed);
+            if is_activated {
+                if now > eq_end {
+                    // do deactivation
+                    log::info!("Equalizer deactivated because the timer ran out");
+                    self.activated.store(false, std::sync::atomic::Ordering::Relaxed);
+                    self.send_notification(rlnl::types::EqualizerState::Defended, ba_config, eq_start, now, generic).await;
+                } else {
+                    // check for change in leading team
+                    let old_winning_team = self.winning_team.load(std::sync::atomic::Ordering::Relaxed);
+                    if let Some((winning_base_id, _)) = Self::winning_base(bases) {
+                        if winning_base_id != old_winning_team {
+                            // cancel equalizer
+                            log::info!("Equalizer cancelled because winning base lost the lead");
+                            self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+                            self.activated.store(false, std::sync::atomic::Ordering::Relaxed);
+                            self.send_notification(rlnl::types::EqualizerState::Lost, ba_config, eq_start, now, generic).await;
+                        }
+                    }
+                }
+            } else if now < eq_end && !is_cancelled {
+                // do activation
+                if let Some(winning_base) = Self::winning_base(bases) {
+                    if let Some(losing_base) = Self::losing_base(bases) {
+                        self.activated.store(true, std::sync::atomic::Ordering::Relaxed);
+                        self.winning_team.store(winning_base.0, std::sync::atomic::Ordering::Relaxed);
+                        self.losing_team.store(losing_base.0, std::sync::atomic::Ordering::Relaxed);
+                        self.health.store(ba_config.equalizer_health as u64, std::sync::atomic::Ordering::Relaxed);
+                        self.send_notification(rlnl::types::EqualizerState::Start, ba_config, eq_start, now, generic).await;
+                    } else {
+                        log::warn!("No losing team found for game {}", generic.game_guid());
+                    }
+                } else {
+                    log::warn!("No winning team found for game {}", generic.game_guid());
+                }
+            }
+        }
+    }
+
+    async fn damage_equalizer(&self, damage: i32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        let damage_u64 = damage as u64;
+        let old_health = self.health.fetch_sub(damage as u64, std::sync::atomic::Ordering::Relaxed);
+        if old_health < damage_u64 {
+            // equalizer is now destroyed
+            self.destroy_equalizer(generic, ba_config, bases, crystals).await;
+        }
+    }
+
+    async fn destroy_equalizer(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.activated.store(false, std::sync::atomic::Ordering::Relaxed);
+        let eq_start = self.start.load(std::sync::atomic::Ordering::Relaxed);
+        let now = chrono::Utc::now().timestamp();
+        self.send_notification(rlnl::types::EqualizerState::Destroyed, ba_config, eq_start, now, generic).await;
+        self.health.store(0, std::sync::atomic::Ordering::Relaxed);
+        // give health to losing team
+        let winning_team = self.winning_team.load(std::sync::atomic::Ordering::Relaxed);
+        let losing_team = self.losing_team.load(std::sync::atomic::Ordering::Relaxed);
+        if let Some(losing_base) = bases.get(&losing_team) {
+            if let Some(winning_base) = bases.get(&winning_team) {
+                let old_index = losing_base.max_index();
+                losing_base.cube_index.store(winning_base.cube_index.load(std::sync::atomic::Ordering::Relaxed), std::sync::atomic::Ordering::Relaxed);
+                let new_index = losing_base.max_index();
+                for i in old_index..new_index {
+                    losing_base.crystals_healths[i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
+                }
+                let base_heal = losing_base.generate_full_base_heal(losing_team, ba_config.protonium_health as u32, crystals);
+                generic.broadcast(
+                    rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+                    literustlib::packet::Property::ReliableOrdered,
+                    &base_heal,
+                    true
+                ).await;
+            } else {
+                log::warn!("Winning base {} no longer exists for game {}", winning_team, generic.game_guid());
+            }
+        } else {
+            log::warn!("Losing base {} no longer exists for game {}", losing_team, generic.game_guid());
+        }
+    }
+
+    async fn send_notification(&self, variant: rlnl::types::EqualizerState, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, start: i64, now: i64, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>) {
+        if let Some(notif) = self.generate_notification(variant, ba_config, start, now) {
+            generic.broadcast(
+                rlnl::event_code::NetworkEvent::EqualizerNotification,
+                literustlib::packet::Property::ReliableOrdered,
+                &notif,
+                true,
+            ).await;
+        }
+    }
+
+    fn generate_notification(&self, variant: rlnl::types::EqualizerState, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, start: i64, now: i64) -> Option<rlnl::events::sync::EqualizerNotification> {
+        let trigger_index = self.trigger_index.load(std::sync::atomic::Ordering::Relaxed) as usize;
+        if let Some(duration_s) = ba_config.equalizer_duration_seconds.get(trigger_index) {
+            let end = start + (*duration_s as i64);
+            //let losing_team = self.losing_team.load(std::sync::atomic::Ordering::Relaxed);
+            let winning_team = self.winning_team.load(std::sync::atomic::Ordering::Relaxed);
+            let current_health = self.health.load(std::sync::atomic::Ordering::Relaxed);
+            let time_remaining = match variant {
+                rlnl::types::EqualizerState::Start => *duration_s as i16,
+                rlnl::types::EqualizerState::Lost
+                | rlnl::types::EqualizerState::Destroyed => {
+                    if now >= start {
+                        if now < end {
+                            ((*duration_s as i64) - (now - start)) as i16
+                        } else {
+                            0
+                        }
+                    } else {
+                        *duration_s as i16
+                    }
+                },
+                rlnl::types::EqualizerState::Defended => 0,
+            };
+            Some(rlnl::events::sync::EqualizerNotification {
+                notification: variant,
+                //team_id: losing_team as i16,
+                team_id: winning_team as i16,
+                time: time_remaining,
+                max_health: ba_config.equalizer_health as i32,
+                health: current_health as i32,
+            })
+        } else {
+            None
+        }
+    }
+
+    fn winning_base(bases: &std::collections::HashMap<u8, BaseInfo>) -> Option<(u8, f32)> {
+        let mut max = None;
+        for (id, info) in bases.iter() {
+            if let Some((_, charge)) = max {
+                let new_charge = info.base_charge();
+                if new_charge > charge {
+                    max = Some((*id, new_charge));
+                }
+            } else {
+                max = Some((*id, info.base_charge()));
+            }
+        }
+        max
+    }
+
+    fn losing_base(bases: &std::collections::HashMap<u8, BaseInfo>) -> Option<(u8, f32)> {
+        let mut min = None;
+        for (id, info) in bases.iter() {
+            if let Some((_, charge)) = min {
+                let new_charge = info.base_charge();
+                if new_charge < charge {
+                    min = Some((*id, new_charge));
+                }
+            } else {
+                min = Some((*id, info.base_charge()));
+            }
+        }
+        min
+    }
+}
+
 struct BaseTracker {
     bases: std::collections::HashMap<u8, BaseInfo>,
+    equalizer: EqualizerTracker,
+    dominating: std::sync::atomic::AtomicBool,
 }
 
 struct BaseTickInfo {
@@ -405,24 +647,51 @@ struct BaseTickInfo {
 }
 
 impl BaseTracker {
-    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> Self {
+    const DOMINATING_MULT: f32 = 10.0;
+
+    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
         let mut bases = std::collections::HashMap::new();
         for base_id in bases_iter {
             bases.insert(*base_id, BaseInfo::new(crystals));
         }
         Self {
             bases,
+            equalizer: EqualizerTracker::new(ba_config),
+            dominating: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
-    async fn tick(&self, tick_info: &PointTickInfo, crystals: &[oj_rc_core::cubes::CubeLocationInfo], generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, capture_points_count: usize, crystal_health: u32) -> BaseTickInfo {
+    async fn tick(&self, tick_info: &PointTickInfo, crystals: &[oj_rc_core::cubes::CubeLocationInfo], generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, capture_points_count: usize, crystal_health: u32, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> BaseTickInfo {
+        let multiplier = if let Some(dominant_team) = tick_info.dominating {
+            if !self.dominating.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                log::info!("Team {} is now dominating game {}", dominant_team, generic.game_guid());
+                // FIXME this doesn't seem to trigger the announcement client-side
+                generic.broadcast(
+                    rlnl::event_code::NetworkEvent::CapturePointNotification,
+                    literustlib::packet::Property::ReliableOrdered,
+                    &rlnl::events::ingame::CapturePointNotification {
+                        notification: rlnl::types::CapturePointNotificationType::Dominating,
+                        id: dominant_team,
+                        defending_team: dominant_team as i8,
+                        attacking_team: (((dominant_team as usize) + 1) % generic.map_config.bases.len()) as i8
+                    },
+                    true
+                ).await;
+            }
+            Self::DOMINATING_MULT
+        } else {
+            if self.dominating.swap(false, std::sync::atomic::Ordering::Relaxed) {
+                log::info!("No longer dominating game {}", generic.game_guid());
+            }
+            1.0
+        };
         for (base_id, tracked_base) in self.bases.iter() {
                 //log::info!("Healing base {}", base_id);
                 if let Some(owned_points) = tick_info.owned.get(base_id) {
                     let one_tick = (crystals.len() as f32)
                     * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                     * ((self.bases.len() as f32) / (capture_points_count as f32));
-                    let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick;
+                    let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick * multiplier;
                     let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
                     let new_float_index = old_float_index + increment;
                     let old_index = (old_float_index.ceil() as usize).clamp(0, crystals.len());
@@ -487,6 +756,7 @@ impl BaseTracker {
                     }
                 }
             }
+            self.equalizer.tick(generic, &self.bases, ba_config).await;
             BaseTickInfo {
                 win: None,
             }
@@ -517,6 +787,16 @@ impl BaseInfo {
     #[inline]
     fn max_index(&self) -> usize {
         self.cube_index.load(std::sync::atomic::Ordering::SeqCst).ceil() as usize
+    }
+
+    // total base health, out of 1
+    fn base_charge(&self) -> f32 {
+        let mut total_health: usize = 0;
+        for crystal in self.crystals_healths.iter() {
+            let health = crystal.load(std::sync::atomic::Ordering::Relaxed);
+            total_health += health as usize;
+        }
+        (total_health as f32) / ((self.crystals_healths.len() * u8::MAX as usize) as f32)
     }
 
     fn first_damaged(&self, old_index: usize, max_health: u32) -> Option<usize> {
@@ -630,7 +910,7 @@ impl BattleArenaLogic {
             player_tracking: PlayerTracker::new(),
             capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
-            base_tracking: BaseTracker::new(map.bases.keys(), &crystals),
+            base_tracking: BaseTracker::new(map.bases.keys(), &crystals, &ba_config),
             //cube_parser,
             //ba_base: teambase,
             //ba_equalizer: equalizer,
@@ -810,7 +1090,7 @@ impl BattleArenaLogic {
         }
     }
 
-    async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>) {
+    async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>, actual_damage_data: impl FnOnce(Vec<rlnl::types::CubeState>) -> crate::matches::RlnlPacket) {
         let base_id = cube_damage.hit_machine_id as u8;
         let mut total_destroyed = 0;
         let mut valid_cubes = Vec::with_capacity(cube_damage.hit_cubes.len());
@@ -829,7 +1109,7 @@ impl BattleArenaLogic {
                     }
                 }
             }
-            generic.broadcast(
+            /*generic.broadcast(
                 rlnl::event_code::NetworkEvent::DestroyCubeNoEffect,
                 literustlib::packet::Property::ReliableOrdered,
                 &rlnl::events::ingame::DestroyCubeNoEffect {
@@ -839,6 +1119,13 @@ impl BattleArenaLogic {
                     num_hits: valid_cubes.len() as _,
                     hit_cubes: valid_cubes,
                 },
+                true,
+            ).await;*/
+            let actual_damage_data = actual_damage_data(valid_cubes);
+            generic.broadcast(
+                actual_damage_data.event,
+                actual_damage_data.property,
+                actual_damage_data.data.as_ref(),
                 true,
             ).await;
             generic.broadcast(
@@ -862,6 +1149,16 @@ impl BattleArenaLogic {
                 }
             } else {
                 log::warn!("Machine {} has no team", cube_damage.shooting_machine_id);
+            }
+        }
+    }
+
+    async fn do_equalizer_damage(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>) {
+        for hit_cube in cube_damage.hit_cubes.iter() {
+            if let Some(damage) = hit_cube.status.damage {
+                self.base_tracking.equalizer.damage_equalizer(damage, generic, &self.config, &self.base_tracking.bases, &self.crystals).await;
+            } else if matches!(hit_cube.status.ty, rlnl::types::CubeHistoryEventType::Destroy) {
+                self.base_tracking.equalizer.destroy_equalizer(generic, &self.config, &self.base_tracking.bases, &self.crystals).await;
             }
         }
     }
@@ -949,10 +1246,10 @@ impl CustomGameLogic for BattleArenaLogic {
                 property: literustlib::packet::Property::ReliableOrdered,
                 data: Box::new(rlnl::events::sync::GetEqualizer {
                     pos: rlnl::types::PosQuatPair {
-                        pos: (0.0, 0.0, 0.0).into(),
+                        pos: (generic.map_config.equalizer.x, generic.map_config.equalizer.y, generic.map_config.equalizer.z).into(),
                         rot: (0.0, 0.0, 0.0, 0.0).into(),
                     },
-                    total_health: 42,
+                    total_health: self.config.equalizer_health as i32,
                 }),
             }),
             // SetShieldState
@@ -1086,15 +1383,71 @@ impl CustomGameLogic for BattleArenaLogic {
 
     async fn on_broadcast(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
         match (event_in, data) {
+            (rlnl::event_code::NetworkEvent::DamageCube, Some(data)) => {
+                let maybe_cube_dmg = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubesFull>(data.as_ref());
+                if let Some(cube_damage) = maybe_cube_dmg {
+                    let pseudo = rlnl::events::ingame::DestroyCubeNoEffect {
+                        shooting_machine_id: cube_damage.shooting_machine_id,
+                        hit_machine_id: cube_damage.hit_machine_id,
+                        target_type: cube_damage.target_type,
+                        num_hits: cube_damage.num_hit_cubes,
+                        hit_cubes: cube_damage.hit_cubes.clone(),
+                    };
+                    match cube_damage.target_type {
+                        rlnl::types::TargetType::TeamBase => {
+                            let actual_damage_data = |cubes: Vec<rlnl::types::CubeState>| {
+                                let mut cube_dmg = cube_damage.to_owned();
+                                cube_dmg.num_hit_cubes = cubes.len() as _;
+                                cube_dmg.hit_cubes = cubes;
+                                crate::matches::RlnlPacket {
+                                    event: rlnl::event_code::NetworkEvent::DestroyCubesFull,
+                                    property: literustlib::packet::Property::ReliableOrdered,
+                                    data: Box::new(cube_dmg),
+                                }
+                            };
+                            self.do_team_base_stealing(&pseudo, generic, actual_damage_data).await;
+                            false
+                        },
+                        rlnl::types::TargetType::EqualizerCrystal => {
+                            self.do_equalizer_damage(&pseudo, generic).await;
+                            true
+                        }
+                        _ => {
+                            //log::info!("Got DamageCube with target_type {:?}", cube_damage.target_type);
+                            true
+                        },
+                    }
+                } else {
+                    log::warn!("Got DamageCube event with bad serialization type");
+                    true
+                }
+            },
             (rlnl::event_code::NetworkEvent::DamageCubeNoEffect, Some(data)) => {
                 let maybe_cube_dmg = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubeNoEffect>(data.as_ref());
                 if let Some(cube_damage) = maybe_cube_dmg {
-                    if matches!(cube_damage.target_type, rlnl::types::TargetType::TeamBase) {
-                        self.do_team_base_stealing(cube_damage, generic).await;
-                        false
-                    } else {
-                        //log::info!("Got non-base DamageCubeNoEffect {:?}", cube_damage.target_type);
-                        true
+                    match cube_damage.target_type {
+                        rlnl::types::TargetType::TeamBase => {
+                            let actual_damage_data = |cubes: Vec<rlnl::types::CubeState>| {
+                                let mut cube_dmg = cube_damage.to_owned();
+                                cube_dmg.num_hits = cubes.len() as _;
+                                cube_dmg.hit_cubes = cubes;
+                                crate::matches::RlnlPacket {
+                                    event: rlnl::event_code::NetworkEvent::DestroyCubeNoEffect,
+                                    property: literustlib::packet::Property::ReliableOrdered,
+                                    data: Box::new(cube_dmg.to_owned()),
+                                }
+                            };
+                            self.do_team_base_stealing(cube_damage, generic, &actual_damage_data).await;
+                            false
+                        },
+                        rlnl::types::TargetType::EqualizerCrystal => {
+                            self.do_equalizer_damage(cube_damage, generic).await;
+                            true
+                        }
+                        _ => {
+                            //log::info!("Got DamageCubeNoEffect with target_type {:?}", cube_damage.target_type);
+                            true
+                        },
                     }
                 } else {
                     log::warn!("Got DamageCubeNoEffect event with bad serialization type");
@@ -1167,7 +1520,7 @@ impl CustomGameLogic for BattleArenaLogic {
             }
 
             // do base charge tick
-            let base_tick_info = self.base_tracking.tick(&tick_info, &self.crystals, generic, self.capture_tracking.points.len(), self.config.protonium_health as u32).await;
+            let base_tick_info = self.base_tracking.tick(&tick_info, &self.crystals, generic, self.capture_tracking.points.len(), self.config.protonium_health as u32, &self.config).await;
             if let Some((winning_team, win_mode)) = base_tick_info.win {
                 self.do_win(winning_team, win_mode, generic).await;
             }

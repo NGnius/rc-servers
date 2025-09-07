@@ -66,6 +66,11 @@ impl GameMatches {
                     spawns: std::collections::HashMap::default(),
                     bases: std::collections::HashMap::default(),
                     capture_points: Vec::default(),
+                    equalizer: oj_rc_core::persist::config::Point {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    }
                 }
             });
         let players = user.game_players(guid).await?;

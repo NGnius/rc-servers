@@ -11,6 +11,7 @@ pub struct MapConfig {
     pub spawn_points: Vec<SpawnPoint>,
     pub bases: Vec<CaptureBase>,
     pub capture_points: Vec<CapturePoint>,
+    pub equalizer: Point,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -84,6 +85,33 @@ impl CapturePoint {
 
     fn rotated(mut self, rot: num_quaternion::Quaternion<f32>) -> Self {
         let unit_rot = rot.normalize().expect("Bad rotation quaternion for CapturePoint");
+        let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
+        self.x = rotated[0];
+        self.y = rotated[1];
+        self.z = rotated[2];
+        self
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+impl Point {
+    #[allow(dead_code)]
+    const fn offset(mut self, x: f32, y: f32, z: f32) -> Self {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+        self
+    }
+
+    #[allow(dead_code)]
+    fn rotated(mut self, rot: num_quaternion::Quaternion<f32>) -> Self {
+        let unit_rot = rot.normalize().expect("Bad rotation quaternion for Point");
         let rotated = unit_rot.rotate_vector([self.x, self.y, self.z]);
         self.x = rotated[0];
         self.y = rotated[1];
@@ -273,6 +301,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             y: 0.707107,
             z: 0.0,
         }).offset(13.320, 0.0, -9.84)).collect(),
+        equalizer: Point {
+            x: 1.404,
+            y: 14.3,
+            z: -0.588,
+        },
     });
     map.insert(super::combat::GameMap::Earth2, MapConfig { // level4
         spawn_points: vec![
@@ -483,6 +516,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Mars1, MapConfig {
         spawn_points: vec![
@@ -628,6 +666,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Mars2, MapConfig {
         spawn_points: vec![
@@ -773,6 +816,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(-434.640, 0.0, -414.720)).collect(),
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Mars3, MapConfig {
         spawn_points: vec![
@@ -918,6 +966,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Neptune1, MapConfig {
         spawn_points: vec![
@@ -1063,6 +1116,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(405.542, 0.0, 10.668)).collect(),
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Neptune2, MapConfig {
         spawn_points: vec![
@@ -1208,6 +1266,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map.insert(super::combat::GameMap::Neptune3, MapConfig {
         spawn_points: vec![
@@ -1353,6 +1416,11 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
+        equalizer: Point { // TODO
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     });
     map
 }

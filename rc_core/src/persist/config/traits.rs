@@ -361,6 +361,7 @@ pub struct MapConfig {
     pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
     pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> (base, capture speed)
     pub capture_points: Vec<(Sphere, f32)>, // (capture point, capture speed)
+    pub equalizer: Point,
 }
 
 #[derive(Clone, Debug)]
@@ -404,9 +405,13 @@ impl BattleArenaResolver {
             base_machine_map: base_data.robot_map,
             equalizer_model: equalizer_data.robot_map,
             equalizer_health: self.data.equalizer_health as i64,
-            equalizer_trigger_time_seconds: vec![10, 10, 10, 10, 10], // TODO
+            equalizer_trigger_time_seconds: if let Some(trigger_time) = self.data.equalizer_trigger_time_s {
+                vec![trigger_time; 5]
+            } else {
+                Vec::default()
+            },
             equalizer_warning_seconds: self.data.equalizer_warning_s as i64, // TODO
-            equalizer_duration_seconds: vec![20, 20, 20, 20, 20], // TODO
+            equalizer_duration_seconds: vec![self.data.equalizer_duration_s; 5],
             capture_time_seconds_per_player: vec![30, 20, 10, 5, 1], // TODO
             num_segments: self.data.num_segments as i32,
             heal_escalation_time_seconds: 5, // Unused?

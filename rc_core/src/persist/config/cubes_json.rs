@@ -418,10 +418,16 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                     z: point.z,
                 }
             }, point.percent_per_second)).collect();
+            let equalizer = super::Point {
+                x: conf.equalizer.x,
+                y: conf.equalizer.y,
+                z: conf.equalizer.z,
+            };
             let map_conf = super::MapConfig {
                 spawns,
                 bases,
                 capture_points,
+                equalizer,
             };
             (map.into_conf(), map_conf)
         }).collect()
