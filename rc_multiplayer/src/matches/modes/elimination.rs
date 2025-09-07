@@ -99,7 +99,7 @@ impl BaseCounters {
 
 struct BaseTracker {
     bases: std::collections::HashMap<u8, BaseCounters>,
-    last_tick: std::sync::atomic::AtomicI64,
+    ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
     is_baseless: bool,
 }
 
@@ -260,18 +260,8 @@ impl BaseTracker {
     }
 
     async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>) {
-        let now = chrono::Utc::now().timestamp_millis();
-        let last_tick = self.last_tick.load(std::sync::atomic::Ordering::SeqCst);
-        let delta = if last_tick == i64::MIN {
-            // first tick
-            self.last_tick.store(now, std::sync::atomic::Ordering::SeqCst);
-            1
-        } else {
-            let delta = (now - last_tick) / Self::TICK_MS;
-            if delta == 0 { return; }
-            self.last_tick.store(last_tick + (delta * Self::TICK_MS), std::sync::atomic::Ordering::SeqCst);
-            delta
-        };
+        let delta = self.ticker.tick();
+        if delta == 0 { return; }
         for (team, base) in self.bases.iter() {
             if base.friendlies.load(std::sync::atomic::Ordering::SeqCst) > 0 { continue; }
             if base.enemies.load(std::sync::atomic::Ordering::SeqCst) <= 0 { continue; }
@@ -356,7 +346,7 @@ impl EliminationLogic {
             },
             bases: BaseTracker {
                 bases: map.bases.iter().map(|(team, base)| (*team, BaseCounters::new(base.1))).collect(),
-                last_tick: std::sync::atomic::AtomicI64::new(i64::MIN),
+                ticker: super::trackers::TickTracker::new(),
                 is_baseless: map.bases.is_empty(),
             },
             respawn_full_heal_duration: config.respawn_full_heal_duration,

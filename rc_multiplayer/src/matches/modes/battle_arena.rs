@@ -177,14 +177,14 @@ impl PointInfo {
 
 struct PointTracker {
     points: Vec<PointInfo>,
-    last_tick: std::sync::atomic::AtomicI64,
+    ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
 }
 
 struct PointTickInfo {
     owned: std::collections::HashMap<u8, u8>, // team -> capture point count
     captured_firsts: std::collections::HashSet<u8>, // team
     lost_lasts: std::collections::HashSet<u8>, // team
-    delta: i64,
+    delta: u16,
 }
 
 impl PointTracker {
@@ -193,7 +193,7 @@ impl PointTracker {
     fn new(points: impl Iterator<Item=f32>) -> Self {
         Self {
             points: points.map(PointInfo::new).collect(),
-            last_tick: std::sync::atomic::AtomicI64::new(i64::MIN),
+            ticker: super::trackers::TickTracker::new(),
         }
     }
 
@@ -325,18 +325,8 @@ impl PointTracker {
     }
 
     async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, max_progress: f32) -> Option<PointTickInfo> {
-        let now = chrono::Utc::now().timestamp_millis();
-        let last_tick = self.last_tick.load(std::sync::atomic::Ordering::SeqCst);
-        let delta = if last_tick == i64::MIN {
-            // first tick
-            self.last_tick.store(now, std::sync::atomic::Ordering::SeqCst);
-            1
-        } else {
-            let delta = (now - last_tick) / Self::TICK_MS;
-            if delta == 0 { return None; }
-            self.last_tick.store(last_tick + (delta * Self::TICK_MS), std::sync::atomic::Ordering::SeqCst);
-            delta
-        };
+        let delta = self.ticker.tick();
+        if delta == 0 { return None; }
         let mut owned_points = std::collections::HashMap::with_capacity(2);
         let mut captured_firsts = std::collections::HashSet::new();
         let mut lost_lasts = std::collections::HashSet::new();
@@ -410,6 +400,10 @@ struct BaseTracker {
     bases: std::collections::HashMap<u8, BaseInfo>,
 }
 
+struct BaseTickInfo {
+    win: Option<(u8, WinMode)>,
+}
+
 impl BaseTracker {
     fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> Self {
         let mut bases = std::collections::HashMap::new();
@@ -419,6 +413,83 @@ impl BaseTracker {
         Self {
             bases,
         }
+    }
+
+    async fn tick(&self, tick_info: &PointTickInfo, crystals: &[oj_rc_core::cubes::CubeLocationInfo], generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, capture_points_count: usize, crystal_health: u32) -> BaseTickInfo {
+        for (base_id, tracked_base) in self.bases.iter() {
+                //log::info!("Healing base {}", base_id);
+                if let Some(owned_points) = tick_info.owned.get(base_id) {
+                    let one_tick = (crystals.len() as f32)
+                    * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
+                    * ((self.bases.len() as f32) / (capture_points_count as f32));
+                    let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick;
+                    let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
+                    let new_float_index = old_float_index + increment;
+                    let old_index = (old_float_index.ceil() as usize).clamp(0, crystals.len());
+                    let new_index = (new_float_index.ceil() as usize).clamp(0, crystals.len());
+                    if new_index != old_index {
+                        log::debug!("Base {} increment passed a crystal index barrier", base_id);
+                        let first_damaged = tracked_base.first_damaged(old_index, crystal_health);
+                        let payload = if new_index - old_index == 1 && first_damaged.is_some() {
+                            // undo cube_index update
+                            tracked_base.cube_index.fetch_sub(increment, std::sync::atomic::Ordering::SeqCst);
+                            log::debug!("Skipping increment in favour of healing damaged/destroyed cube");
+                            let first_damaged = first_damaged.unwrap();
+                            let healing = crystal_health - tracked_base.calculate_crystal_health(first_damaged, crystal_health);
+                            tracked_base.crystals_healths[first_damaged].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
+                            let target_crystal = &crystals[first_damaged];
+                            rlnl::events::HealedCubes {
+                                healed_machine: *base_id as u16,
+                                type_performing_healing: rlnl::types::TargetType::TeamBase,
+                                target_type: rlnl::types::TargetType::TeamBase,
+                                num_healed_cubes: 1,
+                                hit_cubes: vec![
+                                    rlnl::types::HitCubeInfo {
+                                        pos: rlnl::types::Byte3 { x: target_crystal.x, y: target_crystal.y, z: target_crystal.z, },
+                                        damage: healing as i32,
+                                    }
+                                ],
+                            }
+                        } else {
+                            let target_crystals = &crystals[old_index..new_index];
+                            for crystal_i in old_index..new_index {
+                                tracked_base.crystals_healths[crystal_i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
+                            }
+                            rlnl::events::HealedCubes {
+                                healed_machine: *base_id as u16,
+                                type_performing_healing: rlnl::types::TargetType::TeamBase,
+                                target_type: rlnl::types::TargetType::TeamBase,
+                                num_healed_cubes: target_crystals.len() as _,
+                                hit_cubes: target_crystals
+                                    .iter()
+                                    .map(|loc| rlnl::types::HitCubeInfo {
+                                        pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
+                                        damage: crystal_health as i32,
+                                    })
+                                    .collect(),
+                            }
+                        };
+
+                        generic.broadcast(
+                            rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &payload,
+                            true
+                        ).await;
+
+                        if new_index == crystals.len() {
+                            // team base is charged to 100%
+                            //self.do_win(*base_id, WinMode::BaseFull, generic).await;
+                            return BaseTickInfo {
+                                win: Some((*base_id, WinMode::BaseFull)),
+                            };
+                        }
+                    }
+                }
+            }
+            BaseTickInfo {
+                win: None,
+            }
     }
 }
 
@@ -1072,23 +1143,23 @@ impl CustomGameLogic for BattleArenaLogic {
         }
         if let Some(tick_info) = self.capture_tracking.tick(generic, self.config.num_segments as f32).await {
             // handle shield (de)activation
-            for team in tick_info.captured_firsts {
+            for team in tick_info.captured_firsts.iter() {
                 generic.broadcast(
                     rlnl::event_code::NetworkEvent::SetShieldState,
                     literustlib::packet::Property::ReliableOrdered,
                     &rlnl::events::sync::FusionShieldState {
-                        team_id: team as i8,
+                        team_id: *team as i8,
                         full_power: 1,
                     },
                     true,
                 ).await;
             }
-            for team in tick_info.lost_lasts {
+            for team in tick_info.lost_lasts.iter() {
                 generic.broadcast(
                     rlnl::event_code::NetworkEvent::SetShieldState,
                     literustlib::packet::Property::ReliableOrdered,
                     &rlnl::events::sync::FusionShieldState {
-                        team_id: team as i8,
+                        team_id: *team as i8,
                         full_power: 0,
                     },
                     true,
@@ -1096,75 +1167,9 @@ impl CustomGameLogic for BattleArenaLogic {
             }
 
             // do base charge tick
-            for base_id in generic.map_config.bases.keys() {
-                //log::info!("Healing base {}", base_id);
-                if let Some(owned_points) = tick_info.owned.get(base_id) {
-                    if let Some(tracked_base) = self.base_tracking.bases.get(base_id) {
-                        let one_tick = (self.crystals.len() as f32)
-                        * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
-                        * ((self.base_tracking.bases.len() as f32) / (self.capture_tracking.points.len() as f32));
-                        let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick;
-                        let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
-                        let new_float_index = old_float_index + increment;
-                        let old_index = (old_float_index.ceil() as usize).clamp(0, self.crystals.len());
-                        let new_index = (new_float_index.ceil() as usize).clamp(0, self.crystals.len());
-                        if new_index != old_index {
-                            log::debug!("Base {} increment passed a crystal index barrier", base_id);
-                            let first_damaged = tracked_base.first_damaged(old_index, self.config.protonium_health as u32);
-                            let payload = if new_index - old_index == 1 && first_damaged.is_some() {
-                                // undo cube_index update
-                                tracked_base.cube_index.fetch_sub(increment, std::sync::atomic::Ordering::SeqCst);
-                                log::debug!("Skipping increment in favour of healing damaged/destroyed cube");
-                                let first_damaged = first_damaged.unwrap();
-                                let healing = self.config.protonium_health as u32 - tracked_base.calculate_crystal_health(first_damaged, self.config.protonium_health as u32);
-                                tracked_base.crystals_healths[first_damaged].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
-                                let target_crystal = &self.crystals[first_damaged];
-                                rlnl::events::HealedCubes {
-                                    healed_machine: *base_id as u16,
-                                    type_performing_healing: rlnl::types::TargetType::TeamBase,
-                                    target_type: rlnl::types::TargetType::TeamBase,
-                                    num_healed_cubes: 1,
-                                    hit_cubes: vec![
-                                        rlnl::types::HitCubeInfo {
-                                            pos: rlnl::types::Byte3 { x: target_crystal.x, y: target_crystal.y, z: target_crystal.z, },
-                                            damage: healing as i32,
-                                        }
-                                    ],
-                                }
-                            } else {
-                                let target_crystals = &self.crystals[old_index..new_index];
-                                for crystal_i in old_index..new_index {
-                                    tracked_base.crystals_healths[crystal_i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
-                                }
-                                rlnl::events::HealedCubes {
-                                    healed_machine: *base_id as u16,
-                                    type_performing_healing: rlnl::types::TargetType::TeamBase,
-                                    target_type: rlnl::types::TargetType::TeamBase,
-                                    num_healed_cubes: target_crystals.len() as _,
-                                    hit_cubes: target_crystals
-                                        .iter()
-                                        .map(|loc| rlnl::types::HitCubeInfo {
-                                            pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
-                                            damage: self.config.protonium_health as i32,
-                                        })
-                                        .collect(),
-                                }
-                            };
-
-                            generic.broadcast(
-                                rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
-                                literustlib::packet::Property::ReliableOrdered,
-                                &payload,
-                                true
-                            ).await;
-
-                            if new_index == self.crystals.len() {
-                                // team base is charged to 100%
-                                self.do_win(*base_id, WinMode::BaseFull, generic).await;
-                            }
-                        }
-                    }
-                }
+            let base_tick_info = self.base_tracking.tick(&tick_info, &self.crystals, generic, self.capture_tracking.points.len(), self.config.protonium_health as u32).await;
+            if let Some((winning_team, win_mode)) = base_tick_info.win {
+                self.do_win(winning_team, win_mode, generic).await;
             }
 
             // handle surrender vote tick

@@ -113,6 +113,7 @@ impl SurrenderTracker {
 
 pub struct SurrenderGameTracker {
     surrenders: tokio::sync::RwLock<std::collections::HashMap<u8, SurrenderTracker>>,
+    ticker: super::TickTracker<250>,
 }
 
 pub enum SurrenderVoteResult {
@@ -125,6 +126,7 @@ impl SurrenderGameTracker {
     pub fn new() -> Self {
         Self {
             surrenders: tokio::sync::RwLock::new(std::collections::HashMap::with_capacity(2)),
+            ticker: super::TickTracker::new(),
         }
     }
 
@@ -174,6 +176,7 @@ impl SurrenderGameTracker {
     }
 
     pub async fn tick<L: crate::matches::CustomGameLogic>(&self, generic: &crate::matches::GenericGamemodeEngine<L>) {
+        if self.ticker.tick() == 0 { return; }
         let mut keys_to_remove = Vec::default();
         let generic_user_lock = generic.users.read().await;
         for (team, tracker) in self.surrenders.read().await.iter() {
