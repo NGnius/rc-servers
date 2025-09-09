@@ -515,7 +515,49 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: 169.418,
+                y: 20.664,
+                z: -22.416,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.723291,
+                x: 0.0,
+                y: -0.690544,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: -125.484,
+                y: 14.616,
+                z: -129.156,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.707107,
+                x: 0.0,
+                y: -0.707107,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: -19.332,
+                y: 20.424,
+                z: 166.128,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.693754,
+                x: 0.0,
+                y: 0.720212,
+                z: 0.0,
+            })*/,
+        ].into_iter().map(|p| p.rotated(num_quaternion::Quaternion {
+            w: 0.707107,
+            x: 0.0,
+            y: 0.707107,
+            z: 0.0,
+        }).offset(13.320, 0.0, -9.84)).collect(),
         equalizer: Point {
             x: -6.048,
             y: 25.524,
@@ -665,7 +707,44 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: -24.600,
+                y: 25.850,
+                z: 242.100,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.951521,
+                x: 0.0,
+                y: 0.307583,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 339.060,
+                y: 24.240,
+                z: 57.800,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.940705,
+                x: 0.0,
+                y: -0.339225,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 141.550,
+                y: 8.240,
+                z: 308.790,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.050476,
+                x: 0.0,
+                y: -0.998725,
+                z: 0.0,
+            })*/,
+        ],
         equalizer: Point {
             x: 180.732,
             y: 7.580,
@@ -815,7 +894,39 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(-434.640, 0.0, -414.720)).collect(),
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: -210.000,
+                y: 18.360,
+                z: -24.000,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.997547,
+                x: 0.0,
+                y: 0.070007,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 90.000,
+                y: 5.004,
+                z: -90.000,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+            CapturePoint {
+                x: 24.000,
+                y: 18.360,
+                z: 210.000,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.997883,
+                x: 0.0,
+                y: -0.065034,
+                z: 0.0,
+            })*/,
+        ],
         equalizer: Point {
             x: -64.044,
             y: 0.0,
@@ -965,7 +1076,44 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: -44.400,
+                y: 4.800,
+                z: -141.600,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.868262,
+                x: 0.0,
+                y: -0.496106,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 217.608,
+                y: 27.024,
+                z: -1.680,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.322062,
+                x: 0.0,
+                y: -0.946719,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: -44.400,
+                y: 4.800,
+                z: 141.600,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.195041,
+                x: 0.0,
+                y: -0.980795,
+                z: 0.0,
+            })*/,
+        ],
         equalizer: Point {
             x: -52.920,
             y: 0.384,
@@ -975,7 +1123,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
     map.insert(super::combat::GameMap::Neptune1, MapConfig { // level8
         spawn_points: vec![
             // team 0
-            SpawnPoint {
+            SpawnPoint { // FIXME: at least this spawn is wrong
                 team: 0,
                 x: -2.100,
                 y: -0.669,
@@ -1115,7 +1263,44 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ].into_iter().map(|x| x.offset(405.542, 0.0, 10.668)).collect(),
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: 91.580,
+                y: -7.770,
+                z: 10.700,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.964756,
+                x: 0.0,
+                y: 0.263146,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 270.200,
+                y: -6.390,
+                z: 172.480,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.291923,
+                x: 0.0,
+                y: -0.956442,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: -73.500,
+                y: -7.870,
+                z: 64.400,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.964756,
+                x: 0.0,
+                y: 0.263146,
+                z: 0.0,
+            })*/,
+        ],
         equalizer: Point {
             x: 140.600,
             y: 3.270,
@@ -1265,7 +1450,44 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: -26.760,
+                y: 23.316,
+                z: -247.920,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.359809,
+                x: 0.0,
+                y: -0.933026,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: 36.000,
+                y: 16.944,
+                z: 36.000,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: -0.876506,
+                x: 0.0,
+                y: -0.481392,
+                z: 0.0,
+            })*/,
+            CapturePoint {
+                x: -247.920,
+                y: 23.316,
+                z: -24.720,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            }/*.rotated(num_quaternion::Quaternion {
+                w: 0.937230,
+                x: 0.0,
+                y: -0.348713,
+                z: 0.0,
+            })*/,
+        ],
         equalizer: Point {
             x: -108.000,
             y: 9.276,
@@ -1415,7 +1637,29 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
         ],
-        capture_points: vec![], // TODO
+        capture_points: vec![
+            CapturePoint {
+                x: 155.64,
+                y: 13.560,
+                z: 22.200,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+            CapturePoint {
+                x: -90.000,
+                y: 33.290,
+                z: -90.000,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+            CapturePoint {
+                x: 22.212,
+                y: 13.560,
+                z: 157.656,
+                radius: DEFAULT_CAPTURE_RADIUS,
+                percent_per_second: DEFAULT_CAPTURE_PERCENT_PER_SECOND,
+            },
+        ],
         equalizer: Point {
             x: 26.040,
             y: 11.436,

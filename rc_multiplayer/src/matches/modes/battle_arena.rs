@@ -517,6 +517,7 @@ impl EqualizerTracker {
     }
 
     async fn damage_equalizer(&self, damage: i32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        if !self.activated.load(std::sync::atomic::Ordering::Relaxed) { return; }
         let damage_u64 = damage as u64;
         let old_health = self.health.fetch_sub(damage as u64, std::sync::atomic::Ordering::Relaxed);
         if old_health < damage_u64 {
@@ -526,8 +527,8 @@ impl EqualizerTracker {
     }
 
     async fn destroy_equalizer(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        if !self.activated.swap(false, std::sync::atomic::Ordering::Relaxed) { return; }
         self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
-        self.activated.store(false, std::sync::atomic::Ordering::Relaxed);
         let eq_start = self.start.load(std::sync::atomic::Ordering::Relaxed);
         let now = chrono::Utc::now().timestamp();
         self.send_notification(rlnl::types::EqualizerState::Destroyed, ba_config, eq_start, now, generic).await;
