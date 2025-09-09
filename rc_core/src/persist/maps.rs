@@ -516,13 +516,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+        equalizer: Point {
+            x: -6.048,
+            y: 25.524,
+            z: 0.984,
         },
     });
-    map.insert(super::combat::GameMap::Mars1, MapConfig {
+    map.insert(super::combat::GameMap::Mars1, MapConfig { // level5
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -666,13 +666,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+        equalizer: Point {
+            x: 180.732,
+            y: 7.580,
+            z: 191.970,
         },
     });
-    map.insert(super::combat::GameMap::Mars2, MapConfig {
+    map.insert(super::combat::GameMap::Mars2, MapConfig { // level6
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -816,13 +816,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(-434.640, 0.0, -414.720)).collect(),
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
+        equalizer: Point {
+            x: -64.044,
             y: 0.0,
-            z: 0.0,
+            z: 64.284,
         },
     });
-    map.insert(super::combat::GameMap::Mars3, MapConfig {
+    map.insert(super::combat::GameMap::Mars3, MapConfig { // level7
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -966,13 +966,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
+        equalizer: Point {
+            x: -52.920,
+            y: 0.384,
             z: 0.0,
         },
     });
-    map.insert(super::combat::GameMap::Neptune1, MapConfig {
+    map.insert(super::combat::GameMap::Neptune1, MapConfig { // level8
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -1116,13 +1116,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ].into_iter().map(|x| x.offset(405.542, 0.0, 10.668)).collect(),
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+        equalizer: Point {
+            x: 140.600,
+            y: 3.270,
+            z: 115.000,
         },
     });
-    map.insert(super::combat::GameMap::Neptune2, MapConfig {
+    map.insert(super::combat::GameMap::Neptune2, MapConfig { // level9
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -1266,13 +1266,13 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+        equalizer: Point {
+            x: -108.000,
+            y: 9.276,
+            z: -108.000,
         },
     });
-    map.insert(super::combat::GameMap::Neptune3, MapConfig {
+    map.insert(super::combat::GameMap::Neptune3, MapConfig { // level10
         spawn_points: vec![
             // team 0
             SpawnPoint {
@@ -1416,10 +1416,10 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
             },
         ],
         capture_points: vec![], // TODO
-        equalizer: Point { // TODO
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
+        equalizer: Point {
+            x: 26.040,
+            y: 11.436,
+            z: 26.076,
         },
     });
     map
