@@ -14462,6 +14462,13 @@
                     "type": "BuiltIn",
                     "built_in": "TotalUsers"
                 }
+            },
+            {
+                "regex": "\\?help",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Help"
+                }
             }
         ]
     },

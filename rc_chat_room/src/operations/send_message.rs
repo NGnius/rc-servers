@@ -76,7 +76,7 @@ impl <C: Send + 'static> SimpleOperation<C> for PrivateMessageSender {
                 };
                 let chat_system = self.chat.system().await;
                 log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.public_id(), chat_loc, username.string);
-                chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, username.string);
+                chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, username.string).await;
             }
         }
         Ok(params.into())

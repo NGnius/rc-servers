@@ -15,6 +15,12 @@ impl Database {
         })
     }
 
+    pub async fn user_count(&self) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .count(&self.orm)
+            .await
+    }
+
     pub async fn user_by_display_name(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
             .filter(crate::schema::user::Column::DisplayName.eq(public_id))

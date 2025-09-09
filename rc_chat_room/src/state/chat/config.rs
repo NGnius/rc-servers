@@ -7,7 +7,7 @@ pub struct ChatSystemConfig {
 #[derive(Clone, Copy)]
 struct CommandContext<'a, 'b> {
     chat_system: &'a super::ChatSystem,
-    user: &'b dyn oj_rc_core::persist::user::User<()>,
+    user: &'b dyn oj_rc_core::persist::user::ChatUser,
 }
 
 impl ChatSystemConfig {
@@ -26,13 +26,13 @@ impl ChatSystemConfig {
         })
     }
 
-    pub fn perform_command(&self, text: &str, chat_system: &super::ChatSystem, user: &dyn oj_rc_core::persist::user::User<()>,) -> String {
+    pub async fn perform_command(&self, text: &str, chat_system: &super::ChatSystem, user: &dyn oj_rc_core::persist::user::ChatUser,) -> String {
         let ctx = CommandContext {
             chat_system,
             user,
         };
         for cmd in self.commands.iter() {
-            if let Some(result) = cmd.perform_if_match(text, ctx) {
+            if let Some(result) = cmd.perform_if_match(text, ctx).await {
                 return result;
             }
         }
@@ -65,8 +65,12 @@ impl ChatCommand {
         })
     }
 
-    fn perform_if_match(&self, text: &str, ctx: CommandContext) -> Option<String> {
-        self.regex.captures(text).map(|cap| self.op.perform_command(cap, ctx))
+    async fn perform_if_match<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> Option<String> {
+        if let Some(cap) = self.regex.captures(text) {
+            Some(self.op.perform_command(cap, ctx).await)
+        } else {
+            None
+        }
     }
 }
 
@@ -85,11 +89,19 @@ impl ChatOperation {
         }
     }
 
-    fn perform_command<'a>(&self, _captures: regex::Captures<'a>, ctx: CommandContext) -> String {
+    async fn perform_command<'a, 'b, 'c>(&self, _captures: regex::Captures<'a>, ctx: CommandContext<'b, 'c>) -> String {
         match self {
-            Self::BuiltIn(b_in) => b_in.do_command(ctx),
+            Self::BuiltIn(b_in) => b_in.do_command(ctx).await,
             Self::Custom => "{not implemented}".to_owned(),
             Self::Nop => "{no op}".to_owned(),
+        }
+    }
+
+    fn help_str(&self) -> String {
+        match self {
+            Self::BuiltIn(b_in) => b_in.do_help(),
+            Self::Custom => "{not implemented}".to_owned(),
+            Self::Nop => "does nothing".to_owned(),
         }
     }
 }
@@ -97,6 +109,7 @@ impl ChatOperation {
 enum BuiltIn {
     OnlineUsers,
     TotalUsers,
+    Help,
 }
 
 impl BuiltIn {
@@ -104,10 +117,15 @@ impl BuiltIn {
         match b_in {
             oj_rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
             oj_rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
+            oj_rc_core::persist::BuiltInChatOperation::Help => Self::Help,
         }
     }
 
-    fn do_command(&self, ctx: CommandContext) -> String {
+    fn prettify_re<'a>(regex: &'a str) -> &'a str {
+        regex.trim_start_matches("\\")
+    }
+
+    async fn do_command<'b, 'c>(&self, ctx: CommandContext<'b, 'c>) -> String {
         match self {
             Self::OnlineUsers => {
                 let online_count = ctx.chat_system.user_count();
@@ -118,8 +136,35 @@ impl BuiltIn {
                 }
             },
             Self::TotalUsers => {
-                "User count is not supported".to_string()
+                match ctx.user.get_total_registered_users().await {
+                    Ok(count) => if count == 1 {
+                        "1 user registered".to_owned()
+                    } else {
+                        format!("{} users registered", count)
+                    },
+                    Err(e) => e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to retrieve registered users".to_owned()),
+                }
             },
+            Self::Help => {
+                use core::fmt::Write;
+                let mut msg = String::new();
+                for command in ctx.chat_system.chat_config().commands.iter() {
+                    let raw_re = command.regex.to_string();
+                    let pretty_name = Self::prettify_re(&raw_re);
+                    if let Err(e) = write!(msg, "\n{}: {}", pretty_name, command.op.help_str()) {
+                        log::warn!("Failed to construct help for command `{}`: {}", pretty_name, e);
+                    }
+                }
+                msg
+            }
+        }
+    }
+
+    fn do_help(&self) -> String {
+        match self {
+            Self::OnlineUsers => "Show total users online".to_owned(),
+            Self::TotalUsers => "Show total users registered".to_owned(),
+            Self::Help => "Display this message".to_owned(),
         }
     }
 }

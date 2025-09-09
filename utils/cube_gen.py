@@ -472,6 +472,13 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                         "type": "BuiltIn",
                         "built_in": "TotalUsers"
                     }
+                },
+                {
+                    "regex": "\\?help",
+                    "op": {
+                        "type": "BuiltIn",
+                        "built_in": "Help"
+                    }
                 }
             ]
         },

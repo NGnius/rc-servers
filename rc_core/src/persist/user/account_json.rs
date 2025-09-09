@@ -1337,4 +1337,15 @@ impl super::ChatUser for UserData {
             Err(crate::data::error_codes::ChatErrorCodes::DoesNotExist as i16)
         }
     }
+
+    async fn get_total_registered_users(&self) -> Result<u64, polariton_server::operations::SimpleOpError> {
+        self.db.user_count().await
+            .map_err(|e| {
+                log::error!("Failed to retrieve total user count for {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
+                    format!("Failed to retrieve total user count: {}", e),
+                )
+            })
+    }
 }

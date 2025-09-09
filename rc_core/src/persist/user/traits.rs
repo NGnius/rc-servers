@@ -211,6 +211,7 @@ pub trait ChatUser: CommonUser {
     //async fn has_pending_sanctions(&self) -> Result<bool, i16>;
     async fn get_sanctions(&self, username: String) -> Result<polariton::operation::Typed<()>, i16>;
     async fn set_sanction(&self, sanction: SetSanction) -> Result<(), i16>;
+    async fn get_total_registered_users(&self) -> Result<u64, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct SetSanction {
