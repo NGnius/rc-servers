@@ -1195,6 +1195,10 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
+    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+        true
+    }
+
     async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
         vec![
             Some(crate::matches::RlnlPacket {
@@ -1590,5 +1594,9 @@ impl CustomGameLogic for BattleArenaLogic {
             }
             _ => {}
         }
+    }
+
+    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+        true
     }
 }

@@ -59,13 +59,20 @@ impl QueueHandler {
         }
     }
 
-    async fn enter_match(&self, key: QueueKey, players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+    async fn enter_match(&self, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         use std::hash::Hasher;
         let mut hasher = std::hash::DefaultHasher::new();
         key.hash(&mut hasher);
         chrono::Utc::now().timestamp_micros().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
         let guid_str = oj_rc_core::persist::user::i64_as_uuid_str(guid);
+        let team_picker = match key.mode {
+            oj_rc_core::data::game_mode::GameMode::Pit => |i| i as i32, // each player is on a different team
+            _ => |i| (i % 2) as i32, // alternate teams
+        };
+        for (i, player) in players.iter_mut().enumerate() {
+            player.player.team = team_picker(i);
+        }
         let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
             user_id: x.user_id,
             team: x.player.team,
@@ -137,7 +144,7 @@ impl QueueHandler {
         };
         match user.player_data(&self.cpu_counter).await {
             Ok(player_data) => {
-                let mut new_player = QueueUser {
+                let new_player = QueueUser {
                     emitter: event_emitter,
                     player: player_data,
                     user_id: user.user_id(),
@@ -185,7 +192,6 @@ impl QueueHandler {
                     }
                 }
                 let players_len = if let Some(players) = lock.get_mut(&key) {
-                    new_player.player.team = (players.len() % 2) as _; // alternate teams
                     players.push(new_player);
                     players.len()
                 } else {

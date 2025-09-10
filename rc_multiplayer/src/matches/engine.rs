@@ -16,6 +16,8 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     async fn on_vehicle_destroyed(&self, generic: &super::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool;
     /// Called when a player's vehicle self-destructs.
     async fn on_vehicle_self_destruct(&self, generic: &super::GenericGamemodeEngine<Self>, user: u8, is_classic: bool) -> bool;
+    /// Called when a kill bonus event is received after a confirmed kill
+    async fn on_kill_bonus(&self, generic: &super::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool;
     /// Called during loading, before the sync stage is entered.
     ///
     /// Roughly, loading is as follows: `Loading -> WaitingForSync -> Sync -> WaitingToStart -> InGame`.
@@ -31,5 +33,8 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     async fn on_motion(&self, generic: &super::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool;
     /// Called when a gamemode-specific network event is received from a client
     async fn on_custom(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>);
+
+    /// Called when an enemy vehicle is spotted
+    async fn on_spot_vehicle(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, remote_player: u8) -> bool;
 }
 

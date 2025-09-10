@@ -378,7 +378,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune3,
                     visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
+                    mode: GameType::Pit,
                     auto_heal: true,
                 },
                 duration_s: 5*60, // 5 minutes

@@ -4,7 +4,7 @@ mod all_loading_progress;
 mod weapon_select;
 mod activate_sync;
 mod loading_done;
-//mod player_input;
+mod player_input;
 mod spot_player;
 mod kill_player;
 mod client_unregister;
@@ -25,14 +25,14 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
         .add(weapon_select::handler(init_ctx))
         .add(activate_sync::handler(init_ctx))
         .add(loading_done::handler(init_ctx))
-        //.add(player_input::handler(init_ctx))
-        .add(crate::handlers::Broadcaster::<
+        .add(player_input::handler(init_ctx))
+        /*.add(crate::handlers::Broadcaster::<
             true,
             {rlnl::event_code::NetworkEvent::OnPlayerInputChanged as i16},
             {rlnl::event_code::NetworkEvent::OnServerReceivedInputChange as i16},
             {literustlib::packet::Property::Unreliable as u8},
             rlnl::events::ingame::PlayerIdAndInputData,
-        >::handler(init_ctx))
+        >::handler(init_ctx))*/
         .add(flipper_start::handler(init_ctx))
         /*.add(crate::handlers::Broadcaster::<
             true,

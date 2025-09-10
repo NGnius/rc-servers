@@ -317,6 +317,11 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         ((now - game_start) as f32) / duration as f32
     }
 
+    /// seconds since Unix epoch
+    pub(super) fn game_end(&self) -> i64 {
+        self.game_start.load(std::sync::atomic::Ordering::Relaxed) + self.game_duration.as_secs() as i64
+    }
+
     /*pub(super) async fn send_to_player<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, player_id: u8, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T) {
         if let Some(player) = self.users.read().await.get(&player_id) {
             crate::events::log_lnl_send_failure(player.connection.rlnl().send_data(
@@ -364,13 +369,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         self.on_load_complete(user_id).await;
                     },
                     super::GameMessage::SpotVehicle { user_id, remote_player } => {
-                        self.rebroadcast(
-                            user_id,
-                            rlnl::event_code::NetworkEvent::RemoteEnemySpotted,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &rlnl::events::ingame::PlayerId { player: remote_player },
-                            true
-                        ).await;
+                        self.on_spot_vehicle(user_id, remote_player).await;
                     },
                     super::GameMessage::DestroyVehicle { user_id, remote_player, killer_player } => {
                         self.on_destroy_vehicle(user_id, remote_player, killer_player).await;
@@ -404,6 +403,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     },
                     super::GameMessage::CustomLogicRlnl { user_id, event, property, data } => {
                         self.custom_logic_handler.on_custom(&self, user_id, event, property, data).await;
+                    },
+                    super::GameMessage::PlayerInputChanged { user_id, data } => {
+                        self.on_player_input_changed(user_id, data).await;
                     },
                     super::GameMessage::Motion { user_id, motion } => {
                         self.on_motion(user_id, motion).await;
@@ -706,6 +708,18 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
+    async fn on_spot_vehicle(&self, user_id: i32, remote_player: u8) {
+        if self.custom_logic_handler.on_spot_vehicle(self, user_id, remote_player).await {
+            self.rebroadcast(
+                user_id,
+                rlnl::event_code::NetworkEvent::RemoteEnemySpotted,
+                literustlib::packet::Property::ReliableOrdered,
+                &rlnl::events::ingame::PlayerId { player: remote_player },
+                true
+            ).await;
+        }
+    }
+
     async fn on_destroy_vehicle(&self,
         user_id: i32,
         remote_player: u8,
@@ -798,24 +812,26 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         shootee: u8,
         shooter: u8,
     ) {
-        if let Some(to_reward) = self.users.read().await.get(&shooter) {
-            to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
-                &rlnl::events::ingame::Kill {
-                    killee_player_id: shootee,
-                    killer_player_id: shooter,
-                },
-                rlnl::event_code::NetworkEvent::ConfirmedKill,
-                literustlib::packet::Property::ReliableOrdered,
-                &to_reward.connection.connection
-            ).await);
-            let data = to_reward.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::Kill, None);
-            self.broadcast(
-                rlnl::event_code::NetworkEvent::UpdateGameStats,
-                literustlib::packet::Property::ReliableOrdered,
-                &data,
-                true,
-            ).await;
+        if self.custom_logic_handler.on_kill_bonus(self, shooter, shootee).await {
+            if let Some(to_reward) = self.users.read().await.get(&shooter) {
+                to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+                    &rlnl::events::ingame::Kill {
+                        killee_player_id: shootee,
+                        killer_player_id: shooter,
+                    },
+                    rlnl::event_code::NetworkEvent::ConfirmedKill,
+                    literustlib::packet::Property::ReliableOrdered,
+                    &to_reward.connection.connection
+                ).await);
+                let data = to_reward.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::Kill, None);
+                self.broadcast(
+                    rlnl::event_code::NetworkEvent::UpdateGameStats,
+                    literustlib::packet::Property::ReliableOrdered,
+                    &data,
+                    true,
+                ).await;
+            }
         }
     }
 
@@ -934,6 +950,20 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
             }
         }
+    }
+
+    async fn on_player_input_changed(&self, user_id: i32, input: rlnl::events::ingame::PlayerIdAndInputData) {
+        let full_payload = rlnl::events::ingame::MultiPlayerInputChanged {
+            num_players: 1,
+            changes: vec![input],
+        };
+        self.rebroadcast(
+            user_id,
+            rlnl::event_code::NetworkEvent::OnServerReceivedInputChange,
+            literustlib::packet::Property::ReliableOrdered,
+            &full_payload,
+            true,
+        ).await;
     }
 
     async fn on_motion(&self, user_id: i32, motion: rlnl::machine_motion::MachineMotion) {

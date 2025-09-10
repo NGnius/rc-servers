@@ -21,6 +21,10 @@ impl CustomGameLogic for NoOpLogic {
         true
     }
 
+    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+        true
+    }
+
     async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
         Vec::default()
     }
@@ -42,4 +46,8 @@ impl CustomGameLogic for NoOpLogic {
     }
 
     async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+
+    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+        true
+    }
 }

@@ -1,0 +1,295 @@
+use crate::matches::CustomGameLogic;
+
+struct PlayerTracker {
+    streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
+    respawns: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>,
+}
+
+impl PlayerTracker {
+    fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
+        Self {
+            streaks: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicU32::new(0))).collect(),
+            respawns: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicI64::new(0))).collect(),
+        }
+    }
+
+    fn streak_leader(&self) -> Option<u8> {
+        let mut max = None;
+        for (player_id, streak) in self.streaks.iter() {
+            if let Some((_, cur_max_streak)) = max {
+                let streak = streak.load(std::sync::atomic::Ordering::Relaxed);
+                if streak > cur_max_streak {
+                    max = Some((*player_id, streak));
+                }
+            } else {
+                max = Some((*player_id, streak.load(std::sync::atomic::Ordering::Relaxed)));
+            }
+        }
+        max.map(|(player_id, _streak)| player_id)
+    }
+
+    fn pit_stats(&self, users: &std::collections::HashMap<u8, crate::matches::generic::UserConnection>) -> rlnl::events::ingame::PitModeState {
+        let mut player_stats = Vec::with_capacity(self.streaks.len());
+        for (player_id, streak) in self.streaks.iter() {
+            if let Some(user) = users.get(player_id) {
+                player_stats.push(rlnl::types::PitPlayerStats {
+                    player_id: *player_id,
+                    score: user.counters.generic_score(),
+                    streak: streak.load(std::sync::atomic::Ordering::Relaxed),
+                });
+            }
+        }
+        rlnl::events::ingame::PitModeState {
+            num_scores: player_stats.len() as u8,
+            scores: player_stats,
+            leader_id: self.streak_leader().map(|x| x as i32).unwrap_or(-1),
+        }
+    }
+}
+
+pub struct PitLogic {
+    respawn_full_heal_duration: f32,
+    respawn_heal_duration: f32,
+    player_tracking: PlayerTracker,
+    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+}
+
+impl PitLogic {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, _map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
+        PitLogic {
+            respawn_full_heal_duration: config.respawn_full_heal_duration,
+            respawn_heal_duration: config.respawn_heal_duration,
+            player_tracking: PlayerTracker::new(players),
+            timer_task: tokio::sync::Mutex::new(None),
+        }
+    }
+
+    async fn abort_timer_sync(&self) {
+        let mut lock = self.timer_task.lock().await;
+        if let Some(timer_t) = &*lock {
+            timer_t.abort();
+            log::debug!("Aborted elimination match timer task");
+        }
+        *lock = None;
+    }
+
+    async fn do_leader_update(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) {
+        let leader = if let Some(leader_id) = self.player_tracking.streak_leader() {
+            leader_id
+        } else {
+            log::warn!("Pit game {} has no leader", generic.game_guid());
+            return;
+        };
+        let killer_score = if let Some(user) = generic.users.read().await.get(&killer) {
+            user.counters.generic_score()
+        } else {
+            log::warn!("Player {} score not found", killer);
+            return;
+        };
+        let killer_streak = if let Some(streak) = self.player_tracking.streaks.get(&killer) {
+            streak.load(std::sync::atomic::Ordering::Relaxed)
+        } else {
+            log::warn!("Player {} streak not found", killer);
+            return;
+        };
+        let payload = rlnl::events::ingame::UpdatePitScore {
+            player_id: killer,
+            score: killer_score,
+            streak: killer_streak,
+            destroyed_id: victim,
+            leader_id: leader,
+        };
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::PitLeaderBoardUpdate,
+            literustlib::packet::Property::ReliableOrdered,
+            &payload,
+            true,
+        ).await;
+    }
+
+    async fn do_leaderboard_update(&self, generic: &crate::matches::GenericGamemodeEngine<Self>) {
+        let latest_stats = self.player_tracking.pit_stats(&*generic.users.read().await);
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::PitModeState,
+            literustlib::packet::Property::ReliableOrdered,
+            &latest_stats,
+            true,
+        ).await;
+    }
+
+    async fn do_selfdestruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+        if let Some(player_streak) = self.player_tracking.streaks.get(&player_id) {
+            player_streak.store(0, std::sync::atomic::Ordering::Relaxed);
+        }
+        self.do_leader_update(generic, player_id, player_id).await;
+    }
+
+    async fn do_kill_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) {
+        if let Some(player_streak) = self.player_tracking.streaks.get(&victim) {
+            player_streak.store(0, std::sync::atomic::Ordering::Relaxed);
+        }
+        if let Some(player_streak) = self.player_tracking.streaks.get(&killer) {
+            player_streak.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        self.do_leader_update(generic, killer, victim).await;
+    }
+
+    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+        log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
+        let respawn_time = std::time::Duration::from_secs(10);
+        let now = chrono::Utc::now();
+        let respawn_timestamp = now + respawn_time;
+        if let Some(player_respawn) = self.player_tracking.respawns.get(&player_id) {
+            player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
+        }
+        let respawn_payload = rlnl::events::ingame::RespawnTime {
+            owner: player_id,
+            waiting_time: 10,
+        };
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::SetRespawnWaitingTime,
+            literustlib::packet::Property::ReliableOrdered,
+            &respawn_payload,
+            true
+        ).await;
+        let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&0) {
+            if team_spawns.is_empty() {
+                oj_rc_core::persist::config::Point {
+                    x: 10.0 * (player_id as f32),
+                    y: 100.0,
+                    z: 10.0,
+                }
+            } else {
+                let index = (player_id as usize) % team_spawns.len();
+                team_spawns[index].clone()
+            }
+        } else {
+            oj_rc_core::persist::config::Point {
+                x: 10.0 * (player_id as f32),
+                y: 100.0,
+                z: 10.0,
+            }
+        };
+        let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+        tokio::task::spawn(Self::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
+    }
+
+    async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8) {
+        let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
+        tokio::time::sleep(sleep_dur).await;
+        let spawn_payload = rlnl::events::sync::SpawnPoint {
+            pos: rlnl::types::PosQuatPair {
+                pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
+                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+            },
+            owner: player_id,
+        };
+        log::debug!("Respawning player {} after {}ms", player_id, sleep_dur.as_millis());
+        for player in players {
+            if !player.connection.is_connected() { continue; }
+            crate::events::log_lnl_send_failure(player.rlnl().send_data(
+                &spawn_payload,
+                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
+                literustlib::packet::Property::ReliableOrdered,
+                &player.connection,
+            ).await);
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl CustomGameLogic for PitLogic {
+    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection, _others: &[oj_rc_core::persist::user::PlayerDescriptor]) -> bool {
+        true
+    }
+
+    async fn on_player_end(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
+        true
+    }
+
+    async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+        self.do_kill_tasks(generic, killer, victim).await;
+        self.do_respawn_tasks(generic, victim).await;
+        true
+    }
+
+    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
+        self.do_selfdestruct_tasks(generic, user).await;
+        self.do_respawn_tasks(generic, user).await;
+        true
+    }
+
+    async fn on_kill_bonus(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+        if let Some(to_reward) = generic.users.read().await.get(&killer) {
+            to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+                &rlnl::events::ingame::Kill {
+                    killee_player_id: victim,
+                    killer_player_id: killer,
+                },
+                rlnl::event_code::NetworkEvent::ConfirmedKill,
+                literustlib::packet::Property::ReliableOrdered,
+                &to_reward.connection.connection
+            ).await);
+            let data = to_reward.counters.get_generic_packet(killer, rlnl::types::IngameStatId::Kill, None);
+            generic.broadcast(
+                rlnl::event_code::NetworkEvent::UpdateGameStats,
+                literustlib::packet::Property::ReliableOrdered,
+                &data,
+                true,
+            ).await;
+            self.do_leaderboard_update(generic).await;
+        }
+        false
+    }
+
+    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
+        vec![
+            crate::matches::RlnlPacket {
+                event: rlnl::event_code::NetworkEvent::GameModeSettings,
+                property: literustlib::packet::Property::ReliableOrdered,
+                data: Box::new(rlnl::events::sync::UpdateGameModeSettings {
+                    respawn_heal_duration: self.respawn_heal_duration,
+                    respawn_full_heal_duration: self.respawn_full_heal_duration,
+                }),
+            },
+        ]
+    }
+
+    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+        let read_lock = generic.users.read().await;
+        let game_end = game_start + generic.game_duration;
+        let mut senders = Vec::with_capacity(read_lock.len());
+        for conn in read_lock.values() {
+            senders.push((conn.connection.clone(), conn.state.clone()));
+        }
+        drop(read_lock);
+        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), Vec::default());
+        let mut timer_lock = self.timer_task.lock().await;
+        if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
+            log::warn!("Aborting an existing timer task for pit mode suggests an assumption was wrong");
+            timer_t.abort();
+        }
+        *timer_lock = Some(new_timer_task);
+        true
+    }
+
+    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+        self.abort_timer_sync().await;
+        true
+    }
+
+    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+        true
+    }
+
+    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+        true
+    }
+
+    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+
+    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+        false
+    }
+}

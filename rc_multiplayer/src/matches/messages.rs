@@ -90,6 +90,10 @@ pub enum GameMessage {
         property: literustlib::packet::Property,
         data: Box<dyn crate::Broadcastable>,
     },
+    PlayerInputChanged {
+        user_id: i32,
+        data: rlnl::events::ingame::PlayerIdAndInputData,
+    },
     Motion {
         user_id: i32,
         motion: rlnl::machine_motion::MachineMotion,
@@ -122,6 +126,7 @@ impl GameMessage {
             Self::BroadcastRlnl { user_id, .. } => *user_id,
             Self::RebroadcastRlnl { skip_user_id, .. } => *skip_user_id,
             Self::CustomLogicRlnl { user_id, .. } => *user_id,
+            Self::PlayerInputChanged { user_id, .. } => *user_id,
             Self::Motion { user_id, .. } => *user_id,
             Self::NoOp => unreachable!("NoOp is irrelevant for user ID"),
         }

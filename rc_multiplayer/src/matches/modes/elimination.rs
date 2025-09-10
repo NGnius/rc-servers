@@ -331,14 +331,11 @@ pub struct EliminationLogic {
     bases: BaseTracker,
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
-    game_end: std::sync::atomic::AtomicI64,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl EliminationLogic {
     pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig) -> Self {
-        let dur = std::time::Duration::from_secs((config.game_time_minutes as u64) * 60);
-        let fake_end = (chrono::Utc::now() + dur).timestamp();
         Self {
             tracked: PlayerTracker {
                 alive: tokio::sync::Mutex::new(std::collections::HashMap::new()),
@@ -351,7 +348,6 @@ impl EliminationLogic {
             },
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
-            game_end: std::sync::atomic::AtomicI64::new(fake_end),
             timer_task: tokio::sync::Mutex::new(None),
         }
     }
@@ -416,7 +412,7 @@ impl CustomGameLogic for EliminationLogic {
         if generic.is_game_done() {
             return true;
         }
-        if chrono::Utc::now().timestamp() >= self.game_end.load(std::sync::atomic::Ordering::Relaxed) {
+        if chrono::Utc::now().timestamp() >= generic.game_end() {
             generic.game_done();
             self.abort_timer_sync().await;
             return true;
@@ -464,6 +460,10 @@ impl CustomGameLogic for EliminationLogic {
             log::warn!("Received non-elimination self destruct in elimination game mode");
             false
         }
+    }
+
+    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+        true
     }
 
     async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
@@ -518,7 +518,6 @@ impl CustomGameLogic for EliminationLogic {
             timer_t.abort();
         }
         *timer_lock = Some(new_timer_task);
-        self.game_end.store(game_end.timestamp(), std::sync::atomic::Ordering::Relaxed);
         true
     }
 
@@ -563,6 +562,10 @@ impl CustomGameLogic for EliminationLogic {
     }
 
     async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+
+    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+        true
+    }
 }
 
 // spawn points (best guess)

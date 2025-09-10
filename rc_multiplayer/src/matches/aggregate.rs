@@ -113,9 +113,26 @@ impl GameMatches {
                     fakes_handler,
                 );
                 Ok(engine.spawn())
-            }
+            },
+            oj_rc_core::data::game_mode::GameMode::Pit => {
+                log::warn!("Game {}: Pit is experimental", guid);
+                let inner = super::modes::PitLogic::new(
+                    &self.mode_configs.the_pit,
+                    &map_config,
+                    &players,
+                );
+                let engine = super::GenericGamemodeEngine::new(
+                    game_info,
+                    map_config,
+                    &self.mode_configs.battle_arena,
+                    players,
+                    inner,
+                    fakes_handler,
+                );
+                Ok(engine.spawn())
+            },
             mode => {
-                // TODO support mode gamemodes
+                // TODO support more gamemodes
                 Err(oj_rc_core::persist::user::MultiplayerError {
                     code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
                     message: format!("Game mode {:?} is not supported (yet)", mode),

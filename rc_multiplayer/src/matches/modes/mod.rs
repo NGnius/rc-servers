@@ -8,4 +8,7 @@ pub use elimination::EliminationLogic;
 mod battle_arena;
 pub use battle_arena::BattleArenaLogic;
 
+mod pit;
+pub use pit::PitLogic;
+
 mod trackers;
