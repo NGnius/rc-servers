@@ -428,9 +428,9 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
         "lerp_value": 0.1,
         "battle": {
             "regen": {
-                "wait_for_heal_s": 5.0,
+                "wait_for_heal_s": 10.0,
                 "wait_full_heal_s": 5.0,
-                "sound_start_s": 2.5,
+                "sound_start_s": 7.5,
                 "auto_heal": True,
             },
             "votes": {
