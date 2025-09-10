@@ -514,6 +514,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),
         battle_arena: super::multiplayer::default_ba_conf(),
+        pit_config: super::multiplayer::default_pit_conf(),
     }
 }
 

@@ -36,6 +36,7 @@ pub trait ConfigProvider<C: Clone> {
     fn fake_players(&self) -> Vec<FakePlayer>;
     fn energy(&self) -> EnergyConfig;
     fn ba_settings(&self) -> BattleArenaResolver;
+    fn pit_settings(&self) -> PitSettings;
 }
 
 pub struct CompleteCampaignProvider {
@@ -427,4 +428,19 @@ impl BattleArenaResolver {
             ],
         }))
     }
+}
+
+#[derive(Debug)]
+pub struct PitSettings {
+    pub wins: Vec<PitWinCondition>,
+    pub respawn_time_seconds: u64,
+}
+
+#[derive(Debug)]
+pub enum PitWinCondition {
+    StreakKills(u32),
+    TotalKills(u32),
+    Score(u32),
+    Damage(u32),
+    Time,
 }

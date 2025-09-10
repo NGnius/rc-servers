@@ -6,6 +6,7 @@ pub struct GameMatches {
     fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
     ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
+    pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
@@ -22,6 +23,7 @@ impl GameMatches {
             fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
             cube_parsers,
             ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
+            pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
             factory,
         }
     }
@@ -120,6 +122,7 @@ impl GameMatches {
                     &self.mode_configs.the_pit,
                     &map_config,
                     &players,
+                    self.pit_settings.clone(),
                 );
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,

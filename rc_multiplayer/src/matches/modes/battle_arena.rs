@@ -72,7 +72,7 @@ impl PlayerTracker {
 
     async fn players_on_team(&self, team: u8) -> Vec<u8> {
         if let Some(members) = self.connected.lock().await.get(&team) {
-            members.iter().map(|x| *x).collect()
+            members.iter().copied().collect()
         } else {
             Vec::default()
         }
@@ -434,12 +434,12 @@ impl EqualizerTracker {
                 || ba_config.equalizer_model.is_empty()
                 //|| ba_config.equalizer_trigger_time_seconds.is_empty()
                 || ba_config.equalizer_duration_seconds.is_empty()
-                || ba_config.equalizer_duration_seconds.iter().any(|&x| x == 0);
+                || ba_config.equalizer_duration_seconds.contains(&0);
         if is_disabled {
             log::info!("Battle Arena equalizer is disabled by config (model ok? {}, health ok? {}, duration ok? {})",
                        !ba_config.equalizer_model.is_empty(),
                        ba_config.equalizer_health > 0,
-                       !ba_config.equalizer_duration_seconds.is_empty() && !ba_config.equalizer_duration_seconds.iter().any(|&x| x == 0)
+                       !ba_config.equalizer_duration_seconds.is_empty() && !ba_config.equalizer_duration_seconds.contains(&0)
             );
         }
         Self {
@@ -704,6 +704,7 @@ impl BaseTracker {
                             // undo cube_index update
                             tracked_base.cube_index.fetch_sub(increment, std::sync::atomic::Ordering::SeqCst);
                             log::debug!("Skipping increment in favour of healing damaged/destroyed cube");
+                            #[allow(clippy::unnecessary_unwrap)] // have you seen the mess this would be with another if statement?
                             let first_damaged = first_damaged.unwrap();
                             let healing = crystal_health - tracked_base.calculate_crystal_health(first_damaged, crystal_health);
                             tracked_base.crystals_healths[first_damaged].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);

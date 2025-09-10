@@ -462,4 +462,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             data: self.battle.multiplayer.battle_arena.clone(),
         }
     }
+
+    fn pit_settings(&self) -> super::PitSettings {
+        self.battle.multiplayer.pit_config.clone().into()
+    }
 }

@@ -1,5 +1,97 @@
 use crate::matches::CustomGameLogic;
 
+struct WinTracker {
+    ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
+}
+
+impl WinTracker {
+    const TICK_MS: i64 = 50;
+
+    fn new() -> Self {
+        Self {
+            ticker: super::trackers::TickTracker::new(),
+        }
+    }
+
+    async fn do_win(generic: &crate::matches::GenericGamemodeEngine<PitLogic>, game: &PitLogic, winning_team: u8) {
+        generic.game_done();
+        game.abort_timer_sync().await;
+        let data = rlnl::events::ingame::GameLoseWin {
+            winning_team,
+            end_reason: rlnl::types::GameEndReason::PitMaxKillsAchieved,
+        };
+        let winning_team_i32 = winning_team as i32;
+        for conn in generic.users.read().await.values() {
+            let event = if conn.descriptor.team == winning_team_i32 {
+                rlnl::event_code::NetworkEvent::GameWon
+            } else {
+                rlnl::event_code::NetworkEvent::GameLost
+            };
+            crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
+                &data,
+                event,
+                literustlib::packet::Property::ReliableOrdered,
+                &conn.connection.connection
+            ).await);
+        }
+    }
+
+    async fn check_win(generic: &crate::matches::GenericGamemodeEngine<PitLogic>, game: &PitLogic) {
+        for win_condition in game.settings.wins.iter() {
+            match win_condition {
+                oj_rc_core::persist::config::PitWinCondition::StreakKills(streak_threshold) => {
+                    for (player_id, streak) in game.player_tracking.streaks.iter() {
+                        let player_streak = streak.load(std::sync::atomic::Ordering::Relaxed);
+                        if player_streak >= *streak_threshold {
+                            if let Some(conn) = generic.users.read().await.get(player_id) {
+                                log::info!("Player {} has reached the streak win condition in game {}", player_id, generic.game_guid());
+                                Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                                break;
+                            } else {
+                                log::warn!("Player {} has a winning kill streak but is not in game {}", player_id, generic.game_guid());
+                            }
+                        }
+                    }
+                },
+                oj_rc_core::persist::config::PitWinCondition::TotalKills(kills_threshold) => {
+                    for (player_id, conn) in generic.users.read().await.iter() {
+                        if conn.counters.kills.load(std::sync::atomic::Ordering::Relaxed) >= *kills_threshold {
+                            log::info!("Player {} has reached the total kills win condition in game {}", player_id, generic.game_guid());
+                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            break;
+                        }
+                    }
+                },
+                oj_rc_core::persist::config::PitWinCondition::Score(score_threshold) => {
+                    for (player_id, conn) in generic.users.read().await.iter() {
+                        if conn.counters.generic_score() >= *score_threshold {
+                            log::info!("Player {} has reached the total score win condition in game {}", player_id, generic.game_guid());
+                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            break;
+                        }
+                    }
+                },
+                oj_rc_core::persist::config::PitWinCondition::Damage(dmg_threshold) => {
+                    for (player_id, conn) in generic.users.read().await.iter() {
+                        if conn.counters.cubes.load(std::sync::atomic::Ordering::Relaxed) >= *dmg_threshold {
+                            log::info!("Player {} has reached the total damage win condition in game {}", player_id, generic.game_guid());
+                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            break;
+                        }
+                    }
+                },
+                oj_rc_core::persist::config::PitWinCondition::Time => { /* handled elsewhere */},
+            }
+        }
+    }
+
+    async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<PitLogic>, game: &PitLogic) {
+        let delta = self.ticker.tick();
+        if delta == 0 { return; }
+        Self::check_win(generic, game).await;
+    }
+}
+
 struct PlayerTracker {
     streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
     respawns: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>,
@@ -51,16 +143,20 @@ pub struct PitLogic {
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
     player_tracking: PlayerTracker,
+    win_tracking: WinTracker,
+    settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl PitLogic {
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, _map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, _map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>) -> Self {
         PitLogic {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
             player_tracking: PlayerTracker::new(players),
+            win_tracking: WinTracker::new(),
             timer_task: tokio::sync::Mutex::new(None),
+            settings: pit_settings,
         }
     }
 
@@ -136,7 +232,7 @@ impl PitLogic {
 
     async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
-        let respawn_time = std::time::Duration::from_secs(10);
+        let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds);
         let now = chrono::Utc::now();
         let respawn_timestamp = now + respawn_time;
         if let Some(player_respawn) = self.player_tracking.respawns.get(&player_id) {
@@ -144,7 +240,7 @@ impl PitLogic {
         }
         let respawn_payload = rlnl::events::ingame::RespawnTime {
             owner: player_id,
-            waiting_time: 10,
+            waiting_time: self.settings.respawn_time_seconds as i16,
         };
         generic.broadcast(
             rlnl::event_code::NetworkEvent::SetRespawnWaitingTime,
@@ -152,6 +248,7 @@ impl PitLogic {
             &respawn_payload,
             true
         ).await;
+        // FIXME use full map spawns instead of team base spawns
         let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&0) {
             if team_spawns.is_empty() {
                 oj_rc_core::persist::config::Point {
@@ -264,7 +361,20 @@ impl CustomGameLogic for PitLogic {
             senders.push((conn.connection.clone(), conn.state.clone()));
         }
         drop(read_lock);
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), Vec::default());
+        let end_packets = if self.settings.wins.iter().any(|cond| matches!(cond, oj_rc_core::persist::config::PitWinCondition::Time)) {
+            vec![
+                crate::matches::RlnlPacket {
+                    event: rlnl::event_code::NetworkEvent::EndGame,
+                    property: literustlib::packet::Property::ReliableOrdered,
+                    data: Box::new(rlnl::events::ingame::GameEnd {
+                        reason: rlnl::types::GameEndReason::TimeOut,
+                    }),
+                }
+            ]
+        } else {
+            Vec::default()
+        };
+        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), end_packets);
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for pit mode suggests an assumption was wrong");
@@ -283,7 +393,12 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+    async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+        if generic.is_game_done() {
+            self.abort_timer_sync().await;
+            return true;
+        }
+        self.win_tracking.tick(generic, self).await;
         true
     }
 

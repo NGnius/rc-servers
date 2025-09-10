@@ -10,6 +10,8 @@ pub struct MultiplayerConfig {
     pub fakes: Vec<FakePlayerConf>,
     #[serde(default = "default_ba_conf")]
     pub battle_arena: BattleArenaConfig,
+    #[serde(default = "default_pit_conf")]
+    pub pit_config: PitConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -168,4 +170,68 @@ fn default_equalizer_duration() -> u64 {
 
 fn default_segments() -> u16 {
     3
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum PitWinCondition {
+    StreakKills {
+        streak: u32,
+    },
+    TotalKills {
+        kills: u32,
+    },
+    TotalScore {
+        score: u32,
+    },
+    TotalDamage {
+        damage: u32,
+    },
+    Time,
+}
+
+impl std::convert::From<PitWinCondition> for crate::persist::config::PitWinCondition {
+    fn from(value: PitWinCondition) -> Self {
+        match value {
+            PitWinCondition::StreakKills { streak } => crate::persist::config::PitWinCondition::StreakKills(streak),
+            PitWinCondition::TotalKills { kills } => crate::persist::config::PitWinCondition::TotalKills(kills),
+            PitWinCondition::TotalScore { score } => crate::persist::config::PitWinCondition::Score(score),
+            PitWinCondition::TotalDamage { damage } => crate::persist::config::PitWinCondition::Damage(damage),
+            PitWinCondition::Time => crate::persist::config::PitWinCondition::Time,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PitConfig {
+    pub wins: Vec<PitWinCondition>,
+    pub respawn_time_s: u64,
+}
+
+impl std::convert::From<PitConfig> for crate::persist::config::PitSettings {
+    fn from(value: PitConfig) -> Self {
+        Self {
+            wins: value.wins.into_iter().map(|x| x.into()).collect(),
+            respawn_time_seconds: value.respawn_time_s,
+        }
+    }
+}
+
+pub(super) fn default_pit_conf() -> PitConfig {
+    PitConfig {
+        wins: default_pit_win_conditions(),
+        respawn_time_s: default_respawn_time(),
+    }
+}
+
+fn default_pit_win_conditions() -> Vec<PitWinCondition> {
+    vec![
+        PitWinCondition::StreakKills {
+            streak: 2,
+        },
+        PitWinCondition::TotalKills {
+            kills: 5,
+        },
+        PitWinCondition::Time,
+    ]
 }

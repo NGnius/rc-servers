@@ -71,7 +71,7 @@ impl SurrenderTracker {
         let threshold = self.players.len() / 2;
         let declined = if total_no_votes > threshold {
             Some(rlnl::events::ingame::SurrenderDeclined {
-                surrendering_player_id: player_id.or_else(|| self.players.keys().next().map(|x| *x)).unwrap_or(0) as i32,
+                surrendering_player_id: player_id.or_else(|| self.players.keys().next().copied()).unwrap_or(0) as i32,
                 game_time_elapsed,
             })
         } else {
@@ -148,7 +148,7 @@ impl SurrenderGameTracker {
             },
             _ => {},
         }
-        return result;
+        result
     }
 
     pub async fn request_new<L: crate::matches::CustomGameLogic>(&self, team: u8, initiator: u8, players: impl std::iter::Iterator<Item=u8>, generic: &crate::matches::GenericGamemodeEngine<L>) -> SurrenderVoteResult {

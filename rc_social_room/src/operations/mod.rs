@@ -30,4 +30,5 @@ pub fn handler() -> OperationsHandler<crate::UserTy, crate::data::custom::Custom
         .add(polariton_server::operations::Ack::<6, _>::default()) // AvatarUpdatedRequest, sent on services_room avatar_set success (just needs to be ack-ed; no params)
         .add(calculate_mmr::mmr_provider())
         .add(polariton_server::operations::Ack::<25, _>::default()) // save social settings, sent on escape menu settings save (should probably be saved someday...)
+        .add(polariton_server::operations::Ack::<0, _>::default()) // send friend request, can be sent from match leaderboard
 }

@@ -121,7 +121,7 @@ impl BuiltIn {
         }
     }
 
-    fn prettify_re<'a>(regex: &'a str) -> &'a str {
+    fn prettify_re(regex: &str) -> &str {
         regex.trim_start_matches("\\")
     }
 
