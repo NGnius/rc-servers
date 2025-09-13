@@ -376,7 +376,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
-                    map: GameMap::Neptune3,
+                    map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
                     mode: GameType::Pit,
                     auto_heal: true,

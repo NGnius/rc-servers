@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::matches::CustomGameLogic;
 
 struct WinTracker {
@@ -146,10 +148,11 @@ pub struct PitLogic {
     win_tracking: WinTracker,
     settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    initial_spawns: Vec<(u8, oj_rc_core::persist::config::Point)>, // (player_id, spawn_point)
 }
 
 impl PitLogic {
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, _map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>) -> Self {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>) -> Self {
         PitLogic {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
@@ -157,6 +160,7 @@ impl PitLogic {
             win_tracking: WinTracker::new(),
             timer_task: tokio::sync::Mutex::new(None),
             settings: pit_settings,
+            initial_spawns: Self::generate_first_spawns(map, players),
         }
     }
 
@@ -230,6 +234,69 @@ impl PitLogic {
         self.do_leader_update(generic, killer, victim).await;
     }
 
+    fn choose_spawn_point(map_config: &oj_rc_core::persist::config::MapConfig, player_id: u8) -> (Option<usize>, oj_rc_core::persist::config::Point) {
+        if map_config.pit_spawns.is_empty() {
+            (None, oj_rc_core::persist::config::Point {
+                x: 10.0 * (player_id as f32),
+                y: 100.0,
+                z: 10.0,
+            })
+        } else {
+            let spawn_index = {
+                rand::rng().random_range(0..map_config.pit_spawns.len())
+            };
+            (Some(spawn_index), map_config.pit_spawns[spawn_index].clone())
+        }
+    }
+
+    fn generate_first_spawns(map_config: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Vec<(u8, oj_rc_core::persist::config::Point)> {
+        if map_config.pit_spawns.is_empty() {
+            log::warn!("Map is missing pit spawn points, spawn points will be (poorly) generated");
+        }
+        let mut spawns = Vec::with_capacity(players.len());
+        let mut seen_spawns = std::collections::HashSet::new();
+        for player in players {
+            'choose_loop: loop {
+                let (spawn_i, spawn_point) = Self::choose_spawn_point(map_config, player.player_id);
+                if let Some(spawn_i) = spawn_i {
+                    if seen_spawns.contains(&spawn_i) {
+                        continue;
+                    } else {
+                        seen_spawns.insert(spawn_i);
+                    }
+                }
+                spawns.push((player.player_id, spawn_point));
+                /*spawns.push(crate::matches::engine::RlnlPacket {
+                    event: rlnl::event_code::NetworkEvent::FreeSpawnPoint,
+                    property: literustlib::packet::Property::ReliableOrdered,
+                    data: Box::new(rlnl::events::sync::SpawnPoint {
+                        pos: rlnl::types::PosQuatPair {
+                            pos: rlnl::types::CompressedVec3::from((spawn_point.x, spawn_point.y, spawn_point.z)),
+                            rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                        },
+                        owner: player_i as u8,
+                    })
+                });*/
+                break 'choose_loop;
+            }
+        }
+        spawns
+    }
+
+    fn initial_spawns_to_packets(&self) -> Vec<crate::matches::RlnlPacket> {
+        self.initial_spawns.iter().map(|(player_id, spawn_point)| crate::matches::engine::RlnlPacket {
+            event: rlnl::event_code::NetworkEvent::FreeSpawnPoint,
+            property: literustlib::packet::Property::ReliableOrdered,
+            data: Box::new(rlnl::events::sync::SpawnPoint {
+                pos: rlnl::types::PosQuatPair {
+                    pos: rlnl::types::CompressedVec3::from((spawn_point.x, spawn_point.y, spawn_point.z)),
+                    rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                },
+                owner: *player_id,
+            })
+        }).collect()
+    }
+
     async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
         let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds);
@@ -248,25 +315,7 @@ impl PitLogic {
             &respawn_payload,
             true
         ).await;
-        // FIXME use full map spawns instead of team base spawns
-        let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&0) {
-            if team_spawns.is_empty() {
-                oj_rc_core::persist::config::Point {
-                    x: 10.0 * (player_id as f32),
-                    y: 100.0,
-                    z: 10.0,
-                }
-            } else {
-                let index = (player_id as usize) % team_spawns.len();
-                team_spawns[index].clone()
-            }
-        } else {
-            oj_rc_core::persist::config::Point {
-                x: 10.0 * (player_id as f32),
-                y: 100.0,
-                z: 10.0,
-            }
-        };
+        let spawn_point = Self::choose_spawn_point(&generic.map_config, player_id).1;
         let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
         tokio::task::spawn(Self::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
     }
@@ -301,6 +350,7 @@ impl CustomGameLogic for PitLogic {
     }
 
     async fn on_player_end(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
+        // TODO handle win condition when only one player remains
         true
     }
 
@@ -341,7 +391,8 @@ impl CustomGameLogic for PitLogic {
     }
 
     async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
-        vec![
+        let mut initial_spawn_packets = self.initial_spawns_to_packets();
+        initial_spawn_packets.push(
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
                 property: literustlib::packet::Property::ReliableOrdered,
@@ -350,7 +401,8 @@ impl CustomGameLogic for PitLogic {
                     respawn_full_heal_duration: self.respawn_full_heal_duration,
                 }),
             },
-        ]
+        );
+        initial_spawn_packets
     }
 
     async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {

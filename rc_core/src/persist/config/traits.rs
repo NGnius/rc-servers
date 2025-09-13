@@ -360,6 +360,7 @@ pub struct Sphere {
 #[derive(Clone, Debug)]
 pub struct MapConfig {
     pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
+    pub pit_spawns: Vec<Point>,
     pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> (base, capture speed)
     pub capture_points: Vec<(Sphere, f32)>, // (capture point, capture speed)
     pub equalizer: Point,

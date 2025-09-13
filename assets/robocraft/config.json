@@ -14543,6 +14543,10 @@
             {
                 "message": "Stop Killing Games",
                 "duration": 20
+            },
+            {
+                "message": "Also check out RC15",
+                "duration": 20
             }
         ]
     }

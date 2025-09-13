@@ -66,6 +66,7 @@ impl GameMatches {
                 log::warn!("No configuration found for map {}, game {} may not work correctly", game_info.map, guid);
                 oj_rc_core::persist::config::MapConfig {
                     spawns: std::collections::HashMap::default(),
+                    pit_spawns: Vec::default(),
                     bases: std::collections::HashMap::default(),
                     capture_points: Vec::default(),
                     equalizer: oj_rc_core::persist::config::Point {

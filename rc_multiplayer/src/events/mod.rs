@@ -245,6 +245,7 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::sync::GetEqualizer {}
     impl Broadcastable for rlnl::events::sync::FusionShieldState {}
     impl Broadcastable for rlnl::events::sync::EqualizerNotification {}
+    impl Broadcastable for rlnl::events::sync::SpawnPoint {}
     impl Broadcastable for rlnl::events::GameTime {}
     impl Broadcastable for rlnl::events::ingame::TeamBaseState {}
     impl Broadcastable for rlnl::events::ingame::GameEnd {}

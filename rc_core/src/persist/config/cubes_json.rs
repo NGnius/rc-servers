@@ -385,21 +385,30 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn maps(&self) -> std::collections::HashMap<super::GameMap, super::MapConfig> {
         self.battle.maps.map.iter().map(|(map, conf)| {
             let mut spawns = std::collections::HashMap::<u8, Vec<super::Point>>::with_capacity(2); // usually 2 teams
+            let mut pit_spawns = Vec::default();
             for point in conf.spawn_points.iter() {
-                if let Some(list) = spawns.get_mut(&point.team) {
-                    list.push(super::Point {
-                        x: point.x,
-                        y: point.y,
-                        z: point.z,
-                    });
+                if let Some(point_team) = &point.team {
+                    if let Some(list) = spawns.get_mut(point_team) {
+                        list.push(super::Point {
+                            x: point.x,
+                            y: point.y,
+                            z: point.z,
+                        });
+                    } else {
+                        let mut list = Vec::with_capacity(10); // usually 10 spawn points (suddent death has the most)
+                        list.push(super::Point {
+                            x: point.x,
+                            y: point.y,
+                            z: point.z,
+                        });
+                        spawns.insert(*point_team, list);
+                    }
                 } else {
-                    let mut list = Vec::with_capacity(10); // usually 10 spawn points (suddent death has the most)
-                    list.push(super::Point {
+                    pit_spawns.push(super::Point {
                         x: point.x,
                         y: point.y,
                         z: point.z,
                     });
-                    spawns.insert(point.team, list);
                 }
             }
             let bases = conf.bases.iter().map(|base| (base.team, (super::Sphere {
@@ -425,6 +434,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             };
             let map_conf = super::MapConfig {
                 spawns,
+                pit_spawns,
                 bases,
                 capture_points,
                 equalizer,

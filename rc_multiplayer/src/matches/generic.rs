@@ -1073,6 +1073,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             &connection.connection)
         .await?;
 
+        let spawn_data_already_handled = extra_packets.iter().any(|packet| matches!(packet.event, rlnl::event_code::NetworkEvent::FreeSpawnPoint));
+
         for packet in extra_packets {
             sender.send_data(
                 &*packet.data,
@@ -1096,66 +1098,68 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             literustlib::packet::Property::ReliableOrdered,
             &connection.connection)
         .await?;
-        if map.spawns.is_empty() {
-            // fallback
-            for i in 0..num_players {
-                sender.send_data(
-                    &rlnl::events::sync::SpawnPoint {
-                        pos: rlnl::types::PosQuatPair {
-                            pos: rlnl::types::CompressedVec3::from((10.0 * (i as f32), 100.0, 10.0 * (i as f32))),
-                            rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
-                        },
-                        owner: i,
-                    },
-                    rlnl::event_code::NetworkEvent::FreeSpawnPoint,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &connection.connection)
-                .await?;
-            }
-        } else {
-            let mut last_spawn_point = std::collections::HashMap::with_capacity(2); // team -> last index
-            for player in players.iter() {
-                let team = player.team as u8;
-                if let Some(team_points) = map.spawns.get(&team) {
-                    if !team_points.is_empty() {
-                        let spawn_index = if let Some(last_spawn_i) = last_spawn_point.get_mut(&team) {
-                            *last_spawn_i = (*last_spawn_i + 1) % team_points.len();
-                            *last_spawn_i
-                        } else {
-                            last_spawn_point.insert(team, 0usize);
-                            0
-                        };
-                        let spawn = &team_points[spawn_index];
-                        sender.send_data(
-                            &rlnl::events::sync::SpawnPoint {
-                                pos: rlnl::types::PosQuatPair {
-                                    pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
-                                    rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
-                                },
-                                owner: player.player_id,
-                            },
-                            rlnl::event_code::NetworkEvent::FreeSpawnPoint,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &connection.connection)
-                        .await?;
-                        continue;
-                    }
-                }
+        if !spawn_data_already_handled {
+            if map.spawns.is_empty() {
                 // fallback
-                log::warn!("No spawn point found for player {} on team {}, using bad fallback", player.player_id, team);
-                sender.send_data(
-                    &rlnl::events::sync::SpawnPoint {
-                        pos: rlnl::types::PosQuatPair {
-                            pos: rlnl::types::CompressedVec3::from((10.0 * (player.player_id as f32), 100.0, 10.0 * (team as f32) + 10.0)),
-                            rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                for i in 0..num_players {
+                    sender.send_data(
+                        &rlnl::events::sync::SpawnPoint {
+                            pos: rlnl::types::PosQuatPair {
+                                pos: rlnl::types::CompressedVec3::from((10.0 * (i as f32), 100.0, 10.0 * (i as f32))),
+                                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                            },
+                            owner: i,
                         },
-                        owner: player.player_id,
-                    },
-                    rlnl::event_code::NetworkEvent::FreeSpawnPoint,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &connection.connection)
-                .await?;
+                        rlnl::event_code::NetworkEvent::FreeSpawnPoint,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &connection.connection)
+                    .await?;
+                }
+            } else {
+                let mut last_spawn_point = std::collections::HashMap::with_capacity(2); // team -> last index
+                for player in players.iter() {
+                    let team = player.team as u8;
+                    if let Some(team_points) = map.spawns.get(&team) {
+                        if !team_points.is_empty() {
+                            let spawn_index = if let Some(last_spawn_i) = last_spawn_point.get_mut(&team) {
+                                *last_spawn_i = (*last_spawn_i + 1) % team_points.len();
+                                *last_spawn_i
+                            } else {
+                                last_spawn_point.insert(team, 0usize);
+                                0
+                            };
+                            let spawn = &team_points[spawn_index];
+                            sender.send_data(
+                                &rlnl::events::sync::SpawnPoint {
+                                    pos: rlnl::types::PosQuatPair {
+                                        pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
+                                        rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                                    },
+                                    owner: player.player_id,
+                                },
+                                rlnl::event_code::NetworkEvent::FreeSpawnPoint,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &connection.connection)
+                            .await?;
+                            continue;
+                        }
+                    }
+                    // fallback
+                    log::warn!("No spawn point found for player {} on team {}, using bad fallback", player.player_id, team);
+                    sender.send_data(
+                        &rlnl::events::sync::SpawnPoint {
+                            pos: rlnl::types::PosQuatPair {
+                                pos: rlnl::types::CompressedVec3::from((10.0 * (player.player_id as f32), 100.0, 10.0 * (team as f32) + 10.0)),
+                                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                            },
+                            owner: player.player_id,
+                        },
+                        rlnl::event_code::NetworkEvent::FreeSpawnPoint,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &connection.connection)
+                    .await?;
 
+                }
             }
         }
 
