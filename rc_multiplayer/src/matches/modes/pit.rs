@@ -119,7 +119,15 @@ impl PlayerTracker {
                 max = Some((*player_id, streak.load(std::sync::atomic::Ordering::Relaxed)));
             }
         }
-        max.map(|(player_id, _streak)| player_id)
+        if let Some((player_id, streak)) = max {
+            if streak != 0 {
+                Some(player_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     fn pit_stats(&self, users: &std::collections::HashMap<u8, crate::matches::generic::UserConnection>) -> rlnl::events::ingame::PitModeState {
@@ -349,8 +357,16 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_player_end(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
-        // TODO handle win condition when only one player remains
+    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
+        if generic.is_game_done() {
+            return true;
+        }
+        let read_lock = generic.users.read().await;
+        if read_lock.len() == 1 {
+            // nobody to play against, automatically end the game
+            let last_player = &read_lock[&0];
+            WinTracker::do_win(generic, self, last_player.descriptor.team as u8).await;
+        }
         true
     }
 
@@ -433,6 +449,7 @@ impl CustomGameLogic for PitLogic {
             timer_t.abort();
         }
         *timer_lock = Some(new_timer_task);
+        self.do_leaderboard_update(generic).await;
         true
     }
 
