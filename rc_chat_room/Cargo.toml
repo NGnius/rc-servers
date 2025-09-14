@@ -20,3 +20,4 @@ serde.workspace = true
 serde_json.workspace = true
 regex = "1"
 async-trait.workspace = true
+git-version.workspace = true

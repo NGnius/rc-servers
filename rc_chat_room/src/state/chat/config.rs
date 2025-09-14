@@ -109,6 +109,7 @@ impl ChatOperation {
 enum BuiltIn {
     OnlineUsers,
     TotalUsers,
+    Version,
     Help,
 }
 
@@ -117,6 +118,7 @@ impl BuiltIn {
         match b_in {
             oj_rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
             oj_rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
+            oj_rc_core::persist::BuiltInChatOperation::Version => Self::Version,
             oj_rc_core::persist::BuiltInChatOperation::Help => Self::Help,
         }
     }
@@ -145,6 +147,15 @@ impl BuiltIn {
                     Err(e) => e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to retrieve registered users".to_owned()),
                 }
             },
+            Self::Version => {
+                let name = env!("CARGO_PKG_NAME");
+                let version = env!("CARGO_PKG_VERSION");
+                let git_version = git_version::git_version!(args = ["--always", "--dirty=+"]);
+                let authors = env!("CARGO_PKG_AUTHORS");
+                let license = env!("CARGO_PKG_LICENSE");
+                let repo = env!("CARGO_PKG_REPOSITORY");
+                format!("{} {}:{}\n[{}]\n{} {}", name, version, git_version, authors, license, repo)
+            }
             Self::Help => {
                 use core::fmt::Write;
                 let mut msg = String::new();
@@ -164,6 +175,7 @@ impl BuiltIn {
         match self {
             Self::OnlineUsers => "Show total users online".to_owned(),
             Self::TotalUsers => "Show total users registered".to_owned(),
+            Self::Version => "Show chat server version information".to_owned(),
             Self::Help => "Display this message".to_owned(),
         }
     }

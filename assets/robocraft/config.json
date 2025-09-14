@@ -14464,6 +14464,13 @@
                 }
             },
             {
+                "regex": "\\?version",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Version"
+                }
+            },
+            {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",

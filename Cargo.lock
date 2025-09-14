@@ -2669,6 +2669,7 @@ dependencies = [
  "async-trait",
  "clap",
  "env_logger",
+ "git-version",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",

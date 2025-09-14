@@ -475,6 +475,13 @@ def main(asset_in, cubes=None, weapons=None, movement=None):
                     }
                 },
                 {
+                    "regex": "\\?version",
+                    "op": {
+                        "type": "BuiltIn",
+                        "built_in": "Version"
+                    }
+                },
+                {
                     "regex": "\\?help",
                     "op": {
                         "type": "BuiltIn",

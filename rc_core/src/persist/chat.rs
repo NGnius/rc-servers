@@ -33,6 +33,7 @@ pub enum ChatOperation {
 pub enum BuiltInChatOperation {
     OnlineUsers,
     TotalUsers,
+    Version,
     Help,
 }
 
