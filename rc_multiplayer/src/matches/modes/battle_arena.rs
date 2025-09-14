@@ -882,7 +882,6 @@ enum WinMode {
 }
 
 pub struct BattleArenaLogic {
-    game_end: std::sync::atomic::AtomicI64,
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -900,14 +899,11 @@ impl BattleArenaLogic {
     const CLASP_ID: u32 = 606866102;
 
     pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, parsers: &oj_rc_core::cubes::CubeParsers, ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
-        let dur = std::time::Duration::from_secs((config.game_time_minutes as u64) * 60);
-        let fake_end = (chrono::Utc::now() + dur).timestamp();
         let cube_parser = parsers.locations_of();
         let crystals = cube_parser.locations_of_by_distance_to_first(&mut std::io::Cursor::new(&ba_config.base_machine_map), Self::CRYSTAL_ID, Self::CLASP_ID);
         Self {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
-            game_end: std::sync::atomic::AtomicI64::new(fake_end),
             timer_task: tokio::sync::Mutex::new(None),
             player_tracking: PlayerTracker::new(),
             capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
@@ -955,7 +951,7 @@ impl BattleArenaLogic {
     }
 
     async fn check_if_match_time_is_done(&self, generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
-        if self.game_end.load(std::sync::atomic::Ordering::Relaxed) <= chrono::Utc::now().timestamp() {
+        if generic.is_game_past_end_time() {
             // find winning team
             let mut winning_team = None;
             for (base, tracking) in self.base_tracking.bases.iter() {
@@ -1063,32 +1059,10 @@ impl BattleArenaLogic {
                     z: 10.0 * (player_team as f32) + 10.0,
                 }
             };
-        let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
-        tokio::task::spawn(Self::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
+            let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+            tokio::task::spawn(super::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
         } else {
             log::error!("Player {} cannot respawn because they are not in a team!?", player_id);
-        }
-    }
-
-    async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8) {
-        let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
-        tokio::time::sleep(sleep_dur).await;
-        let spawn_payload = rlnl::events::sync::SpawnPoint {
-            pos: rlnl::types::PosQuatPair {
-                pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
-                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
-            },
-            owner: player_id,
-        };
-        log::debug!("Respawning player {} after {}ms", player_id, sleep_dur.as_millis());
-        for player in players {
-            if !player.connection.is_connected() { continue; }
-            crate::events::log_lnl_send_failure(player.rlnl().send_data(
-                &spawn_payload,
-                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
-                literustlib::packet::Property::ReliableOrdered,
-                &player.connection,
-            ).await);
         }
     }
 
@@ -1175,6 +1149,9 @@ impl CustomGameLogic for BattleArenaLogic {
     }
 
     async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool {
+        if generic.is_game_done() {
+            return true;
+        }
         let player_id = player.descriptor.player_id;
         self.do_destruct_tasks(generic, player_id).await;
         self.player_tracking.disconnect_player(player_id).await;
@@ -1372,7 +1349,6 @@ impl CustomGameLogic for BattleArenaLogic {
             timer_t.abort();
         }
         *timer_lock = Some(new_timer_task);
-        self.game_end.store(game_end.timestamp(), std::sync::atomic::Ordering::Relaxed);
         generic.broadcast(
             rlnl::event_code::NetworkEvent::SetSurrenderTimes,
             literustlib::packet::Property::ReliableOrdered,
@@ -1466,7 +1442,7 @@ impl CustomGameLogic for BattleArenaLogic {
 
     async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool {
         let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
-        if generic.game_start.load(std::sync::atomic::Ordering::Relaxed) == -1 || chrono::Utc::now().timestamp() < game_start {
+        if generic.game_start.load(std::sync::atomic::Ordering::Relaxed) == i64::MIN || chrono::Utc::now().timestamp() < game_start {
             // game is not in progress, ignore motion event
             log::debug!("Ignoring early motion event from player {}", motion.player_id);
             return true;
@@ -1548,7 +1524,6 @@ impl CustomGameLogic for BattleArenaLogic {
                 ).await;
             },
             (rlnl::event_code::NetworkEvent::SurrenderRequest, literustlib::packet::Property::ReliableOrdered) => {
-                // TODO
                 let maybe_init_surr = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::InitiateSurrender>(data.as_ref());
                 if let Some(init_surr) = maybe_init_surr {
                     if let Some(team) = self.player_tracking.team(init_surr.player_id).await {
@@ -1576,7 +1551,6 @@ impl CustomGameLogic for BattleArenaLogic {
                         }
                     }
                 }
-
             },
             (rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_crystal_bonus = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::AwardProtoniumDestroyedCubes>(data.as_ref());

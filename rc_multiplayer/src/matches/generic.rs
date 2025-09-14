@@ -225,7 +225,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             users: tokio::sync::RwLock::new(std::collections::HashMap::new()),
             user_id_map: tokio::sync::RwLock::new(std::collections::HashMap::new()),
             is_complete: std::sync::atomic::AtomicBool::new(false),
-            game_start: std::sync::atomic::AtomicI64::new(-1),
+            game_start: std::sync::atomic::AtomicI64::new(i64::MIN),
             map_config: std::sync::Arc::new(map),
             game_descriptor: game,
             game_duration: std::time::Duration::from_secs((config.game_time_minutes as u64) * 60),
@@ -320,6 +320,12 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     /// seconds since Unix epoch
     pub(super) fn game_end(&self) -> i64 {
         self.game_start.load(std::sync::atomic::Ordering::Relaxed) + self.game_duration.as_secs() as i64
+    }
+
+    pub(super) fn is_game_past_end_time(&self) -> bool {
+        let game_start = self.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        let game_end = self.game_end();
+        game_start != i64::MIN && game_end <= chrono::Utc::now().timestamp()
     }
 
     /*pub(super) async fn send_to_player<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, player_id: u8, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T) {
@@ -1214,8 +1220,6 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             literustlib::packet::Property::ReliableOrdered,
             &connection.connection)
         .await?;*/
-
-        // TODO
         Ok(())
     }
 

@@ -476,4 +476,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn pit_settings(&self) -> super::PitSettings {
         self.battle.multiplayer.pit_config.clone().into()
     }
+
+    fn tdm_settings(&self) -> super::TeamDeathMatchSettings {
+        self.battle.multiplayer.team_death_match.clone().into()
+    }
 }

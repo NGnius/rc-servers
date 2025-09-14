@@ -12,6 +12,8 @@ pub struct MultiplayerConfig {
     pub battle_arena: BattleArenaConfig,
     #[serde(default = "default_pit_conf")]
     pub pit_config: PitConfig,
+    #[serde(default = "default_tdm_conf")]
+    pub team_death_match: TeamDeathMatchConfig,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -234,4 +236,26 @@ fn default_pit_win_conditions() -> Vec<PitWinCondition> {
         },
         PitWinCondition::Time,
     ]
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TeamDeathMatchConfig {
+    pub respawn_time_s: u64,
+    pub self_destruct_is_kill: bool,
+}
+
+impl std::convert::From<TeamDeathMatchConfig> for crate::persist::config::TeamDeathMatchSettings {
+    fn from(value: TeamDeathMatchConfig) -> Self {
+        Self {
+            respawn_time_seconds: value.respawn_time_s,
+            self_destruct_is_kill: value.self_destruct_is_kill,
+        }
+    }
+}
+
+pub(super) fn default_tdm_conf() -> TeamDeathMatchConfig {
+    TeamDeathMatchConfig {
+        respawn_time_s: default_respawn_time(),
+        self_destruct_is_kill: true,
+    }
 }

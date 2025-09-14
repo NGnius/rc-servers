@@ -325,29 +325,7 @@ impl PitLogic {
         ).await;
         let spawn_point = Self::choose_spawn_point(&generic.map_config, player_id).1;
         let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
-        tokio::task::spawn(Self::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
-    }
-
-    async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8) {
-        let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
-        tokio::time::sleep(sleep_dur).await;
-        let spawn_payload = rlnl::events::sync::SpawnPoint {
-            pos: rlnl::types::PosQuatPair {
-                pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
-                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
-            },
-            owner: player_id,
-        };
-        log::debug!("Respawning player {} after {}ms", player_id, sleep_dur.as_millis());
-        for player in players {
-            if !player.connection.is_connected() { continue; }
-            crate::events::log_lnl_send_failure(player.rlnl().send_data(
-                &spawn_payload,
-                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
-                literustlib::packet::Property::ReliableOrdered,
-                &player.connection,
-            ).await);
-        }
+        tokio::task::spawn(super::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
     }
 }
 
@@ -464,6 +442,11 @@ impl CustomGameLogic for PitLogic {
 
     async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
         if generic.is_game_done() {
+            self.abort_timer_sync().await;
+            return true;
+        }
+        if generic.is_game_past_end_time() {
+            generic.game_done();
             self.abort_timer_sync().await;
             return true;
         }

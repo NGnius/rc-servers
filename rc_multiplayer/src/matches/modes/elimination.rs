@@ -535,6 +535,11 @@ impl CustomGameLogic for EliminationLogic {
             self.abort_timer_sync().await;
             return true;
         }
+        if generic.is_game_past_end_time() {
+            generic.game_done();
+            self.abort_timer_sync().await;
+            return true;
+        }
         if self.bases.is_baseless {
             return true; // don't bother trying to track whether players are in bases since there are no bases
         }

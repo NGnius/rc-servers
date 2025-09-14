@@ -7,6 +7,7 @@ pub struct GameMatches {
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
     ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
     pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
+    tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
 }
 
@@ -24,6 +25,7 @@ impl GameMatches {
             cube_parsers,
             ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
             pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
+            tdm_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tdm_settings(conf)),
             factory,
         }
     }
@@ -128,7 +130,25 @@ impl GameMatches {
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,
-                    &self.mode_configs.battle_arena,
+                    &self.mode_configs.the_pit,
+                    players,
+                    inner,
+                    fakes_handler,
+                );
+                Ok(engine.spawn())
+            },
+            oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => {
+                log::warn!("Game {}: Team Death Match is experimental", guid);
+                let inner = super::modes::TeamDeathMatchLogic::new(
+                    &self.mode_configs.team_deathmatch,
+                    &map_config,
+                    &players,
+                    self.tdm_settings.clone(),
+                );
+                let engine = super::GenericGamemodeEngine::new(
+                    game_info,
+                    map_config,
+                    &self.mode_configs.team_deathmatch,
                     players,
                     inner,
                     fakes_handler,
@@ -139,7 +159,7 @@ impl GameMatches {
                 // TODO support more gamemodes
                 Err(oj_rc_core::persist::user::MultiplayerError {
                     code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
-                    message: format!("Game mode {:?} is not supported (yet)", mode),
+                    message: format!("Game mode {:?} is not supported in multiplayer", mode),
                 })
             }
         }

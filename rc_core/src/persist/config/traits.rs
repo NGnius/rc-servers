@@ -37,6 +37,7 @@ pub trait ConfigProvider<C: Clone> {
     fn energy(&self) -> EnergyConfig;
     fn ba_settings(&self) -> BattleArenaResolver;
     fn pit_settings(&self) -> PitSettings;
+    fn tdm_settings(&self) -> TeamDeathMatchSettings;
 }
 
 pub struct CompleteCampaignProvider {
@@ -444,4 +445,10 @@ pub enum PitWinCondition {
     Score(u32),
     Damage(u32),
     Time,
+}
+
+#[derive(Debug)]
+pub struct TeamDeathMatchSettings {
+    pub respawn_time_seconds: u64,
+    pub self_destruct_is_kill: bool,
 }
