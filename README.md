@@ -1,19 +1,13 @@
 # OpenJam Servers
 
 [![Revolt chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)](https://rvlt.gg/jtVE0pD5)
-[![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)](https://git.ngram.ca/OpenJam/servers/releases)
-[![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Fservers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
+[![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)](https://git.ngram.ca/OpenJam/rc-servers/releases)
+[![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Frc-servers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
 
 
 A collection of open source servers for FreeJam games
 
 ## Usage
-
-### CardLife
-
-To get CardLife to use these servers, replace the `ServerConfig.json` file in the game files with [this ServerConfig.json](assets/cardlife/ServerConfig.json).
-
-### Robocraft
 
 NOTE: Please refer to the latest [release](./releases) for more detailed instructions for accessing the public OpenJam servers.
 
@@ -25,9 +19,9 @@ Before you can login the first time, you will need to create an account through 
 ## Privacy
 
 The minimum amount of data is (and should be) collected to provide the expected functionality.
-In most cases, this means no data is collected or logged except some debug log messages in development versions.
+This means no data is collected or logged except some debug log messages in development versions.
 Some personal identifiers, such as IP addresses and session tokens, are sent but only exist ephemerally.
-The exception is Robocraft servers, which store the minimum account info possible.
+The Robocraft servers store the minimum account info possible.
 This includes username, vehicle data, user configuration data, and other non-identifying gameplay data.
 If email and/or Steam account identifier are provided during registration, those are also stored.
 This information is all associated with a unique user identifier.
@@ -35,7 +29,7 @@ The current PC's MAC address is also sent to the server (this is a Robocraft cli
 
 ## Development
 
-Please refer to the [wiki](/OpenJam/servers/wiki/Dev).
+Please refer to the [wiki](/OpenJam/rc-servers/wiki/Dev).
 
 ## Contributing
 
