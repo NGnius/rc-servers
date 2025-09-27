@@ -1,30 +1,45 @@
 use super::account_json::UserData;
 
+fn db_to_impl(client_emu: &oj_rc_database::schema::multiplayer_game_player::ClientType) -> Option<crate::persist::config::ClientEmulator> {
+    match client_emu {
+        oj_rc_database::schema::multiplayer_game_player::ClientType::ServerExperimental => Some(crate::persist::config::ClientEmulator::Experiment),
+        oj_rc_database::schema::multiplayer_game_player::ClientType::ClientAI => Some(crate::persist::config::ClientEmulator::ClientAI),
+        oj_rc_database::schema::multiplayer_game_player::ClientType::Client => None,
+    }
+}
+
 impl UserData {
-    pub(super) async fn generate_fake_players_data(&self, _guid: i64, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Vec<crate::data::player_data::PlayerData> {
-        self.fake_players.iter()
-            .map(|fake| crate::data::player_data::PlayerData {
-                name: fake.public_id.clone(),
-                display_name: fake.display_name.clone(),
-                mastery: 1,
-                tier: 1,
-                robot_name: "fake".to_owned(),
-                robot_map: crate::persist::VALID_ROBOT.into(),
-                group: None,
-                team: fake.team as _,
-                has_premium: true,
-                robot_uuid: "1234_1234".to_owned(),
-                cpu: cpu_counter.calculate_cpu(&mut std::io::Cursor::new(crate::persist::VALID_ROBOT)).total as _,
-                avatar_id: Some(0),
-                weapon_order: weapon_lister.guess_weapons(&mut std::io::Cursor::new(crate::persist::VALID_ROBOT)),
-                colour_map: crate::persist::VALID_COLOUR.into(),
-                is_ai: false,
-                spawn_effect: "Spawn".into(),
-                death_effect: "Explosion".into(),
-                player_rank: 1,
-                weapon_rank: Default::default(),
-            })
-            .collect()
+    pub(super) async fn generate_fake_players_data(&self, _guid: i64, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+        let mut fakes = Vec::with_capacity(self.fake_players.len());
+        for fake in self.fake_players.iter() {
+            let vehicle = self.resolve_vehicle(&fake.vehicle, factory, weapon_lister, cpu_counter).await?;
+            let out = (
+                crate::data::player_data::PlayerData {
+                    name: fake.vehicle.username.clone(),
+                    display_name: fake.vehicle.username.clone(),
+                    mastery: vehicle.mastery,
+                    tier: vehicle.mastery,
+                    robot_name: vehicle.robot_name,
+                    robot_map: vehicle.robot_map,
+                    group: None,
+                    team: fake.team as _,
+                    has_premium: true,
+                    robot_uuid: vehicle.robot_uuid,
+                    cpu: vehicle.cpu,
+                    avatar_id: Some(0),
+                    weapon_order: vehicle.weapon_order,
+                    colour_map: vehicle.colour_map,
+                    is_ai: fake.implementation == crate::persist::config::ClientEmulator::ClientAI,
+                    spawn_effect: vehicle.spawn_effect,
+                    death_effect: vehicle.death_effect,
+                    player_rank: 1,
+                    weapon_rank: vehicle.weapon_rank,
+                },
+                fake.implementation
+            );
+            fakes.push(out);
+        }
+        Ok(fakes)
     }
 }
 
@@ -82,6 +97,7 @@ impl super::MultiplayerUser for UserData {
                     is_rewards_claimed: player.is_claimed,
                     display_name: player.display_name,
                     public_id: player.public_id,
+                    mode: db_to_impl(&player.variant),
                 })
                 .collect())
         } else {

@@ -2,16 +2,16 @@ use crate::matches::{modes::trackers::SurrenderGameTracker, CustomGameLogic};
 
 struct PlayerTracker {
     connected: tokio::sync::Mutex<std::collections::HashMap<u8, std::collections::HashSet<u8>>>, // team -> set of player_id
-    in_point: tokio::sync::RwLock<std::collections::HashMap<u8, std::sync::atomic::AtomicU16>>, // player_id -> in point state (if val > u8::MAX then not in a point)
-    respawning: tokio::sync::RwLock<std::collections::HashMap<u8, std::sync::atomic::AtomicI64>>, // player_id -> time when they'll spawn (time since unix epoch)
+    in_point: std::collections::HashMap<u8, std::sync::atomic::AtomicU16>, // player_id -> in point state (if val > u8::MAX then not in a point)
+    respawning: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>, // player_id -> time when they'll spawn (time since unix epoch)
 }
 
 impl PlayerTracker {
-    fn new() -> Self {
+    fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
         Self {
             connected: tokio::sync::Mutex::new(std::collections::HashMap::new()),
-            in_point: tokio::sync::RwLock::new(std::collections::HashMap::new()),
-            respawning: tokio::sync::RwLock::new(std::collections::HashMap::new()),
+            in_point: players.iter().map(|player| (player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX))).collect(),
+            respawning: players.iter().map(|player| (player.player_id, std::sync::atomic::AtomicI64::new(i64::MIN))).collect(),
         }
     }
 
@@ -24,8 +24,8 @@ impl PlayerTracker {
         None
     }
 
-    async fn swap_is_in_point(&self, player_id: u8, point: Option<u8>) -> Option<u8> {
-        self.in_point.read().await.get(&player_id).and_then(|x| {
+    fn swap_is_in_point(&self, player_id: u8, point: Option<u8>) -> Option<u8> {
+        self.in_point.get(&player_id).and_then(|x| {
             let old_point = x.swap(point.map(|x| x as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
             if old_point > u8::MAX as u16 {
                 None
@@ -44,8 +44,6 @@ impl PlayerTracker {
             new_team.insert(player.player_id);
             conn_lock.insert(player.team as u8, new_team);
         }
-        self.in_point.write().await.insert(player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX));
-        self.respawning.write().await.insert(player.player_id, std::sync::atomic::AtomicI64::new(i64::MIN));
     }
 
     async fn disconnect_player(&self, player_id: u8) {
@@ -898,14 +896,14 @@ impl BattleArenaLogic {
     const CRYSTAL_ID: u32 = 3950293873;
     const CLASP_ID: u32 = 606866102;
 
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, parsers: &oj_rc_core::cubes::CubeParsers, ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, parsers: &oj_rc_core::cubes::CubeParsers, players: &[oj_rc_core::persist::user::PlayerDescriptor], ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
         let cube_parser = parsers.locations_of();
         let crystals = cube_parser.locations_of_by_distance_to_first(&mut std::io::Cursor::new(&ba_config.base_machine_map), Self::CRYSTAL_ID, Self::CLASP_ID);
         Self {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
             timer_task: tokio::sync::Mutex::new(None),
-            player_tracking: PlayerTracker::new(),
+            player_tracking: PlayerTracker::new(players),
             capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
             base_tracking: BaseTracker::new(map.bases.keys(), &crystals, &ba_config),
@@ -989,7 +987,8 @@ impl BattleArenaLogic {
             winning_team,
             end_reason,
         };
-        for player in generic.users.read().await.values() {
+        for (player_id, player) in generic.user_descriptors().iter() {
+            if player.descriptor.user_id.is_none() { continue; } // skip non-user players
             let is_winner = player.descriptor.team == winning_team as i32;
             let net_event = match ty {
                 WinMode::BaseFull
@@ -1001,21 +1000,18 @@ impl BattleArenaLogic {
                     if is_winner { rlnl::event_code::NetworkEvent::GameWon } else { rlnl::event_code::NetworkEvent::GameLost }
                 }
             };
-            crate::events::log_lnl_send_failure(
-                player.connection.rlnl()
-                    .send_data(
-                        &payload,
-                        net_event,
-                        literustlib::packet::Property::ReliableOrdered,
-                        &player.connection.connection,
-                    ).await
-            );
+            generic.send_to_player(
+                *player_id,
+                net_event,
+                literustlib::packet::Property::ReliableOrdered,
+                &payload,
+            ).await;
         }
     }
 
     async fn do_destruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
         if let Some(player_team) = self.player_tracking.team(player_id).await {
-            let was_in_point = self.player_tracking.swap_is_in_point(player_id, None).await;
+            let was_in_point = self.player_tracking.swap_is_in_point(player_id, None);
             if let Some(was_in_point) = was_in_point {
                 self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team as i8, self.config.num_segments as f32).await;
             }
@@ -1027,7 +1023,7 @@ impl BattleArenaLogic {
         let respawn_time = std::time::Duration::from_secs(self.config.respawn_time_seconds as u64);
         let now = chrono::Utc::now();
         let respawn_timestamp = now + respawn_time;
-        if let Some(player_respawn) = self.player_tracking.respawning.read().await.get(&player_id) {
+        if let Some(player_respawn) = self.player_tracking.respawning.get(&player_id) {
             player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
         }
         let respawn_payload = rlnl::events::ingame::RespawnTime {
@@ -1142,13 +1138,13 @@ impl BattleArenaLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for BattleArenaLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection, _others: &[oj_rc_core::persist::user::PlayerDescriptor]) -> bool {
+    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
         log::info!("Player {} joined", player.descriptor.player_id);
         self.player_tracking.track_player(&player.descriptor).await;
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool {
+    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
         if generic.is_game_done() {
             return true;
         }
@@ -1177,7 +1173,7 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
         vec![
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -1336,8 +1332,9 @@ impl CustomGameLogic for BattleArenaLogic {
     async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
         let read_lock = generic.users.read().await;
         let mut senders = Vec::with_capacity(read_lock.len());
-        for conn in read_lock.values() {
-            senders.push((conn.connection.clone(), conn.state.clone()));
+        for (player_id, conn) in read_lock.iter() {
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            senders.push((conn.connection.clone(), state));
         }
         drop(read_lock);
         let game_end = game_start + generic.game_duration;
@@ -1465,7 +1462,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     break;
                 }
             }
-            let was_in_point = self.player_tracking.swap_is_in_point(motion.player_id, now_in_point).await;
+            let was_in_point = self.player_tracking.swap_is_in_point(motion.player_id, now_in_point);
             if was_in_point != now_in_point {
                 //log::info!("Player {}'s occupied capture point changed from {:?} to {:?}", motion.player_id, was_in_point, now_in_point);
                 if let Some(now_in_point) = now_in_point {
@@ -1539,7 +1536,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 }
             },
             (rlnl::event_code::NetworkEvent::SurrenderVoteCast, literustlib::packet::Property::ReliableOrdered) => {
-                if let Some(player_id) = generic.user_key_by_user_id(user_id).await {
+                if let Some(player_id) = generic.user_key_by_user_id(user_id) {
                     if let Some(team) = self.player_tracking.team(player_id).await {
                         let maybe_vote = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::SurrenderVoteCast>(data.as_ref());
                         if let Some(vote) = maybe_vote {
@@ -1555,7 +1552,7 @@ impl CustomGameLogic for BattleArenaLogic {
             (rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_crystal_bonus = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::AwardProtoniumDestroyedCubes>(data.as_ref());
                 if let Some(crystal_destroyed) = maybe_crystal_bonus {
-                    if let Some(generic_player) = generic.users.read().await.get(&crystal_destroyed.player_id) {
+                    if let Some(generic_player) = generic.user_descriptor(crystal_destroyed.player_id) {
                         generic_player.counters.crystals.fetch_add(crystal_destroyed.destroyed_cubes as u32, std::sync::atomic::Ordering::Relaxed);
                         let data = generic_player.counters.get_generic_packet(crystal_destroyed.player_id, rlnl::types::IngameStatId::DestroyedProtoniumCubes, Some(crystal_destroyed.destroyed_cubes as _));
                         generic.broadcast(

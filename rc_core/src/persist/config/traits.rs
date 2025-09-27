@@ -376,15 +376,15 @@ pub struct LinksConfig {
 
 #[derive(Clone, Debug)]
 pub struct FakePlayer {
-    pub public_id: String,
-    pub display_name: String,
     pub team: u8,
+    pub vehicle: VehicleInfo,
     pub implementation: ClientEmulator,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClientEmulator {
     Experiment,
+    ClientAI,
 }
 
 #[derive(Clone, Debug)]

@@ -2606,6 +2606,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
+ "oj_rc_factory",
  "polariton",
  "polariton_server",
  "tokio",

@@ -1,5 +1,12 @@
 use super::account_json::UserData;
 
+fn fake_impl_to_db(client_emu: &crate::persist::config::ClientEmulator) -> oj_rc_database::schema::multiplayer_game_player::ClientType {
+    match client_emu {
+        crate::persist::config::ClientEmulator::Experiment => oj_rc_database::schema::multiplayer_game_player::ClientType::ServerExperimental,
+        crate::persist::config::ClientEmulator::ClientAI => oj_rc_database::schema::multiplayer_game_player::ClientType::ClientAI,
+    }
+}
+
 #[async_trait::async_trait]
 impl super::LobbyUser for UserData {
     fn user_id(&self) -> i32 {
@@ -17,7 +24,7 @@ impl super::LobbyUser for UserData {
         })
     }
 
-    async fn start_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
+    async fn start_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
         let guid = crate::persist::user::str_to_i64(&game.guid)
             .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
@@ -32,7 +39,7 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let fake_players = self.generate_fake_players_data(guid, cpu_counter, weapon_lister).await;
+        let fake_players = self.generate_fake_players_data(guid, factory, cpu_counter, weapon_lister).await?;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,
@@ -69,14 +76,15 @@ impl super::LobbyUser for UserData {
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
                     public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id),
                     display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name),
+                    variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
             .chain(fake_players.iter()
                 .enumerate()
-                .map(|(i, fake)| {
+                .map(|(i, (fake, variant))| {
                     oj_rc_database::schema::multiplayer_game_player::ActiveModel {
                         id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-                        user_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                        user_id: oj_rc_database::sea_orm::ActiveValue::Set(None), // if ClientAI, they will be assigned to a user during game loading
                         game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                         creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                         player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len) as u8) as _),
@@ -85,6 +93,7 @@ impl super::LobbyUser for UserData {
                         is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(true),
                         public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.clone()),
                         display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.clone()),
+                        variant: oj_rc_database::sea_orm::ActiveValue::Set(fake_impl_to_db(variant)),
                     }
                 })
             )

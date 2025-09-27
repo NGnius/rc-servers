@@ -58,9 +58,9 @@ pub(super) fn default_net_conf() -> NetworkConf {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FakePlayerConf {
-    pub public_id: String,
-    pub display_name: String,
     pub team: u8,
+    #[serde(flatten)]
+    pub vehicle: super::garage::PrefabVehicle,
     #[serde(flatten)]
     pub implementation: ClientEmulation,
 }
@@ -69,11 +69,41 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
     //Vec::default()
     vec![
         FakePlayerConf {
-            public_id: "ServerExperiment01".to_owned(),
-            display_name: "Server".to_owned(),
             team: 1,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake0".to_owned()),
+                username: "Server0".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
             implementation: ClientEmulation::Experimental,
-        }
+        },
+        FakePlayerConf {
+            team: 0,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake1".to_owned()),
+                username: "Server1".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: 1,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake2".to_owned()),
+                username: "Server2".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
     ]
 }
 
@@ -81,12 +111,14 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
 #[serde(tag = "impl")]
 pub enum ClientEmulation {
     Experimental,
+    ClientAI,
 }
 
 impl ClientEmulation {
     pub(super) fn to_config(self) -> super::config::ClientEmulator {
         match self {
             Self::Experimental => super::config::ClientEmulator::Experiment,
+            Self::ClientAI => super::config::ClientEmulator::ClientAI,
         }
     }
 }

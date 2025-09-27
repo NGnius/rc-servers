@@ -1,6 +1,6 @@
 use polariton::operation::Typed;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PlayerData {
     pub name: String,
     pub display_name: String,

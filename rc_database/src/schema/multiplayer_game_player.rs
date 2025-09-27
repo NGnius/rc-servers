@@ -14,6 +14,7 @@ pub struct Model {
     pub is_claimed: bool,
     pub public_id: String,
     pub display_name: String,
+    pub variant: ClientType,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -45,3 +46,11 @@ impl Related<super::user::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)", rename_all = "PascalCase")]
+pub enum ClientType {
+    Client,
+    ClientAI,
+    ServerExperimental,
+}

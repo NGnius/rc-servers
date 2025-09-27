@@ -1,4 +1,5 @@
 use argon2::PasswordVerifier;
+use sha2::Digest;
 
 use crate::persist::config::ConfigProvider;
 
@@ -418,11 +419,22 @@ impl UserData {
     }
 
     pub(super) async fn resolve_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<super::ResolvedVehicle, polariton_server::operations::SimpleOpError> {
+        let sha_bytes = sha2::Sha256::digest(vehicle.username.as_bytes());
+        let u32_bytes = [
+            sha_bytes[0],
+            sha_bytes[1],
+            sha_bytes[2],
+            sha_bytes[3],
+        ];
+        let standard_uuid_uniqueness = (u32::from_be_bytes(u32_bytes) as i64) << 16; // middle 32 bits
         match &vehicle.id {
             crate::persist::config::VehicleDescriptor::Factory { factory: factory_id } => {
                 match factory.vehicle(*factory_id).await {
                     Ok(Some(factory_vehicle)) => {
-                        let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 30, *factory_id)));
+                        let uuid_i64 = crate::persist::user::uuid_sanitize(
+                            standard_uuid_uniqueness
+                            ^ crate::persist::user::i64_join((1 << 30, *factory_id))
+                        );
                         let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
                         let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));
                         let weapons_guess = vec![weapons_guess[0], 0, 0];
@@ -470,7 +482,10 @@ impl UserData {
                         } else {
                             db_vehicle.total_robot_cpu
                         };
-                        let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 31, *garage as u32)));
+                        let uuid_i64 = crate::persist::user::uuid_sanitize(
+                            standard_uuid_uniqueness
+                            ^ crate::persist::user::i64_join((1 << 31, *garage as u32))
+                        );
                         let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
                         Ok(super::ResolvedVehicle {
                             mastery: 1,
@@ -506,7 +521,6 @@ impl UserData {
                 cube_data,
                 colour_data,
             } => {
-                use sha2::Digest;
                 let sha_bytes = sha2::Sha256::digest(cube_data);
                 let u32_bytes = [
                     sha_bytes[0],
@@ -514,7 +528,10 @@ impl UserData {
                     sha_bytes[2],
                     sha_bytes[3],
                 ];
-                let uuid_i64 = crate::persist::user::uuid_sanitize(crate::persist::user::i64_join((1 << 29, u32::from_le_bytes(u32_bytes))));
+                let uuid_i64 = crate::persist::user::uuid_sanitize(
+                    standard_uuid_uniqueness
+                    ^ crate::persist::user::i64_join((1 << 29, u32::from_le_bytes(u32_bytes)))
+                );
                 let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
                 let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&cube_data));
                 let weapons_guess = vec![

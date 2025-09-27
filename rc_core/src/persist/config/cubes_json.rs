@@ -453,9 +453,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
 
     fn fake_players(&self) -> Vec<super::FakePlayer> {
         self.battle.multiplayer.fakes.iter().map(|player| super::FakePlayer {
-            public_id: player.public_id.clone(),
-            display_name: player.display_name.clone(),
             team: player.team,
+            vehicle: player.vehicle.into_conf(),
             implementation: player.implementation.clone().to_config(),
         }).collect()
     }

@@ -2,10 +2,17 @@ use crate::matches::CustomGameLogic;
 
 struct PlayerTracker {
     alive: tokio::sync::Mutex<std::collections::HashMap<u8, std::collections::HashSet<u8>>>, // team -> set of player_id
-    in_base: tokio::sync::RwLock<std::collections::HashMap<u8, std::sync::atomic::AtomicU16>>, // player_id -> in base state (if base > u8::MAX then not in a base)
+    in_base: std::collections::HashMap<u8, std::sync::atomic::AtomicU16>, // player_id -> in base state (if base > u8::MAX then not in a base)
 }
 
 impl PlayerTracker {
+    fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
+        Self {
+            alive: tokio::sync::Mutex::new(std::collections::HashMap::with_capacity(2)),
+            in_base: players.iter().map(|player| (player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX))).collect()
+        }
+    }
+
     async fn track_vehicle(&self, player: &oj_rc_core::persist::user::PlayerDescriptor) {
         let mut alive_lock = self.alive.lock().await;
         if let Some(team) = alive_lock.get_mut(&(player.team as u8)) {
@@ -15,7 +22,7 @@ impl PlayerTracker {
             new_team.insert(player.player_id);
             alive_lock.insert(player.team as u8, new_team);
         }
-        self.in_base.write().await.insert(player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX));
+        //self.in_base.write().await.insert(player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX));
     }
 
     async fn destroy_vehicle(&self, player: &oj_rc_core::persist::user::PlayerDescriptor) {
@@ -67,8 +74,8 @@ impl PlayerTracker {
         None
     }
 
-    async fn swap_is_in_base(&self, player_id: u8, base: Option<u8>) -> Option<u8> {
-        self.in_base.read().await.get(&player_id).and_then(|x| {
+    fn swap_is_in_base(&self, player_id: u8, base: Option<u8>) -> Option<u8> {
+        self.in_base.get(&player_id).and_then(|x| {
             let base = x.swap(base.map(|x| x as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
             if base > u8::MAX as u16 {
                 None
@@ -288,18 +295,18 @@ impl BaseTracker {
                     winning_team,
                     end_reason: rlnl::types::GameEndReason::BaseCaptured,
                 };
-                for conn in generic.users.read().await.values() {
-                    let event = if conn.descriptor.team == winning_team_i32 {
+                for (player_id, player_info) in generic.user_descriptors().iter() {
+                    let event = if player_info.descriptor.team == winning_team_i32 {
                         rlnl::event_code::NetworkEvent::GameWon
                     } else {
                         rlnl::event_code::NetworkEvent::GameLost
                     };
-                    crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
-                        &win_data,
+                    generic.send_to_player(
+                        *player_id,
                         event,
                         literustlib::packet::Property::ReliableOrdered,
-                        &conn.connection.connection
-                    ).await);
+                        &win_data,
+                    ).await;
                 }
                 generic.game_done();
                 break;
@@ -335,12 +342,9 @@ pub struct EliminationLogic {
 }
 
 impl EliminationLogic {
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig) -> Self {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
         Self {
-            tracked: PlayerTracker {
-                alive: tokio::sync::Mutex::new(std::collections::HashMap::new()),
-                in_base: tokio::sync::RwLock::new(std::collections::HashMap::new()),
-            },
+            tracked: PlayerTracker::new(players),
             bases: BaseTracker {
                 bases: map.bases.iter().map(|(team, base)| (*team, BaseCounters::new(base.1))).collect(),
                 ticker: super::trackers::TickTracker::new(),
@@ -361,12 +365,12 @@ impl EliminationLogic {
         *lock = None;
     }
 
-    async fn on_last_player_gone(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, conn: &crate::matches::generic::UserConnection) {
+    async fn on_last_player_gone(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) {
         log::debug!("Everyone is dead, so long and thanks for all the fish");
         generic.game_done();
         self.abort_timer_sync().await;
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team: if conn.descriptor.team == 0 { 1 } else { 0 }, // always the other team
+            winning_team: if player.descriptor.team == 0 { 1 } else { 0 }, // always the other team
             end_reason: rlnl::types::GameEndReason::NoPlayersRemaining,
         };
         crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
@@ -385,8 +389,10 @@ impl EliminationLogic {
             end_reason: rlnl::types::GameEndReason::OneTeamRemaining,
         };
         let winning_team_i32 = winning_team as i32;
-        for conn in generic.users.read().await.values() {
-            let event = if conn.descriptor.team == winning_team_i32 {
+        for (player_id, conn) in generic.users.read().await.iter() {
+            let user_info = generic.user_descriptor(*player_id).unwrap();
+            if user_info.descriptor.user_id.is_none() { continue; } // skip non-user players
+            let event = if user_info.descriptor.team == winning_team_i32 {
                 rlnl::event_code::NetworkEvent::GameWon
             } else {
                 rlnl::event_code::NetworkEvent::GameLost
@@ -403,12 +409,12 @@ impl EliminationLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for EliminationLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection, _others: &[oj_rc_core::persist::user::PlayerDescriptor]) -> bool {
+    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
         self.tracked.track_vehicle(&player.descriptor).await;
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool {
+    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
         if generic.is_game_done() {
             return true;
         }
@@ -422,14 +428,14 @@ impl CustomGameLogic for EliminationLogic {
             log::info!("Team {} has won sudden death game {} because player {} left", winning_team, generic.game_guid(), player.descriptor.player_id);
             self.send_win_info(generic, winning_team).await;
         } else if self.tracked.alive_count().await.is_empty() {
-            self.on_last_player_gone(generic, player).await;
+            self.on_last_player_gone(generic, connection, player).await;
         }
         true
     }
 
     async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, victim: u8) -> bool {
-        if let Some(conn) = generic.users.read().await.get(&victim) {
-            self.tracked.destroy_vehicle(&conn.descriptor).await;
+        if let Some(victim_info) = generic.user_descriptor(victim) {
+            self.tracked.destroy_vehicle(&victim_info.descriptor).await;
             let final_score = rlnl::events::ingame::SetFinalGameScore {
                 player_id: victim,
                 score: 42,
@@ -446,7 +452,10 @@ impl CustomGameLogic for EliminationLogic {
             } else {
                 log::info!("Player {} has been destroyed in sudden death game {}", victim, generic.game_guid());
                 if self.tracked.alive_count().await.is_empty() {
-                    self.on_last_player_gone(generic, conn).await;
+                    if let Some(user_conn) = generic.users.read().await.get(&victim) {
+                        self.on_last_player_gone(generic, user_conn, victim_info).await;
+                    }
+
                 }
             }
         }
@@ -466,7 +475,7 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
         vec![
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -487,8 +496,9 @@ impl CustomGameLogic for EliminationLogic {
     async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
         let read_lock = generic.users.read().await;
         let mut senders = Vec::with_capacity(read_lock.len());
-        for conn in read_lock.values() {
-            senders.push((conn.connection.clone(), conn.state.clone()));
+        for (player_id, conn) in read_lock.iter() {
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            senders.push((conn.connection.clone(), state));
         }
         drop(read_lock);
         let game_end = game_start + generic.game_duration;
@@ -552,7 +562,7 @@ impl CustomGameLogic for EliminationLogic {
                     break;
                 }
             }
-            let was_in_base = self.tracked.swap_is_in_base(motion.player_id, now_in_base).await;
+            let was_in_base = self.tracked.swap_is_in_base(motion.player_id, now_in_base);
             if now_in_base != was_in_base {
                 if let Some(was_in_base) = was_in_base {
                     self.bases.on_exit(generic, was_in_base, player_team == was_in_base, motion.player_id).await;
@@ -572,7 +582,3 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 }
-
-// spawn points (best guess)
-// Mars 1: (16, 0, 19) and (355, 7, 372)
-// Earth vanguard 2: (-248, 10, -251) and (267, 10, 258)

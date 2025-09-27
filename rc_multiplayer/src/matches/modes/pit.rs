@@ -23,18 +23,18 @@ impl WinTracker {
             end_reason: rlnl::types::GameEndReason::PitMaxKillsAchieved,
         };
         let winning_team_i32 = winning_team as i32;
-        for conn in generic.users.read().await.values() {
-            let event = if conn.descriptor.team == winning_team_i32 {
+        for (player_id, player_info) in generic.user_descriptors().iter() {
+            let event = if player_info.descriptor.team == winning_team_i32 {
                 rlnl::event_code::NetworkEvent::GameWon
             } else {
                 rlnl::event_code::NetworkEvent::GameLost
             };
-            crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
-                &data,
+            generic.send_to_player(
+                *player_id,
                 event,
                 literustlib::packet::Property::ReliableOrdered,
-                &conn.connection.connection
-            ).await);
+                &data,
+            ).await;
         }
     }
 
@@ -45,7 +45,7 @@ impl WinTracker {
                     for (player_id, streak) in game.player_tracking.streaks.iter() {
                         let player_streak = streak.load(std::sync::atomic::Ordering::Relaxed);
                         if player_streak >= *streak_threshold {
-                            if let Some(conn) = generic.users.read().await.get(player_id) {
+                            if let Some(conn) = generic.user_descriptor(*player_id) {
                                 log::info!("Player {} has reached the streak win condition in game {}", player_id, generic.game_guid());
                                 Self::do_win(generic, game, conn.descriptor.team as u8).await;
                                 break;
@@ -56,28 +56,28 @@ impl WinTracker {
                     }
                 },
                 oj_rc_core::persist::config::PitWinCondition::TotalKills(kills_threshold) => {
-                    for (player_id, conn) in generic.users.read().await.iter() {
-                        if conn.counters.kills.load(std::sync::atomic::Ordering::Relaxed) >= *kills_threshold {
+                    for (player_id, player_info) in generic.user_descriptors() {
+                        if player_info.counters.kills.load(std::sync::atomic::Ordering::Relaxed) >= *kills_threshold {
                             log::info!("Player {} has reached the total kills win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
                             break;
                         }
                     }
                 },
                 oj_rc_core::persist::config::PitWinCondition::Score(score_threshold) => {
-                    for (player_id, conn) in generic.users.read().await.iter() {
-                        if conn.counters.generic_score() >= *score_threshold {
+                    for (player_id, player_info) in generic.user_descriptors() {
+                        if player_info.counters.generic_score() >= *score_threshold {
                             log::info!("Player {} has reached the total score win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
                             break;
                         }
                     }
                 },
                 oj_rc_core::persist::config::PitWinCondition::Damage(dmg_threshold) => {
-                    for (player_id, conn) in generic.users.read().await.iter() {
-                        if conn.counters.cubes.load(std::sync::atomic::Ordering::Relaxed) >= *dmg_threshold {
+                    for (player_id, player_info) in generic.user_descriptors() {
+                        if player_info.counters.cubes.load(std::sync::atomic::Ordering::Relaxed) >= *dmg_threshold {
                             log::info!("Player {} has reached the total damage win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
                             break;
                         }
                     }
@@ -130,7 +130,7 @@ impl PlayerTracker {
         }
     }
 
-    fn pit_stats(&self, users: &std::collections::HashMap<u8, crate::matches::generic::UserConnection>) -> rlnl::events::ingame::PitModeState {
+    fn pit_stats(&self, users: &std::collections::HashMap<u8, crate::matches::generic::UserDescriptor>) -> rlnl::events::ingame::PitModeState {
         let mut player_stats = Vec::with_capacity(self.streaks.len());
         for (player_id, streak) in self.streaks.iter() {
             if let Some(user) = users.get(player_id) {
@@ -188,7 +188,7 @@ impl PitLogic {
             log::warn!("Pit game {} has no leader", generic.game_guid());
             return;
         };
-        let killer_score = if let Some(user) = generic.users.read().await.get(&killer) {
+        let killer_score = if let Some(user) = generic.user_descriptor(killer) {
             user.counters.generic_score()
         } else {
             log::warn!("Player {} score not found", killer);
@@ -216,7 +216,7 @@ impl PitLogic {
     }
 
     async fn do_leaderboard_update(&self, generic: &crate::matches::GenericGamemodeEngine<Self>) {
-        let latest_stats = self.player_tracking.pit_stats(&*generic.users.read().await);
+        let latest_stats = self.player_tracking.pit_stats(generic.user_descriptors());
         generic.broadcast(
             rlnl::event_code::NetworkEvent::PitModeState,
             literustlib::packet::Property::ReliableOrdered,
@@ -331,19 +331,20 @@ impl PitLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for PitLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection, _others: &[oj_rc_core::persist::user::PlayerDescriptor]) -> bool {
+    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> bool {
+    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
         if generic.is_game_done() {
             return true;
         }
         let read_lock = generic.users.read().await;
         if read_lock.len() == 1 {
             // nobody to play against, automatically end the game
-            let last_player = &read_lock[&0];
-            WinTracker::do_win(generic, self, last_player.descriptor.team as u8).await;
+            let player_id = read_lock.keys().next().unwrap();
+            let user_info = generic.user_descriptor(*player_id).unwrap();
+            WinTracker::do_win(generic, self, user_info.descriptor.team as u8).await;
         }
         true
     }
@@ -361,9 +362,18 @@ impl CustomGameLogic for PitLogic {
     }
 
     async fn on_kill_bonus(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
-        if let Some(to_reward) = generic.users.read().await.get(&killer) {
+        if let Some(to_reward) = generic.user_descriptor(killer) {
             to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+            generic.send_to_player(
+                killer,
+                rlnl::event_code::NetworkEvent::ConfirmedKill,
+                literustlib::packet::Property::ReliableOrdered,
+                &rlnl::events::ingame::Kill {
+                    killee_player_id: victim,
+                    killer_player_id: killer,
+                },
+            ).await;
+            /*crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
                 &rlnl::events::ingame::Kill {
                     killee_player_id: victim,
                     killer_player_id: killer,
@@ -371,7 +381,7 @@ impl CustomGameLogic for PitLogic {
                 rlnl::event_code::NetworkEvent::ConfirmedKill,
                 literustlib::packet::Property::ReliableOrdered,
                 &to_reward.connection.connection
-            ).await);
+            ).await);*/
             let data = to_reward.counters.get_generic_packet(killer, rlnl::types::IngameStatId::Kill, None);
             generic.broadcast(
                 rlnl::event_code::NetworkEvent::UpdateGameStats,
@@ -384,7 +394,7 @@ impl CustomGameLogic for PitLogic {
         false
     }
 
-    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: &crate::matches::generic::UserConnection) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
         let mut initial_spawn_packets = self.initial_spawns_to_packets();
         initial_spawn_packets.push(
             crate::matches::RlnlPacket {
@@ -403,8 +413,9 @@ impl CustomGameLogic for PitLogic {
         let read_lock = generic.users.read().await;
         let game_end = game_start + generic.game_duration;
         let mut senders = Vec::with_capacity(read_lock.len());
-        for conn in read_lock.values() {
-            senders.push((conn.connection.clone(), conn.state.clone()));
+        for (player_id, conn) in read_lock.iter() {
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            senders.push((conn.connection.clone(), state));
         }
         drop(read_lock);
         let end_packets = if self.settings.wins.iter().any(|cond| matches!(cond, oj_rc_core::persist::config::PitWinCondition::Time)) {

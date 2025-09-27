@@ -2,14 +2,14 @@ use rand::Rng;
 use byteserde::ser_heap::ByteSerializeHeap;
 
 pub struct ExperimentalPlayer {
-    me: tokio::sync::RwLock<Option<oj_rc_core::persist::user::PlayerDescriptor>>,
+    me: oj_rc_core::persist::user::PlayerDescriptor,
     is_complete: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl ExperimentalPlayer {
-    pub fn new() -> Self {
+    pub fn new(me: oj_rc_core::persist::user::PlayerDescriptor) -> Self {
         Self {
-            me: tokio::sync::RwLock::new(None),
+            me,
             is_complete: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -17,16 +17,14 @@ impl ExperimentalPlayer {
 
 #[async_trait::async_trait]
 impl super::FakeUser for ExperimentalPlayer {
-    async fn on_init(&self, descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], player_id: u8) {
-        if let Some(my_desc) = descriptors.iter().find(|x| x.player_id == player_id) {
-            *self.me.write().await = Some(my_desc.to_owned());
-        }
+    async fn on_init(&self, _descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], _player_id: u8) {
+
     }
 
     async fn on_ready(&self, real_players: &std::collections::HashMap<u8, crate::matches::generic::UserSender>) {
         let movement_rx = real_players.values().map(|x| x.to_owned()).collect();
         let is_complete = self.is_complete.clone();
-        let player_id = self.me.read().await.as_ref().unwrap().player_id;
+        let player_id = self.me.player_id;
         tokio::task::spawn(erratic_behaviour(movement_rx, is_complete, player_id));
     }
 

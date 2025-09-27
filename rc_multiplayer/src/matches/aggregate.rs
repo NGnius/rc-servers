@@ -3,7 +3,7 @@ pub struct GameMatches {
     routing: std::collections::HashMap<i32, String>, // user id to game guid
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
-    fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
+    //fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
     ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
     pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
@@ -21,7 +21,7 @@ impl GameMatches {
                 .into_iter()
                 .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
                 .collect(),
-            fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
+            //fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
             cube_parsers,
             ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
             pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
@@ -36,21 +36,21 @@ impl GameMatches {
         tx
     }
 
-    fn build_player_emulator(&self, emu: oj_rc_core::persist::config::ClientEmulator) -> Box<dyn super::fake::FakeUser> {
+    fn build_player_emulator(&self, emu: oj_rc_core::persist::config::ClientEmulator, player: &oj_rc_core::persist::user::PlayerDescriptor) -> Box<dyn super::fake::FakeUser> {
+        let owned_player = player.to_owned();
         match emu {
-            oj_rc_core::persist::config::ClientEmulator::Experiment => Box::new(super::fake::ExperimentalPlayer::new()),
+            oj_rc_core::persist::config::ClientEmulator::Experiment => Box::new(super::fake::ExperimentalPlayer::new(owned_player)),
+            oj_rc_core::persist::config::ClientEmulator::ClientAI => Box::new(super::fake::ClientAIPlayer::new(owned_player)),
         }
     }
 
     fn build_fake_players(&self, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<u8, Box<dyn super::fake::FakeUser>> {
-        let mut fake_player_i = 0;
-        let mut fakes = std::collections::HashMap::with_capacity(self.fake_players.len());
+        let mut fakes = std::collections::HashMap::new();
         for player in players.iter() {
-            if fake_player_i >= self.fake_players.len() { break; }
-            if player.user_id.is_none() {
-                let fake = self.build_player_emulator(self.fake_players[fake_player_i].implementation);
+            //if player.user_id.is_some() { continue; }
+            if let Some(emu_mode) = player.mode {
+                let fake = self.build_player_emulator(emu_mode, player);
                 fakes.insert(player.player_id, fake);
-                fake_player_i += 1;
             }
         }
         fakes
@@ -81,12 +81,14 @@ impl GameMatches {
         let players = user.game_players(guid).await?;
         if players.is_empty() {
             log::warn!("No players found for game {}, loading may not work correctly", guid);
+        } else {
+            log::info!("There are {} ({} real) players for game {}", players.len(), players.iter().filter(|x| x.user_id.is_some()).count(), guid);
         }
         let fakes = self.build_fake_players(&players);
         let fakes_handler = super::fake::Handler::start(fakes, players.clone()).await;
         match game_info.mode {
             oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
-                let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config);
+                let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config, &players);
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,
@@ -108,7 +110,7 @@ impl GameMatches {
                      code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
                      message: e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to resolve special settings for Battle Arena".to_owned()),
                 })?;
-                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &self.cube_parsers, resolved_ba_conf);
+                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &self.cube_parsers, &players, resolved_ba_conf);
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,

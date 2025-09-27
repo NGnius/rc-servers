@@ -2,6 +2,9 @@ enum Message {
     Ready {
         real_players: std::collections::HashMap<u8, crate::matches::generic::UserSender>,
     },
+    ClientMap {
+        responder: tokio::sync::oneshot::Sender<std::collections::HashMap<u8, Vec<u8>>>, // real player_id -> client AIs
+    },
     Stop,
 }
 
@@ -20,6 +23,13 @@ impl Handler {
 
     pub fn on_ready(&self, real_players: std::collections::HashMap<u8, crate::matches::generic::UserSender>) {
         Self::log_failure(self.tx.send(Message::Ready { real_players }));
+    }
+
+    /// real player_id -> list of non-user player_id
+    pub async fn get_client_ais(&self) -> std::collections::HashMap<u8, Vec<u8>> {
+        let (responder, rx) = tokio::sync::oneshot::channel();
+        Self::log_failure(self.tx.send(Message::ClientMap { responder }));
+        rx.await.unwrap_or_default()
     }
 
     pub fn stop(&self) {
@@ -50,6 +60,21 @@ async fn handler_loop(mut rx: tokio::sync::mpsc::UnboundedReceiver<Message>, pla
             Message::Ready { real_players } => {
                 for fake in players.values() {
                     fake.on_ready(&real_players).await;
+                }
+            },
+            Message::ClientMap { responder } => {
+                let mut map = std::collections::HashMap::<u8, Vec<u8>>::new();
+                for (player_id, fake) in players.iter() {
+                    if let Some(running_on) = fake.running_on().await {
+                        if let Some(fakes_on) = map.get_mut(&running_on) {
+                            fakes_on.push(*player_id);
+                        } else {
+                            map.insert(running_on, vec![*player_id]);
+                        }
+                    }
+                }
+                if let Err(_e) = responder.send(map) {
+                    log::warn!("Failed to send response for client AI map message");
                 }
             },
             Message::Stop => {

@@ -9,9 +9,9 @@ pub struct RlnlPacket {
 #[async_trait::async_trait]
 pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     /// Called when player joins the game server (after authentication).
-    async fn on_player_join(&self, generic: &super::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection, others: &[oj_rc_core::persist::user::PlayerDescriptor]) -> bool;
+    async fn on_player_join(&self, generic: &super::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool;
     /// Called when player leaves the game server (i.e. player disconnects).
-    async fn on_player_end(&self, generic: &super::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> bool;
+    async fn on_player_end(&self, generic: &super::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool;
     /// Called when a player's vehicle is destroyed by another player.
     async fn on_vehicle_destroyed(&self, generic: &super::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool;
     /// Called when a player's vehicle self-destructs.
@@ -21,7 +21,7 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     /// Called during loading, before the sync stage is entered.
     ///
     /// Roughly, loading is as follows: `Loading -> WaitingForSync -> Sync -> WaitingToStart -> InGame`.
-    async fn extra_sync_events(&self, generic: &super::GenericGamemodeEngine<Self>, player: &crate::matches::generic::UserConnection) -> Vec<RlnlPacket>;
+    async fn extra_sync_events(&self, generic: &super::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> Vec<RlnlPacket>;
     /// Called when loading completes and the countdown is starting
     async fn on_countdown_start(&self, generic: &super::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool;
     /// Called when the game is marked as complete
