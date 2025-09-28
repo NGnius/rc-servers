@@ -32,6 +32,10 @@
     .form-padded {
       padding: 0 25px;
     }
+    .form-disclaimer {
+      margin: 0 auto;
+      width: 95%;
+    }
     h1, h2, h3, h4, h5 {
       text-align: center;
     }
@@ -40,6 +44,23 @@
     a:hover { color: white; }
     a:visited { color: lightgrey; }
     a:active { color: white; }
+    .fake-button {
+      padding-top: 25px;
+      padding-left: 25px;
+      padding-right: 25px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 20px;
+    }
+    .fake-button-anchor {
+      width: 100%;
+      background-color: black;
+      color: lightgrey;
+      border: 1px solid white;
+      display: inline-block;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
     footer {
       position: relative;
       min-width: 300px;
@@ -87,7 +108,21 @@
   <div class="form-stripe">
     <h1 class="form-padded">Account '<span class="display-name">{{display_name}}</span>' created!</h1>
     <h3 class="form-padded">Welcome user #<span class="display-id">{{id}}</span> to Robocraft!</h3>
-    <h5 class="form-padded" style="padding-bottom:250px;">Let the FOSS flow through you...</h5>
+    <h5 class="form-padded">Let the FOSS flow through you...</h5>
+
+    <div class="fake-button">
+      <a class="fake-button-anchor" href="steam://launch/301520">Launch Robocraft</a>
+    </div>
+
+    <!--<div class="fake-button">
+      <a class="fake-button-anchor" href="steam://launch/804810">Launch Robocraft Royale</a>
+    </div>-->
+
+    <div class="form-padded" style="padding-bottom:250px;">
+      <div class="form-disclaimer">
+        <p>You'll need to download the <a href="https://git.ngram.ca/OpenJam/rc-servers/src/branch/main/assets/robocraft/servenvmulti.config">servenvmulti.config</a> first</p>
+      </div>
+    </div>
 
     <footer>
       <div class="footer">
