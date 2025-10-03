@@ -239,7 +239,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             .collect();*/
 
         let descriptors = players.iter()
-            .map(|player| (player.player_id as u8, UserDescriptor::new(player.to_owned())))
+            .map(|player| (player.player_id, UserDescriptor::new(player.to_owned())))
             .collect();
 
         let user_id_map = players.iter()
@@ -538,7 +538,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     for fake_id in conn.aliases.iter() {
                         if let Some(user_desc) = self.user_descriptor(*fake_id) {
                             user_desc.state.mode.store(ConnectionMode::Disconnected.to_u8(), std::sync::atomic::Ordering::Relaxed);
-                            let conn_opt = self.users.write().await.remove(&fake_id);
+                            let conn_opt = self.users.write().await.remove(fake_id);
                             if let Some(conn) = conn_opt {
                                 if self.custom_logic_handler.on_player_end(self, &conn, user_desc).await {
                                     disconnecting_players.push(*fake_id);

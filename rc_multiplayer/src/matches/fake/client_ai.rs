@@ -33,7 +33,7 @@ impl super::FakeUser for ClientAIPlayer {
         let first_fake_i = descriptors.iter()
             .filter(|x| x.team == self.me.team)
             .enumerate()
-            .find(|x| x.1.mode != None)
+            .find(|x| x.1.mode.is_some())
             .map(|(i, _)| i)
             .unwrap();
         let my_i = descriptors.iter()

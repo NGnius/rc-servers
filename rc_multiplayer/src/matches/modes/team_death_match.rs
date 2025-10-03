@@ -259,7 +259,7 @@ impl TeamDeathMatchLogic {
 
     async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
-        let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds as u64);
+        let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds);
         let now = chrono::Utc::now();
         let respawn_timestamp = now + respawn_time;
         if let Some(player_respawn) = self.player_tracking.respawns.get(&player_id) {
