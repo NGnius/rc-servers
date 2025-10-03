@@ -5,13 +5,13 @@
 [![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Frc-servers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
 
 
-A collection of open source servers for FreeJam games
+A collection of open source servers for [Robocraft](https://store.steampowered.com/app/301520/Robocraft/)
 
 ## Usage
 
-NOTE: Please refer to the latest [release](./releases) for more detailed instructions for accessing the public OpenJam servers.
+NOTE: Please refer to the latest [release](/OpenJam/rc-servers/releases) for more detailed instructions for accessing the public OpenJam servers.
 
-To get Robocraft to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
+To get the Robocraft client to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
 You may need to change the `activegroup` from `dev` to `ngram` (or another group name depending on which servers you want to connect to).
 
 Before you can login the first time, you will need to create an account through the `rc_auth` (aka `authUrl`) server: `http://<rc_auth server address>:<port (maybe)>/register` (unless you've enabled automatic sign ups)
