@@ -16,6 +16,8 @@ pub struct AccountProvider {
 impl AccountProvider {
     pub async fn load(root: impl AsRef<std::path::Path>, conf: &crate::persist::config::ConfigImpl) -> std::io::Result<Self> {
         let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
+        log::debug!("Loading secret from {}", token_path.display());
+        let secret = std::fs::read(&token_path)?;
         let server_settings = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf);
         let database_uri = server_settings.database;
         log::debug!("Connecting to user database URI: {}", database_uri);
@@ -27,7 +29,7 @@ impl AccountProvider {
             fake_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::fake_players(conf)),
             auto_signups: server_settings.auto_signup,
             cdn: std::sync::Arc::new(server_settings.cdn_url),
-            secret: std::sync::Arc::new(std::fs::read(&token_path)?),
+            secret: std::sync::Arc::new(secret),
             db: std::sync::Arc::new(db),
         })
     }
