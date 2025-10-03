@@ -122,7 +122,6 @@ impl GameMatches {
                 Ok(engine.spawn())
             },
             oj_rc_core::data::game_mode::GameMode::Pit => {
-                log::warn!("Game {}: Pit is experimental", guid);
                 let inner = super::modes::PitLogic::new(
                     &self.mode_configs.the_pit,
                     &map_config,
@@ -140,7 +139,6 @@ impl GameMatches {
                 Ok(engine.spawn())
             },
             oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => {
-                log::warn!("Game {}: Team Death Match is experimental", guid);
                 let inner = super::modes::TeamDeathMatchLogic::new(
                     &self.mode_configs.team_deathmatch,
                     &map_config,

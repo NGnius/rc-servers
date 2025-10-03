@@ -27,7 +27,7 @@ impl CubeConfig {
         let result = serde_json::from_reader(buffered)?;
         #[cfg(debug_assertions)]
         {
-            let filename = root.as_ref().join(format!("{}.dump.json", CUBE_CONFIG_FILENAME.trim_end_matches(".json")));
+            let filename = root.as_ref().join(format!("{}.expanded.json", CUBE_CONFIG_FILENAME.trim_end_matches(".json")));
             let file = std::fs::File::create(filename)?;
             let buffered = std::io::BufWriter::new(file);
             serde_json::to_writer_pretty(buffered, &result)?;
