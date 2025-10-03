@@ -28,7 +28,7 @@ export RUST_LOG=info
 """
 
 BINARIES_TO_INCLUDE = {
-    "oj_auth": generate_plain_script,
+    #"oj_auth": generate_plain_script,
     "oj_rc_auth": generate_ip_script,
     "oj_cdn": generate_ip_script,
     "oj_rc_chat": lambda name: generate_ip_redirect_script(name, 4537), "oj_rc_chat_room": generate_ip_script,
@@ -46,8 +46,10 @@ PROJECT_FOLDERS_TO_INCLUDE = [
 
 # extra assets; not ones in one of the listed folders
 PROJECT_ASSETS_TO_INCLUDE = [
-    "auth/Rocket.toml",
-    "rc_microtransactions/Rocket.toml"
+    "rc_microtransactions/Rocket.toml",
+    "utils/cube_gen.py",
+    "LICENSE",
+    "README.md",
 ]
 
 BLANK_FOLDERS_TO_CREATE = [
@@ -68,7 +70,7 @@ def add_folder_to_zip(archive: zipfile.ZipFile, root_dir: str):
 
 def main(build_root: str, outfile: str):
     print("Packaging binaries in", build_root)
-    archive = zipfile.ZipFile(outfile, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9)
+    archive = zipfile.ZipFile(outfile, mode="w", compression=zipfile.ZIP_LZMA, compresslevel=9)
     # handle release binaries
     print("Adding", len(BINARIES_TO_INCLUDE), "binaries")
     for binary_file in BINARIES_TO_INCLUDE.keys():
@@ -85,10 +87,11 @@ def main(build_root: str, outfile: str):
     print("Adding", len(PROJECT_FOLDERS_TO_INCLUDE), "project folders")
     for folder in PROJECT_FOLDERS_TO_INCLUDE:
         add_folder_to_zip(archive, folder)
+    print("Adding", len(PROJECT_ASSETS_TO_INCLUDE), "extra assets")
     for asset in PROJECT_ASSETS_TO_INCLUDE:
         archive.write(asset)
     # handle project setup niceties
-    print("Creating", len(BLANK_FOLDERS_TO_CREATE), "folders")
+    print("Creating", len(BLANK_FOLDERS_TO_CREATE), "blank folders")
     for folder in BLANK_FOLDERS_TO_CREATE:
         archive.mkdir(folder)
     archive.close()
