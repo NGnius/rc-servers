@@ -258,14 +258,14 @@ fn default_game_modes() -> GameModes {
         },
         pit: GameMode {
             respawn_heal_duration: 20.0,
-            respawn_full_heal_duration: 20.0,
+            respawn_full_heal_duration: 0.5,
             kill_limit: 0,
             game_time_m: 15,
         },
         team_deathmatch: GameMode {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
-            kill_limit: 2,
+            kill_limit: 10,
             game_time_m: 10,
         },
     }
@@ -368,7 +368,7 @@ fn default_rotation() -> GameEventSequence {
     GameEventSequence {
         strategy: GameRotationStrategy::Sequence,
         modes: vec![
-            GameEvents {
+            /*GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
@@ -382,8 +382,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 5*60, // 5 minutes
-            }
-            /*GameEvents {
+            }*/
+            GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
@@ -393,7 +393,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::Pit,
                     auto_heal: true,
                 },
                 duration_s: 5*60, // 5 minutes
@@ -408,7 +408,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Earth2,
                     visibility: GameVisibility::Good,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -423,7 +423,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars1,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::BattleArena,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -438,7 +438,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars2,
                     visibility: GameVisibility::Good,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -453,7 +453,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Mars3,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::BattleArena,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -468,7 +468,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -483,7 +483,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune2,
                     visibility: GameVisibility::Poor,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::BattleArena,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
@@ -498,11 +498,11 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Neptune3,
                     visibility: GameVisibility::Good,
-                    mode: GameType::SuddenDeath,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 duration_s: 5*60,
-            },*/
+            },
         ]
     }
 }

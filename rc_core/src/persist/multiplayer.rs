@@ -66,8 +66,8 @@ pub struct FakePlayerConf {
 }
 
 pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
-    //Vec::default()
-    vec![
+    Vec::default()
+    /*vec![
         FakePlayerConf {
             team: 1,
             vehicle: super::garage::PrefabVehicle {
@@ -104,7 +104,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             },
             implementation: ClientEmulation::ClientAI,
         },
-    ]
+    ]*/
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

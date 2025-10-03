@@ -21,8 +21,8 @@ atomic_float = "1.1"
 num-quaternion.workspace = true
 rand.workspace = true
 
-literustlib_server = { version = "0.2", path = "../../LiteRustLib/server" }
-literustlib = { version = "0.2", path = "../../LiteRustLib" }
-#literustlib_server = { version = "0.2" }
-#literustlib = { version = "0.2" }
+#literustlib_server = { version = "0.2", path = "../../LiteRustLib/server" }
+#literustlib = { version = "0.2", path = "../../LiteRustLib" }
+literustlib_server = { version = "0.2" }
+literustlib = { version = "0.2" }
 rlnl = { version = "0.1", path = "../../rlnl" }
