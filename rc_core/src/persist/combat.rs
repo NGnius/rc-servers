@@ -509,7 +509,7 @@ fn default_rotation() -> GameEventSequence {
 
 fn default_multiplayer() -> super::MultiplayerConfig {
     super::MultiplayerConfig {
-        players_per_game: 2,
+        players_per_game: 1,
         enabled: true,
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),

@@ -13,4 +13,5 @@ async-trait.workspace = true
 libfj.workspace = true
 chrono.workspace = true
 log.workspace = true
-base64 = "0.22"
+base64.workspace = true
+hex.workspace = true

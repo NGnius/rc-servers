@@ -4,10 +4,11 @@ pub struct ArcAdapter {
     orm: sea_orm::DatabaseConnection,
     ignore_expiry: bool,
     cdn: Option<String>,
+    spoof_users: bool,
 }
 
 impl ArcAdapter {
-    pub async fn init(uri: &str, show_expired: bool, override_cdn: Option<String>) -> Result<Self, sea_orm::DbErr>{
+    pub async fn init(uri: &str, show_expired: bool, override_cdn: Option<String>, username_spoofing: bool) -> Result<Self, sea_orm::DbErr>{
         log::debug!("Connecting to Archive of RoboCraft (ARC) vehicle factory database URI: {}", uri);
         let db = sea_orm::Database::connect(uri).await?;
         let good_cdn = override_cdn.map(|s| if s.ends_with("/") { s } else { format!("{}/", s) });
@@ -15,6 +16,7 @@ impl ArcAdapter {
             orm: db,
             ignore_expiry: show_expired,
             cdn: good_cdn,
+            spoof_users: username_spoofing,
         };
         // do query to ensure database is ok
         adapter.default_query().one(&adapter.orm).await?;
@@ -57,7 +59,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     name: meta.name,
                     description: meta.description,
                     thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
-                    added_by: meta.added_by,
+                    added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
                     expiry_date: if self.ignore_expiry { chrono::Utc::now() + chrono::Duration::weeks(2) } else {  crate::traits::parse_rc_date(&meta.expiry_date).unwrap_or_default() },
@@ -162,7 +164,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     name: meta.name,
                     description: meta.description,
                     thumbnail: meta.thumbnail,
-                    added_by: meta.added_by,
+                    added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
                     expiry_date: if self.ignore_expiry { chrono::Utc::now() + chrono::Duration::weeks(2) } else {  crate::traits::parse_rc_date(&meta.expiry_date).unwrap_or_default() },

@@ -26,6 +26,8 @@ pub struct ArcFactorySettings {
     /// should probably end with /roboshop/arc/Live/
     #[serde(default)]
     pub override_cdn: Option<String>,
+    #[serde(default = "default_true")]
+    pub spoof_username: bool,
 }
 
 fn default_true() -> bool {

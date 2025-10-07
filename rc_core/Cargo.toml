@@ -10,8 +10,8 @@ authors.workspace = true
 [dependencies]
 log.workspace = true
 polariton.workspace = true
-base64 = "0.22"
-hex = "0.4"
+base64.workspace = true
+hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
