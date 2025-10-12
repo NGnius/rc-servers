@@ -243,7 +243,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             .collect();
 
         let user_id_map = players.iter()
-            .filter_map(|player| player.user_id.map(|id| (id, player.team as u8)))
+            .filter_map(|player| player.user_id.map(|id| (id, player.player_id)))
             .collect();
         Self {
             users: tokio::sync::RwLock::new(std::collections::HashMap::new()),
