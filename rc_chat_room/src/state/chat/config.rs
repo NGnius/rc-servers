@@ -67,7 +67,7 @@ impl ChatCommand {
 
     async fn perform_if_match<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> Option<String> {
         if let Some(cap) = self.regex.captures(text) {
-            Some(self.op.perform_command(cap, ctx).await)
+            Some(self.op.perform_command(text, cap, ctx).await)
         } else {
             None
         }
@@ -89,9 +89,9 @@ impl ChatOperation {
         }
     }
 
-    async fn perform_command<'a, 'b, 'c>(&self, _captures: regex::Captures<'a>, ctx: CommandContext<'b, 'c>) -> String {
+    async fn perform_command<'a, 'b, 'c>(&self, text: &str, _captures: regex::Captures<'a>, ctx: CommandContext<'b, 'c>) -> String {
         match self {
-            Self::BuiltIn(b_in) => b_in.do_command(ctx).await,
+            Self::BuiltIn(b_in) => b_in.do_command(text, ctx).await,
             Self::Custom => "{not implemented}".to_owned(),
             Self::Nop => "{no op}".to_owned(),
         }
@@ -107,6 +107,7 @@ impl ChatOperation {
 }
 
 enum BuiltIn {
+    Intercom(Intercom),
     OnlineUsers,
     TotalUsers,
     Version,
@@ -116,6 +117,7 @@ enum BuiltIn {
 impl BuiltIn {
     fn from_persist(b_in: oj_rc_core::persist::BuiltInChatOperation) -> Self {
         match b_in {
+            oj_rc_core::persist::BuiltInChatOperation::Intercom(com) => Self::Intercom(Intercom::from_persist(com)),
             oj_rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
             oj_rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
             oj_rc_core::persist::BuiltInChatOperation::Version => Self::Version,
@@ -127,8 +129,9 @@ impl BuiltIn {
         regex.trim_start_matches("\\")
     }
 
-    async fn do_command<'b, 'c>(&self, ctx: CommandContext<'b, 'c>) -> String {
+    async fn do_command<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> String {
         match self {
+            Self::Intercom(intercom) => intercom.do_command(text, ctx).await,
             Self::OnlineUsers => {
                 let online_count = ctx.chat_system.user_count();
                 if online_count == 1 {
@@ -173,10 +176,46 @@ impl BuiltIn {
 
     fn do_help(&self) -> String {
         match self {
+            Self::Intercom(i) => i.do_help(),
             Self::OnlineUsers => "Show total users online".to_owned(),
             Self::TotalUsers => "Show total users registered".to_owned(),
             Self::Version => "Show chat server version information".to_owned(),
             Self::Help => "Display this message".to_owned(),
+        }
+    }
+}
+
+enum Intercom {
+    DevMessage,
+}
+
+impl Intercom {
+    fn from_persist(intercom: oj_rc_core::persist::IntercomChatOperation) -> Self {
+        match intercom {
+            oj_rc_core::persist::IntercomChatOperation::DevMessage => Self::DevMessage,
+        }
+    }
+
+    async fn do_command<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> String {
+        match self {
+            Self::DevMessage => {
+                let pub_id = ctx.user.public_id();
+                ctx.user.show_dev_message(
+                    oj_rc_core::persist::user::intercom::IntercomDevMessage {
+                        message: text.trim().split_once(' ').map(|x| x.1.to_owned()).unwrap_or_else(|| "???".to_owned()),
+                        duration: 10,
+                    },
+                    vec![pub_id.to_owned()],
+                ).await;
+                format!("Sent dev message to {}", pub_id)
+            }
+        }
+
+    }
+
+    fn do_help(&self) -> String {
+        match self {
+            Self::DevMessage => "Show dev message to yourself".to_owned(),
         }
     }
 }

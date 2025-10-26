@@ -42,6 +42,7 @@ polariton_server = { version = "0.4", features = [ "tokio-async" ] }
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
 async-trait = "0.1"
+futures = "0.3"
 chrono = "0.4"
 git-version = "0.3"
 rand = { version = "0.9", features = [ "thread_rng" ] }

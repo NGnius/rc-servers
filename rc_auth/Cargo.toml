@@ -10,9 +10,11 @@ readme.workspace = true
 [dependencies]
 actix-web.workspace = true
 actix-files.workspace = true
+actix-ws = "0.3"
 log.workspace = true
 env_logger.workspace = true
 tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
+futures.workspace = true
 clap.workspace = true
 oj_rc_core = { version = "*", path = "../rc_core" }
 libfj.workspace = true

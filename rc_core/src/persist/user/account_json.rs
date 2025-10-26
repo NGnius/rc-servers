@@ -9,6 +9,8 @@ pub struct AccountProvider {
     fake_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     auto_signups: bool,
     cdn: std::sync::Arc<String>,
+    auth: std::sync::Arc<String>,
+    intercom: std::sync::Arc<String>,
     secret: std::sync::Arc<Vec<u8>>,
     db: std::sync::Arc<oj_rc_database::Database>,
 }
@@ -29,6 +31,8 @@ impl AccountProvider {
             fake_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::fake_players(conf)),
             auto_signups: server_settings.auto_signup,
             cdn: std::sync::Arc::new(server_settings.cdn_url),
+            auth: std::sync::Arc::new(server_settings.auth_url),
+            intercom: std::sync::Arc::new(server_settings.intercom_url),
             secret: std::sync::Arc::new(secret),
             db: std::sync::Arc::new(db),
         })
@@ -109,10 +113,12 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             garage_upgrades: self.garage_upgrades.clone(),
             fake_players: self.fake_players.clone(),
             cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: std::sync::Arc::new(reqwest::Client::new()),
             db: self.db.clone(),
             secret: self.secret.clone(),
         }))
-        //Err("Unable to authenticate".to_string())
     }
 
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
@@ -145,6 +151,9 @@ impl <C: Clone> super::UserProvider<C> for AccountProvider {
             garage_upgrades: self.garage_upgrades.clone(),
             fake_players: self.fake_players.clone(),
             cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: std::sync::Arc::new(reqwest::Client::new()),
             db: self.db.clone(),
             secret: self.secret.clone(),
         }))
@@ -307,6 +316,9 @@ pub(super) struct UserData {
     pub(super) garage_upgrades: std::sync::Arc<crate::persist::config::GarageUpgrades>,
     pub(super) fake_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     pub(super) cdn: std::sync::Arc<String>,
+    pub(super) auth: std::sync::Arc<String>,
+    pub(super) intercom: std::sync::Arc<String>,
+    pub(super) http_client: std::sync::Arc<reqwest::Client>,
     pub(super) db: std::sync::Arc<oj_rc_database::Database>,
     pub(super) secret: std::sync::Arc<Vec<u8>>,
 }
@@ -620,26 +632,6 @@ const UNEXPECTED_ERR: i16 = crate::data::error_codes::WebServicesError::Unexpect
 
 #[async_trait::async_trait]
 impl <C: Clone> super::User<C> for UserData {
-    fn public_id(&self) -> &'_ str {
-        &self.account.public_id
-    }
-
-    fn is_mod(&self) -> bool {
-        self.perms.moderator
-    }
-
-    fn is_admin(&self) -> bool {
-        self.perms.administrator
-    }
-
-    fn is_dev(&self) -> bool {
-        self.perms.developer
-    }
-
-    fn is_banned(&self) -> bool {
-        self.perms.banned
-    }
-
     async fn unlocked_parts(&self) -> Vec<u32> {
         match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
             Ok(Some(parts)) => {

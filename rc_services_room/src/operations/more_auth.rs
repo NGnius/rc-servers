@@ -16,7 +16,8 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
         if let Some(Typed::Str(auth_payload)) = params_dict.get(&Self::AUTH_PAYLOAD_KEY) {
             //let mut write_lock = user.write().unwrap();
             if user.update_with_auth(&auth_payload.string).await {
-                if user.user().unwrap().is_banned() {
+                let user_info = user.user().unwrap();
+                if user_info.is_banned() {
                     return polariton::operation::OperationResponse {
                         code: Self::op_code(),
                         return_code: oj_rc_core::data::error_codes::WebServicesError::Banned as i16,
@@ -24,13 +25,27 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                         params: polariton::operation::ParameterTable::with_capacity(0),
                     }
                 } else {
-                    let mut resp_params = std::collections::HashMap::with_capacity(1);
-                    resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
-                    return polariton::operation::OperationResponse {
-                        code: Self::op_code(),
-                        return_code: 0,
-                        message: polariton::operation::Typed::Null,
-                        params: resp_params.into(),
+                    match user_info.webservice_listener().await {
+                        Ok(listener) => {
+                            let mut resp_params = std::collections::HashMap::with_capacity(1);
+                            resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
+                            crate::events::IntercomHandler::new(listener, &user_info, user.event_sender()).run();
+                            return polariton::operation::OperationResponse {
+                                code: Self::op_code(),
+                                return_code: 0,
+                                message: polariton::operation::Typed::Null,
+                                params: resp_params.into(),
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("Failed to start web service intercom listener for user {}: {}", user_info.public_id(), e.error_msg().map(|x| x.to_owned()).unwrap_or("".to_string()));
+                            return polariton::operation::OperationResponse {
+                                code: Self::op_code(),
+                                return_code: oj_rc_core::data::error_codes::WebServicesError::PlatformFeatureNotAvailable as i16,
+                                message: polariton::operation::Typed::Null,
+                                params: polariton::operation::ParameterTable::with_capacity(0),
+                            }
+                        },
                     }
                 }
 

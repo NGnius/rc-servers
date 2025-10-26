@@ -11,6 +11,7 @@ authors.workspace = true
 log.workspace = true
 env_logger.workspace = true
 tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util" ] }
+futures.workspace = true
 clap.workspace = true
 polariton.workspace = true
 oj_polariton_auth = { version = "*", path = "../polariton_auth" }

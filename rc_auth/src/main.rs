@@ -20,6 +20,8 @@ async fn main() -> std::io::Result<()> {
     let cli_args = cli::CliArgs::get();
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
     let rc_preloaded = actix_web::web::Data::new(cli_args.clone().preloaded().await);
+    let internal_auth = actix_web::web::Data::new(crate::robocraft::intercom::IntercomAuth::new(&cli_args.data_robocraft)?);
+    let user_registry = actix_web::web::Data::new(crate::robocraft::intercom::Users::new());
 
     let mut handlebars = handlebars::Handlebars::new();
     handlebars
@@ -38,6 +40,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(cli_args2.clone())
             .app_data(rc_preloaded.clone())
+            .app_data(internal_auth.clone())
+            .app_data(user_registry.clone())
             .app_data(handlebars_ref.clone())
             .service(index)
             .service(robocraft::registration::form_submit)
@@ -46,13 +50,8 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::email::email_password_auth)
             .service(robocraft::steam::steam_auth)
             .service(robocraft::username::user_password_auth)
-            /*.service(robocraft::live_data::live_data_json)
-            .service(robocraft::user_avatar::get)
-            .service(robocraft::clan_avatar::get)
-            .service(robocraft::brawl_data::get)
-            .service(robocraft::campaign_data::get)
-            .service(robocraft::factory::arc::get)
-            .service(robocraft::favicon::get)*/
+            .service(robocraft::intercom::services_ws)
+            .service(robocraft::intercom::service_msg)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()

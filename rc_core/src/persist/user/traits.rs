@@ -62,11 +62,6 @@ pub trait UserAuthenticator {
 
 #[async_trait::async_trait]
 pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser + IntercomUser + CommonUser {
-    fn public_id(&self) -> &'_ str;
-    fn is_mod(&self) -> bool;
-    fn is_admin(&self) -> bool;
-    fn is_dev(&self) -> bool;
-    fn is_banned(&self) -> bool;
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
@@ -203,7 +198,7 @@ pub struct AvatarInfo {
 }
 
 #[async_trait::async_trait]
-pub trait ChatUser: CommonUser {
+pub trait ChatUser: CommonUser + IntercomUser {
     async fn subscribed_channels(&self) -> Result<polariton::operation::Typed<()>, i16>;
     async fn subscribed_channels_strings(&self) -> Result<Vec<String>, i16>;
     async fn add_subscribed_channel(&self, channel: String, channel_ty: crate::data::channel::ChatChannelType) -> Result<polariton::operation::Typed<()>, i16>;
@@ -340,6 +335,20 @@ pub trait MultiplayerUser: CommonUser {
 #[async_trait::async_trait]
 pub trait IntercomUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
+    async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
+}
+
+pub struct IntercomListener<D: serde::de::DeserializeOwned> {
+    pub(super) websocket: reqwest_websocket::WebSocket,
+    pub(super) _d: std::marker::PhantomData<D>,
+}
+
+impl <D: serde::de::DeserializeOwned> IntercomListener<D> {
+    pub async fn listen(self) -> impl futures::Stream<Item=Result<D, reqwest_websocket::Error>> + Unpin {
+        use futures::StreamExt;
+        self.websocket.map(|msg| msg.and_then(|msg| msg.json()))
+    }
 }
 
 pub struct ResolvedVehicle {
@@ -359,4 +368,9 @@ pub struct ResolvedVehicle {
 #[async_trait::async_trait]
 pub trait CommonUser: Send + Sync {
     async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
+    fn public_id(&self) -> &'_ str;
+    fn is_mod(&self) -> bool;
+    fn is_admin(&self) -> bool;
+    fn is_dev(&self) -> bool;
+    fn is_banned(&self) -> bool;
 }

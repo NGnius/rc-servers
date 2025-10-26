@@ -31,10 +31,17 @@ pub enum ChatOperation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "built_in")]
 pub enum BuiltInChatOperation {
+    Intercom(IntercomChatOperation),
     OnlineUsers,
     TotalUsers,
     Version,
     Help,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "intercom")]
+pub enum IntercomChatOperation {
+    DevMessage,
 }
 
 

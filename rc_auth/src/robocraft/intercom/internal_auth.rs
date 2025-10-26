@@ -45,6 +45,7 @@ impl IntercomAuth {
 pub enum IntercomOpError {
     BadHeader,
     Unauthorized,
+    #[allow(dead_code)]
     Io(std::io::Error),
     #[allow(dead_code)]
     Unknown,
