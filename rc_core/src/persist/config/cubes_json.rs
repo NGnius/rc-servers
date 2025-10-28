@@ -5,6 +5,8 @@ use serde::{Serialize, Deserialize};
 use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
+use crate::persist::config::SelfValidator;
+
 use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
@@ -33,6 +35,41 @@ impl CubeConfig {
             serde_json::to_writer_pretty(buffered, &result)?;
         }
         Ok(result)
+    }
+
+    /// Performs configuration checks
+    /// Returns true if validation succeeds, false if failed
+    pub fn self_validate(&self, data_path: impl AsRef<std::path::Path>) -> bool {
+        let mut validation_info = super::ValidationInfo::default();
+        validation_info.info(super::ValidationMessage {
+            path: vec![],
+            message: format!("Validation started at {}", chrono::Utc::now()),
+        });
+        let token_path = data_path.as_ref().join(crate::persist::user::TOKEN_SECRET_FILENAME);
+        if !token_path.exists() {
+            validation_info.error(crate::persist::config::ValidationMessage {
+                path: vec![],
+                message: format!("Token secret file does not exist; create it at {}", token_path.display()),
+            });
+        }
+        // TODO cubes
+        // TODO movement
+        let battle_res = self.battle.validate_in(&mut validation_info, self, "battle");
+        let chat_res = self.chat.validate_in(&mut validation_info, self, "chat");
+        let factory_res = self.factory.validate_in(&mut validation_info, self, "factory");
+        let settings_res = self.settings.validate_in(&mut validation_info, self, "settings");
+
+        validation_info.info(super::ValidationMessage {
+            path: vec![],
+            message: format!("Validation ended at {}", chrono::Utc::now()),
+        });
+
+        validation_info.print_messages();
+        battle_res
+            && chat_res
+            && factory_res
+            && settings_res
+            && validation_info.is_ok()
     }
 }
 

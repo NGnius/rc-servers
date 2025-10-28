@@ -6,6 +6,14 @@ pub struct FactoryConfig {
     pub adapter: AdapterSettings,
 }
 
+impl super::config::SelfValidator for FactoryConfig {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, _info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        // TODO
+        true
+    }
+}
+
 fn default_variant() -> AdapterSettings {
     AdapterSettings::None
 }

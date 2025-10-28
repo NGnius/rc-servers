@@ -27,6 +27,28 @@ impl SingleplayerConfig {
     }
 }
 
+impl super::config::SelfValidator for SingleplayerConfig {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        //let mut is_ok = true;
+        // TODO campaigns
+        // TODO vehicles
+        if self.max_teammates == 0 {
+            info.warn(super::config::ValidationMessage {
+                path: vec!["max_teammates".to_owned()],
+                message: "Player's team may be lonely with zero teammates".to_owned(),
+            });
+        }
+        if self.max_enemies == 0 {
+            info.warn(super::config::ValidationMessage {
+                path: vec!["max_enemies".to_owned()],
+                message: "Singleplayer game may be boring with zero enemies".to_owned(),
+            });
+        }
+        true
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Campaign {
     pub id: String,

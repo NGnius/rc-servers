@@ -18,6 +18,18 @@ async fn index() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let cli_args = cli::CliArgs::get();
+
+    if cli_args.validate {
+        let conf = oj_rc_core::ConfigImpl::load(cli_args.assets_robocraft)?;
+        let res = if conf.self_validate(&cli_args.data_robocraft) {
+            log::info!("Config validated successfully (exit success)");
+            Ok(())
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Config failed validation (exit failure)"))
+        };
+        return res;
+    }
+
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
     let rc_preloaded = actix_web::web::Data::new(cli_args.clone().preloaded().await);
     let internal_auth = actix_web::web::Data::new(crate::robocraft::intercom::IntercomAuth::new(&cli_args.data_robocraft)?);

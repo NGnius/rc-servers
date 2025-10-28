@@ -13,6 +13,14 @@ pub struct ChatConfig {
     pub can_create_channels: bool,
 }
 
+impl super::config::SelfValidator for ChatConfig {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, _info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        // TODO
+        true
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ChatCommand {
     pub regex: String,

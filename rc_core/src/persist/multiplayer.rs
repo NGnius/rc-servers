@@ -16,6 +16,45 @@ pub struct MultiplayerConfig {
     pub team_death_match: TeamDeathMatchConfig,
 }
 
+impl super::config::SelfValidator for MultiplayerConfig {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        let mut is_ok = true;
+        if !self.enabled {
+            info.info(super::config::ValidationMessage {
+                path: vec!["enabled".to_owned()],
+                message: "Multiplayer is disabled so validation is skipped".to_owned(),
+            });
+            return true;
+        }
+        if self.players_per_game == 0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["players_per_game".to_owned()],
+                message: "Game match must have at least one player to start".to_owned(),
+            });
+            is_ok = false;
+        } else if self.players_per_game == 1 {
+            if self.fakes.iter().any(|fake| fake.team != 0 && matches!(fake.implementation, ClientEmulation::ClientAI)) {
+                info.error(crate::persist::config::ValidationMessage {
+                    path: vec!["players_per_game".to_owned()],
+                    message: "Game match cannot have enemy ClientAI fakes when there are no real enemies".to_owned(),
+                });
+                is_ok = false;
+            } else {
+                info.warn(super::config::ValidationMessage {
+                    path: vec!["players_per_game".to_owned()],
+                    message: "Game match may be lonely with only one player".to_owned(),
+                });
+            }
+
+        }
+        // TODO campaigns
+        // TODO vehicles
+        // TODO
+        is_ok
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NetworkConf {
     pub network_channel_ty: String,

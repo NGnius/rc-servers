@@ -20,6 +20,22 @@ pub struct BattleConfig {
     pub energy: EnergyConfig,
 }
 
+impl super::config::SelfValidator for BattleConfig {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
+        let mut is_ok = true;
+        // TODO regen
+        // TODO votes
+        // TODO games
+        is_ok &= self.singleplayer.validate_in(info, ctx, "singleplayer");
+        is_ok &= self.rotation.validate_in(info, ctx, "rotation");
+        // TODO multiplayer
+        // TODO maps
+        // TODO energy
+        is_ok
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AutoRegenHealth {
     pub wait_for_heal_s: f32,
@@ -117,6 +133,18 @@ pub struct GameEventSequence {
     pub modes: Vec<GameEvents>,
 }
 
+impl super::config::SelfValidator for GameEventSequence {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
+        // TODO
+        let mut is_ok = true;
+        for (i, mode) in self.modes.iter().enumerate() {
+            is_ok &= mode.validate_in(info, ctx, &format!("modes[{}]", i));
+        }
+        is_ok
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub enum GameRotationStrategy {
     Sequence,
@@ -137,6 +165,28 @@ pub struct GameEvents {
     pub singleplayer: GameEvent,
     pub multiplayer: GameEvent,
     pub duration_s: u64, // seconds
+}
+
+impl super::config::SelfValidator for GameEvents {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        // TODO
+        let mut is_ok = true;
+        if !matches!(self.singleplayer.mode, GameType::SuddenDeath) {
+            info.warn(crate::persist::config::ValidationMessage {
+                path: vec!["singleplayer".to_owned(), "mode".to_owned()],
+                message: format!("Singleplayer game mode {:?} will be overidden by the client", self.singleplayer.mode),
+            });
+        }
+        if self.duration_s == 0 {
+            info.error(crate::persist::config::ValidationMessage {
+                path: vec!["duration_s".to_owned()],
+                message: "Duration cannot be zero".to_owned(),
+            });
+            is_ok = false;
+        }
+        is_ok
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

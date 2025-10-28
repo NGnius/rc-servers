@@ -12,6 +12,14 @@ pub struct Settings {
     pub server: ServerSettings,
 }
 
+impl super::config::SelfValidator for Settings {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, _info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        // TODO
+        true
+    }
+}
+
 fn default_gameplay_settings() -> super::GameplaySettings {
     super::GameplaySettings {
         show_tutorial_after_date: "2030-01-01".to_owned(),

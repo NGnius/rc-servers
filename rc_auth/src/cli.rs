@@ -18,6 +18,10 @@ pub struct CliArgs {
     /// User data root
     #[arg(long, default_value_t = {"../data/robocraft".to_string()})]
     pub data_robocraft: String,
+
+    /// Verify configuration and then exit
+    #[arg(long)]
+    pub validate: bool,
 }
 
 impl CliArgs {
