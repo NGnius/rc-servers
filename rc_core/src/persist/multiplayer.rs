@@ -120,7 +120,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             implementation: ClientEmulation::Experimental,
         },
         FakePlayerConf {
-            team: 0,
+            team: 1,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake1".to_owned()),
                 username: "Server1".to_owned(),
@@ -132,7 +132,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             implementation: ClientEmulation::ClientAI,
         },
         FakePlayerConf {
-            team: 1,
+            team: 2,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake2".to_owned()),
                 username: "Server2".to_owned(),

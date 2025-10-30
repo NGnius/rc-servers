@@ -28,7 +28,7 @@ impl super::config::SelfValidator for BattleConfig {
         // TODO votes
         // TODO games
         is_ok &= self.singleplayer.validate_in(info, ctx, "singleplayer");
-        is_ok &= self.rotation.validate_in(info, ctx, "rotation");
+        is_ok &= self.rotation.validate_in(info, self, "rotation");
         // TODO multiplayer
         // TODO maps
         // TODO energy
@@ -134,7 +134,7 @@ pub struct GameEventSequence {
 }
 
 impl super::config::SelfValidator for GameEventSequence {
-    type Context = crate::ConfigImpl;
+    type Context = BattleConfig;
     fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
         // TODO
         let mut is_ok = true;
@@ -168,11 +168,11 @@ pub struct GameEvents {
 }
 
 impl super::config::SelfValidator for GameEvents {
-    type Context = crate::ConfigImpl;
-    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+    type Context = BattleConfig;
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
         // TODO
         let mut is_ok = true;
-        if !matches!(self.singleplayer.mode, GameType::SuddenDeath) {
+        if !matches!(self.singleplayer.mode, GameType::SuddenDeath | GameType::SinglePlayer) {
             info.warn(crate::persist::config::ValidationMessage {
                 path: vec!["singleplayer".to_owned(), "mode".to_owned()],
                 message: format!("Singleplayer game mode {:?} will be overidden by the client", self.singleplayer.mode),
@@ -184,6 +184,23 @@ impl super::config::SelfValidator for GameEvents {
                 message: "Duration cannot be zero".to_owned(),
             });
             is_ok = false;
+        }
+        if matches!(self.multiplayer.mode, GameType::Pit) {
+            if ctx.multiplayer.fakes.iter().any(|f| (f.team as usize) < ctx.multiplayer.players_per_game)
+                || ctx.multiplayer.fakes.iter().enumerate()
+                    .any(|(i, f)| ctx.multiplayer.fakes.iter().enumerate()
+                        .any(|(i2, f2)| i != i2 && f.team == f2.team)) {
+                info.warn(crate::persist::config::ValidationMessage {
+                    path: vec!["multiplayer".to_owned(), "mode".to_owned()],
+                    message: format!("Multiplayer game mode {:?} does not work well with more than one player per team", self.multiplayer.mode),
+                });
+            }
+            if ctx.multiplayer.fakes.iter().any(|f| matches!(f.implementation, super::multiplayer::ClientEmulation::ClientAI)) {
+                info.warn(crate::persist::config::ValidationMessage {
+                    path: vec!["multiplayer".to_owned(), "mode".to_owned()],
+                    message: format!("Multiplayer game mode {:?} does not work well with client-side AI", self.multiplayer.mode),
+                });
+            }
         }
         is_ok
     }
@@ -428,7 +445,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::TeamDeathmatch,
+                    mode: GameType::Pit,
                     auto_heal: true,
                 },
                 duration_s: 5*60, // 5 minutes

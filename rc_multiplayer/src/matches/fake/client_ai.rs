@@ -30,29 +30,56 @@ impl ClientAIPlayer {
 #[async_trait::async_trait]
 impl super::FakeUser for ClientAIPlayer {
     async fn on_init(&self, descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], player_id: u8) {
-        let first_fake_i = descriptors.iter()
-            .filter(|x| x.team == self.me.team)
-            .enumerate()
-            .find(|x| x.1.mode.is_some())
-            .map(|(i, _)| i)
-            .unwrap();
-        let my_i = descriptors.iter()
-            .enumerate()
-            .find(|x| x.1.player_id == player_id)
-            .map(|(i, _)| i)
-            .unwrap();
         let real_teammates_count = descriptors.iter()
             .filter(|x| x.team == self.me.team && x.mode.is_none())
             .count();
-        let my_offset = (my_i - first_fake_i) % real_teammates_count;
-        for (i, teammate) in descriptors.iter().filter(|x| x.team == self.me.team && x.mode.is_none()).enumerate() {
-            if i >= my_offset {
-                self.set_assigned_to(Some(teammate.player_id));
-                break;
+        if real_teammates_count == 0 {
+                let real_players_count = descriptors.iter()
+                    .filter(|x| x.mode.is_none())
+                    .count();
+                let first_fake_i = descriptors.iter()
+                    .enumerate()
+                    .find(|x| x.1.mode.is_some())
+                    .map(|(i, _)| i)
+                    .unwrap();
+                let my_i = descriptors.iter()
+                    .enumerate()
+                    .find(|x| x.1.player_id == player_id)
+                    .map(|(i, _)| i)
+                    .unwrap();
+                let my_offset = (my_i - first_fake_i) % real_players_count;
+                for (i, teammate) in descriptors.iter().filter(|x| x.mode.is_none()).enumerate() {
+                    if i >= my_offset {
+                        self.set_assigned_to(Some(teammate.player_id));
+                        break;
+                    }
+                }
+                if self.assigned_to_player_id().is_none() {
+                    log::warn!("Failed to assign client AI player {} to a real client; offset:{}, first_fake:{}, reals:{}, me:{}", player_id, my_offset, first_fake_i, real_teammates_count, my_i);
+                }
+        } else {
+            let first_fake_i = descriptors.iter()
+                .filter(|x| x.team == self.me.team)
+                .enumerate()
+                .find(|x| x.1.mode.is_some())
+                .map(|(i, _)| i)
+                .unwrap();
+            let my_i = descriptors.iter()
+                .filter(|x| x.team == self.me.team)
+                .enumerate()
+                .find(|x| x.1.player_id == player_id)
+                .map(|(i, _)| i)
+                .unwrap();
+            let my_offset = (my_i - first_fake_i) % real_teammates_count;
+            for (i, teammate) in descriptors.iter().filter(|x| x.team == self.me.team && x.mode.is_none()).enumerate() {
+                if i >= my_offset {
+                    self.set_assigned_to(Some(teammate.player_id));
+                    break;
+                }
             }
-        }
-        if self.assigned_to_player_id().is_none() {
-            log::warn!("Failed to assign client AI player {} to a real client; offset:{}, first_fake:{}, reals:{}, me:{}", player_id, my_offset, first_fake_i, real_teammates_count, my_i);
+            if self.assigned_to_player_id().is_none() {
+                log::warn!("Failed to assign client AI player {} to a real client; offset:{}, first_fake:{}, reals:{}, me:{}", player_id, my_offset, first_fake_i, real_teammates_count, my_i);
+            }
         }
     }
 

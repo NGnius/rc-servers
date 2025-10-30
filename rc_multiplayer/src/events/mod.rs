@@ -197,6 +197,10 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             {literustlib::packet::Property::ReliableOrdered as u8},
             rlnl::events::ingame::AwardProtoniumDestroyedCubes,
         >::handler(init_ctx))
+        .add(crate::handlers::Stub::<
+            {rlnl::event_code::NetworkEvent::ProtectTeamMateBonusRequest as i16},
+            rlnl::events::ingame::DestroyedHealedCubesBonus,
+        >::handler(init_ctx))
         .add(player_leave::handler(init_ctx))
 }
 
