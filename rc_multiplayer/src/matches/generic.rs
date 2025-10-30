@@ -705,7 +705,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         let mut ready_count = 0;
         for (player_id, user) in self.users.read().await.iter() {
             let user_desc = self.user_descriptor(*player_id).unwrap();
-            if user.user.user_id() == user_id {
+            if user.aliases.contains(player_id) { continue; }
+            if user.user.user_id() == user_id  {
                 if !matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Loading | ConnectionMode::Disconnected) {
                     log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
                     continue;
@@ -718,6 +719,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             }
         }
         let player_count = self.real_player_count();
+        log::info!("Real players {}, ready players {}", player_count, ready_count);
         if ready_count == player_count {
             log::info!("All players ({}) awaiting sync for game {}", player_count, self.game_guid());
             for (user_key, conn) in self.users.read().await.iter() {
