@@ -1,5 +1,24 @@
 use super::account_json::UserData;
 
+pub enum TeamChooser {
+    /// Alternating between team 0 and team 1
+    Alternating,
+    /// All players will be put on the specified team
+    AllOn(u8),
+    /// Each player will be put on their own team (like in Pit mode)
+    OnePer,
+}
+
+impl TeamChooser {
+    pub fn team(&self, index: usize) -> i32 {
+        match self {
+            Self::Alternating => (index % 2) as i32,
+            Self::AllOn(team) => *team as i32,
+            Self::OnePer => index as i32,
+        }
+    }
+}
+
 fn fake_impl_to_db(client_emu: &crate::persist::config::ClientEmulator) -> oj_rc_database::schema::multiplayer_game_player::ClientType {
     match client_emu {
         crate::persist::config::ClientEmulator::Experiment => oj_rc_database::schema::multiplayer_game_player::ClientType::ServerExperimental,
@@ -24,7 +43,22 @@ impl super::LobbyUser for UserData {
         })
     }
 
-    async fn start_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
+    async fn team_chooser(&self, game: &super::GameDescriptor) -> TeamChooser {
+        match game.mode {
+            crate::data::game_mode::GameMode::Pit => TeamChooser::OnePer,
+            _ => TeamChooser::Alternating,
+        }
+    }
+
+    async fn start_game(
+        &self,
+        game: super::GameDescriptor,
+        players: Vec<super::PlayerLobbyDescriptor>,
+        factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
+        cpu_counter: &crate::cubes::CpuListParser,
+        weapon_lister: &crate::cubes::WeaponListParser,
+        chooser: &TeamChooser,
+    ) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
         let guid = crate::persist::user::str_to_i64(&game.guid)
             .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
@@ -39,7 +73,7 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let fake_players = self.generate_fake_players_data(guid, factory, cpu_counter, weapon_lister).await?;
+        let fake_players = self.generate_fake_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,

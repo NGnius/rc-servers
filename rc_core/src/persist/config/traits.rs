@@ -378,7 +378,7 @@ pub struct LinksConfig {
 
 #[derive(Clone, Debug)]
 pub struct FakePlayer {
-    pub team: u8,
+    pub team: Option<u8>,
     pub vehicle: VehicleInfo,
     pub implementation: ClientEmulator,
 }

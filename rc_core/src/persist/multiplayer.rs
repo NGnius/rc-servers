@@ -34,19 +34,10 @@ impl super::config::SelfValidator for MultiplayerConfig {
             });
             is_ok = false;
         } else if self.players_per_game == 1 {
-            if self.fakes.iter().any(|fake| fake.team != 0 && matches!(fake.implementation, ClientEmulation::ClientAI)) {
-                info.error(crate::persist::config::ValidationMessage {
-                    path: vec!["players_per_game".to_owned()],
-                    message: "Game match cannot have enemy ClientAI fakes when there are no real enemies".to_owned(),
-                });
-                is_ok = false;
-            } else {
-                info.warn(super::config::ValidationMessage {
-                    path: vec!["players_per_game".to_owned()],
-                    message: "Game match may be lonely with only one player".to_owned(),
-                });
-            }
-
+            info.warn(super::config::ValidationMessage {
+                path: vec!["players_per_game".to_owned()],
+                message: "Game match may be lonely with only one player".to_owned(),
+            });
         }
         // TODO campaigns
         // TODO vehicles
@@ -97,7 +88,7 @@ pub(super) fn default_net_conf() -> NetworkConf {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FakePlayerConf {
-    pub team: u8,
+    pub team: Option<u8>,
     #[serde(flatten)]
     pub vehicle: super::garage::PrefabVehicle,
     #[serde(flatten)]
@@ -105,10 +96,10 @@ pub struct FakePlayerConf {
 }
 
 pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
-    Vec::default()
-    /*vec![
-        FakePlayerConf {
-            team: 1,
+    //Vec::default()
+    vec![
+        /*FakePlayerConf {
+            team: Some(1),
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake0".to_owned()),
                 username: "Server0".to_owned(),
@@ -118,9 +109,9 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
                 },
             },
             implementation: ClientEmulation::Experimental,
-        },
+        },*/
         FakePlayerConf {
-            team: 1,
+            team: None,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake1".to_owned()),
                 username: "Server1".to_owned(),
@@ -132,7 +123,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             implementation: ClientEmulation::ClientAI,
         },
         FakePlayerConf {
-            team: 2,
+            team: None,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake2".to_owned()),
                 username: "Server2".to_owned(),
@@ -143,7 +134,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             },
             implementation: ClientEmulation::ClientAI,
         },
-    ]*/
+    ]
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

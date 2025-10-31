@@ -186,7 +186,7 @@ impl super::config::SelfValidator for GameEvents {
             is_ok = false;
         }
         if matches!(self.multiplayer.mode, GameType::Pit) {
-            if ctx.multiplayer.fakes.iter().any(|f| (f.team as usize) < ctx.multiplayer.players_per_game)
+            if ctx.multiplayer.fakes.iter().any(|f| f.team.is_some_and(|t| (t as usize) < ctx.multiplayer.players_per_game))
                 || ctx.multiplayer.fakes.iter().enumerate()
                     .any(|(i, f)| ctx.multiplayer.fakes.iter().enumerate()
                         .any(|(i2, f2)| i != i2 && f.team == f2.team)) {

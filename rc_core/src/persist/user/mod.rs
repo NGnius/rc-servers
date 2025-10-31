@@ -18,6 +18,7 @@ pub use intercom::generate_token as generate_intercom_token;
 
 mod multiplayer;
 mod lobby;
+pub use lobby::TeamChooser;
 mod common;
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";

@@ -9,8 +9,17 @@ fn db_to_impl(client_emu: &oj_rc_database::schema::multiplayer_game_player::Clie
 }
 
 impl UserData {
-    pub(super) async fn generate_fake_players_data(&self, _guid: i64, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+    pub(super) async fn generate_fake_players_data(
+        &self,
+        _guid: i64,
+        real_players: &Vec<super::PlayerLobbyDescriptor>,
+        factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
+        cpu_counter: &crate::cubes::CpuListParser,
+        weapon_lister: &crate::cubes::WeaponListParser,
+        chooser: &super::TeamChooser,
+    ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
         let mut fakes = Vec::with_capacity(self.fake_players.len());
+        let mut fake_i = real_players.len();
         for fake in self.fake_players.iter() {
             let vehicle = self.resolve_vehicle(&fake.vehicle, factory, weapon_lister, cpu_counter).await?;
             let out = (
@@ -22,7 +31,12 @@ impl UserData {
                     robot_name: vehicle.robot_name,
                     robot_map: vehicle.robot_map,
                     group: None,
-                    team: fake.team as _,
+                    team: fake.team.map(|t| t as i32)
+                        .unwrap_or_else(|| {
+                            let assigned_team = chooser.team(fake_i);
+                            fake_i += 1;
+                            assigned_team
+                        }),
                     has_premium: true,
                     robot_uuid: vehicle.robot_uuid,
                     cpu: vehicle.cpu,

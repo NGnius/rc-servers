@@ -68,20 +68,6 @@ impl QueueHandler {
         chrono::Utc::now().timestamp_micros().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
         let guid_str = oj_rc_core::persist::user::i64_as_uuid_str(guid);
-        let team_picker = match key.mode {
-            oj_rc_core::data::game_mode::GameMode::Pit => |i| i as i32, // each player is on a different team
-            _ => |i| (i % 2) as i32, // alternate teams
-        };
-        for (i, player) in players.iter_mut().enumerate() {
-            player.player.team = team_picker(i);
-        }
-        let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
-            user_id: x.user_id,
-            team: x.player.team,
-            group: None, // TODO support platoons
-            public_id: x.player.name.clone(),
-            display_name: x.player.display_name.clone(),
-        }).collect();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
             map: key.map.clone(),
@@ -92,7 +78,23 @@ impl QueueHandler {
             is_custom: false,
             is_complete: false,
         };
-        match user.start_game(game_desc, player_descs, self.factory.as_ref(), &self.cpu_counter, &self.weapon_guesser).await {
+        let team_picker = user.team_chooser(&game_desc).await;
+        /*let team_picker = match key.mode {
+            oj_rc_core::data::game_mode::GameMode::Pit => |i| i as i32, // each player is on a different team
+            _ => |i| (i % 2) as i32, // alternate teams
+        };*/
+        for (i, player) in players.iter_mut().enumerate() {
+            player.player.team = team_picker.team(i);
+        }
+        let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
+            user_id: x.user_id,
+            team: x.player.team,
+            group: None, // TODO support platoons
+            public_id: x.player.name.clone(),
+            display_name: x.player.display_name.clone(),
+        }).collect();
+
+        match user.start_game(game_desc, player_descs, self.factory.as_ref(), &self.cpu_counter, &self.weapon_guesser, &team_picker).await {
             Ok(fakes) => {
                 let player_datas = players.iter().map(|x| x.player.clone())
                     .chain(fakes.players.into_iter().map(|(desc, _emu)| desc))
