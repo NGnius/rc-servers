@@ -192,13 +192,20 @@ impl super::config::SelfValidator for GameEvents {
                         .any(|(i2, f2)| i != i2 && f.team == f2.team)) {
                 info.warn(crate::persist::config::ValidationMessage {
                     path: vec!["multiplayer".to_owned(), "mode".to_owned()],
-                    message: format!("Multiplayer game mode {:?} does not work well with more than one player per team", self.multiplayer.mode),
+                    message: format!("Multiplayer game mode {:?} does not work well with more than one (fake) player per team", self.multiplayer.mode),
                 });
             }
             if ctx.multiplayer.fakes.iter().any(|f| matches!(f.implementation, super::multiplayer::ClientEmulation::ClientAI)) {
                 info.warn(crate::persist::config::ValidationMessage {
                     path: vec!["multiplayer".to_owned(), "mode".to_owned()],
                     message: format!("Multiplayer game mode {:?} does not work well with client-side AI", self.multiplayer.mode),
+                });
+            }
+        } else {
+            if ctx.multiplayer.fakes.iter().any(|f| f.team.is_some_and(|t| t > 1)) {
+                info.warn(crate::persist::config::ValidationMessage {
+                    path: vec!["multiplayer".to_owned(), "mode".to_owned()],
+                    message: format!("Multiplayer game mode {:?} does not work well with (fake) players split between more than 2 teams", self.multiplayer.mode),
                 });
             }
         }
