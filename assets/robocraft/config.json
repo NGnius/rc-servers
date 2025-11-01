@@ -14492,6 +14492,14 @@
                 "permission": "Developer"
             },
             {
+                "regex": "\\?stats?",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Stats"
+                },
+                "permission": "Player"
+            },
+            {
                 "regex": "\\?broadcast",
                 "op": {
                     "type": "BuiltIn",

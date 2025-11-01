@@ -117,6 +117,7 @@ pub enum BuiltInChatOperation {
     Intercom(IntercomChatOperation),
     OnlineUsers,
     TotalUsers,
+    Stats,
     Version,
     Help,
 }

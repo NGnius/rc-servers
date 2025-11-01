@@ -117,6 +117,7 @@ enum BuiltIn {
     Intercom(Intercom),
     OnlineUsers,
     TotalUsers,
+    Stats,
     Version,
     Help,
 }
@@ -127,6 +128,7 @@ impl BuiltIn {
             oj_rc_core::persist::BuiltInChatOperation::Intercom(com) => Self::Intercom(Intercom::from_persist(com)),
             oj_rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
             oj_rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
+            oj_rc_core::persist::BuiltInChatOperation::Stats => Self::Stats,
             oj_rc_core::persist::BuiltInChatOperation::Version => Self::Version,
             oj_rc_core::persist::BuiltInChatOperation::Help => Self::Help,
         }
@@ -156,6 +158,53 @@ impl BuiltIn {
                     },
                     Err(e) => e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to retrieve registered users".to_owned()),
                 }
+            },
+            Self::Stats => {
+                let mut stats = Vec::new();
+                for variant in text.trim().split(' ').skip(1) {
+                    match variant {
+                        "db" | "database" => {
+                            let db_stats = format!("(chat db) {}", ctx.user.db_metrics().await);
+                            stats.push(db_stats);
+                        },
+                        "perms" | "permission" | "permissions" => {
+                            let com_stats = format!("(perms {}) mod:{} admin:{} dev:{} banned:{} royal:{}",
+                                                    ctx.user.public_id(),
+                                                    ctx.user.is_mod(),
+                                                    ctx.user.is_admin(),
+                                                    ctx.user.is_dev(),
+                                                    ctx.user.is_banned(),
+                                                    ctx.user.is_royal(),
+                                                    );
+                            stats.push(com_stats);
+                        },
+                        "up" | "uptime" => {
+                            let now = chrono::Utc::now().timestamp();
+                            let startup_timestamp = crate::START_TIMESTAMP_S.load(std::sync::atomic::Ordering::Relaxed);
+                            let uptime_delta = now - startup_timestamp;
+                            let uptime_str = if uptime_delta <= 0 {
+                                "0?".to_owned()
+                            } else if uptime_delta < 60 {
+                                format!("{}s", uptime_delta)
+                            } else if uptime_delta < 24 * 60 * 60 {
+                                format!("{}:{:02}", uptime_delta / (60 * 60), (uptime_delta % (60 * 60)) / 60)
+                            } else {
+                                format!("{} days {}:{:02}", uptime_delta / (24 * 60 * 60), (uptime_delta % (24 * 60 * 60)) / (60 * 60), ((uptime_delta % (24 * 60 * 60)) % (60 * 60)) / 60)
+                            };
+                            let ready_ns = crate::READY_DURATION_NS.load(std::sync::atomic::Ordering::Relaxed);
+                            let uptime_stats = format!("(uptime) {}, startup in {}ns", uptime_str, ready_ns);
+                            stats.push(uptime_stats);
+                        },
+                        idk => {
+                            let stat = format!("(unknown stat) {}", idk);
+                            stats.push(stat);
+                        }
+                    }
+                }
+                if stats.is_empty() {
+                    stats.push(format!("TODO: general stats (try db)"));
+                }
+                stats.join("\n")
             },
             Self::Version => {
                 let name = env!("CARGO_PKG_NAME");
@@ -189,6 +238,7 @@ impl BuiltIn {
             Self::Intercom(i) => i.do_help(),
             Self::OnlineUsers => "Show total users online".to_owned(),
             Self::TotalUsers => "Show total users registered".to_owned(),
+            Self::Stats => "Show server metrics (db|perms)".to_owned(),
             Self::Version => "Show chat server version information".to_owned(),
             Self::Help => "Display this message".to_owned(),
         }

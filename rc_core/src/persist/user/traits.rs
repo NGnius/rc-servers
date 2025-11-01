@@ -376,4 +376,5 @@ pub trait CommonUser: Send + Sync {
     fn is_dev(&self) -> bool;
     fn is_royal(&self) -> bool;
     fn is_banned(&self) -> bool;
+    async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
 }

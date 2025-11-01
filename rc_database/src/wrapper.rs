@@ -3,15 +3,19 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryF
 
 pub struct Database {
     orm: sea_orm::DatabaseConnection,
+    metrics: std::sync::Arc<std::sync::Mutex<super::metrics::MetricsState>>,
 }
 
 impl Database {
     pub async fn init(uri: &str) -> Result<Self, sea_orm::DbErr>{
-        let db = sea_orm::Database::connect(uri).await?;
+        let mut db = sea_orm::Database::connect(uri).await?;
+        let metrics_data = std::sync::Arc::new(std::sync::Mutex::new(super::metrics::MetricsState::new()));
+        db.set_metric_callback(super::metrics::metrics_cb(metrics_data.clone()));
         //let schema_manager = SchemaManager::new(&db);
         super::Migrator::up(&db, None).await?;
         Ok(Self {
             orm: db,
+            metrics: metrics_data,
         })
     }
 
@@ -422,5 +426,9 @@ impl Database {
 
     pub async fn insert_game_event(&self, entity: crate::schema::game_event::ActiveModel) -> Result<crate::schema::game_event::Model, sea_orm::DbErr> {
         entity.insert(&self.orm).await
+    }
+
+    pub async fn metrics(&self) -> super::DatabaseMetrics {
+        self.metrics.lock().unwrap().snapshot()
     }
 }

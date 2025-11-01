@@ -17,8 +17,13 @@ use polariton::operation::{OperationResponse, Typed};
 
 pub type UserTy = oj_rc_core::UserState;
 
+pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+pub static READY_DURATION_NS: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    let start_time = chrono::Utc::now();
+    START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);
     env_logger::init();
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
@@ -34,6 +39,9 @@ async fn main() -> std::io::Result<()> {
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
 
+    let ready_dur = chrono::Utc::now() - start_time;
+    READY_DURATION_NS.store(ready_dur.num_nanoseconds().unwrap_or(-1), std::sync::atomic::Ordering::Relaxed);
+    log::info!("chat_room ready");
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;

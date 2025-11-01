@@ -2583,6 +2583,7 @@ name = "oj_rc_chat_room"
 version = "0.5.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "clap",
  "env_logger",
  "git-version",
