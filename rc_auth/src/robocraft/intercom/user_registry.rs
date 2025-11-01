@@ -1,7 +1,5 @@
-use oj_rc_core::persist::user::intercom::IntercomWebServiceUserMessage;
-
 pub struct Users {
-    service_listeners: tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<IntercomWebServiceUserMessage>>>,
+    service_listeners: tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::IntercomOp>>>,
 }
 
 impl Users {
@@ -11,11 +9,12 @@ impl Users {
         }
     }
 
-    pub async fn register_service(&self, public_id: String, sender: tokio::sync::mpsc::Sender<IntercomWebServiceUserMessage>) {
+    pub(super) async fn register_service(&self, public_id: String, sender: tokio::sync::mpsc::Sender<super::IntercomOp>) {
         let mut write_lock = self.service_listeners.write().await;
         if let Some(old_sender) = write_lock.insert(public_id.clone(), sender) {
             if !old_sender.is_closed() {
                 log::warn!("Replaced web services intercom channel for user {} (why duplicate!?)", public_id);
+                old_sender.send(super::IntercomOp::Info(super::IntercomInfo::Close)).await.unwrap_or_default()
             }
         }
     }
@@ -29,13 +28,22 @@ impl Users {
 
     pub async fn broadcast_service_message(&self, msg: oj_rc_core::persist::user::intercom::IntercomWebServiceMessage) {
         let read_lock = self.service_listeners.read().await;
-        for public_id in msg.public_ids {
-            if let Some(tx) = read_lock.get(&public_id) {
-                if let Err(e) = tx.send(msg.data.clone()).await {
+        if msg.everyone {
+            if !msg.public_ids.is_empty() { return; } // invalid
+            for (public_id, tx) in read_lock.iter() {
+                if let Err(e) = tx.send(super::IntercomOp::Message(msg.data.clone())).await {
                     log::error!("Failed to send web service intercom message to {}: {}", public_id, e);
                 }
-            } else {
-                log::warn!("Not sending web service intercom message to user {}; no listener found", public_id);
+            }
+        } else {
+            for public_id in msg.public_ids {
+                if let Some(tx) = read_lock.get(&public_id) {
+                    if let Err(e) = tx.send(super::IntercomOp::Message(msg.data.clone())).await {
+                        log::error!("Failed to send web service intercom message to {}: {}", public_id, e);
+                    }
+                } else {
+                    log::warn!("Not sending web service intercom message to user {}; no listener found", public_id);
+                }
             }
         }
     }

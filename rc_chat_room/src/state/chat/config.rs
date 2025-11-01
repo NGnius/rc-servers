@@ -55,19 +55,26 @@ impl ChatSystemConfig {
 pub struct ChatCommand {
     regex: regex::Regex,
     op: ChatOperation,
+    perms: ExecutePermission,
 }
 
 impl ChatCommand {
     fn compile_command(command: oj_rc_core::persist::ChatCommand) -> Result<Self, regex::Error> {
         Ok(Self {
             regex: regex::RegexBuilder::new(&command.regex).build()?,
-            op: ChatOperation::from_persist(command.op)
+            op: ChatOperation::from_persist(command.op),
+            perms: ExecutePermission::from_persist(command.permission),
         })
     }
 
     async fn perform_if_match<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> Option<String> {
         if let Some(cap) = self.regex.captures(text) {
-            Some(self.op.perform_command(text, cap, ctx).await)
+            if self.perms.has_perms(ctx.user) {
+                Some(self.op.perform_command(text, cap, ctx).await)
+            } else {
+                log::warn!("User {} tried to run command {} without sufficient permissions", ctx.user.public_id(), self.regex);
+                None
+            }
         } else {
             None
         }
@@ -161,12 +168,15 @@ impl BuiltIn {
             }
             Self::Help => {
                 use core::fmt::Write;
+                let force_all = text.trim().split(' ').any(|word| word == "--all");
                 let mut msg = String::new();
                 for command in ctx.chat_system.chat_config().commands.iter() {
-                    let raw_re = command.regex.to_string();
-                    let pretty_name = Self::prettify_re(&raw_re);
-                    if let Err(e) = write!(msg, "\n{}: {}", pretty_name, command.op.help_str()) {
-                        log::warn!("Failed to construct help for command `{}`: {}", pretty_name, e);
+                    if command.perms.has_perms(ctx.user) || force_all {
+                        let raw_re = command.regex.to_string();
+                        let pretty_name = Self::prettify_re(&raw_re);
+                        if let Err(e) = write!(msg, "\n{}: {}", pretty_name, command.op.help_str()) {
+                            log::warn!("Failed to construct help for command `{}`: {}", pretty_name, e);
+                        }
                     }
                 }
                 msg
@@ -187,12 +197,16 @@ impl BuiltIn {
 
 enum Intercom {
     DevMessage,
+    DevBroadcast,
+    Maintenance,
 }
 
 impl Intercom {
     fn from_persist(intercom: oj_rc_core::persist::IntercomChatOperation) -> Self {
         match intercom {
             oj_rc_core::persist::IntercomChatOperation::DevMessage => Self::DevMessage,
+            oj_rc_core::persist::IntercomChatOperation::DevBroadcast => Self::DevBroadcast,
+            oj_rc_core::persist::IntercomChatOperation::Maintenance => Self::Maintenance,
         }
     }
 
@@ -208,6 +222,32 @@ impl Intercom {
                     vec![pub_id.to_owned()],
                 ).await;
                 format!("Sent dev message to {}", pub_id)
+            },
+            Self::DevBroadcast => {
+                if let Some(message) = text.trim().split_once(' ').map(|x| x.1.to_owned()) {
+                    ctx.user.show_dev_message(
+                        oj_rc_core::persist::user::intercom::IntercomDevMessage {
+                            message,
+                            duration: 60,
+                        },
+                        vec![],
+                    ).await;
+                    format!("Sent dev broadcast to everyone")
+                } else {
+                    format!("Missing dev message, did not send")
+                }
+            },
+            Self::Maintenance => {
+                if let Some(message) = text.trim().split_once(' ').map(|x| x.1.to_owned()) {
+                    ctx.user.enter_maintenance(
+                        oj_rc_core::persist::user::intercom::IntercomMaintenanceMessage { message },
+                        vec![],
+                    ).await;
+                    format!("Sent maintenance message")
+                } else {
+                    format!("Missing maintenance message, did not send")
+                }
+
             }
         }
 
@@ -216,6 +256,41 @@ impl Intercom {
     fn do_help(&self) -> String {
         match self {
             Self::DevMessage => "Show dev message to yourself".to_owned(),
+            Self::DevBroadcast => "Show dev message to everyone".to_owned(),
+            Self::Maintenance => "Broadcast maintenance mode to everyone".to_owned(),
+        }
+    }
+}
+
+enum ExecutePermission {
+    Player,
+    Moderator,
+    Administrator,
+    Developer,
+    Royal,
+    None,
+}
+
+impl ExecutePermission {
+    fn from_persist(perm: oj_rc_core::persist::ChatPermission) -> Self {
+        match perm {
+            oj_rc_core::persist::ChatPermission::Player => Self::Player,
+            oj_rc_core::persist::ChatPermission::Moderator => Self::Moderator,
+            oj_rc_core::persist::ChatPermission::Administrator => Self::Administrator,
+            oj_rc_core::persist::ChatPermission::Developer => Self::Developer,
+            oj_rc_core::persist::ChatPermission::Royal => Self::Royal,
+            oj_rc_core::persist::ChatPermission::None => Self::None,
+        }
+    }
+
+    fn has_perms(&self, user: &dyn oj_rc_core::persist::user::CommonUser) -> bool {
+        match self {
+            Self::Player => true,
+            Self::Moderator => user.is_mod() || user.is_admin() || user.is_dev() || user.is_royal(),
+            Self::Administrator => user.is_admin() || user.is_dev() || user.is_royal(),
+            Self::Developer => user.is_dev() || user.is_royal(),
+            Self::Royal => user.is_royal(),
+            Self::None => false,
         }
     }
 }

@@ -18,13 +18,29 @@ pub async fn services_ws(req: HttpRequest, stream: Payload, auth: Data<super::In
 
     // start task but don't wait for it
     rt::spawn(async move {
-        while let Some(msg) = rx.recv().await {
-            if let Err(e) = session.text(serde_json::to_string(&msg).unwrap()).await {
-                log::warn!("Failed to send services intercom to user {}: {}", name, e);
-                break;
+        let mut is_ok = false;
+        while let Some(op) = rx.recv().await {
+            match op {
+                super::IntercomOp::Message(msg) => {
+                    if let Err(e) = session.text(serde_json::to_string(&msg).unwrap()).await {
+                        log::warn!("Failed to send services intercom to user {}: {}", name, e);
+                        break;
+                    }
+                },
+                super::IntercomOp::Info(info) => {
+                    match info {
+                        super::IntercomInfo::Close => {
+                            is_ok = true;
+                            break;
+                        },
+                    }
+                }
             }
+
         }
-        reg.remove_service(name.clone()).await;
+        if !is_ok {
+            reg.remove_service(name.clone()).await;
+        }
         rx.close();
         session.close(Some(actix_ws::CloseReason {
             code: actix_ws::CloseCode::Normal,

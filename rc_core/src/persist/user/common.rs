@@ -18,6 +18,10 @@ impl super::CommonUser for UserData {
         self.perms.developer
     }
 
+    fn is_royal(&self) -> bool {
+        self.perms.royalty
+    }
+
     fn is_banned(&self) -> bool {
         self.perms.banned
     }

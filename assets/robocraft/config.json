@@ -14454,21 +14454,24 @@
                 "op": {
                     "type": "BuiltIn",
                     "built_in": "OnlineUsers"
-                }
+                },
+                "permission": "Player"
             },
             {
                 "regex": "\\?users",
                 "op": {
                     "type": "BuiltIn",
                     "built_in": "TotalUsers"
-                }
+                },
+                "permission": "Player"
             },
             {
                 "regex": "\\?version",
                 "op": {
                     "type": "BuiltIn",
                     "built_in": "Version"
-                }
+                },
+                "permission": "Player"
             },
             {
                 "regex": "\\?banner",
@@ -14476,14 +14479,34 @@
                     "type": "BuiltIn",
                     "built_in": "Intercom",
                     "intercom": "DevMessage"
-                }
+                },
+                "permission": "Player"
+            },
+            {
+                "regex": "\\?maintenance",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Intercom",
+                    "intercom": "Maintenance"
+                },
+                "permission": "Developer"
+            },
+            {
+                "regex": "\\?broadcast",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Intercom",
+                    "intercom": "DevBroadcast"
+                },
+                "permission": "Developer"
             },
             {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",
                     "built_in": "Help"
-                }
+                },
+                "permission": "Player"
             }
         ]
     },

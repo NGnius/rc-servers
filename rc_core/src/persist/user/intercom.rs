@@ -65,9 +65,22 @@ impl super::IntercomUser for super::account_json::UserData {
         let data = IntercomWebServiceMessage {
             public_ids: to,
             data: IntercomWebServiceUserMessage::DevMessage(msg),
+            everyone: false,
         };
         if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
             log::error!("Failed to send intercom dev message: {}", e);
+        }
+    }
+
+    async fn enter_maintenance(&self, msg: IntercomMaintenanceMessage, to: Vec<String>) {
+        let send_to_everyone = to.is_empty();
+        let data = IntercomWebServiceMessage {
+            public_ids: to,
+            data: IntercomWebServiceUserMessage::Maintenance(msg),
+            everyone: send_to_everyone,
+        };
+        if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
+            log::error!("Failed to send intercom maintenance mode message: {}", e);
         }
     }
 }
@@ -76,18 +89,25 @@ impl super::IntercomUser for super::account_json::UserData {
 pub struct IntercomWebServiceMessage {
     pub public_ids: Vec<String>,
     pub data: IntercomWebServiceUserMessage,
+    pub everyone: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type")]
 pub enum IntercomWebServiceUserMessage {
     DevMessage(IntercomDevMessage),
+    Maintenance(IntercomMaintenanceMessage),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IntercomDevMessage {
     pub message: String,
     pub duration: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IntercomMaintenanceMessage {
+    pub message: String,
 }
 
 pub fn generate_token(salt: &[u8], key: &[u8]) -> String {

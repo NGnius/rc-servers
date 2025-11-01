@@ -39,6 +39,12 @@ impl IntercomHandler {
                                 };
                                 emitter.emit(event);
                             },
+                            IntercomWebServiceUserMessage::Maintenance(msg) => {
+                                let event = super::MaintenanceMode {
+                                    message: msg.message,
+                                };
+                                emitter.emit(event);
+                            }
                         }
                     } else {
                         break;

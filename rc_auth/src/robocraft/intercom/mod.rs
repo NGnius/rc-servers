@@ -6,3 +6,12 @@ pub use services::{services_ws, service_msg};
 
 mod user_registry;
 pub use user_registry::Users;
+
+enum IntercomOp {
+    Message(oj_rc_core::persist::user::intercom::IntercomWebServiceUserMessage),
+    Info(IntercomInfo),
+}
+
+enum IntercomInfo {
+    Close,
+}

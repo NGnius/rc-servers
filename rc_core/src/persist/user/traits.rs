@@ -338,6 +338,7 @@ pub trait IntercomUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
     async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
+    async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);
 }
 
 pub struct IntercomListener<D: serde::de::DeserializeOwned> {
@@ -373,5 +374,6 @@ pub trait CommonUser: Send + Sync {
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
+    fn is_royal(&self) -> bool;
     fn is_banned(&self) -> bool;
 }
