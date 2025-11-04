@@ -26,3 +26,5 @@ rand.workspace = true
 literustlib_server = { version = "0.2" }
 literustlib = { version = "0.2" }
 rlnl = { version = "0.1", path = "../../rlnl" }
+
+oj_serdes.workspace = true

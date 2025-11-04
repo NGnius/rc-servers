@@ -2558,6 +2558,7 @@ dependencies = [
  "libfj",
  "log",
  "oj_rc_core",
+ "oj_serdes",
  "serde",
  "serde_json",
  "tokio",
@@ -2588,6 +2589,7 @@ dependencies = [
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "regex",
@@ -2612,6 +2614,7 @@ dependencies = [
  "num-quaternion",
  "oj_rc_database",
  "oj_rc_factory",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "rand 0.9.0",
@@ -2670,6 +2673,7 @@ dependencies = [
  "oj_polariton_auth",
  "oj_rc_core",
  "oj_rc_factory",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "tokio",
@@ -2702,6 +2706,7 @@ dependencies = [
  "log",
  "num-quaternion",
  "oj_rc_core",
+ "oj_serdes",
  "rand 0.9.0",
  "rlnl",
  "tokio",
@@ -2735,6 +2740,7 @@ dependencies = [
  "oj_polariton_auth",
  "oj_rc_core",
  "oj_rc_factory",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "rand 0.9.0",
@@ -2761,11 +2767,13 @@ name = "oj_rc_singleplayer_room"
 version = "0.5.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "clap",
  "env_logger",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "tokio",
@@ -2789,14 +2797,24 @@ name = "oj_rc_social_room"
 version = "0.5.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "clap",
  "env_logger",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
+ "oj_serdes",
  "polariton",
  "polariton_server",
  "tokio",
+]
+
+[[package]]
+name = "oj_serdes"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

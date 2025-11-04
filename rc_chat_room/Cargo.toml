@@ -22,3 +22,4 @@ regex = "1"
 async-trait.workspace = true
 git-version.workspace = true
 chrono.workspace = true
+oj_serdes.workspace = true

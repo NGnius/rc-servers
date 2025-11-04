@@ -10,7 +10,10 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = oj_rc_core::UserState<crate::data::custom::CustomType>;
+pub type UserTy = std::sync::Arc<oj_rc_core::UserState<crate::data::custom::CustomType>>;
+
+pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+pub static ONLINE_USERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -26,6 +29,9 @@ async fn main() -> std::io::Result<()> {
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;
+
+    let start_time = chrono::Utc::now();
+    START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);
 
     if args.once {
         log::warn!("Handling first connection and then exiting");
@@ -51,13 +57,18 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
+    ONLINE_USERS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
-    let user_state = oj_rc_core::UserState::<crate::data::custom::CustomType>::new(users, chann_tx.clone());
+    let user_state = std::sync::Arc::new(oj_rc_core::UserState::<crate::data::custom::CustomType>::new(users, chann_tx.clone()));
     let op_ctx = polariton::serdes::SerdesContext::<crate::data::custom::CustomType, crate::data::custom::CustomTypeSerdes>::default_const();
     let ctx = polariton::packet::SerdesContext::from_boxed(op_ctx, enc);
-    server.handle_async_with_channel(socket_r, socket_w, user_state, ctx, chann_tx, chann_rx).await;
+    server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
+    ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    if let Ok(user_info) = user_state.user() {
+        update_status(user_info.as_ref().as_ref()).await;
+    }
 }
 
 const APP_ID: &str = "SocialServer";
@@ -262,4 +273,15 @@ async fn do_connect_handshake(
     }
 
     Some(ctx.into_crypto())
+}
+
+pub async fn update_status(user_info: &dyn oj_rc_core::persist::user::IntercomUser) {
+    user_info.update_status(
+        env!("CARGO_PKG_NAME"),
+        oj_serdes::ServerStatus {
+            uptime_s: (chrono::Utc::now().timestamp() - crate::START_TIMESTAMP_S.load(std::sync::atomic::Ordering::Relaxed)).try_into().unwrap_or_default(),
+            players: ONLINE_USERS.load(std::sync::atomic::Ordering::SeqCst),
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+        },
+    ).await;
 }

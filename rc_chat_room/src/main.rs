@@ -15,10 +15,11 @@ use tokio::net;
 use polariton::packet::{Data, Message, Packet, StandardMessage};
 use polariton::operation::{OperationResponse, Typed};
 
-pub type UserTy = oj_rc_core::UserState;
+pub type UserTy = std::sync::Arc<oj_rc_core::UserState>;
 
 pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 pub static READY_DURATION_NS: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+pub static ONLINE_USERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -66,11 +67,16 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
+    ONLINE_USERS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
-    let user_state = oj_rc_core::UserState::<()>::new(users, chann_tx.clone());
+    let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(users, chann_tx.clone()));
     let (socket_r, socket_w) = socket.into_split();
-    server.handle_async_with_channel(socket_r, socket_w, user_state, polariton::packet::SerdesContext::from_boxed(Default::default(), enc), chann_tx, chann_rx).await;
+    server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), polariton::packet::SerdesContext::from_boxed(Default::default(), enc), chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
+    ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    if let Ok(user_info) = user_state.user() {
+        update_status(user_info.as_ref().as_ref()).await;
+    }
 }
 
 const APP_ID: &str = "ChatServer";
@@ -275,4 +281,15 @@ async fn do_connect_handshake(
     }
 
     Some(ctx.into_crypto())
+}
+
+pub async fn update_status(user_info: &dyn oj_rc_core::persist::user::IntercomUser) {
+    user_info.update_status(
+        env!("CARGO_PKG_NAME"),
+        oj_serdes::ServerStatus {
+            uptime_s: (chrono::Utc::now().timestamp() - crate::START_TIMESTAMP_S.load(std::sync::atomic::Ordering::Relaxed)).try_into().unwrap_or_default(),
+            players: ONLINE_USERS.load(std::sync::atomic::Ordering::SeqCst),
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+        },
+    ).await;
 }

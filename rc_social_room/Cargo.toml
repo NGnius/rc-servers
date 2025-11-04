@@ -17,3 +17,5 @@ oj_polariton_auth = { version = "*", path = "../polariton_auth" }
 polariton_server.workspace = true
 oj_rc_core = { version = "*", path = "../rc_core" }
 async-trait.workspace = true
+chrono.workspace = true
+oj_serdes.workspace = true

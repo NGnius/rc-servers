@@ -15,6 +15,7 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
         let params_dict = params.to_dict();
         if let Some(Typed::Str(auth_payload)) = params_dict.get(&Self::AUTH_PAYLOAD_KEY) {
             if user.update_with_auth(&auth_payload.string).await {
+                crate::update_status(user.user().unwrap().as_ref().as_ref()).await;
                 let mut resp_params = std::collections::HashMap::with_capacity(1);
                 resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
                 return polariton::operation::OperationResponse {

@@ -1,11 +1,13 @@
 pub struct Users {
     service_listeners: tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::IntercomOp>>>,
+    service_status: tokio::sync::RwLock<std::collections::HashMap<String, oj_serdes::ServerStatus>>,
 }
 
 impl Users {
     pub fn new() -> Self {
         Self {
             service_listeners: tokio::sync::RwLock::new(std::collections::HashMap::with_capacity(16)),
+            service_status: tokio::sync::RwLock::new(std::collections::HashMap::with_capacity(16)),
         }
     }
 
@@ -46,5 +48,13 @@ impl Users {
                 }
             }
         }
+    }
+
+    pub async fn statuses(&self) -> std::collections::HashMap<String, oj_serdes::ServerStatus> {
+        self.service_status.read().await.clone()
+    }
+
+    pub async fn save_status(&self, service: String, status: oj_serdes::ServerStatus) -> Option<oj_serdes::ServerStatus> {
+        self.service_status.write().await.insert(service, status)
     }
 }

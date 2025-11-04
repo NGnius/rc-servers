@@ -16,6 +16,8 @@ pub struct InitConfig {
     pub matches_chann: tokio::sync::mpsc::Sender<matches::GameMessage>,
 }
 
+pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
@@ -41,5 +43,19 @@ async fn main() -> std::io::Result<()> {
     let event_handler = events::handler(&init_ctx).await;
     let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu).await.expect("Bad server");
 
+    let start_time = chrono::Utc::now();
+    START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);
+
     server.listen().await
+}
+
+pub async fn update_status(user_info: &dyn oj_rc_core::persist::user::IntercomUser, player_count: u64) {
+    user_info.update_status(
+        env!("CARGO_PKG_NAME"),
+        oj_serdes::ServerStatus {
+            uptime_s: (chrono::Utc::now().timestamp() - crate::START_TIMESTAMP_S.load(std::sync::atomic::Ordering::Relaxed)).try_into().unwrap_or_default(),
+            players: player_count,
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+        },
+    ).await;
 }

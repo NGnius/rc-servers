@@ -83,6 +83,12 @@ impl super::IntercomUser for super::account_json::UserData {
             log::error!("Failed to send intercom maintenance mode message: {}", e);
         }
     }
+
+    async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus) {
+        if let Err(e) = self.post_to_intercom(&msg, ".status", server_name).await {
+            log::error!("Failed to send intercom status message: {}", e);
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

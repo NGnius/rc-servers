@@ -220,17 +220,18 @@ impl GameMatches {
                         if let Some(tx) = self.matches.get(&game_guid) {
                             if tx.is_closed() {
                                 self.do_game_cleanup(&game_guid);
-                                self.create_new_game(user, game_guid, connection, response, sender).await;
+                                self.create_new_game(user.clone(), game_guid, connection, response, sender).await;
                             } else {
                                 self.routing.insert(user.user_id(), game_guid.clone());
-                                if tx.send(super::GameMessage::NewConnection { user, game_guid, connection, response, sender }).await.is_err() {
+                                if tx.send(super::GameMessage::NewConnection { user: user.clone(), game_guid, connection, response, sender }).await.is_err() {
                                     log::error!("Failed to send NewConnection game message to existing match");
                                 }
                             }
                         } else {
-                            self.create_new_game(user, game_guid, connection, response, sender).await;
+                            self.create_new_game(user.clone(), game_guid, connection, response, sender).await;
                         }
-                    }
+                        crate::update_status(user.as_ref().as_ref(), self.routing.len() as u64).await;
+                    },
                     msg => {
                         let user_id = msg.user_id();
                         let mut to_clean = None;

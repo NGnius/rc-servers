@@ -19,3 +19,4 @@ oj_rc_core = { version = "*", path = "../rc_core" }
 oj_rc_factory = { version = "*", path = "../rc_factory" }
 async-trait.workspace = true
 chrono.workspace = true
+oj_serdes.workspace = true

@@ -64,6 +64,8 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::username::user_password_auth)
             .service(robocraft::intercom::services_ws)
             .service(robocraft::intercom::service_msg)
+            .service(robocraft::intercom::status_get)
+            .service(robocraft::intercom::status_set)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()

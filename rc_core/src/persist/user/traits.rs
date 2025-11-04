@@ -323,7 +323,7 @@ pub enum MultiplayerErrorCode {
 }
 
 #[async_trait::async_trait]
-pub trait MultiplayerUser: CommonUser {
+pub trait MultiplayerUser: IntercomUser + CommonUser {
     fn user_id(&self) -> i32;
     fn user_name(&self) -> &'_ str;
     fn display_name(&self) -> &'_ str;
@@ -334,11 +334,12 @@ pub trait MultiplayerUser: CommonUser {
 }
 
 #[async_trait::async_trait]
-pub trait IntercomUser {
+pub trait IntercomUser: CommonUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
     async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
     async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);
+    async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus);
 }
 
 pub struct IntercomListener<D: serde::de::DeserializeOwned> {

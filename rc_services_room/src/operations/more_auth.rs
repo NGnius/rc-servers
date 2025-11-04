@@ -27,6 +27,7 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                 } else {
                     match user_info.webservice_listener().await {
                         Ok(listener) => {
+                            crate::update_status(user_info.as_ref().as_ref()).await;
                             let mut resp_params = std::collections::HashMap::with_capacity(1);
                             resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
                             crate::events::IntercomHandler::new(listener, &user_info, user.event_sender()).run();
