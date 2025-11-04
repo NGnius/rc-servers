@@ -21,7 +21,7 @@ impl RcConfig {
     }
 }
 
- struct ErrorTy {
+struct ErrorTy {
     json: libfj::robocraft::ErrorInfo,
 }
 
