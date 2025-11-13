@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use serde::{Serialize, Deserialize};
 
@@ -13,7 +14,7 @@ const CUBE_CONFIG_FILENAME: &str = "config.json";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CubeConfig {
-    cubes: HashMap<String, Cube>,
+    cubes: IndexMap<String, Cube>,
     movement: HashMap<ItemCategory, MovementCategoryData>,
     lerp_value: f32,
     battle: BattleConfig,
@@ -326,7 +327,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         crate::factory::Factory::from_config(&self.factory).await
     }
 
-    fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube> {
+    fn cubes(&self) -> &'_ indexmap::IndexMap<String, crate::persist::Cube> {
         &self.cubes
     }
 

@@ -21,6 +21,7 @@ async-trait.workspace = true
 futures.workspace = true
 rand.workspace = true
 num-quaternion.workspace = true
+indexmap = { version = "2.0", features = ["serde"] }
 
 # auth
 libfj.workspace = true

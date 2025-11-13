@@ -22,7 +22,7 @@ pub trait ConfigProvider<C: Clone> {
     fn server_config(&self) -> ServerConfig;
     fn garage_upgrades(&self) -> GarageUpgrades;
     async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
-    fn cubes(&self) -> &'_ std::collections::HashMap<String, crate::persist::Cube>;
+    fn cubes(&self) -> &'_ indexmap::IndexMap<String, crate::persist::Cube>;
     fn chat_system_config(&self) -> ChatSystemConfig;
     fn gamemode_events(&self) -> GameEventSequence;
     fn gamemodes(&self) -> crate::data::game_mode::GameModeConfigs; // FIXME
