@@ -283,6 +283,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     pub(super) async fn rebroadcast<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, user_id: i32, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
             if user_id == conn.user.user_id() { continue; }
+            if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
                 if !matches!(mode, ConnectionMode::InGame) { continue; }
@@ -300,6 +301,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     pub(super) async fn rebroadcast_dataless(&self, user_id: i32, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
             if user_id == conn.user.user_id() { continue; }
+            if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
                 if !matches!(mode, ConnectionMode::InGame) { continue; }
@@ -315,6 +317,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) async fn broadcast<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
+            if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
                 if !matches!(mode, ConnectionMode::InGame) { continue; }
@@ -331,6 +334,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) async fn broadcast_dataless(&self, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
+            if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
                 if !matches!(mode, ConnectionMode::InGame) { continue; }
