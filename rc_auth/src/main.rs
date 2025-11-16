@@ -59,6 +59,7 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::registration::form_submit)
             .service(robocraft::registration::form_load)
             .service(robocraft::registration::favicon)
+            .service(robocraft::registration::favicon_standard)
             .service(robocraft::email::email_password_auth)
             .service(robocraft::steam::steam_auth)
             .service(robocraft::username::user_password_auth)
