@@ -14,7 +14,7 @@ clap.workspace = true
 log.workspace = true
 env_logger.workspace = true
 tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
-zip = "4"
+zip = "6"
 git-version.workspace = true
 
 oj_rc_core = { version = "*", path = "../rc_core" }

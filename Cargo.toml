@@ -27,8 +27,9 @@ members = [
 ]
 
 [workspace.dependencies]
-rocket = { version = "0.5.1", features = [ "json" ] }
-actix-web = { version = "4", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd"] }
+rocket = { version = "0.5", features = [ "json" ] }
+actix-web = { version = "~4.11", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd"] }
+# actix-web 4.12 does not build properly for some reason...
 actix-files = "0.6"
 libfj = { version = "0.9", path = "../libfj" }
 #libfj = { version = "0.8" }
