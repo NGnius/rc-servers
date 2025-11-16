@@ -2180,7 +2180,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 radius: DEFAULT_BASE_RADIUS,
                 percent_per_second: DEFAULT_BASE_PERCENT_PER_SECOND,
             },
-        ].into_iter().map(|x| x.offset(49.608, 0.0, 52.493)).collect(),
+        ].into_iter().map(|x| x.offset(49.608, 9.02, 52.493)).collect(),
         capture_points: vec![
             CapturePoint {
                 x: -44.400,
