@@ -297,7 +297,7 @@ impl Database {
             //.join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game_player::Relation::Game.def())
             .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
             .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
-            .order_by_asc(crate::schema::multiplayer_game::Column::CreationTime)
+            .order_by_desc(crate::schema::multiplayer_game::Column::CreationTime)
             //.into_model()
             .one(&self.orm)
             .await?
