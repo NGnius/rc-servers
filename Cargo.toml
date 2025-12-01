@@ -50,4 +50,5 @@ rand = { version = "0.9", features = [ "thread_rng" ] }
 num-quaternion = "1.0"
 hex = "0.4"
 base64 = "0.22"
-oj_serdes = { version = "0.1.0", path = "../oj_core/serdes" }
+#oj_serdes = { version = "0.2.0", path = "../oj_core/serdes" }
+oj_serdes = "0.2.0"

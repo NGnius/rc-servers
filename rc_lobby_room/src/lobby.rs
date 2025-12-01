@@ -25,6 +25,17 @@ struct QueueKey {
     auto_heal: bool,
 }
 
+impl QueueKey {
+    fn guid(&self) -> String {
+        use std::hash::Hasher;
+        let mut hasher = std::hash::DefaultHasher::new();
+        self.hash(&mut hasher);
+        //chrono::Utc::now().timestamp_micros().hash(&mut hasher);
+        let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
+        oj_rc_core::persist::user::i64_as_uuid_str(guid)
+    }
+}
+
 struct QueueUser {
     emitter: polariton_server::events::EventEmitter,
     player: oj_rc_core::data::player_data::PlayerData,
@@ -62,12 +73,7 @@ impl QueueHandler {
     }
 
     async fn enter_match(&self, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
-        use std::hash::Hasher;
-        let mut hasher = std::hash::DefaultHasher::new();
-        key.hash(&mut hasher);
-        chrono::Utc::now().timestamp_micros().hash(&mut hasher);
-        let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
-        let guid_str = oj_rc_core::persist::user::i64_as_uuid_str(guid);
+        let guid_str = key.guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
             map: key.map.clone(),
@@ -104,7 +110,7 @@ impl QueueHandler {
                     port: self.hostport,
                     map: key.map.clone(),
                     mode: key.mode,
-                    guid: guid_str,
+                    guid: guid_str.clone(),
                     is_ranked: false,
                     is_custom: false,
                     visibility: Some(key.visibility),
@@ -116,6 +122,7 @@ impl QueueHandler {
                 for player in players.iter() {
                     tokio::spawn(Self::send_events_to_player(arc_event.clone(), player.emitter.clone()));
                 }
+                log::info!("{} players are entering match {}", players.len(), guid_str);
             },
             Err(e) => {
                 if let Some(msg) = e.error_msg() {
@@ -174,7 +181,7 @@ impl QueueHandler {
                             }
                             *lock = new_queue_map;
                             if count != 0 {
-                                log::info!("Upgraded {} users in queue to new gamemode", count);
+                                log::info!("Upgraded {} users in queue to new gamemode {}", count, key.guid());
                             }
                         },
                         GamemodeChangeStrategy::Notify => {
@@ -189,18 +196,20 @@ impl QueueHandler {
                                 }
                             }
                             if count != 0 {
-                                log::info!("Notified {} users in queue of new gamemode", count);
+                                log::info!("Notified {} users in queue of new gamemode {}", count, key.guid());
                             }
                         },
                         GamemodeChangeStrategy::Ignore => {
-                            log::debug!("Gamemode appears to have changed, ignoring already-queued players");
+                            log::debug!("Gamemode appears to have changed to {}, ignoring already-queued players", key.guid());
                         }
                     }
                 }
                 let players_len = if let Some(players) = lock.get_mut(&key) {
+                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.guid());
                     players.push(new_player);
                     players.len()
                 } else {
+                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.guid());
                     lock.insert(key.clone(), vec![new_player]);
                     1
                 };
