@@ -171,7 +171,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(prebuilt_robots::garage_robot_data_provider())
         .add(prebuilt_colours::garage_colour_combo_provider())
         .add(robopass_preview_items::robopass_preview_provider())
-        .add(singleplayer_campaigns::singleplayer_campaigns_provider(&init_ctx.cubes))
+        .add(singleplayer_campaigns::singleplayer_campaigns_provider(init_ctx))
         .add(purchases::pending_purchases_provider())
         .add(building_xp_config::building_xp_config_provider())
         .add(weapon_rating_static::weapon_rating_provider())
@@ -198,7 +198,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(score_multipliers_config::tdm_ai_score_config_provider())
         .add(player_robot_rank::player_robot_rank_provider())
         .add(validate_machine::validate_campaign_robot_provider())
-        .add(singleplayer_campaigns::singleplayer_complete_campaign_provider(&init_ctx.cubes))
+        .add(singleplayer_campaigns::singleplayer_complete_campaign_provider(init_ctx))
         .add(polariton_server::operations::Ack::<78, _>::default()) // TODO handle SaveCampaignGameAwardsRequest instead of ignoring it
         .add(singleplayer_campaigns::singleplayer_save_complete_campaign_provider()) // TODO handle UpdatePlayerCompletedCampaignWaveRequest saving
         .add(garage_slot_limit::garage_slots_limit(&init_ctx.cubes))

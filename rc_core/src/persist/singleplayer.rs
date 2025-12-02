@@ -14,10 +14,6 @@ impl SingleplayerConfig {
         crate::data::campaign::CampaignsGameParameters { campaigns: self.campaigns.into_iter().map(|x| x.into_campaign_params()).collect() }
     }
 
-    pub fn into_waves(self) -> crate::data::campaign::LiveCampaignWaves {
-        crate::data::campaign::LiveCampaignWaves { waves: self.campaigns.into_iter().map(|x| x.into_waves()).collect() }
-    }
-
     pub fn into_singleplayer_conf(&self) -> crate::persist::config::SingleplayerConfig {
         crate::persist::config::SingleplayerConfig {
             max_teammates: self.max_teammates,
@@ -86,14 +82,6 @@ impl Campaign {
             map: self.map,
         }
     }
-
-    pub fn into_waves(self) -> crate::data::campaign::WavesData {
-        crate::data::campaign::WavesData {
-            id: self.id,
-            waves: self.waves.into_iter().map(|x| x.into()).collect(),
-            campaign_type: self.campaign_type.into(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -150,35 +138,13 @@ pub struct Wave {
     pub time_max: i32,
 }
 
-impl std::convert::From<Wave> for crate::data::campaign::WaveData {
-    fn from(val: Wave) -> Self {
-        crate::data::campaign::WaveData {
-            robots_in_wave: val.robots_in_wave.into_iter().map(|x| x.into()).collect(),
-        }
-    }
-}
-
-impl std::convert::From<Wave> for crate::data::campaign::CompleteWaveData {
-    fn from(val: Wave) -> Self {
-        crate::data::campaign::CompleteWaveData {
-            player_spawn_location: val.player_spawn_location,
-            robots_in_wave: val.robots_in_wave.into_iter().map(|x| x.into()).collect(),
-            kill_target: val.kill_target,
-            time_min: val.time_min,
-            time_max: val.time_max,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WaveRobot { // times appear to be in seconds
-    pub name: String,
+    pub vehicle: super::garage::PrefabVehicle,
     pub weapon: String,
     pub movement: String,
     pub rank: String,
     pub count: i32,
-    pub robot_data: Vec<u8>,
-    pub colour_data: Vec<u8>,
     #[serde(default)]
     pub time_to_spawn: i32,
     #[serde(default)]
@@ -205,39 +171,6 @@ pub struct WaveRobot { // times appear to be in seconds
 
 fn default_1() -> i32 {
     1
-}
-
-impl std::convert::From<WaveRobot> for crate::data::campaign::WaveRobotData {
-    fn from(val: WaveRobot) -> Self {
-        crate::data::campaign::WaveRobotData {
-            name: val.name,
-            weapon: val.weapon,
-            movement: val.movement,
-            rank: val.rank,
-            count: val.count,
-        }
-    }
-}
-
-impl std::convert::From<WaveRobot> for crate::data::campaign::CompleteWaveRobotData {
-    fn from(val: WaveRobot) -> Self {
-        crate::data::campaign::CompleteWaveRobotData {
-            name: val.name,
-            robot_data: val.robot_data,
-            colour_data: val.colour_data,
-            time_to_spawn: val.time_to_spawn,
-            kills_to_spawn: val.kills_to_spawn,
-            time_to_despawn: val.time_to_despawn,
-            kills_to_despawn: val.kills_to_despawn,
-            initial_robot_amount: val.initial_robot_amount,
-            periodic_robot_amount: val.periodic_robot_amount,
-            spawn_interval: val.spawn_interval,
-            min_robot_amount: val.min_robot_amount,
-            max_robot_amount: val.max_robot_amount,
-            is_boss: val.is_boss,
-            is_kill_requirement: val.is_kill_requirement,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]

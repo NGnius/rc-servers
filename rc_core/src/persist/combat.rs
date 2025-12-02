@@ -384,13 +384,18 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
                         player_spawn_location: 0,
                         robots_in_wave: vec![
                             super::WaveRobot {
-                                name: "strCampaignAnimalName".to_owned(),
+                                vehicle: super::PrefabVehicle {
+                                    name: Some("strCampaignAnimalName".to_owned()),
+                                    username: "[ignored]".to_owned(),
+                                    id: super::PrefabId::Raw {
+                                        cube_data: super::VALID_ROBOT.into(),
+                                        colour_data: super::VALID_COLOUR.into(),
+                                    },
+                                },
                                 weapon: "strT5PlasmaGoldenName".to_owned(),
                                 movement: "strT5SteeringWheelGoldenName".to_owned(),
                                 rank: "strT0".to_owned(),
                                 count: 5,
-                                robot_data: super::VALID_ROBOT.into(),
-                                colour_data: super::VALID_COLOUR.into(),
                                 time_to_spawn: 1,
                                 kills_to_spawn: 0,
                                 time_to_despawn: 60,
@@ -442,23 +447,38 @@ fn default_rotation() -> GameEventSequence {
     GameEventSequence {
         strategy: GameRotationStrategy::Sequence,
         modes: vec![
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                duration_s: 30,
+            },
+            GameEvents {
+                singleplayer: GameEvent {
+                    map: GameMap::Earth1,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                multiplayer: GameEvent {
+                    map: GameMap::Earth2,
+                    visibility: GameVisibility::Good,
+                    mode: GameType::BattleArena,
+                    auto_heal: true,
+                },
+                duration_s: 30, // 30 seconds
+            },
             /*GameEvents {
                 singleplayer: GameEvent {
-                    map: GameMap::Earth1,
-                    visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
-                    auto_heal: true,
-                },
-                multiplayer: GameEvent {
-                    map: GameMap::Earth1,
-                    visibility: GameVisibility::Good,
-                    mode: GameType::Pit,
-                    auto_heal: true,
-                },
-                duration_s: 5*60, // 5 minutes
-            }*/
-            GameEvents {
-                singleplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
                     mode: GameType::SuddenDeath,
@@ -576,14 +596,14 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 5*60,
-            },
+            },*/
         ]
     }
 }
 
 fn default_multiplayer() -> super::MultiplayerConfig {
     super::MultiplayerConfig {
-        players_per_game: 1,
+        players_per_game: 2,
         enabled: true,
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),

@@ -134,6 +134,30 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             },
             implementation: ClientEmulation::ClientAI,
         },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake3".to_owned()),
+                username: "Server3".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake4".to_owned()),
+                username: "Server4".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
     ]
 }
 

@@ -2,10 +2,13 @@ mod cubes_json;
 pub use cubes_json::CubeConfig;
 
 mod traits;
-pub use traits::{ConfigProvider, CompleteCampaignProvider, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings};
+pub use traits::{ConfigProvider, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings};
 
 mod validation;
 pub use validation::{SelfValidator, ValidationInfo, ValidationMessage};
+
+mod campaign;
+pub use campaign::{CampaignResolver, CompleteCampaignProvider};
 
 pub type ConfigImpl = CubeConfig;
 

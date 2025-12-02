@@ -12,10 +12,8 @@ pub trait ConfigProvider<C: Clone> {
     fn regen_config(&self) -> Typed<C>;
     fn after_battle_vote_config(&self) -> Typed<C>;
     fn game_mode_config(&self) -> Typed<C>;
-    fn campaigns_parameters(&self) -> Typed<C>;
-    fn campaign_waves(&self) -> Typed<C>;
-    fn campaign_version(&self) -> Typed<C>;
-    fn campaign_details(&self) -> CompleteCampaignProvider;
+    fn campaign_details(&self) -> super::CompleteCampaignProvider;
+    fn campaigns(&self) -> super::CampaignResolver;
     fn client_config(&self) -> Typed<C>;
     fn login_messages(&self) -> DevMessageProvider<C>;
     fn public_channels(&self) -> Typed<C>;
@@ -38,30 +36,6 @@ pub trait ConfigProvider<C: Clone> {
     fn ba_settings(&self) -> BattleArenaResolver;
     fn pit_settings(&self) -> PitSettings;
     fn tdm_settings(&self) -> TeamDeathMatchSettings;
-}
-
-pub struct CompleteCampaignProvider {
-    map: std::collections::HashMap<String, std::collections::HashMap<i32, crate::data::campaign::CampaignWavesDifficultyData>>,
-}
-
-impl CompleteCampaignProvider {
-    pub fn new(map: std::collections::HashMap<String, std::collections::HashMap<i32, crate::data::campaign::CampaignWavesDifficultyData>>) -> Self {
-        Self { map }
-    }
-
-    pub fn get<C>(&self, id: &str, difficulty: &i32) -> Result<Typed<C>, i16> {
-        if let Some(campaign) = self.map.get(id) {
-            if let Some(details) = campaign.get(difficulty) {
-                Ok(details.as_transmissible())
-            } else {
-                log::warn!("Couldn't find difficulty {} in campaign `{}`", difficulty, id);
-                Err(crate::data::error_codes::WebServicesError::DatabaseError as i16)
-            }
-        } else {
-            log::warn!("Couldn't find campaign {} (ignoring difficulty {})", id, difficulty);
-            Err(crate::data::error_codes::WebServicesError::DatabaseError as i16)
-        }
-    }
 }
 
 pub struct DevMessageProvider<C: Clone> {

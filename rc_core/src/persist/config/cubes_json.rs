@@ -244,41 +244,25 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         game_mode_data.as_transmissible()
     }
 
-    fn campaigns_parameters(&self) -> Typed<C> {
-        self.battle.singleplayer.clone().into_campaign_params().as_transmissible()
-    }
-
-    fn campaign_waves(&self) -> Typed<C> {
-        self.battle.singleplayer.clone().into_waves().as_transmissible()
-    }
-
-    fn campaign_version(&self) -> Typed<C> {
-        let mut locked_map = std::collections::HashMap::with_capacity(self.battle.singleplayer.campaigns.len());
-        for campaign in self.battle.singleplayer.campaigns.iter() {
-            locked_map.insert(campaign.id.clone(), true);
-        }
-        crate::data::campaign::GameModeVersionParameters {
-            current_version: 0,
-            is_locked: locked_map,
-        }.as_transmissible()
-    }
-
     fn campaign_details(&self) -> super::CompleteCampaignProvider {
         let mut map = std::collections::HashMap::with_capacity(self.battle.singleplayer.campaigns.len());
         for campaign in self.battle.singleplayer.campaigns.iter() {
-            //let waves_data: Vec<crate::data::campaign::CompleteWaveData> = campaign.waves.iter().map(|x| x.clone().into()).collect();
             let mut difficulty_map = std::collections::HashMap::with_capacity(campaign.difficulties.len());
             for difficulty in campaign.difficulties.iter() {
-                let difficulty_data: crate::data::campaign::CampaignDifficultyData = difficulty.clone().into();
-                let complete_campaign = crate::data::campaign::CampaignWavesDifficultyData {
-                    difficulty: difficulty_data,
-                    waves: campaign.waves.iter().map(|x| x.clone().into()).collect(),
-                };
-                difficulty_map.insert(difficulty.level, complete_campaign);
+                difficulty_map.insert(difficulty.level, difficulty.to_owned());
             }
-            map.insert(campaign.id.clone(), difficulty_map);
+            map.insert(campaign.id.clone(), super::campaign::CompleteCampaignData {
+                difficulty_map,
+                waves: campaign.waves.clone(),
+            });
         }
         super::CompleteCampaignProvider::new(map)
+    }
+
+    fn campaigns(&self) -> super::CampaignResolver {
+        super::CampaignResolver {
+            singleplayer: self.battle.singleplayer.clone(),
+        }
     }
 
     fn client_config(&self) -> Typed<C> {
