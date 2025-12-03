@@ -10,7 +10,7 @@ const LIFETIME_PARAM_KEY: u8 = 150;
 pub(super) fn premium_remaining_provider() -> SimpleFunc<15, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
-        params.insert(DAYS_PARAM_KEY, Typed::Int(0));
+        params.insert(DAYS_PARAM_KEY, Typed::Int(365));
         params.insert(HOURS_PARAM_KEY, Typed::Int(0));
         params.insert(MINUTES_PARAM_KEY, Typed::Int(0));
         params.insert(SECONDS_PARAM_KEY, Typed::Int(0));
