@@ -627,7 +627,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             let user_desc = self.user_descriptor(*player_id).unwrap();
             if user_id == conn.user.user_id() {
                 let progress_percent = ((progress * 100.0).ceil() as u8).clamp(0, 100);
-                log::info!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
+                log::debug!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
                 user_desc.state.progress.store(progress_percent, std::sync::atomic::Ordering::Relaxed);
                 continue;
             }
