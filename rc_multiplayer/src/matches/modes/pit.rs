@@ -24,6 +24,7 @@ impl WinTracker {
         };
         let winning_team_i32 = winning_team as i32;
         for (player_id, player_info) in generic.user_descriptors().iter() {
+            if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
             let event = if player_info.descriptor.team == winning_team_i32 {
                 rlnl::event_code::NetworkEvent::GameWon
             } else {
