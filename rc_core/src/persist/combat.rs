@@ -447,7 +447,7 @@ fn default_rotation() -> GameEventSequence {
     GameEventSequence {
         strategy: GameRotationStrategy::Sequence,
         modes: vec![
-            GameEvents {
+            /*GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
@@ -476,8 +476,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 30, // 30 seconds
-            },
-            /*GameEvents {
+            },*/
+            GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
@@ -596,7 +596,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 5*60,
-            },*/
+            },
         ]
     }
 }
