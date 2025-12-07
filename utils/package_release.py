@@ -10,21 +10,21 @@ def generate_ip_script(binary_name: str) -> str:
     return f"""#!/bin/bash
 export RUST_LOG=info
 
-./{binary_name} --ip "0.0.0.0"
+exec ./{binary_name} --ip "0.0.0.0"
 """
 
 def generate_plain_script(binary_name: str) -> str:
     return f"""#!/bin/bash
 export RUST_LOG=info
 
-./{binary_name}
+exec ./{binary_name}
 """
 
 def generate_ip_redirect_script(binary_name: str, port: int) -> str:
     return f"""#!/bin/bash
 export RUST_LOG=info
 
-./{binary_name} --ip "0.0.0.0" --redirect "domain_or_ip_address:{port}"
+exec ./{binary_name} --ip "0.0.0.0" --redirect "domain_or_ip_address:{port}"
 """
 
 BINARIES_TO_INCLUDE = {
