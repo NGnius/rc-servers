@@ -371,6 +371,11 @@ impl PointTracker {
                 if point_owner >= 0 && *owned_points.get(&(point_owner as u8)).unwrap() == 1 {
                     lost_lasts.insert(point_owner as u8);
                 }
+                // in case 2+ points are captured in the same tick
+                *owned_points.get_mut(&(new_team as u8)).unwrap() += 1;
+                if point_owner >= 0 {
+                    *owned_points.get_mut(&(point_owner as u8)).unwrap() -= 1;
+                }
                 generic.broadcast(
                     rlnl::event_code::NetworkEvent::CapturePointNotification,
                     literustlib::packet::Property::ReliableOrdered,
