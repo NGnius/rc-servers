@@ -334,7 +334,7 @@ impl PointTracker {
         let mut owned_points = std::collections::HashMap::with_capacity(2);
         let mut captured_firsts = std::collections::HashSet::new();
         let mut lost_lasts = std::collections::HashSet::new();
-        for (i, cap_point) in self.points.iter().enumerate() {
+        for cap_point in self.points.iter() {
             let point_owner = cap_point.team.load(std::sync::atomic::Ordering::SeqCst);
             if point_owner >= 0 {
                 let point_owner = point_owner as u8;
@@ -344,6 +344,9 @@ impl PointTracker {
                     owned_points.insert(point_owner, 1);
                 }
             }
+        }
+        for (i, cap_point) in self.points.iter().enumerate() {
+            let point_owner = cap_point.team.load(std::sync::atomic::Ordering::SeqCst);
             let friendlies = cap_point.owners_on_point().await;
             let enemies = cap_point.stealers_on_point().await;
             if friendlies != 0 { continue; }
