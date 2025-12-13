@@ -8,7 +8,7 @@ static ZIP_FILE: std::sync::Mutex<Option<zip::read::ZipArchive<std::io::BufReade
 pub async fn get(cli: Data<crate::cli::CliArgs>, id: Path<u32>) -> HttpResponse {
     let id: u32 = *id;
     let zip_path = std::path::PathBuf::from(&cli.data_robocraft).join("rc_archive_thumbnails.zip");
-    let thumb_dir_path = std::path::PathBuf::from(&cli.data_robocraft).join("factorythumbnails");
+    let thumb_dir_path = std::path::PathBuf::from(&cli.data_robocraft).join(super::THUMBNAIL_DIR);
     try_find_file(zip_path, thumb_dir_path, id).await
 }
 
@@ -79,6 +79,8 @@ fn get_file_in_zip(zip_path: std::path::PathBuf, id: u32) -> zip::result::ZipRes
 }
 
 fn get_file_in_thumbnails(dir: std::path::PathBuf, id: u32) -> std::io::Result<Vec<u8>> {
+    // in case someone has extracted the thumbnail zip
+    // (newly-uploaded vehicles use the general thumbnail CDN endpoint)
     let prefix = format!("{} - ", id);
     for ent in std::fs::read_dir(&dir)? {
         let ent = ent?;

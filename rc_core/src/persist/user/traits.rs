@@ -336,6 +336,7 @@ pub trait MultiplayerUser: IntercomUser + CommonUser {
 #[async_trait::async_trait]
 pub trait IntercomUser: CommonUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn save_factory_thumbnail(&self, factory_id: i32, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
     async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
     async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);

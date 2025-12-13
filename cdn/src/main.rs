@@ -32,6 +32,8 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::brawl_data::get)
             .service(robocraft::campaign_data::get)
             .service(robocraft::factory::arc::get)
+            .service(robocraft::factory::thumbnail::get)
+            .service(robocraft::factory::thumbnail::post)
             .service(robocraft::favicon::get)
     })
     .bind((cli_args.ip, cli_args.port))?

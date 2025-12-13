@@ -2585,6 +2585,8 @@ dependencies = [
  "libfj",
  "log",
  "sea-orm",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

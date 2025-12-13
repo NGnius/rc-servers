@@ -124,7 +124,7 @@ fn default_server_conf() -> ServerSettings {
     }
 }
 
-pub fn default_cdn_root_url() -> String {
+fn default_cdn_root_url() -> String {
     "http://127.0.0.1:8010".to_owned()
 }
 

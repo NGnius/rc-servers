@@ -1,4 +1,4 @@
 pub mod arc;
 
 mod traits;
-pub use traits::{VehicleFactoryAdapter, VehicleInfo, VehicleQueryInfo, VehicleUploadInfo};
+pub use traits::{VehicleFactoryAdapter, VehicleInfo, VehicleQueryInfo, VehicleUploadInfo, VehicleThumbnailInfo};

@@ -15,11 +15,15 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
             let upload_info = crate::data::crf::UploadData::from_transmissibles(version.string, data)?;
             let user_info = user.user()?;
             let prepared = user_info.prepare_factory_upload(upload_info.into_core()).await?;
-            let success = factory.upload(prepared).await.map_err(|e| {
+            let result = factory.upload(prepared).await.map_err(|e| {
                 log::error!("Failed to upload to factory: {}", e);
                 oj_rc_core::data::error_codes::WebServicesError::UnexpectedError as i16
             })?;
-            params.insert(SUCCESS_PARAM_KEY, Typed::Bool(success));
+            if result.needs_upload {
+                user_info.save_factory_thumbnail(result.id, result.thumbnail).await?;
+            }
+            params.insert(SUCCESS_PARAM_KEY, Typed::Bool(true));
+
         }
     }
     Ok(params.into())

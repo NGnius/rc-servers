@@ -2,7 +2,7 @@
 pub trait VehicleFactoryAdapter: Send + Sync + 'static {
     async fn vehicle(&self, id: u32) -> Result<Option<(VehicleInfo, VehicleQueryInfo)>, Box<dyn std::error::Error>>;
     async fn list(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<VehicleQueryInfo>, Box<dyn std::error::Error>>;
-    async fn upload(&self, vehicle: VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>>;
+    async fn upload(&self, vehicle: VehicleUploadInfo) -> Result<VehicleThumbnailInfo, Box<dyn std::error::Error>>;
 }
 
 #[derive(Debug, Clone)]
@@ -64,4 +64,11 @@ pub struct VehicleUploadInfo {
     pub cube_data: Vec<u8>,
     pub colour_data: Vec<u8>,
     pub build_version: String,
+}
+
+#[derive(Debug)]
+pub struct VehicleThumbnailInfo {
+    pub id: i32,
+    pub thumbnail: Vec<u8>,
+    pub needs_upload: bool,
 }

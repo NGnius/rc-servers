@@ -53,6 +53,21 @@ impl super::IntercomUser for super::account_json::UserData {
         Ok(())
     }
 
+    async fn save_factory_thumbnail(&self, factory_id: i32, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError> {
+        let token = generate_token(factory_id.to_string().as_bytes(), &self.secret);
+        let auth_header_val = format!("Internal {}", token);
+        let url = format!("{}/roboshop/Live/{}", self.cdn, factory_id);
+        if let Err(e) = self.http_client.post(url)
+            .header("Authorization", auth_header_val)
+            .body(image)
+            .send()
+            .await {
+            log::error!("Failed to update factory thumbnail for {} ({}): {}", self.account.public_id, self.account.id, e);
+            return Err((crate::data::error_codes::WebServicesError::UnexpectedError as i16).into());
+        }
+        Ok(())
+    }
+
     async fn webservice_listener(&self) -> Result<super::IntercomListener<IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError> {
         self.listen_on_websocket(".oj_services").await
             .map_err(|e| polariton_server::operations::SimpleOpError::with_message(

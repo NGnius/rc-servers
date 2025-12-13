@@ -1,7 +1,6 @@
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, ActiveModelTrait, Set, TransactionTrait};
 use base64::Engine;
 use std::collections::HashMap;
-use std::path::Path;
 
 pub struct ArcAdapter {
     orm: sea_orm::DatabaseConnection,
@@ -15,11 +14,11 @@ impl ArcAdapter {
     pub async fn init(uri: &str, show_expired: bool, cdn: String, override_cdn: bool, username_spoofing: bool) -> Result<Self, sea_orm::DbErr>{
         log::debug!("Connecting to Archive of RoboCraft (ARC) vehicle factory database URI: {}", uri);
         let db = sea_orm::Database::connect(uri).await?;
-        let good_cdn = if cdn.ends_with('/') { cdn } else { format!("{}/", cdn) };
+        //let good_cdn = cdn.to_owned()format!("{}/roboshop/Live/", cdn);
         let adapter = Self {
             orm: db,
             ignore_expiry: show_expired,
-            cdn: good_cdn,
+            cdn: cdn.to_owned(),
             override_cdn: override_cdn,
             spoof_users: username_spoofing,
         };
@@ -36,7 +35,7 @@ impl ArcAdapter {
 
     fn thumbnail_url(&self, meta: String, id: u32) -> String {
         if self.override_cdn {
-            format!("{}{}", &self.cdn, id)
+            format!("{}/roboshop/arc/Live/{}", &self.cdn, id)
         } else {
             meta
         }
@@ -187,7 +186,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         Ok(infos)
     }
 
-    async fn upload(&self, vehicle: crate::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
+    async fn upload(&self, vehicle: crate::VehicleUploadInfo) -> Result<crate::VehicleThumbnailInfo, Box<dyn std::error::Error>> {
         let transaction = self.orm.begin().await?;
 
         let cube_amounts = {
@@ -207,17 +206,18 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
             serde_json::to_string(&str_map).unwrap_or_else(|_| "{}".to_string())
         };
         let cubes = super::entities::robot_cubes::ActiveModel {
+            id: sea_orm::ActiveValue::NotSet,
             cube_data: Set(base64::prelude::BASE64_STANDARD.encode(&vehicle.cube_data)),
             colour_data: Set(base64::prelude::BASE64_STANDARD.encode(&vehicle.colour_data)),
             cube_amounts: Set(cube_amounts),
-            ..Default::default()
         }.insert(&transaction).await?;
 
         let now = chrono::Utc::now();
-        let meta = super::entities::robot_metadata::ActiveModel {
+        let _meta = super::entities::robot_metadata::ActiveModel {
+            id: Set(cubes.id),
             name: Set(vehicle.name),
             description: Set(vehicle.description),
-            thumbnail: Set(format!("{}{}", &self.cdn, cubes.id)),
+            thumbnail: Set("REPLACE ME".to_string()),
             added_by: Set(vehicle.added_by),
             added_by_display_name: Set(vehicle.added_by_display_name),
             added_date: Set(now.format("%Y-%m-%dT%H:%M:%S").to_string()),
@@ -230,16 +230,20 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
             featured: Set(0),
             combat_rating: Set(3.0),
             cosmetic_rating: Set(3.0),
-            ..Default::default()
         }.insert(&transaction).await?;
+        super::entities::robot_metadata::ActiveModel {
+            id: Set(cubes.id),
+            thumbnail: Set(format!("{}/roboshop/Live/{}", &self.cdn, cubes.id)),
+            ..Default::default()
+        }.update(&transaction).await?;
         transaction.commit().await?;
 
-        let entry_name = format!("{} - {}.jpg", meta.id, meta.name);
-        let thumbnail = vehicle.thumbnail;
-        tokio::task::spawn_blocking(move || {
-           std::fs::write(Path::new("../data/robocraft/factorythumbnails").join(&entry_name), &thumbnail).ok();
-        });
+        let result = crate::VehicleThumbnailInfo {
+            id: cubes.id as i32,
+            thumbnail: vehicle.thumbnail,
+            needs_upload: true,
+        };
 
-        Ok(true)
+        Ok(result)
     }
 }

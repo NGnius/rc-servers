@@ -22,19 +22,23 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         }
     }
 
-    async fn upload(&self, vehicle: oj_rc_factory::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
+    async fn upload(&self, vehicle: oj_rc_factory::VehicleUploadInfo) -> Result<oj_rc_factory::VehicleThumbnailInfo, Box<dyn std::error::Error>> {
         match self {
             Self::Arc(x) => x.upload(vehicle).await,
             Self::Custom(x) => x.upload(vehicle).await,
-            Self::None => Ok(false),
+            Self::None => Ok(oj_rc_factory::VehicleThumbnailInfo {
+                id: i32::MIN,
+                thumbnail: vehicle.thumbnail,
+                needs_upload: false,
+            }),
         }
     }
 }
 
 impl Factory {
-    pub async fn from_config(conf: &crate::persist::FactoryConfig) -> Result<Self, Box<dyn std::error::Error + 'static>> {
+    pub async fn from_config(conf: &crate::persist::FactoryConfig, settings: &crate::persist::config::ServerConfig) -> Result<Self, Box<dyn std::error::Error + 'static>> {
         Ok(match &conf.adapter {
-            crate::persist::AdapterSettings::Arc(x) => Self::Arc(oj_rc_factory::arc::ArcAdapter::init(&x.uri, x.show_expired, x.cdn.clone(), x.override_cdn, x.spoof_username).await?),
+            crate::persist::AdapterSettings::Arc(x) => Self::Arc(oj_rc_factory::arc::ArcAdapter::init(&x.uri, x.show_expired, settings.cdn_url.to_owned(), x.override_cdn, x.spoof_username).await?),
             crate::persist::AdapterSettings::None => Self::None,
         })
     }
