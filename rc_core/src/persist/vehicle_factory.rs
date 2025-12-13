@@ -32,10 +32,16 @@ pub struct ArcFactorySettings {
     #[serde(default = "default_true")]
     pub show_expired: bool,
     /// should probably end with /roboshop/arc/Live/
+    #[serde(default = "default_arc_live_url")]
+    pub cdn: String,
     #[serde(default)]
-    pub override_cdn: Option<String>,
+    pub override_cdn: bool,
     #[serde(default = "default_true")]
     pub spoof_username: bool,
+}
+
+fn default_arc_live_url() -> String {
+    format!("{}/roboshop/arc/Live/", super::settings::default_cdn_root_url())
 }
 
 fn default_true() -> bool {

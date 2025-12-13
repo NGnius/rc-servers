@@ -1,21 +1,26 @@
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, ActiveModelTrait, Set, TransactionTrait};
+use base64::Engine;
+use std::collections::HashMap;
+use std::path::Path;
 
 pub struct ArcAdapter {
     orm: sea_orm::DatabaseConnection,
     ignore_expiry: bool,
-    cdn: Option<String>,
+    cdn: String,
+    override_cdn: bool,
     spoof_users: bool,
 }
 
 impl ArcAdapter {
-    pub async fn init(uri: &str, show_expired: bool, override_cdn: Option<String>, username_spoofing: bool) -> Result<Self, sea_orm::DbErr>{
+    pub async fn init(uri: &str, show_expired: bool, cdn: String, override_cdn: bool, username_spoofing: bool) -> Result<Self, sea_orm::DbErr>{
         log::debug!("Connecting to Archive of RoboCraft (ARC) vehicle factory database URI: {}", uri);
         let db = sea_orm::Database::connect(uri).await?;
-        let good_cdn = override_cdn.map(|s| if s.ends_with("/") { s } else { format!("{}/", s) });
+        let good_cdn = if cdn.ends_with('/') { cdn } else { format!("{}/", cdn) };
         let adapter = Self {
             orm: db,
             ignore_expiry: show_expired,
             cdn: good_cdn,
+            override_cdn: override_cdn,
             spoof_users: username_spoofing,
         };
         // do query to ensure database is ok
@@ -30,8 +35,8 @@ impl ArcAdapter {
     }
 
     fn thumbnail_url(&self, meta: String, id: u32) -> String {
-        if let Some(cdn) = &self.cdn {
-            format!("{}{}", cdn, id)
+        if self.override_cdn {
+            format!("{}{}", &self.cdn, id)
         } else {
             meta
         }
@@ -85,72 +90,67 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
 
     async fn list(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<crate::VehicleQueryInfo>, Box<dyn std::error::Error>> {
         log::debug!("Search vehicles with query {:?}", query);
-        let query_params = if query.default_page {
-            log::debug!("Default vehicle list query");
-            self.default_query()
-        } else {
-            let mut query_builder = super::entities::robot_metadata::Entity::find();
-            match query.order {
-                libfj::robocraft::FactoryOrderType::Suggested => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::RentCount); },
-                libfj::robocraft::FactoryOrderType::CombatRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CombatRating); },
-                libfj::robocraft::FactoryOrderType::CosmeticRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CosmeticRating); },
-                libfj::robocraft::FactoryOrderType::Added => { query_builder = query_builder.order_by_asc(super::entities::robot_metadata::Column::AddedDate); },
-                libfj::robocraft::FactoryOrderType::CPU => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::Cpu); },
-                libfj::robocraft::FactoryOrderType::MostBought => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::BuyCount); },
-            }
-            if !query.text_filter.is_empty() {
-                let query_text = format!("%{}%", query.text_filter.replace('%', ""));
-                if query.player_filter {
-                    query_builder = query_builder.filter(
-                        sea_orm::sea_query::Condition::any()
-                            .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                            .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
-                    );
-                } else {
-                    match query.text_search_field {
-                        libfj::robocraft::FactoryTextSearchField::All => {
-                            query_builder = query_builder.filter(
-                                sea_orm::sea_query::Condition::any()
-                                    .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                                    .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text.clone()))
-                                    .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
-                                    .add(super::entities::robot_metadata::Column::Description.like(query_text))
-                            );
-                        },
-                        libfj::robocraft::FactoryTextSearchField::Name => {
-                            query_builder = query_builder.filter(
-                                sea_orm::sea_query::Condition::any()
-                                    .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
-                            );
-                        },
-                        libfj::robocraft::FactoryTextSearchField::Player => {
-                            query_builder = query_builder.filter(
-                                sea_orm::sea_query::Condition::any()
-                                    .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                                    .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
-                            );
-                        },
-                    }
+        let mut query_builder = super::entities::robot_metadata::Entity::find();
+        match query.order {
+            libfj::robocraft::FactoryOrderType::Suggested => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::RentCount); },
+            libfj::robocraft::FactoryOrderType::CombatRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CombatRating); },
+            libfj::robocraft::FactoryOrderType::CosmeticRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CosmeticRating); },
+            libfj::robocraft::FactoryOrderType::Added => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::AddedDate); },
+            libfj::robocraft::FactoryOrderType::CPU => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::Cpu); },
+            libfj::robocraft::FactoryOrderType::MostBought => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::BuyCount); },
+        }
+        if !query.text_filter.is_empty() {
+            let query_text = format!("%{}%", query.text_filter.replace('%', ""));
+            if query.player_filter {
+                query_builder = query_builder.filter(
+                    sea_orm::sea_query::Condition::any()
+                        .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                        .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
+                );
+            } else {
+                match query.text_search_field {
+                    libfj::robocraft::FactoryTextSearchField::All => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::Description.like(query_text))
+                        );
+                    },
+                    libfj::robocraft::FactoryTextSearchField::Name => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                        );
+                    },
+                    libfj::robocraft::FactoryTextSearchField::Player => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
+                        );
+                    },
                 }
             }
-            // movement filters not supported
-            // weapon filters not supported
-            if query.minimum_cpu > 0 {
-                query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.gte(query.minimum_cpu as u32));
-            }
-            if query.maximum_cpu < usize::MAX {
-                query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.lte(query.maximum_cpu as u32));
-            }
-            if query.buyable {
-                query_builder = query_builder.filter(super::entities::robot_metadata::Column::Buyable.ne(0));
-            }
-            if !self.ignore_expiry {
-                let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
-                log::debug!("Expiry must exceed `{}`", now_str);
-                query_builder = query_builder.filter(super::entities::robot_metadata::Column::ExpiryDate.gte(now_str))
-            }
-            query_builder
-        };
+        }
+        // movement filters not supported
+        // weapon filters not supported
+        if query.minimum_cpu > 0 {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.gte(query.minimum_cpu as u32));
+        }
+        if query.maximum_cpu < usize::MAX {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.lte(query.maximum_cpu as u32));
+        }
+        if query.buyable {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Buyable.ne(0));
+        }
+        if !self.ignore_expiry {
+            let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
+            log::debug!("Expiry must exceed `{}`", now_str);
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::ExpiryDate.gte(now_str))
+        }
+        let query_params = query_builder;
 
         // FIXME add support for query.prepend_featured_bot
         let metadata_pages = query_params.paginate(&self.orm, query.page_size as u64);
@@ -187,8 +187,59 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         Ok(infos)
     }
 
-    async fn upload(&self, _vehicle: crate::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
-        log::info!("Arc adapter does not support uploading factory vehicles");
-        Ok(false)
+    async fn upload(&self, vehicle: crate::VehicleUploadInfo) -> Result<bool, Box<dyn std::error::Error>> {
+        let transaction = self.orm.begin().await?;
+
+        let cube_amounts = {
+            let mut counts: HashMap<u32, u32> = HashMap::new();
+            let data = &vehicle.cube_data[4..];
+            for chunk in data.chunks_exact(8) {
+                let id_bytes: [u8; 4] = chunk[0..4].try_into().unwrap();
+                let part_id = u32::from_le_bytes(id_bytes);
+
+                *counts.entry(part_id).or_insert(0) += 1;
+            }
+            let mut str_map: HashMap<String, u32> = HashMap::new();
+            for (k, v) in counts {
+                str_map.insert(k.to_string(), v);
+            }
+
+            serde_json::to_string(&str_map).unwrap_or_else(|_| "{}".to_string())
+        };
+        let cubes = super::entities::robot_cubes::ActiveModel {
+            cube_data: Set(base64::prelude::BASE64_STANDARD.encode(&vehicle.cube_data)),
+            colour_data: Set(base64::prelude::BASE64_STANDARD.encode(&vehicle.colour_data)),
+            cube_amounts: Set(cube_amounts),
+            ..Default::default()
+        }.insert(&transaction).await?;
+
+        let now = chrono::Utc::now();
+        let meta = super::entities::robot_metadata::ActiveModel {
+            name: Set(vehicle.name),
+            description: Set(vehicle.description),
+            thumbnail: Set(format!("{}{}", &self.cdn, cubes.id)),
+            added_by: Set(vehicle.added_by),
+            added_by_display_name: Set(vehicle.added_by_display_name),
+            added_date: Set(now.format("%Y-%m-%dT%H:%M:%S").to_string()),
+            expiry_date: Set((now + chrono::Duration::days(365 * 2)).format("%Y-%m-%dT%H:%M:%S").to_string()),
+            cpu: Set(vehicle.cpu),
+            total_robot_ranking: Set(vehicle.total_robot_ranking as i32),
+            rent_count: Set(0),
+            buy_count: Set(0),
+            buyable: Set(1),
+            featured: Set(0),
+            combat_rating: Set(3.0),
+            cosmetic_rating: Set(3.0),
+            ..Default::default()
+        }.insert(&transaction).await?;
+        transaction.commit().await?;
+
+        let entry_name = format!("{} - {}.jpg", meta.id, meta.name);
+        let thumbnail = vehicle.thumbnail;
+        tokio::task::spawn_blocking(move || {
+           std::fs::write(Path::new("../data/robocraft/factorythumbnails").join(&entry_name), &thumbnail).ok();
+        });
+
+        Ok(true)
     }
 }

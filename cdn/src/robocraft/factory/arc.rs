@@ -8,10 +8,11 @@ static ZIP_FILE: std::sync::Mutex<Option<zip::read::ZipArchive<std::io::BufReade
 pub async fn get(cli: Data<crate::cli::CliArgs>, id: Path<u32>) -> HttpResponse {
     let id: u32 = *id;
     let zip_path = std::path::PathBuf::from(&cli.data_robocraft).join("rc_archive_thumbnails.zip");
-    try_find_file(zip_path, id).await
+    let thumb_dir_path = std::path::PathBuf::from(&cli.data_robocraft).join("factorythumbnails");
+    try_find_file(zip_path, thumb_dir_path, id).await
 }
 
-async fn try_find_file(zip_path: std::path::PathBuf, id: u32) -> HttpResponse {
+async fn try_find_file(zip_path: std::path::PathBuf, thumb_dir: std::path::PathBuf, id: u32) -> HttpResponse {
     let result = tokio::task::spawn_blocking(move || get_file_in_zip(zip_path, id)).await.unwrap();
     match result {
         Ok(bytes) => {
@@ -19,6 +20,19 @@ async fn try_find_file(zip_path: std::path::PathBuf, id: u32) -> HttpResponse {
             actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::OK)
                 .append_header(("Content-Type", "image/jpeg"))
                 .body(bytes)
+        },
+        Err(zip::result::ZipError::FileNotFound) => {
+            let result = tokio::task::spawn_blocking(move || get_file_in_thumbnails(thumb_dir, id)).await.unwrap();
+            match result {
+                Ok(bytes) => {
+                    log::debug!("Found id {} in thumbnails dir", id);
+                    actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::OK)
+                        .append_header(("Content-Type", "image/jpeg"))
+                        .body(bytes)
+                },
+                Err(_) => actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::NOT_FOUND)
+                    .body("file not found in zip archive or thumbnails dir".to_string()),
+            }
         },
         Err(e) => {
             log::debug!("Failed to find id {} in factory arc: {}", id, e);
@@ -34,10 +48,6 @@ async fn try_find_file(zip_path: std::path::PathBuf, id: u32) -> HttpResponse {
                 zip::result::ZipError::UnsupportedArchive(e) => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
                         .body(format!("unsupported zip file: {}", e))
-                },
-                zip::result::ZipError::FileNotFound => {
-                    actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::NOT_FOUND)
-                        .body("file not found in zip archive".to_string())
                 },
                 zip::result::ZipError::InvalidPassword => {
                     actix_web::HttpResponseBuilder::new(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -66,6 +76,19 @@ fn get_file_in_zip(zip_path: std::path::PathBuf, id: u32) -> zip::result::ZipRes
     }
 
 
+}
+
+fn get_file_in_thumbnails(dir: std::path::PathBuf, id: u32) -> std::io::Result<Vec<u8>> {
+    let prefix = format!("{} - ", id);
+    for ent in std::fs::read_dir(&dir)? {
+        let ent = ent?;
+        let name = ent.file_name().to_string_lossy().into_owned();
+        if name.starts_with(&prefix) && name.ends_with(".jpg") {
+            return std::fs::read(ent.path());
+        }
+    }
+
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "thumbnail not found"))
 }
 
 fn read_file_with_prefix(prefix: &str, archive: &mut zip::read::ZipArchive<std::io::BufReader<std::fs::File>>) -> zip::result::ZipResult<Vec<u8>> {

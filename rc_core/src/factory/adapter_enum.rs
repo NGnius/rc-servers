@@ -34,7 +34,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
 impl Factory {
     pub async fn from_config(conf: &crate::persist::FactoryConfig) -> Result<Self, Box<dyn std::error::Error + 'static>> {
         Ok(match &conf.adapter {
-            crate::persist::AdapterSettings::Arc(x) => Self::Arc(oj_rc_factory::arc::ArcAdapter::init(&x.uri, x.show_expired, x.override_cdn.clone(), x.spoof_username).await?),
+            crate::persist::AdapterSettings::Arc(x) => Self::Arc(oj_rc_factory::arc::ArcAdapter::init(&x.uri, x.show_expired, x.cdn.clone(), x.override_cdn, x.spoof_username).await?),
             crate::persist::AdapterSettings::None => Self::None,
         })
     }

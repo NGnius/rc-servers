@@ -58,6 +58,7 @@ BLANK_FOLDERS_TO_CREATE = [
     "data/robocraft/campaigndata",
     "data/robocraft/clanavatar",
     "data/robocraft/customavatars",
+    "data/robocraft/factorythumbnails",
 ]
 
 def add_folder_to_zip(archive: zipfile.ZipFile, root_dir: str):
