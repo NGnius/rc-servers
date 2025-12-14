@@ -372,9 +372,15 @@ impl PointTracker {
                     lost_lasts.insert(point_owner as u8);
                 }
                 // in case 2+ points are captured in the same tick
-                *owned_points.get_mut(&(new_team as u8)).unwrap() += 1;
+                if let Some(new_team_owned_points) = owned_points.get_mut(&(new_team as u8)) {
+                    *new_team_owned_points += 1;
+                } else {
+                    owned_points.insert(new_team as u8, 1);
+                }
                 if point_owner >= 0 {
-                    *owned_points.get_mut(&(point_owner as u8)).unwrap() -= 1;
+                    if let Some(old_owner_owned_points) = owned_points.get_mut(&(point_owner as u8)) {
+                        *old_owner_owned_points -= 1;
+                    }
                 }
                 generic.broadcast(
                     rlnl::event_code::NetworkEvent::CapturePointNotification,

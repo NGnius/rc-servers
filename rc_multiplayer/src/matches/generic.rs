@@ -715,7 +715,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
                     continue;
                 }
-                log::info!("User {} is awaiting sync", user_id);
+                log::info!("User {} (player {}) is awaiting sync", user_id, player_id);
                 user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
                 ready_count += 1;
             } else if matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
