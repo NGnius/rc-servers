@@ -141,9 +141,6 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         if query.maximum_cpu < usize::MAX {
             query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.lte(query.maximum_cpu as u32));
         }
-        if query.buyable {
-            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Buyable.ne(0));
-        }
         if !self.ignore_expiry {
             let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
             log::debug!("Expiry must exceed `{}`", now_str);
