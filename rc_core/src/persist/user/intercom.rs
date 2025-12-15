@@ -77,10 +77,11 @@ impl super::IntercomUser for super::account_json::UserData {
     }
 
     async fn show_dev_message(&self, msg: IntercomDevMessage, to: Vec<String>) {
+        let send_to_everyone = to.is_empty();
         let data = IntercomWebServiceMessage {
             public_ids: to,
             data: IntercomWebServiceUserMessage::DevMessage(msg),
-            everyone: false,
+            everyone: send_to_everyone,
         };
         if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
             log::error!("Failed to send intercom dev message: {}", e);
