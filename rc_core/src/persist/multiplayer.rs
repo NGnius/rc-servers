@@ -39,8 +39,12 @@ impl super::config::SelfValidator for MultiplayerConfig {
                 message: "Game match may be lonely with only one player".to_owned(),
             });
         }
-        // TODO campaigns
-        // TODO vehicles
+        if ((self.players_per_game as f32) / (self.fakes.len() as f32)) > 1.0 {
+            info.warn(super::config::ValidationMessage {
+                path: vec!["fakes".to_owned()],
+                message: "Game match may have broken vehicle flipping functionality due to more than 1 ClientAI per player".to_owned(),
+            });
+        }
         // TODO
         is_ok
     }
@@ -134,7 +138,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             },
             implementation: ClientEmulation::ClientAI,
         },
-        FakePlayerConf {
+        /*FakePlayerConf {
             team: None,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake3".to_owned()),
@@ -157,7 +161,7 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
                 },
             },
             implementation: ClientEmulation::ClientAI,
-        },
+        },*/
     ]
 }
 

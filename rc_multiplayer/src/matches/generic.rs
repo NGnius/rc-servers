@@ -1068,8 +1068,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         log::error!("Failed to serialize motion data from user {}: {}", user_id, e);
                     } else {
                         let data = bytes::Bytes::copy_from_slice(ser.as_slice());
-                        for conn in self.users.read().await.values() {
-                            if conn.user.user_id() == user_id { continue; } // fun fact: the game hard crashes if you omit this
+                        for (player_id, conn) in self.users.read().await.iter() {
+                            if *player_id == motion.player_id || conn.aliases.contains(player_id) || conn.aliases.contains(&motion.player_id) { continue; } // don't re-send to client AIs
+                            // fun fact: the game sometimes hard crashes if you send its own motion data back to it
                             crate::events::log_lnl_send_failure(conn.connection.sender.send_data(crate::handler::EventData {
                                 message_ty: crate::data::MessageType::RobotMotion,
                                 variant: 0,
