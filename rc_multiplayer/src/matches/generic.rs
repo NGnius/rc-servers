@@ -118,6 +118,7 @@ pub(super) struct UserData {
     pub kills: std::sync::atomic::AtomicU32,
     pub deaths: std::sync::atomic::AtomicU32,
     pub assists: std::sync::atomic::AtomicU32,
+    pub heal_assists: std::sync::atomic::AtomicU32,
     pub healed: std::sync::atomic::AtomicU32,
     pub received_healed: std::sync::atomic::AtomicU32,
     pub cubes: std::sync::atomic::AtomicU32,
@@ -132,6 +133,7 @@ impl UserData {
             kills: std::sync::atomic::AtomicU32::new(0),
             deaths: std::sync::atomic::AtomicU32::new(0),
             assists: std::sync::atomic::AtomicU32::new(0),
+            heal_assists: std::sync::atomic::AtomicU32::new(0),
             healed: std::sync::atomic::AtomicU32::new(0),
             received_healed: std::sync::atomic::AtomicU32::new(0),
             cubes: std::sync::atomic::AtomicU32::new(0),
@@ -144,6 +146,7 @@ impl UserData {
     pub(super) fn generic_score(&self) -> u32 {
         self.kills.load(std::sync::atomic::Ordering::Relaxed) * 1_000
         + self.assists.load(std::sync::atomic::Ordering::Relaxed) * 100
+        //+ self.heal_assists.load(std::sync::atomic::Ordering::Relaxed) * 200
         + self.healed.load(std::sync::atomic::Ordering::Relaxed)
         + self.cubes.load(std::sync::atomic::Ordering::Relaxed)
         + self.crystals.load(std::sync::atomic::Ordering::Relaxed) * 25
@@ -156,7 +159,8 @@ impl UserData {
             | rlnl::types::IngameStatId::DestroyedCubesDefendingTheBase => (self.cubes.load(std::sync::atomic::Ordering::SeqCst), 1),
             rlnl::types::IngameStatId::Kill => (self.kills.load(std::sync::atomic::Ordering::Relaxed), 1_000),
             rlnl::types::IngameStatId::KillAssist => (self.assists.load(std::sync::atomic::Ordering::Relaxed), 100),
-            rlnl::types::IngameStatId::HealCubes => (self.assists.load(std::sync::atomic::Ordering::SeqCst), 1),
+            rlnl::types::IngameStatId::HealCubes => (self.healed.load(std::sync::atomic::Ordering::SeqCst), 1),
+            rlnl::types::IngameStatId::HealAssist => (self.heal_assists.load(std::sync::atomic::Ordering::SeqCst), 200),
             rlnl::types::IngameStatId::RobotDestroyed => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 0),
             rlnl::types::IngameStatId::DestroyedProtoniumCubes => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 25),
             s => panic!("Cannot generate game stat {:?}", s)
@@ -445,6 +449,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     },
                     super::GameMessage::AssistBonus { user_id, shootee, shooters } => {
                         self.on_assist_bonus(user_id, shootee, shooters).await;
+                    },
+                    super::GameMessage::HealAssistBonus { user_id, healer, healee } => {
+                        self.on_heal_assist_bonus(user_id, healer, healee).await;
                     },
                     super::GameMessage::DestroyCubesBonus { user_id, info } => {
                         self.on_destroy_cubes_bonus(user_id, info).await;
@@ -943,6 +950,24 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     true,
                 ).await;
             }
+        }
+    }
+
+    async fn on_heal_assist_bonus(&self,
+        _user_id: i32,
+        healer: u8,
+        _healee: u8,
+    ) {
+        if let Some(to_reward_desc) = self.user_descriptor(healer) {
+            //let to_reward_desc = self.user_descriptor(healee).unwrap();
+            to_reward_desc.counters.heal_assists.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let data = to_reward_desc.counters.get_generic_packet(healer, rlnl::types::IngameStatId::HealAssist, None);
+            self.broadcast(
+                rlnl::event_code::NetworkEvent::UpdateGameStats,
+                literustlib::packet::Property::ReliableOrdered,
+                &data,
+                true,
+            ).await;
         }
     }
 

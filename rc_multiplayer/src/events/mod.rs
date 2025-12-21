@@ -16,6 +16,7 @@ mod assist_bonus;
 mod damage_bonus;
 mod heal_bonus;
 mod player_leave;
+mod heal_assist_bonus;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
@@ -202,6 +203,21 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::DestroyedHealedCubesBonus,
         >::handler(init_ctx))
         .add(player_leave::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            false,
+            {rlnl::event_code::NetworkEvent::LockOnNotification as i16},
+            {rlnl::event_code::NetworkEvent::LockOnNotificationBroadcast as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::LockOnNotifier,
+        >::handler(init_ctx))
+        .add(crate::handlers::Broadcaster::<
+            false,
+            {rlnl::event_code::NetworkEvent::HealAlly as i16},
+            {rlnl::event_code::NetworkEvent::HealAllyResponse as i16},
+            {literustlib::packet::Property::ReliableOrdered as u8},
+            rlnl::events::ingame::HealAllyCubes,
+        >::handler(init_ctx))
+        .add(heal_assist_bonus::handler(init_ctx))
 }
 
 #[inline]
@@ -242,6 +258,8 @@ mod _broadcast_impls {
     impl Broadcastable for rlnl::events::ingame::InitiateSurrender {}
     impl Broadcastable for rlnl::events::ingame::SurrenderVoteCast {}
     impl Broadcastable for rlnl::events::ingame::AwardProtoniumDestroyedCubes {}
+    impl Broadcastable for rlnl::events::ingame::LockOnNotifier {}
+    impl Broadcastable for rlnl::events::ingame::HealAllyCubes {}
 
     impl Broadcastable for rlnl::events::sync::UpdateGameModeSettings {}
     impl Broadcastable for rlnl::events::sync::GetTeamBase {}

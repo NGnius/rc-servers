@@ -2,7 +2,7 @@ pub struct HealBonus {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
 
-pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::SimpleRlnl<rlnl::events::ingame::DestroyedHealedCubesBonus, HealBonus> {
+pub(super) fn handler(init_ctx: &crate::InitConfig) -> crate::handlers::SimpleRlnl<rlnl::events::ingame::HealAssistBonus, HealBonus> {
     crate::handlers::SimpleRlnl::new(HealBonus::new(init_ctx))
 }
 
@@ -16,14 +16,16 @@ impl HealBonus {
 
 #[async_trait::async_trait]
 impl crate::handlers::RlnlEventCodeHandler for HealBonus {
-    type In = rlnl::events::ingame::DestroyedHealedCubesBonus;
-    const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::HealCubesBonusRequest;
+    type In = rlnl::events::ingame::HealAssistBonus;
+    const CODE: rlnl::event_code::NetworkEvent = rlnl::event_code::NetworkEvent::HeallingAssistBonusRequest;
 
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
-            super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::HealCubesBonus {
+            log::info!("Heal assist for player {}", data.healing_player_id);
+            super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::HealAssistBonus {
                 user_id: user_info.user_id(),
-                info: data,
+                healer: data.healing_player_id,
+                healee: data.healed_player_id,
             }).await);
         }
     }

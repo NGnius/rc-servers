@@ -62,6 +62,11 @@ pub enum GameMessage {
         shootee: u8,
         shooters: Vec<u8>,
     },
+    HealAssistBonus {
+        user_id: i32,
+        healer: u8,
+        healee: u8,
+    },
     DestroyCubesBonus {
         user_id: i32,
         info: rlnl::events::ingame::DestroyedHealedCubesBonus,
@@ -121,6 +126,7 @@ impl GameMessage {
             Self::MapPing { user_id, .. } => *user_id,
             Self::KillBonus { user_id, .. } => *user_id,
             Self::AssistBonus { user_id, .. } => *user_id,
+            Self::HealAssistBonus { user_id, .. } => *user_id,
             Self::DestroyCubesBonus { user_id, .. } => *user_id,
             Self::HealCubesBonus { user_id, .. } => *user_id,
             Self::BroadcastRlnl { user_id, .. } => *user_id,
