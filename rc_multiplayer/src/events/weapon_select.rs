@@ -22,15 +22,15 @@ impl crate::handlers::RlnlEventCodeHandler for WeaponSelect {
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
             if let Some(category) = oj_rc_core::data::weapon_list::ItemCategory::from_smaller(data.item_category as _) {
-                if let Some(tier) = oj_rc_core::data::cube_list::ItemTier::from_u32(data.item_category as _) {
+                if let Some(tier) = oj_rc_core::data::cube_list::ItemTier::from_u32(data.item_size as _) {
                     super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::WeaponSelect {
                         user_id: user_info.user_id(),
                         machine_id: data.machine_id,
                         category,
                         size: tier,
                     }).await);
-                } else { log::warn!("Bad WeaponSelect tier") }
-            } else { log::warn!("Bad WeaponSelect category") }
+                } else { log::warn!("Bad WeaponSelect tier {}", data.item_size) }
+            } else { log::warn!("Bad WeaponSelect category {}", data.item_category) }
         }
     }
 }
