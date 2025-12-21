@@ -569,11 +569,16 @@ impl EqualizerTracker {
                 // do activation
                 if let Some(winning_base) = Self::winning_base(bases) {
                     if let Some(losing_base) = Self::losing_base(bases) {
-                        self.activated.store(true, std::sync::atomic::Ordering::Relaxed);
-                        self.winning_team.store(winning_base.0, std::sync::atomic::Ordering::Relaxed);
-                        self.losing_team.store(losing_base.0, std::sync::atomic::Ordering::Relaxed);
-                        self.health.store(ba_config.equalizer_health as u64, std::sync::atomic::Ordering::Relaxed);
-                        self.send_notification(rlnl::types::EqualizerState::Start, ba_config, eq_start, now, generic).await;
+                        if losing_base.0 != winning_base.0 && winning_base.1 > 0.0 {
+                            self.activated.store(true, std::sync::atomic::Ordering::Relaxed);
+                            self.winning_team.store(winning_base.0, std::sync::atomic::Ordering::Relaxed);
+                            self.losing_team.store(losing_base.0, std::sync::atomic::Ordering::Relaxed);
+                            self.health.store(ba_config.equalizer_health as u64, std::sync::atomic::Ordering::Relaxed);
+                            self.send_notification(rlnl::types::EqualizerState::Start, ba_config, eq_start, now, generic).await;
+                        } else {
+                            log::info!("Skipping equalizer for game {} (no base charge or teams are tied)", generic.game_guid());
+                            self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
                     } else {
                         log::warn!("No losing team found for game {}", generic.game_guid());
                     }
@@ -588,7 +593,7 @@ impl EqualizerTracker {
         if !self.activated.load(std::sync::atomic::Ordering::Relaxed) { return; }
         let damage_u64 = damage as u64;
         let old_health = self.health.fetch_sub(damage as u64, std::sync::atomic::Ordering::Relaxed);
-        if old_health < damage_u64 {
+        if old_health <= damage_u64 {
             // equalizer is now destroyed
             self.destroy_equalizer(generic, ba_config, bases, crystals).await;
         }
