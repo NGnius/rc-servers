@@ -58,12 +58,12 @@ impl ChatSystem {
         let handle = super::UserHandle::from_strong_sender(event_tx, display_name.clone());
         self.online_users.insert(display_name, handle.clone());
         for channel in channels {
-            if let Some(chat) = self.chats.get_mut(&channel) {
+            if let Some(chat) = self.chats.get_mut(&channel.to_uppercase()) {
                 chat.connect_user(handle.clone());
             } else {
                 let mut new_room = super::ChatRoom::new(channel.clone(), crate::data::channel::ChatChannelType::Public);
                 new_room.connect_user(handle.clone());
-                self.chats.insert(channel, new_room);
+                self.chats.insert(channel.to_lowercase(), new_room);
             }
         }
     }
@@ -75,14 +75,14 @@ impl ChatSystem {
             } else {
                 let mut new_room = super::ChatRoom::new(channel.clone(), channel_ty);
                 new_room.connect_user(user_handle.to_owned());
-                self.chats.insert(channel, new_room);
+                self.chats.insert(channel.to_lowercase(), new_room);
             }
         }
         self.cleanup();
     }
 
     pub fn leave_channel(&mut self, display_name: String, channel: String) {
-        if let Some(chat_room) = self.chats.get_mut(&channel) {
+        if let Some(chat_room) = self.chats.get_mut(&channel.to_lowercase()) {
             chat_room.remove_user(&display_name);
         }
     }
@@ -92,7 +92,7 @@ impl ChatSystem {
             if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty).await;
             }
-        } else if let Some(room) = self.chats.get(&channel) {
+        } else if let Some(room) = self.chats.get(&channel.to_lowercase()) {
             let event_params = crate::events::chat_message::PublicMessage {
                 sender_name: user.public_id().to_owned(),
                 sender_display_name: user.display_name().to_owned(),
@@ -100,7 +100,7 @@ impl ChatSystem {
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),
                 is_admin: user.is_admin(),
-                channel_name: channel,
+                channel_name: room.canon_name(),
                 channel_ty,
             };
             room.send_public_message(event_params);

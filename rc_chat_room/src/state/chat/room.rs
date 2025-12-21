@@ -90,4 +90,8 @@ impl ChatRoom {
             false
         }
     }
+
+    pub fn canon_name(&self) -> String {
+        self.name.clone()
+    }
 }

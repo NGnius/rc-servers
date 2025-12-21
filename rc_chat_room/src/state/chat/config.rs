@@ -40,7 +40,7 @@ impl ChatSystemConfig {
     }
 
     pub fn is_command_channel(&self, channel: &str) -> bool {
-        self.command_channel == channel
+        self.command_channel.to_lowercase() == channel.to_lowercase()
     }
 
     pub fn is_command_user(&self, username: &str) -> bool {
