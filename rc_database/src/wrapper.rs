@@ -27,7 +27,10 @@ impl Database {
 
     pub async fn user_by_display_name(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
-            .filter(crate::schema::user::Column::DisplayName.eq(public_id))
+            .filter(sea_orm::sea_query::Expr::expr(
+                sea_orm::sea_query::Func::lower(crate::schema::user::Column::DisplayName.into_expr())
+                ).eq(public_id.to_lowercase())
+            )
             .one(&self.orm)
             .await
     }
@@ -41,7 +44,10 @@ impl Database {
 
     pub async fn user_by_email(&self, email: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
-            .filter(crate::schema::user::Column::Email.eq(email))
+            .filter(sea_orm::sea_query::Expr::expr(
+                sea_orm::sea_query::Func::lower(crate::schema::user::Column::Email.into_expr())
+                ).eq(email.to_lowercase())
+            )
             .one(&self.orm)
             .await
     }
