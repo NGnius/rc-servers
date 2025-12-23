@@ -24,4 +24,4 @@ serde_json.workspace = true
 hex.workspace = true
 oj_serdes.workspace = true
 
-handlebars = { version = "5", features = ["dir_source"] }
+handlebars = { version = "6", features = ["dir_source"] }

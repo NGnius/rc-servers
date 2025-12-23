@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [workspace.package]
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 repository = "https://git.ngram.ca/OpenJam/rc-servers"
 license = "GPL-3.0-only"
@@ -28,7 +28,7 @@ members = [
 
 [workspace.dependencies]
 rocket = { version = "0.5", features = [ "json" ] }
-actix-web = { version = "~4.11", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd"] }
+actix-web = { version = "4", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd", "ws"] }
 # actix-web 4.12 does not build properly for some reason...
 actix-files = "0.6"
 libfj = { version = "0.9", path = "../libfj" }

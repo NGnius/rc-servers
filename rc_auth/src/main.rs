@@ -35,18 +35,18 @@ async fn main() -> std::io::Result<()> {
     let internal_auth = actix_web::web::Data::new(crate::robocraft::intercom::IntercomAuth::new(&cli_args.data_robocraft)?);
     let user_registry = actix_web::web::Data::new(crate::robocraft::intercom::Users::new());
 
-    let mut handlebars = handlebars::Handlebars::new();
-    handlebars
+    let mut handlebars_conf = handlebars::Handlebars::new();
+    let mut dir_conf = handlebars::DirectorySourceOptions::default();
+    dir_conf.tpl_extension = ".html.hbs".to_owned();
+    dir_conf.hidden = false;
+    dir_conf.temporary = false;
+    handlebars_conf
         .register_templates_directory(
             std::path::PathBuf::from(&cli_args.assets_robocraft).parent().expect("Bad robocraft asset path").join("templates"),
-            handlebars::DirectorySourceOptions {
-                tpl_extension: ".html.hbs".to_owned(),
-                hidden: false,
-                temporary: false,
-            },
+            dir_conf,
         )
         .unwrap();
-    let handlebars_ref = actix_web::web::Data::new(handlebars);
+    let handlebars_ref = actix_web::web::Data::new(handlebars_conf);
 
     HttpServer::new(move || {
         App::new()

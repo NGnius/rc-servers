@@ -25,7 +25,7 @@ indexmap = { version = "2.0", features = ["serde"] }
 
 # auth
 libfj.workspace = true
-jsonwebtoken = "9"
+jsonwebtoken = { version = "10", features = [ "rust_crypto" ] }
 argon2 = { version = "0.5", features = [ "std" ] }
 
 # intercom
