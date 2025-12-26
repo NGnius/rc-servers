@@ -202,7 +202,7 @@ impl BuiltIn {
                     }
                 }
                 if stats.is_empty() {
-                    stats.push(format!("TODO: general stats (try db)"));
+                    stats.push("TODO: general stats (try db)".to_owned());
                 }
                 stats.join("\n")
             },
@@ -282,9 +282,9 @@ impl Intercom {
                         },
                         vec![],
                     ).await;
-                    format!("Sent dev broadcast to everyone")
+                    "Sent dev broadcast to everyone".to_owned()
                 } else {
-                    format!("Missing dev message, did not send")
+                    "Missing dev message, did not send".to_owned()
                 }
             },
             Self::Maintenance => {
@@ -293,9 +293,9 @@ impl Intercom {
                         oj_rc_core::persist::user::intercom::IntercomMaintenanceMessage { message },
                         vec![],
                     ).await;
-                    format!("Sent maintenance message")
+                    "Sent maintenance message".to_owned()
                 } else {
-                    format!("Missing maintenance message, did not send")
+                    "Missing maintenance message, did not send".to_owned()
                 }
 
             }

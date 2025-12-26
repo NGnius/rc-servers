@@ -12,7 +12,7 @@ impl UserData {
     pub(super) async fn generate_fake_players_data(
         &self,
         _guid: i64,
-        real_players: &Vec<super::PlayerLobbyDescriptor>,
+        real_players: &[super::PlayerLobbyDescriptor],
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,

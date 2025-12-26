@@ -19,7 +19,7 @@ impl ArcAdapter {
             orm: db,
             ignore_expiry: show_expired,
             cdn: cdn.to_owned(),
-            override_cdn: override_cdn,
+            override_cdn,
             spoof_users: username_spoofing,
         };
         // do query to ensure database is ok
