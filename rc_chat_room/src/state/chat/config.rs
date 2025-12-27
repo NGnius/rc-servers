@@ -115,6 +115,7 @@ impl ChatOperation {
 
 enum BuiltIn {
     Intercom(Intercom),
+    System(System),
     OnlineUsers,
     TotalUsers,
     Stats,
@@ -126,6 +127,7 @@ impl BuiltIn {
     fn from_persist(b_in: oj_rc_core::persist::BuiltInChatOperation) -> Self {
         match b_in {
             oj_rc_core::persist::BuiltInChatOperation::Intercom(com) => Self::Intercom(Intercom::from_persist(com)),
+            oj_rc_core::persist::BuiltInChatOperation::System(sys) => Self::System(System::from_persist(sys)),
             oj_rc_core::persist::BuiltInChatOperation::OnlineUsers => Self::OnlineUsers,
             oj_rc_core::persist::BuiltInChatOperation::TotalUsers => Self::TotalUsers,
             oj_rc_core::persist::BuiltInChatOperation::Stats => Self::Stats,
@@ -141,6 +143,7 @@ impl BuiltIn {
     async fn do_command<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> String {
         match self {
             Self::Intercom(intercom) => intercom.do_command(text, ctx).await,
+            Self::System(sys) => sys.do_command(text, ctx).await,
             Self::OnlineUsers => {
                 let online_count = ctx.chat_system.user_count();
                 if online_count == 1 {
@@ -236,6 +239,7 @@ impl BuiltIn {
     fn do_help(&self) -> String {
         match self {
             Self::Intercom(i) => i.do_help(),
+            Self::System(s) => s.do_help(),
             Self::OnlineUsers => "Show total users online".to_owned(),
             Self::TotalUsers => "Show total users registered".to_owned(),
             Self::Stats => "Show server metrics (db|perms)".to_owned(),
@@ -308,6 +312,114 @@ impl Intercom {
             Self::DevMessage => "Show dev message to yourself".to_owned(),
             Self::DevBroadcast => "Show dev message to everyone".to_owned(),
             Self::Maintenance => "Broadcast maintenance mode to everyone".to_owned(),
+        }
+    }
+}
+
+enum System {
+    Permissions,
+    CheckPermissions,
+}
+
+enum SystemPermission {
+    Mod,
+    NotMod,
+    Admin,
+    NotAdmin,
+    Dev,
+    NotDev,
+}
+
+impl SystemPermission {
+    fn from_str(s: &str) -> Option<Self> {
+        match &s.to_lowercase() as &str {
+            "mod" | "moderator" => Some(Self::Mod),
+            "!mod" | "!moderator" | "unmod" | "notmod" => Some(Self::NotMod),
+            "admin" | "administrator" => Some(Self::Admin),
+            "!admin" | "!administrator" | "nadmin" | "notadmin" => Some(Self::NotAdmin),
+            "dev" | "developer" => Some(Self::Dev),
+            "!dev" | "!developer" | "notdev" => Some(Self::NotDev),
+            _ => None,
+        }
+    }
+
+    fn display(&self) -> &'static str {
+        match self {
+            Self::Mod => "Moderator",
+            Self::NotMod => "!Moderator",
+            Self::Admin => "Administrator",
+            Self::NotAdmin => "!Administrator",
+            Self::Dev => "Developer",
+            Self::NotDev => "!Developer",
+        }
+    }
+
+    fn role(&self) -> oj_rc_core::persist::user::UserRole {
+        match self {
+            Self::Mod => oj_rc_core::persist::user::UserRole::Moderator,
+            Self::NotMod => oj_rc_core::persist::user::UserRole::Moderator,
+            Self::Admin => oj_rc_core::persist::user::UserRole::Administrator,
+            Self::NotAdmin => oj_rc_core::persist::user::UserRole::Administrator,
+            Self::Dev => oj_rc_core::persist::user::UserRole::Developer,
+            Self::NotDev => oj_rc_core::persist::user::UserRole::Developer,
+        }
+    }
+
+    fn value(&self) -> bool {
+        match self {
+            Self::Mod | Self::Admin | Self::Dev => true,
+            Self::NotMod | Self::NotAdmin | Self::NotDev => false,
+        }
+    }
+}
+
+impl System {
+    fn from_persist(sys: oj_rc_core::persist::SystemChatOperation) -> Self {
+        match sys {
+            oj_rc_core::persist::SystemChatOperation::Permissions => Self::Permissions,
+            oj_rc_core::persist::SystemChatOperation::CheckPermissions => Self::CheckPermissions,
+        }
+    }
+
+    async fn do_command<'b, 'c>(&self, text: &str, ctx: CommandContext<'b, 'c>) -> String {
+        match self {
+            Self::Permissions => {
+                let params: Vec<_> = text.trim().split(' ').collect();
+                if params.len() < 3 {
+                    return "Not enough arguments\nusage: [command] [permission] [username]".to_owned();
+                } else if params.len() > 3 {
+                    return "Too many arguments parameters\nusage: [command] [permission] [username]".to_owned();
+                }
+                let perm = SystemPermission::from_str(params[1]);
+                if perm.is_none() {
+                    return format!("Unrecognised permission \"{}\" (try dev, admin, or mod)", &params[1]);
+                }
+                let perm = perm.unwrap();
+                if let Err(e) = ctx.user.set_permission(params[2].to_owned(), perm.role(), perm.value()).await {
+                    if let Some(msg) = e.error_msg() {
+                        format!("Failed to grant permission: {}", msg)
+                    } else {
+                        format!("Failed to grant permission (code {})", e.error_code())
+                    }
+                } else {
+                    format!("Granted {} to {} (they should re-log)", perm.display(), &params[2])
+                }
+            },
+            Self::CheckPermissions => {
+                let is_royal = ctx.user.is_royal();
+                let is_dev = ctx.user.is_dev();
+                let is_admin = ctx.user.is_dev();
+                let is_mod = ctx.user.is_mod();
+                format!("r:{} dev:{} adm:{} mod:{}", is_royal as u8, is_dev as u8, is_admin as u8, is_mod as u8)
+            }
+        }
+
+    }
+
+    fn do_help(&self) -> String {
+        match self {
+            Self::Permissions => "Grant permissions to an account".to_owned(),
+            Self::CheckPermissions => "Display permissions for current account".to_owned(),
         }
     }
 }

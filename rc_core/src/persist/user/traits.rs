@@ -207,6 +207,7 @@ pub trait ChatUser: CommonUser + IntercomUser {
     async fn get_sanctions(&self, username: String) -> Result<polariton::operation::Typed<()>, i16>;
     async fn set_sanction(&self, sanction: SetSanction) -> Result<(), i16>;
     async fn get_total_registered_users(&self) -> Result<u64, polariton_server::operations::SimpleOpError>;
+    async fn set_permission(&self, username: String, permission: UserRole, value: bool) -> Result<(), polariton_server::operations::SimpleOpError>;
 }
 
 pub struct SetSanction {
@@ -236,6 +237,13 @@ impl SanctionType {
             _ => Err(crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16),
         }
     }
+}
+
+pub enum UserRole {
+    Moderator,
+    Administrator,
+    Developer,
+    Royalty,
 }
 
 #[async_trait::async_trait]

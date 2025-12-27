@@ -76,6 +76,7 @@ impl super::config::SelfValidator for ChatCommand {
             self.op,
             ChatOperation::BuiltIn(BuiltInChatOperation::Intercom(IntercomChatOperation::DevBroadcast))
             | ChatOperation::BuiltIn(BuiltInChatOperation::Intercom(IntercomChatOperation::Maintenance))
+            | ChatOperation::BuiltIn(BuiltInChatOperation::System(SystemChatOperation::Permissions))
         ) {
             if !matches!(self.permission, ChatPermission::Administrator | ChatPermission::Developer | ChatPermission::Royal) {
                 info.warn(crate::persist::config::ValidationMessage {
@@ -115,6 +116,7 @@ pub enum ChatOperation {
 #[serde(tag = "built_in")]
 pub enum BuiltInChatOperation {
     Intercom(IntercomChatOperation),
+    System(SystemChatOperation),
     OnlineUsers,
     TotalUsers,
     Stats,
@@ -128,6 +130,13 @@ pub enum IntercomChatOperation {
     DevMessage,
     DevBroadcast,
     Maintenance,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "system")]
+pub enum SystemChatOperation {
+    Permissions,
+    CheckPermissions,
 }
 
 

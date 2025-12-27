@@ -14509,6 +14509,24 @@
                 "permission": "Developer"
             },
             {
+                "regex": "\\?grant",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "System",
+                    "system": "Permissions"
+                },
+                "permission": "Developer"
+            },
+            {
+                "regex": "\\?perms",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "System",
+                    "system": "CheckPermissions"
+                },
+                "permission": "Player"
+            },
+            {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",
