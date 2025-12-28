@@ -115,6 +115,7 @@ impl Location {
 }
 
 pub(super) struct UserData {
+    pub score_id: std::sync::atomic::AtomicI64,
     pub kills: std::sync::atomic::AtomicU32,
     pub deaths: std::sync::atomic::AtomicU32,
     pub assists: std::sync::atomic::AtomicU32,
@@ -130,6 +131,7 @@ pub(super) struct UserData {
 impl UserData {
     fn new() -> Self {
         Self {
+            score_id: std::sync::atomic::AtomicI64::new(i64::MIN),
             kills: std::sync::atomic::AtomicU32::new(0),
             deaths: std::sync::atomic::AtomicU32::new(0),
             assists: std::sync::atomic::AtomicU32::new(0),
@@ -171,6 +173,23 @@ impl UserData {
             amount: stat_amount,
             score: self.generic_score(),
             delta_score: delta.unwrap_or(backup_delta),
+        }
+    }
+
+    fn as_core(&self) -> oj_rc_core::persist::user::PlayerScore {
+        let id_maybe = self.score_id.load(std::sync::atomic::Ordering::Relaxed);
+        oj_rc_core::persist::user::PlayerScore {
+            id: id_maybe.try_into().ok(),
+            kills: self.kills.load(std::sync::atomic::Ordering::Relaxed),
+            deaths: self.deaths.load(std::sync::atomic::Ordering::Relaxed),
+            assists: self.assists.load(std::sync::atomic::Ordering::Relaxed),
+            heal_assists: self.heal_assists.load(std::sync::atomic::Ordering::Relaxed),
+            healed: self.healed.load(std::sync::atomic::Ordering::Relaxed),
+            received_healed: self.received_healed.load(std::sync::atomic::Ordering::Relaxed),
+            damaged: self.cubes.load(std::sync::atomic::Ordering::Relaxed),
+            received_damaged: self.received_cubes.load(std::sync::atomic::Ordering::Relaxed),
+            crystals: self.crystals.load(std::sync::atomic::Ordering::Relaxed),
+            total: self.generic_score(),
         }
     }
 }
@@ -521,6 +540,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 ).await);
                 log::debug!("User {} is validated to play game {}", new_user.user.user_id(), game_guid);
                 let new_user = std::sync::Arc::new(new_user);
+                if let Err(e) = new_user.user.save_player_connected_status(self.game_guid(), true).await {
+                    log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
+                }
                 let mut users = self.users.write().await;
                 users.insert(id, new_user.clone());
                 for fake_id in new_user.aliases.iter() {
@@ -558,17 +580,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         }
                     }
                     let is_game_complete = self.is_complete.load(std::sync::atomic::Ordering::Relaxed);
-                    for disconnecter in disconnecting_players {
-                        if !is_game_complete {
-                            self.broadcast(
-                                rlnl::event_code::NetworkEvent::OnAnotherClientDisconnected,
-                                literustlib::packet::Property::ReliableOrdered,
-                                &rlnl::events::ingame::PlayerId { player: disconnecter },
-                                true,
-                            ).await;
-                        }
-                    }
                     if is_game_complete {
+                        // save score to database as they disconnect
+                        // this happens before they return to the main menu
+                        let scores = user_info.counters.as_core();
+                        match conn.user.update_game_score(self.game_guid(), scores).await {
+                            Ok(score_id) => user_info.counters.score_id.store(score_id as i64, std::sync::atomic::Ordering::Relaxed),
+                            Err(e) => {
+                                log::warn!("Failed to save score for player {} (user {}) after end of game {}: {}", player_id, user_id, self.game_guid(), e);
+                            },
+                        }
                         // in every other case this packet would've already been sent
                         // this makes the end-of-match "continue" button send you back to the main menu a bit sooner
                         // (otherwise it waits for the multiplayer server to disconnect via timeout)
@@ -577,6 +598,15 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             literustlib::packet::Property::ReliableOrdered,
                             &conn.connection.connection,
                         ).await);
+                    } else {
+                        for disconnecter in disconnecting_players {
+                            self.broadcast(
+                                rlnl::event_code::NetworkEvent::OnAnotherClientDisconnected,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &rlnl::events::ingame::PlayerId { player: disconnecter },
+                                true,
+                            ).await;
+                        }
                     }
 
                     let mut has_active_connections = false;
@@ -593,6 +623,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 log::error!("Failed to mark game {} as complete: {}", self.game_guid(), e);
                             }
                         }
+                    }
+                    if let Err(e) = conn.user.save_player_connected_status(self.game_guid(), false).await {
+                        log::error!("Failed to mark player {} (user {}) as disconnected in game {}: {}", player_id, user_id, self.game_guid(), e);
                     }
                     conn.connection.connection.goodbye(&conn.connection.sender).await;
                     return has_active_connections;

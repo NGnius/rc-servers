@@ -121,3 +121,47 @@ impl AuthErrorCode {
         (self as u16).to_string()
     }
 }
+
+#[repr(u16)] // doesn't really matter
+#[derive(Debug)]
+pub enum SocialErrorCode {
+    None = 0,
+    UnexpectedError = 1,
+    UserDoesNotExist = 2,
+    UserAlreadyFriends = 3,
+    MaxFriends = 4,
+    TargetMaxFriends = 5,
+    UserNotFriend = 6,
+    InviteAlreadySent = 7,
+    UserIsSelf = 8,
+    DatabaseError = 9,
+    UserNotOnline = 10,
+    AutoDeclinedFriendOrClan = 11,
+    UserAcceptsPlatoonInvitesFromFriendsAndClansOnly = 12,
+    PlatoonIsFull = 13,
+    UserNotInPlatoon = 14,
+    UserNotPlatoonFound = 15,
+    NoInvite = 16,
+    AlreadyInvited = 17,
+    TheyNotInPlatoon = 18,
+    TheyNotPlatoonLeader = 19,
+    NoClansFound = 20,
+    UserNotInClan = 21,
+    AlreadyInClan = 22,
+    ClanRankTooLow = 23,
+    ClanFull = 24,
+    ClanNotFound = 25,
+    ClanClosed = 26,
+    UserNotFoundInClan = 28,
+    NotClanLeader = 29,
+    TargetAlreadyInClan = 30,
+    ClanAlreadyExists = 31,
+    InvalidClanName = 32,
+    InvalidUsername = 33,
+    WaitingForInviteResponse = 34,
+    AlreadyInPlatoon = 35,
+    NotInPlatoon = 36,
+    NotPlatoonLeader = 37,
+    UserBlockedYou = 38,
+    NoConnection = 39
+}

@@ -8,6 +8,8 @@ mod season_rewards;
 mod previous_battle_rewards;
 mod platoon_data;
 mod calculate_mmr;
+mod previous_battle_rewards_get;
+mod previous_battle_rewards_claim;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -31,4 +33,6 @@ pub fn handler() -> OperationsHandler<crate::UserTy, crate::data::custom::Custom
         .add(calculate_mmr::mmr_provider())
         .add(polariton_server::operations::Ack::<25, _>::default()) // save social settings, sent on escape menu settings save (should probably be saved someday...)
         .add(polariton_server::operations::Ack::<0, _>::default()) // send friend request, can be sent from match leaderboard
+        .add(previous_battle_rewards_get::get_battle_rewards_provider())
+        .add(previous_battle_rewards_claim::claim_battle_rewards_provider())
 }

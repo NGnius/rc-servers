@@ -31,6 +31,8 @@ pub enum Relation {
         to = "super::user::Column::Id"
     )]
     User,
+    #[sea_orm(has_one = "super::multiplayer_game_score::Entity")]
+    Score,
 }
 
 impl Related<super::multiplayer_game::Entity> for Entity {
@@ -42,6 +44,12 @@ impl Related<super::multiplayer_game::Entity> for Entity {
 impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::User.def()
+    }
+}
+
+impl Related<super::multiplayer_game_score::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Score.def()
     }
 }
 

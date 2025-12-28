@@ -61,7 +61,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + LobbyUser + MultiplayerUser + IntercomUser + CommonUser {
+pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + IntercomUser + CommonUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
@@ -339,6 +339,22 @@ pub trait MultiplayerUser: IntercomUser + CommonUser {
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
     async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
+    async fn update_game_score(&self, guid: &str, score: PlayerScore) -> Result<i32, MultiplayerError>;
+    async fn save_player_connected_status(&self, guid: &str, is_connected: bool) -> Result<(), MultiplayerError>;
+}
+
+pub struct PlayerScore {
+    pub id: Option<i32>,
+    pub kills: u32,
+    pub deaths: u32,
+    pub assists: u32,
+    pub heal_assists: u32,
+    pub healed: u32,
+    pub received_healed: u32,
+    pub damaged: u32,
+    pub received_damaged: u32,
+    pub crystals: u32, // crystals destroyed
+    pub total: u32,
 }
 
 #[async_trait::async_trait]
@@ -387,4 +403,38 @@ pub trait CommonUser: Send + Sync {
     fn is_royal(&self) -> bool;
     fn is_banned(&self) -> bool;
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
+    async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
+}
+
+pub enum CurrencyType {
+    Free,
+    Paid,
+    TechPoints,
+    Experience,
+}
+
+pub enum CurrencyOp {
+    Get,
+    Add(u64),
+    Sub(u64),
+}
+
+#[async_trait::async_trait]
+pub trait SocialUser: Send + Sync {
+    async fn has_unclaimed_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn get_unclaimed_match_rewards(&self) -> Result<MatchRewards, polariton_server::operations::SimpleOpError>;
+    async fn claim_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+}
+
+pub struct MatchRewards {
+    pub season_experience: i32,
+    pub experience_award_base: i32,
+    pub experience_award_premium: i32,
+    pub experience_award_party: i32,
+    pub experience_award_tier: i32,
+    pub robits_total: i32,
+    pub average_experience: i32,
+    pub clan_experience: i32,
+    pub robits_earned: i32,
+    pub premium_robits_earned: i32,
 }

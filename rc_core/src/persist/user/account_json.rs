@@ -624,6 +624,57 @@ impl UserData {
         }
         Ok(players)
     }
+
+    pub(super) async fn currency_op(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, oj_rc_database::sea_orm::DbErr> {
+        let desc = match ty {
+            super::CurrencyType::Free => oj_rc_database::schema::user_aux::Descriptor::UserFreeCurrency,
+            super::CurrencyType::Paid => oj_rc_database::schema::user_aux::Descriptor::UserPaidCurrency,
+            super::CurrencyType::TechPoints => oj_rc_database::schema::user_aux::Descriptor::TechPoints,
+            super::CurrencyType::Experience => oj_rc_database::schema::user_aux::Descriptor::UserXP,
+        };
+        let model_opt = match op {
+            super::CurrencyOp::Get => {
+                self.db.update_user_aux_by_user_id_and_descriptor_custom(
+                    self.account.id,
+                    desc.clone(),
+                    |_model| None
+                ).await?
+            },
+            super::CurrencyOp::Add(to_add) => {
+                self.db.update_user_aux_by_user_id_and_descriptor_custom(
+                    self.account.id,
+                    desc.clone(),
+                    move |model| {
+                        use oj_rc_database::sea_orm::IntoActiveModel;
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default() + to_add;
+                        let mut am = model.to_owned().into_active_model();
+                        am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
+                        Some(am)
+                    }
+                ).await?
+            },
+            super::CurrencyOp::Sub(to_sub) => {
+                self.db.update_user_aux_by_user_id_and_descriptor_custom(
+                    self.account.id,
+                    desc.clone(),
+                    move |model| {
+                        use oj_rc_database::sea_orm::IntoActiveModel;
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default() - to_sub;
+                        let mut am = model.to_owned().into_active_model();
+                        am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
+                        Some(am)
+                    }
+                ).await?
+            },
+        };
+        let num: u64 = if let Some(model) = model_opt {
+            model.data.parse().unwrap_or_default()
+        } else {
+            log::warn!("No {:?} user_aux found for user {}", desc, self.account.id);
+            0
+        };
+        Ok(num)
+    }
 }
 
 const INVALID_ROBOT_ERR: i16 = crate::data::error_codes::WebServicesError::InvalidRobot as i16; // 140

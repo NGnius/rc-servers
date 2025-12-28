@@ -53,6 +53,7 @@ async fn main() -> std::io::Result<()> {
     let start_time = chrono::Utc::now();
     START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);
 
+    log::info!("lobby_room ready");
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;

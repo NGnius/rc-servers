@@ -110,6 +110,35 @@ impl Database {
         }
     }
 
+    pub async fn update_user_aux_by_user_id_and_descriptor_custom(&self, user_id: i32, descriptor: crate::schema::user_aux::Descriptor, custom: impl (FnOnce(&crate::schema::user_aux::Model) -> Option<crate::schema::user_aux::ActiveModel>) + Send + 'static) -> Result<Option<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+        self.orm.transaction(|txn| {
+            Box::pin(async move {
+                let opt = crate::schema::user_aux::Entity::find()
+                    .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
+                    .filter(crate::schema::user_aux::Column::Descriptor.eq(descriptor))
+                    .one(txn)
+                    .await?;
+
+                if let Some(model) = opt {
+                    if let Some(updated_model) = custom(&model) {
+                        Ok(Some(crate::schema::user_aux::Entity::update(updated_model)
+                            .exec(txn)
+                            .await?))
+                    } else {
+                        Ok(Some(model))
+                    }
+                } else {
+                    Ok(None)
+                }
+            })
+        }).await.map_err(|e| {
+            match e {
+                sea_orm::TransactionError::Connection(db) => db,
+                sea_orm::TransactionError::Transaction(txn) => txn,
+            }
+        })
+    }
+
     pub async fn perms_by_user_id(&self, user_id: i32) -> Result<Option<crate::schema::permissions::Model>, sea_orm::DbErr> {
         crate::schema::permissions::Entity::find()
             .filter(crate::schema::permissions::Column::UserId.eq(user_id))
@@ -404,7 +433,7 @@ impl Database {
             .collect())
     }
 
-    pub async fn players_by_game_id_and_completion(&self, game_id: i32) -> Result<Vec<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
+    pub async fn players_by_game_id(&self, game_id: i32) -> Result<Vec<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game_player::Entity::find()
             .find_also_related(crate::schema::multiplayer_game::Entity)
             .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
@@ -415,8 +444,30 @@ impl Database {
             .collect())
     }
 
+    pub async fn player_by_user_id_and_game_guid(&self, user_id: i32, game_guid: i64) -> Result<Option<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game_player::Entity)
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            //.order_by_asc(crate::schema::multiplayer_game::Column::CreationTime)
+            .one(&self.orm)
+            .await?
+            .and_then(|(_, player)| player))
+    }
+
     pub async fn insert_players(&self, entities: Vec<crate::schema::multiplayer_game_player::ActiveModel>) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game_player::Entity::insert_many(entities.into_iter()).exec(&self.orm).await?;
+        Ok(())
+    }
+
+    pub async fn player_claim(&self, player_id: i32, is_claimed: bool) -> Result<(), sea_orm::DbErr> {
+        crate::schema::multiplayer_game_player::Entity::update(crate::schema::multiplayer_game_player::ActiveModel {
+            id: sea_orm::ActiveValue::Set(player_id),
+            is_claimed: sea_orm::Set(is_claimed),
+            ..Default::default()
+        })
+        .exec(&self.orm)
+        .await?;
         Ok(())
     }
 
@@ -432,6 +483,53 @@ impl Database {
 
     pub async fn insert_game_event(&self, entity: crate::schema::game_event::ActiveModel) -> Result<crate::schema::game_event::Model, sea_orm::DbErr> {
         entity.insert(&self.orm).await
+    }
+
+    pub async fn score_by_player_id(&self, player_id: i32) -> Result<Option<crate::schema::multiplayer_game_score::Model>, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_score::Entity::find()
+            .filter(crate::schema::multiplayer_game_score::Column::PlayerId.eq(player_id))
+            .one(&self.orm)
+            .await
+    }
+
+    pub async fn score_by_user_id_and_claimed_oldest(&self, user_id: i32, is_claimed: bool) -> Result<Option<crate::schema::multiplayer_game_score::Model>, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game_score::Entity)
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            .filter(crate::schema::multiplayer_game_score::Column::IsClaimed.eq(is_claimed))
+            .order_by_asc(crate::schema::multiplayer_game_player::Column::CreationTime)
+            .one(&self.orm)
+            .await
+            .map(|opt| opt.and_then(|(_player, score)| score))
+    }
+
+    pub async fn insert_score(&self, entity: crate::schema::multiplayer_game_score::ActiveModel) -> Result<crate::schema::multiplayer_game_score::Model, sea_orm::DbErr> {
+        entity.insert(&self.orm).await
+    }
+
+    pub async fn update_score(&self, entity: crate::schema::multiplayer_game_score::ActiveModel) -> Result<crate::schema::multiplayer_game_score::Model, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_score::Entity::update(entity).exec(&self.orm).await
+    }
+
+    pub async fn score_claim(&self, score_id: i32) -> Result<(), sea_orm::DbErr> {
+        crate::schema::multiplayer_game_score::Entity::update(crate::schema::multiplayer_game_score::ActiveModel {
+            id: sea_orm::ActiveValue::Set(score_id),
+            is_claimed: sea_orm::Set(true),
+            ..Default::default()
+        })
+        .exec(&self.orm)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn count_score_by_user_id_and_claimed(&self, user_id: i32, is_claimed: bool) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game_score::Entity)
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            .filter(crate::schema::multiplayer_game_score::Column::IsClaimed.eq(is_claimed))
+            .order_by_asc(crate::schema::multiplayer_game_player::Column::CreationTime)
+            .count(&self.orm)
+            .await
     }
 
     pub async fn metrics(&self) -> super::DatabaseMetrics {

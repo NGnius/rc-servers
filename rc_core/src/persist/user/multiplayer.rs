@@ -167,4 +167,117 @@ impl super::MultiplayerUser for UserData {
             })
         }
     }
+
+    async fn update_game_score(&self, guid: &str, score: super::PlayerScore) -> Result<i32, super::MultiplayerError> {
+        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
+            if let Some(score_id) = score.id {
+                let model = oj_rc_database::schema::multiplayer_game_score::ActiveModel {
+                    id: oj_rc_database::sea_orm::Set(score_id),
+                    player_id: oj_rc_database::sea_orm::NotSet,
+                    creation_time: oj_rc_database::sea_orm::NotSet,
+                    is_claimed: oj_rc_database::sea_orm::NotSet,
+                    kills: oj_rc_database::sea_orm::Set(score.kills as i32),
+                    deaths: oj_rc_database::sea_orm::Set(score.deaths as i32),
+                    assists: oj_rc_database::sea_orm::Set(score.assists as i32),
+                    heal_assists: oj_rc_database::sea_orm::Set(score.heal_assists as i32),
+                    healed: oj_rc_database::sea_orm::Set(score.healed as i32),
+                    received_healed: oj_rc_database::sea_orm::Set(score.received_healed as i32),
+                    damaged: oj_rc_database::sea_orm::Set(score.damaged as i32),
+                    received_damaged: oj_rc_database::sea_orm::Set(score.received_damaged as i32),
+                    crystals: oj_rc_database::sea_orm::Set(score.crystals as i32),
+                    total: oj_rc_database::sea_orm::Set(score.total as i32),
+                };
+                let persisted_model = self.db.update_score(model).await
+                .map_err(|e| {
+                    log::error!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e),
+                    }
+                })?;
+                Ok(persisted_model.id)
+            } else {
+                let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid).await
+                .map_err(|e| {
+                    log::error!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e),
+                    }
+                })?;
+                if let Some(player) = player_opt {
+                    let model = oj_rc_database::schema::multiplayer_game_score::ActiveModel {
+                        id: oj_rc_database::sea_orm::NotSet,
+                        player_id: oj_rc_database::sea_orm::Set(player.id),
+                        creation_time: oj_rc_database::sea_orm::Set(chrono::Utc::now().timestamp()),
+                        is_claimed: oj_rc_database::sea_orm::Set(false),
+                        kills: oj_rc_database::sea_orm::Set(score.kills as i32),
+                        deaths: oj_rc_database::sea_orm::Set(score.deaths as i32),
+                        assists: oj_rc_database::sea_orm::Set(score.assists as i32),
+                        heal_assists: oj_rc_database::sea_orm::Set(score.heal_assists as i32),
+                        healed: oj_rc_database::sea_orm::Set(score.healed as i32),
+                        received_healed: oj_rc_database::sea_orm::Set(score.received_healed as i32),
+                        damaged: oj_rc_database::sea_orm::Set(score.damaged as i32),
+                        received_damaged: oj_rc_database::sea_orm::Set(score.received_damaged as i32),
+                        crystals: oj_rc_database::sea_orm::Set(score.crystals as i32),
+                        total: oj_rc_database::sea_orm::Set(score.total as i32),
+                    };
+                    let persisted_model = self.db.insert_score(model).await
+                    .map_err(|e| {
+                        log::error!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e);
+                        super::MultiplayerError {
+                            code: super::MultiplayerErrorCode::CustomString,
+                            message: format!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e),
+                        }
+                    })?;
+                    Ok(persisted_model.id)
+                } else {
+                    Err(super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                        message: format!("Failed to find user {} in game {}", self.account.id, guid),
+                    })
+                }
+            }
+        } else {
+            Err(super::MultiplayerError {
+                code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                message: format!("Failed to parse game GUID {}", guid),
+            })
+        }
+    }
+
+    async fn save_player_connected_status(&self, guid: &str, is_connected: bool) -> Result<(), super::MultiplayerError> {
+        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
+            let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid).await
+                .map_err(|e| {
+                    log::error!("Failed to retrieve player for game {} and user {}: {}", guid, self.account.id, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to retrieve user's player for game {}: {}", guid, e),
+                    }
+                })?;
+            if let Some(player) = player_opt {
+                self.db.player_claim(player.id, is_connected).await
+                    .map_err(|e| {
+                        log::error!("Failed to claim player for game {} and user {}: {}", guid, self.account.id, e);
+                        super::MultiplayerError {
+                            code: super::MultiplayerErrorCode::CustomString,
+                            message: format!("Failed to claim user's player for game {}: {}", guid, e),
+                        }
+                    })?;
+                Ok(())
+            } else {
+                log::warn!("Failed to find to-be-claimed player for user {} in game {}", self.account.id, guid);
+                Err(super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: "Failed to find user's player to update connected status".to_string(),
+                })
+            }
+        } else {
+            Err(super::MultiplayerError {
+                code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                message: format!("Failed to parse game GUID {}", guid),
+            })
+        }
+    }
 }

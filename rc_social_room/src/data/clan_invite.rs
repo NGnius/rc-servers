@@ -1,3 +1,4 @@
+#![allow(unused)]
 use polariton::operation::Typed;
 
 pub struct ClanInviteInfo {

@@ -33,4 +33,11 @@ impl super::CommonUser for UserData {
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics {
         self.db.metrics().await
     }
+
+    async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError> {
+        self.currency_op(ty, op).await.map_err(|e| polariton_server::operations::SimpleOpError::with_message(
+            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+            format!("Currency operation failed for user {}: {}", self.account.id, e),
+        ))
+    }
 }
