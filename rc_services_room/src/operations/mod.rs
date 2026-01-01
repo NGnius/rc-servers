@@ -98,6 +98,7 @@ mod garage_slot_set_customisations;
 mod garage_slot_name;
 mod garage_slot_copy;
 mod steam_promo;
+mod campaign_save_result;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -199,7 +200,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(player_robot_rank::player_robot_rank_provider())
         .add(validate_machine::validate_campaign_robot_provider())
         .add(singleplayer_campaigns::singleplayer_complete_campaign_provider(init_ctx))
-        .add(polariton_server::operations::Ack::<78, _>::default()) // TODO handle SaveCampaignGameAwardsRequest instead of ignoring it
+        .add(campaign_save_result::campaign_save_awards_provider())
         .add(singleplayer_campaigns::singleplayer_save_complete_campaign_provider()) // TODO handle UpdatePlayerCompletedCampaignWaveRequest saving
         .add(garage_slot_limit::garage_slots_limit(&init_ctx.cubes))
         .add(garage_slot_add::garage_slot_add_provider())

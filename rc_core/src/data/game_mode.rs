@@ -107,7 +107,7 @@ impl GameMode {
     }
 
     #[inline]
-    pub fn from_persist(mode: crate::persist::config::GameType) -> Self {
+    pub(crate) fn from_persist(mode: crate::persist::config::GameType) -> Self {
         match mode {
             crate::persist::config::GameType::BattleArena => Self::BattleArena,
             crate::persist::config::GameType::SuddenDeath => Self::SuddenDeath,
@@ -142,6 +142,19 @@ impl GameMode {
             Self::SinglePlayer => oj_rc_database::schema::multiplayer_game::GameMode::SinglePlayer,
             Self::TeamDeathmatch => oj_rc_database::schema::multiplayer_game::GameMode::TeamDeathmatch,
             Self::Campaign => oj_rc_database::schema::multiplayer_game::GameMode::Campaign,
+        }
+    }
+
+    pub fn from_u8(b: u8) -> Option<Self> {
+        match b {
+            0 => Some(Self::BattleArena),
+            1 => Some(Self::SuddenDeath),
+            2 => Some(Self::Pit),
+            3 => Some(Self::TestMode),
+            4 => Some(Self::SinglePlayer),
+            5 => Some(Self::TeamDeathmatch),
+            6 => Some(Self::Campaign),
+            _ => None,
         }
     }
 }

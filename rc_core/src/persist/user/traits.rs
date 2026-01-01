@@ -61,7 +61,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + IntercomUser + CommonUser {
+pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
@@ -437,4 +437,10 @@ pub struct MatchRewards {
     pub clan_experience: i32,
     pub robits_earned: i32,
     pub premium_robits_earned: i32,
+}
+
+#[async_trait::async_trait]
+pub trait SingleplayerUser: Send + Sync {
+    // regular singleplayer and campaign mode
+    async fn save_game_result(&self, guid: &str, result: crate::data::game_result::GameResult) -> Result<(), polariton_server::operations::SimpleOpError>;
 }

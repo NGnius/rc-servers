@@ -455,6 +455,10 @@ impl Database {
             .and_then(|(_, player)| player))
     }
 
+    pub async fn insert_player(&self, entity: crate::schema::multiplayer_game_player::ActiveModel) -> Result<crate::schema::multiplayer_game_player::Model, sea_orm::DbErr> {
+        entity.insert(&self.orm).await
+    }
+
     pub async fn insert_players(&self, entities: Vec<crate::schema::multiplayer_game_player::ActiveModel>) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game_player::Entity::insert_many(entities.into_iter()).exec(&self.orm).await?;
         Ok(())
