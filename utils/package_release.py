@@ -46,7 +46,6 @@ PROJECT_FOLDERS_TO_INCLUDE = [
 
 # extra assets; not ones in one of the listed folders
 PROJECT_ASSETS_TO_INCLUDE = [
-    "rc_microtransactions/Rocket.toml",
     "utils/cube_gen.py",
     "LICENSE",
     "README.md",

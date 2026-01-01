@@ -36,9 +36,9 @@ impl <C: Send + 'static> SimpleOperation<C> for PlatformConfigProvider {
             val_ty: TypePrefix::Any, // obj
             items: vec![
                 (Typed::Str("BuyPremiumAvailable".into()), Typed::Bool(false)),
-                (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(false)),
+                (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(true)),
                 (Typed::Str("RoboPassButtonAvailable".into()), Typed::Bool(false)),
-                (Typed::Str("LanguageSelectionAvailable".into()), Typed::Bool(false)),
+                (Typed::Str("LanguageSelectionAvailable".into()), Typed::Bool(true)),
                 (Typed::Str("AutoJoinPublicChatRoom".into()), Typed::Str(client_selected_channel.into())),
                 (Typed::Str("CanCreateChatRooms".into()), Typed::Bool(self.chat_config.can_create_channels)),
                 (Typed::Str("CurseVoiceEnabled".into()), Typed::Bool(false)),

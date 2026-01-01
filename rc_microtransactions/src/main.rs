@@ -1,8 +1,11 @@
 #![forbid(unsafe_code)]
+mod cli;
 mod robocraft;
 
-#[rocket::get("/")]
-fn index() -> String {
+use actix_web::{App, HttpServer, Responder};
+
+#[actix_web::get("/")]
+async fn index() -> impl Responder {
     let name = env!("CARGO_PKG_NAME");
     let version = env!("CARGO_PKG_VERSION");
     let git_version = git_version::git_version!(args = ["--always", "--dirty=+"]);
@@ -12,10 +15,21 @@ fn index() -> String {
     format!("{} {}:{} by [{}]\n{}\n{}", name, version, git_version, authors, license, repo)
 }
 
-#[rocket::launch]
-fn rocket() -> _ {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
     env_logger::init();
-    rocket::build().mount("/", rocket::routes![index])
-        .attach(robocraft::stage())
+    let cli_args = cli::CliArgs::get();
+
+    let cli_args2 = actix_web::web::Data::new(cli_args.clone());
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(cli_args2.clone())
+            .service(index)
+            .service(robocraft::robopay_store)
+    })
+    .bind((cli_args.ip, cli_args.port))?
+    .run()
+    .await
 }
 
