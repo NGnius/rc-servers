@@ -14,6 +14,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                 key_ty: TypePrefix::Int, // int
                 val_ty: TypePrefix::ObjArr, // obj arr
                 items: vec![
+                    // TODO load from config
                     (Typed::Int(ItemTier::T0 as _), Typed::ObjArr(vec![
                         Typed::Dict(Dict {
                             key_ty: TypePrefix::Str,

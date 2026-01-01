@@ -13,8 +13,7 @@ pub(super) fn player_level_info_provider() -> SimpleFunc<3, crate::UserTy, impl 
                 // FIXME load this from config
                 // these are interpolated by the client
                 (Typed::Int(0), Typed::Int(0)),
-                // this should interpolate to display a level of 1337
-                (Typed::Int(2674), Typed::Int(1)),
+                (Typed::Int(10), Typed::Int(10_000)),
                 (Typed::Int(10_000), Typed::Int(i32::MAX / 2)),
             ] }));
         Ok(params.into())
