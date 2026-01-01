@@ -27,7 +27,7 @@ fn all_skins() -> Vec<CustomisationData> {
             localised_name: "strMothershipSkinNeptune01".to_string(),
             skin_scene_name: "RC_MothershipSkin_Neptune_01".to_string(),
             simulation_prefab: "TODO_sim_prefab".to_string(),
-            preview_image_name: "MothershipSkin_Neptune_BG".to_string(),
+            preview_image_name: "garagebayskintextures/MothershipSkin_Neptune_BG".to_string(),
             is_default: false,
         },
         CustomisationData { // level 11
@@ -35,7 +35,7 @@ fn all_skins() -> Vec<CustomisationData> {
             localised_name: "strMothershipSkinEarth01".to_string(),
             skin_scene_name: "RC_MothershipSkin_Earth_01".to_string(),
             simulation_prefab: "TODO_sim_prefab".to_string(),
-            preview_image_name: "MothershipSkin_Earth_BG".to_string(),
+            preview_image_name: "garagebayskintextures/MothershipSkin_Earth_BG".to_string(),
             is_default: false,
         },
         CustomisationData { // level12
@@ -43,7 +43,7 @@ fn all_skins() -> Vec<CustomisationData> {
             localised_name: "strMothershipSkinMars01".to_string(),
             skin_scene_name: "RC_MothershipSkin_Mars_01".to_string(),
             simulation_prefab: "TODO_sim_prefab".to_string(),
-            preview_image_name: "MothershipSkin_Mars_BG".to_string(),
+            preview_image_name: "garagebayskintextures/MothershipSkin_Mars_BG".to_string(),
             is_default: false,
         },
         CustomisationData { // level14
@@ -51,7 +51,7 @@ fn all_skins() -> Vec<CustomisationData> {
             localised_name: "strMothershipSkinRetro01".to_string(),
             skin_scene_name: "RC_MothershipSkin_Retro_01".to_string(),
             simulation_prefab: "TODO_sim_prefab".to_string(),
-            preview_image_name: "MothershipSkin_Retro_BG".to_string(),
+            preview_image_name: "garagebayskintextures/MothershipSkin_Retro_BG".to_string(),
             is_default: false,
         },
         CustomisationData { // level2 (the is_default one seems to be special)
@@ -59,7 +59,7 @@ fn all_skins() -> Vec<CustomisationData> {
             localised_name: "strMothershipSkinDefault".to_string(),
             skin_scene_name: "RC_Mothership".to_string(),
             simulation_prefab: "TODO_sim_prefab".to_string(),
-            preview_image_name: "Mothership_Premium_BG".to_string(), // FIXME
+            preview_image_name: "garagebayskintextures/Mothership_Premium_BG".to_string(), // FIXME
             is_default: true,
         },
     ]
@@ -72,7 +72,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnEffectDefault".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn".to_string(),
-            preview_image_name: "a".to_string(),
+            preview_image_name: "Spawn".to_string(),
             is_default: true,
         },
         CustomisationData {
@@ -80,7 +80,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXBlackHole".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_BlackHole".to_string(),
-            preview_image_name: "Mothership_Premium_BG".to_string(),
+            preview_image_name: "Spawn_BlackHole".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -88,7 +88,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXRoyaleLander".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_Lander".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Spawn_Lander".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -96,7 +96,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXLootCrate".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_Lootcrate".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Spawn_Lootcrate".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -104,7 +104,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXWarpIn".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_Warp".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Spawn_Warp".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -112,7 +112,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXPresent".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_Present".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Spawn_Present".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -120,7 +120,7 @@ fn all_spawns() -> Vec<CustomisationData> {
             localised_name: "strSpawnFXHatch".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Spawn_EasterEgg".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Spawn_EasterEgg".to_string(),
             is_default: false,
         },
     ]
@@ -133,7 +133,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathEffectDefault".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion".to_string(),
-            preview_image_name: "a".to_string(),
+            preview_image_name: "Explosion".to_string(),
             is_default: true,
         },
         CustomisationData {
@@ -141,7 +141,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXCartoonExplosion".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_Toon".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_Toon".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -149,7 +149,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXFeatherExplosion".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_Feathers_Rainbow".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_Feathers_Rainbow".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -157,7 +157,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXNuclearExplosion".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_Nuclear".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_Nuclear".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -165,7 +165,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXEmergencyWarp".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_Warp".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_Warp".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -173,7 +173,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXBlackHole".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_BlackHole".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_BlackHole".to_string(),
             is_default: false,
         },
         CustomisationData {
@@ -181,7 +181,7 @@ fn all_deaths() -> Vec<CustomisationData> {
             localised_name: "strDeathFXFireworkExplosion".to_string(),
             skin_scene_name: "Splash_Loading_Screen".to_string(),
             simulation_prefab: "Explosion_Firework".to_string(),
-            preview_image_name: "RC_Splash_Screen_01_Japanese".to_string(),
+            preview_image_name: "Explosion_Firework".to_string(),
             is_default: false,
         },
     ]
