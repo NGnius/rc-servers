@@ -17,6 +17,7 @@ pub mod robot_data;
 pub mod lobby;
 pub mod battle_arena_config;
 pub mod game_result;
+pub mod item_shop_bundle;
 
 pub mod error_codes;
 

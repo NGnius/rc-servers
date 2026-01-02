@@ -8,7 +8,7 @@ mod initial_data;
 pub use initial_data::{setup_new_user, register_new_user};
 
 mod inventory;
-pub use inventory::UnlockedParts;
+pub use inventory::{UnlockedParts, UnlockOverride};
 
 mod traits;
 pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, IntercomListener, UserRole, SocialUser, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser};

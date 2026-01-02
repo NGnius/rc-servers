@@ -41,6 +41,9 @@ pub use multiplayer::{MultiplayerConfig, NetworkConf};
 mod maps;
 pub use maps::{MapsConfig, MapConfig};
 
+mod item_shop;
+pub use item_shop::{ItemShopConfig, ItemBundle};
+
  const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

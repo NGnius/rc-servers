@@ -336,7 +336,7 @@ fn default_game_modes() -> GameModes {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
-            game_time_m: 20,
+            game_time_m: 2,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,
@@ -461,7 +461,7 @@ fn default_rotation() -> GameEventSequence {
     GameEventSequence {
         strategy: GameRotationStrategy::Sequence,
         modes: vec![
-            /*GameEvents {
+            GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
@@ -490,8 +490,8 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 30, // 30 seconds
-            },*/
-            GameEvents {
+            },
+            /*GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Neptune1,
                     visibility: GameVisibility::Good,
@@ -610,7 +610,7 @@ fn default_rotation() -> GameEventSequence {
                     auto_heal: true,
                 },
                 duration_s: 5*60,
-            },
+            },*/
         ]
     }
 }

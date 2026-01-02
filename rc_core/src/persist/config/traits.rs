@@ -36,6 +36,7 @@ pub trait ConfigProvider<C: Clone> {
     fn ba_settings(&self) -> BattleArenaResolver;
     fn pit_settings(&self) -> PitSettings;
     fn tdm_settings(&self) -> TeamDeathMatchSettings;
+    fn shop_entries(&self) -> ShopEntriesResolver;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -427,4 +428,61 @@ pub enum PitWinCondition {
 pub struct TeamDeathMatchSettings {
     pub respawn_time_seconds: u64,
     pub self_destruct_is_kill: bool,
+}
+
+pub struct ShopEntriesResolver {
+    items: Vec<crate::persist::item_shop::ItemBundle>,
+}
+
+pub(super) fn item_shop_sku(i: usize) -> String {
+    format!("item-shop-bundle-{}", i)
+}
+
+impl ShopEntriesResolver {
+    pub async fn resolve_entries<C>(&self, user: &dyn crate::persist::user::User<C>) -> Typed<C> {
+        let unlocked_cubes = user.unlocked_parts().await;
+        crate::data::item_shop_bundle::ItemShopBundle::as_transmissible_vec(
+            self.items.iter().enumerate()
+                .map(|(i, entry)| entry.as_data(item_shop_sku(i), &unlocked_cubes))
+                .collect()
+        )
+    }
+
+    // sku -> purchase details
+    pub async fn resolve_transactions(&self) -> std::collections::HashMap<String, super::ShopAction> {
+        let mut map = std::collections::HashMap::with_capacity(self.items.len());
+        let now = chrono::Utc::now().timestamp();
+        for (i, entry) in self.items.iter().enumerate() {
+            let sku = super::traits::item_shop_sku(i);
+            let actual_price = if now > entry.discount_until { entry.discount_price } else { entry.price };
+            map.insert(sku, super::ShopAction {
+                cost_free: if matches!(entry.currency, crate::persist::item_shop::Currency::Robits) { actual_price } else { 0 },
+                cost_paid: if matches!(entry.currency, crate::persist::item_shop::Currency::CosmeticCredits) { actual_price } else { 0 },
+                gives: entry.gives.clone().into_iter().map(|x| x.into()).collect(),
+            });
+        }
+        map
+    }
+
+    pub(super) fn new(items: Vec<crate::persist::item_shop::ItemBundle>) -> Self {
+        Self {
+            items,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ShopAction {
+    pub cost_free: i32,
+    pub cost_paid: i32,
+    pub gives: Vec<ShopGain>,
+}
+
+#[derive(Debug)]
+pub enum ShopGain {
+    Cube(u32),
+    Experience(i64),
+    FreeCurrency(i64),
+    PaidCurrency(i64),
+    TechPoints(i32)
 }

@@ -1,144 +1,31 @@
-use polariton_server::operations::SimpleFunc;
+use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::ParameterTable;
 
-use crate::data::item_shop_bundle::*;
+const CODE: u8 = 188;
 
 const PARAM_KEY: u8 = 65;
 
-pub(super) fn item_bundle_provider() -> SimpleFunc<188, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
-        params.insert(PARAM_KEY, ItemShopBundle::as_transmissible_vec(vec![
-            // weekly (top row of 3)
-            ItemShopBundle {
-                sku: "buy cc 100".to_owned(),
-                bundle_name_key: "strRealMoneyStoreName_CosmeticCredits1".to_owned(),
-                sprite: "ItemShop_CosmeticCredits".to_owned(),
-                is_sprite_full_size: false,
-                category: ItemShopCategory::Bundle,
-                currency: CurrencyType::Robits,
-                price: 100_000,
-                discount_time: 0,
-                discount_price: 100_000,
-                recurrence: ItemShopRecurrence::Weekly,
-                owns_required_cube: true,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 1".to_owned(),
-                bundle_name_key: "strRealMoneyStoreName_RoboPass".to_owned(),
-                sprite: "Store_RoboPass_Season2".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Bundle,
-                currency: CurrencyType::CosmeticCredits,
-                price: 10_000_000,
-                discount_time: 0,
-                discount_price: 10_000_000,
-                recurrence: ItemShopRecurrence::Weekly,
-                owns_required_cube: false,
-                is_limited_edition: true,
-            },
-            ItemShopBundle {
-                sku: "buy robit 100000".to_owned(),
-                bundle_name_key: "strRealMoneyStoreName_RobitsBundle2".to_owned(),
-                sprite: "ItemShop_Robits".to_owned(),
-                is_sprite_full_size: false,
-                category: ItemShopCategory::Bundle,
-                currency: CurrencyType::CosmeticCredits,
-                price: 100,
-                discount_time: 0,
-                discount_price: 100,
-                recurrence: ItemShopRecurrence::Weekly,
-                owns_required_cube: true,
-                is_limited_edition: false,
-            },
-            // daily (lower row or 6)
-            ItemShopBundle {
-                sku: "buy robopass 1 1".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Bundle,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 1_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 2".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Cube,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 2_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 3".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Cube,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 3_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 4".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Cube,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 4_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 5".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Cube,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 5_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-            ItemShopBundle {
-                sku: "buy robopass 1 6".to_owned(),
-                bundle_name_key: "strRoboPassSeason02".to_owned(),
-                sprite: "Store_RoboPass".to_owned(),
-                is_sprite_full_size: true,
-                category: ItemShopCategory::Cube,
-                currency: CurrencyType::Robits,
-                price: 10_000,
-                discount_time: (chrono::Utc::now() + std::time::Duration::from_secs(24*60*60)).timestamp(),
-                discount_price: 6_000,
-                recurrence: ItemShopRecurrence::Daily,
-                owns_required_cube: false,
-                is_limited_edition: false,
-            },
-        ]));
-        Ok(params.into())
+pub(super) struct ItemBundleRetriever {
+    resolver: oj_rc_core::persist::config::ShopEntriesResolver,
+}
+
+#[async_trait::async_trait]
+impl SimpleOperation<()> for ItemBundleRetriever {
+    type User = crate::UserTy;
+    const CODE: u8 = CODE;
+
+    async fn handle(&self, mut params: ParameterTable, user: &Self::User) -> Result<ParameterTable, SimpleOpError> {
+        //let mut params = ParameterTable::<C>::with_capacity(2);
+        let user_info = user.user()?;
+        let entries = self.resolver.resolve_entries(user_info.as_ref().as_ref()).await;
+        params.insert(PARAM_KEY, entries);
+        Ok(params)
+    }
+}
+
+pub(super) fn item_bundle_provider(conf: &oj_rc_core::ConfigImpl) -> SimpleOpImpl<(), crate::UserTy, ItemBundleRetriever> {
+    SimpleOpImpl::new(ItemBundleRetriever {
+        resolver: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::shop_entries(conf),
     })
 }
 

@@ -63,6 +63,7 @@ pub trait UserAuthenticator {
 #[async_trait::async_trait]
 pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
+    async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
     async fn all_slots(&self) -> UserSlots<C>;
@@ -417,6 +418,7 @@ pub enum CurrencyOp {
     Get,
     Add(u64),
     Sub(u64),
+    AddSub(i64),
 }
 
 #[async_trait::async_trait]

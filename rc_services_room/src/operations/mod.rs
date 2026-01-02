@@ -99,6 +99,7 @@ mod garage_slot_name;
 mod garage_slot_copy;
 mod steam_promo;
 mod campaign_save_result;
+mod item_shop_purchase;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -151,7 +152,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(game_event_params::event_system_params_provider(&init_ctx.cubes))
         .add(garage_bay_uuid::garage_id_provider())
         .add(tech_tree_data::tech_tree_layout_provider(&init_ctx.cubes))
-        .add(item_shop_bundles::item_bundle_provider())
+        .add(item_shop_bundles::item_bundle_provider(&init_ctx.cubes))
         .add(robot_customisations::bay_customisations_provider())
         .add(player_data::player_data_provider())
         .add(player_robopass::player_robopass_season_provider())
@@ -223,4 +224,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(polariton_server::operations::Ack::<90, _>::default()) // TODO handle SubmitCRFRatingRequest instead of ignoring it
         //.add(polariton_server::operations::Ack::<97, _>::default()) // TODO handle UpdateShopRobotOffsetRequest instead of ignoring it (this seems to break newly-uploaded vehicles for now)
         .add(steam_promo::steam_promos_provider())
+        .add(item_shop_purchase::item_purchase_provider(&init_ctx.cubes))
 }

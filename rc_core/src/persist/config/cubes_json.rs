@@ -8,7 +8,7 @@ use polariton::serdes::TypePrefix;
 
 use crate::persist::config::SelfValidator;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig, ItemShopConfig};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
 
@@ -20,6 +20,7 @@ pub struct CubeConfig {
     battle: BattleConfig,
     chat: ChatConfig,
     factory: FactoryConfig,
+    shop: ItemShopConfig,
     settings: Settings,
 }
 
@@ -502,5 +503,9 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
 
     fn tdm_settings(&self) -> super::TeamDeathMatchSettings {
         self.battle.multiplayer.team_death_match.clone().into()
+    }
+
+    fn shop_entries(&self) -> super::ShopEntriesResolver {
+        super::ShopEntriesResolver::new(self.shop.items.clone())
     }
 }

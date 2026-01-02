@@ -1,4 +1,5 @@
 use argon2::PasswordVerifier;
+use oj_rc_database::sea_orm::IntoActiveModel;
 use sha2::Digest;
 
 use crate::persist::config::ConfigProvider;
@@ -666,6 +667,19 @@ impl UserData {
                     }
                 ).await?
             },
+            super::CurrencyOp::AddSub(to_addsub) => {
+                self.db.update_user_aux_by_user_id_and_descriptor_custom(
+                    self.account.id,
+                    desc.clone(),
+                    move |model| {
+                        use oj_rc_database::sea_orm::IntoActiveModel;
+                        let new_currency = (model.data.parse::<u64>().unwrap_or_default() as i64) + to_addsub;
+                        let mut am = model.to_owned().into_active_model();
+                        am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.clamp(0, i64::MAX).to_string());
+                        Some(am)
+                    }
+                ).await?
+            },
         };
         let num: u64 = if let Some(model) = model_opt {
             model.data.parse().unwrap_or_default()
@@ -706,6 +720,58 @@ impl <C: Clone> super::User<C> for UserData {
                 Vec::default()
             }
         }
+    }
+
+    async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError> {
+        let parts_row = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::UnlockedParts).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve UnlockedParts to unlock parts for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to retrieve UnlockedParts to unlock parts: {}", e),
+                )
+            })?
+            .ok_or_else(|| {
+                log::error!("Failed to find UnlockedParts to unlock parts for user {}", self.account.id);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    "Failed to find UnlockedParts to unlock parts".to_owned(),
+                )
+            })?;
+        let mut unlocked_parts = serde_json::from_str::<super::inventory::UnlockedParts>(&parts_row.data)
+            .map_err(|e| {
+                log::error!("Failed to deserialize UnlockedParts to unlock parts for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to deserialize UnlockedParts to unlock parts: {}", e),
+                )
+            })?;
+        for new_part in parts {
+            unlocked_parts.unlocked.push(*new_part);
+        }
+        let mut parts_row = parts_row.into_active_model();
+        let parts_json = serde_json::to_string(&unlocked_parts)
+            .map_err(|e| {
+                log::error!("Failed to serialize UnlockedParts to unlock parts for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to serialize UnlockedParts to unlock parts: {}", e),
+                )
+            })?;
+        parts_row.data = oj_rc_database::sea_orm::ActiveValue::Set(parts_json);
+        self.db.update_user_aux_by_user_id_and_descriptor(
+            parts_row,
+            self.account.id,
+            oj_rc_database::schema::user_aux::Descriptor::UnlockedParts
+        ).await
+            .map_err(|e| {
+                log::error!("Failed to update UnlockedParts to unlock parts for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to update UnlockedParts to unlock parts: {}", e),
+                )
+            })?;
+        Ok(())
     }
 
     async fn selected_garage(&self) -> (String, u32) {

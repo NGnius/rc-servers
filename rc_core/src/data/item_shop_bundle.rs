@@ -30,21 +30,21 @@ impl ItemShopBundle {
 
     fn dump(&self, writer: &mut dyn Write) -> std::io::Result<usize> {
         let sku_bytes = self.sku.as_bytes();
-        let mut total_len = writer.write(&oj_rc_core::data::encode_7_bit_i32(sku_bytes.len() as i32))?;
+        let mut total_len = writer.write(&crate::data::encode_7_bit_i32(sku_bytes.len() as i32))?;
         total_len += writer.write(sku_bytes)?;
 
         let bundle_name_key_bytes = self.bundle_name_key.as_bytes();
-        total_len += writer.write(&oj_rc_core::data::encode_7_bit_i32(bundle_name_key_bytes.len() as i32))?;
+        total_len += writer.write(&crate::data::encode_7_bit_i32(bundle_name_key_bytes.len() as i32))?;
         total_len += writer.write(bundle_name_key_bytes)?;
 
         let sprite_bytes = self.sprite.as_bytes();
-        total_len += writer.write(&oj_rc_core::data::encode_7_bit_i32(sprite_bytes.len() as i32))?;
+        total_len += writer.write(&crate::data::encode_7_bit_i32(sprite_bytes.len() as i32))?;
         total_len += writer.write(sprite_bytes)?;
 
         total_len += writer.write(&[self.is_sprite_full_size as u8])?;
 
         let currency_bytes = self.currency.as_str().as_bytes();
-        total_len += writer.write(&oj_rc_core::data::encode_7_bit_i32(currency_bytes.len() as i32))?;
+        total_len += writer.write(&crate::data::encode_7_bit_i32(currency_bytes.len() as i32))?;
         total_len += writer.write(currency_bytes)?;
 
         total_len += writer.write(&self.price.to_le_bytes())?;
@@ -64,7 +64,7 @@ impl ItemShopBundle {
         Ok(total_len)
     }
 
-    pub fn as_transmissible_vec(items: Vec<Self>) -> Typed {
+    pub fn as_transmissible_vec<C>(items: Vec<Self>) -> Typed<C> {
         let mut buf = Vec::new();
         let mut writer = std::io::Cursor::new(&mut buf);
         writer.write_all(&(items.len() as i32).to_le_bytes()).unwrap();

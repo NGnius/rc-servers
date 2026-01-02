@@ -15,7 +15,7 @@ pub mod customisation_info;
 pub use oj_rc_core::data::garage_bay;
 pub mod custom_games;
 //pub use oj_rc_core::data::tech_tree;
-pub mod item_shop_bundle;
+//pub use oj_rc_core::data::item_shop_bundle;
 pub mod player_robopass_season;
 //pub use oj_rc_core::data::weapon_upgrade;
 pub mod player_rank;
