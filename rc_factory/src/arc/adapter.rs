@@ -8,6 +8,7 @@ pub struct ArcAdapter {
     cdn: String,
     override_cdn: bool,
     spoof_users: bool,
+    is_readonly: bool,
 }
 
 impl ArcAdapter {
@@ -21,6 +22,7 @@ impl ArcAdapter {
             cdn: cdn.to_owned(),
             override_cdn,
             spoof_users: username_spoofing,
+            is_readonly: uri.ends_with("?mode=ro")
         };
         // do query to ensure database is ok
         adapter.default_query().one(&adapter.orm).await?;
@@ -184,6 +186,13 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
     }
 
     async fn upload(&self, vehicle: crate::VehicleUploadInfo) -> Result<crate::VehicleThumbnailInfo, Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            return Ok(crate::VehicleThumbnailInfo {
+                id: 0,
+                thumbnail: Vec::default(),
+                needs_upload: false,
+            })
+        }
         let transaction = self.orm.begin().await?;
 
         let cube_amounts = {
