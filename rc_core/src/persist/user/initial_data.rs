@@ -150,8 +150,8 @@ fn default_user_perms(user_id: i32) -> oj_rc_database::schema::permissions::Acti
         user_id: oj_rc_database::sea_orm::ActiveValue::Set(user_id),
         moderator: oj_rc_database::sea_orm::ActiveValue::Set(false),
         administrator: oj_rc_database::sea_orm::ActiveValue::Set(false),
-        developer: oj_rc_database::sea_orm::ActiveValue::Set(false),
-        royalty: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        developer: oj_rc_database::sea_orm::ActiveValue::Set(user_id == 1),
+        royalty: oj_rc_database::sea_orm::ActiveValue::Set(user_id == 1), // give first user max permissions
         banned: oj_rc_database::sea_orm::ActiveValue::Set(false),
     }
 }
