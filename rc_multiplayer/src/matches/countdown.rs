@@ -46,6 +46,10 @@ async fn do_match_countdown_async(players: Vec<(super::generic::UserSender, std:
     tokio::time::sleep(std::time::Duration::ZERO).await; // is this necessary?
 
     for player in players {
-        player.1.mode.store(super::generic::ConnectionMode::InGame.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        let old_mode = player.1.mode.swap(super::generic::ConnectionMode::InGame.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        if !matches!(super::generic::ConnectionMode::from_u8(old_mode), super::generic::ConnectionMode::WaitingToStart) {
+            player.0.connection.goodbye(&player.0.sender).await;
+            player.1.mode.store(super::generic::ConnectionMode::Disconnected.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        }
     }
 }

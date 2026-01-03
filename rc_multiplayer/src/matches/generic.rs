@@ -241,6 +241,8 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub custom_logic_handler: L,
     //pub fake_users: std::collections::HashMap<u8, FakeUser>,
     pub fakes_handler: super::fake::Handler,
+    pub last_load_stage_complete: std::sync::atomic::AtomicI64,
+    pub load_stage_timeout: std::time::Duration,
 }
 
 impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
@@ -254,6 +256,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
         custom: L,
         fakes_handler: super::fake::Handler,
+        load_stage_timeout: std::time::Duration,
     ) -> Self {
 
         /*let fake_users = players.iter()
@@ -279,6 +282,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             game_duration: std::time::Duration::from_secs((config.game_time_minutes as u64) * 60),
             custom_logic_handler: custom,
             fakes_handler,
+            last_load_stage_complete: std::sync::atomic::AtomicI64::new(chrono::Utc::now().timestamp()),
+            load_stage_timeout,
         }
     }
 
@@ -697,6 +702,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 },
             }
         }
+        self.maybe_start_sync(self.players_in_mode_count(ConnectionMode::WaitingForSync).await).await;
+        self.maybe_start_match().await;
     }
 
     async fn on_request_loading_progress(&self, user_id: i32) {
@@ -720,6 +727,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         &user_info.connection.connection,
                     ).await);
                 }
+                self.maybe_start_sync(self.players_in_mode_count(ConnectionMode::WaitingForSync).await).await;
+                self.maybe_start_match().await;
             } else {
                 log::error!("Failed to find player {} in connected users for match {}", user_key, self.game_guid());
             }
@@ -772,16 +781,41 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 ready_count += 1;
             }
         }
+        self.maybe_start_sync(ready_count).await;
+    }
+
+    async fn players_in_mode_count(&self, mode: ConnectionMode) -> usize {
+        let mut count = 0;
+        for user_desc in self.descriptors.values() {
+            if user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed) == mode.to_u8() {
+                count += 1;
+            }
+        }
+        count
+    }
+
+    async fn maybe_start_sync(&self, ready_count: usize) {
         let player_count = self.real_player_count();
         log::info!("Real players {}, ready players {}", player_count, ready_count);
-        if ready_count == player_count {
-            log::info!("All players ({}) awaiting sync for game {}", player_count, self.game_guid());
+        let deadline = self.last_load_stage_complete.load(std::sync::atomic::Ordering::SeqCst) + (self.load_stage_timeout.as_secs() as i64);
+        let now = chrono::Utc::now().timestamp();
+        let is_out_of_time = deadline < now;
+        if is_out_of_time {
+            log::warn!("Match {} sync wait has exceeded max time, forcing move to sync mode", self.game_guid());
+        }
+        if ready_count == player_count || is_out_of_time {
+            self.last_load_stage_complete.store(now, std::sync::atomic::Ordering::SeqCst);
+            log::info!("Enough players ({}) awaiting sync for game {}", player_count, self.game_guid());
             for (user_key, conn) in self.users.read().await.iter() {
                 let user_info = self.user_descriptor(*user_key).unwrap();
                 let extra_packets = self.custom_logic_handler.extra_sync_events(self, conn, user_info).await;
                 self.spawn_send_sync_events(conn, conn.user.user_id(), *user_key, self.players_info(), extra_packets, self.map_config.clone());
                 let user_desc = self.user_descriptor(*user_key).unwrap();
-                user_desc.state.mode.store(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                let old_mode = user_desc.state.mode.swap(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                if !matches!(ConnectionMode::from_u8(old_mode), ConnectionMode::WaitingForSync) {
+                    conn.connection.connection.goodbye(&conn.connection.sender).await;
+                    user_desc.state.mode.store(ConnectionMode::Disconnected.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                }
             }
         }
     }
@@ -806,6 +840,10 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             log::warn!("Unknown LoadComplete user id {} for game {}", user_id, self.game_guid());
             return;
         }
+        self.maybe_start_match().await;
+    }
+
+    async fn maybe_start_match(&self) {
         // wait for all users to be ready for starting game start countdown
         let mut all_users_loading_complete = true;
         for player_info in self.descriptors.values() {
@@ -813,17 +851,24 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             let mode = ConnectionMode::from_u8(player_info.state.mode.load(std::sync::atomic::Ordering::Relaxed));
             all_users_loading_complete &= matches!(mode, ConnectionMode::WaitingToStart);
         }
+        let deadline = self.last_load_stage_complete.load(std::sync::atomic::Ordering::SeqCst) + (self.load_stage_timeout.as_secs() as i64);
+        let now = chrono::Utc::now();
+        let is_out_of_time = deadline < now.timestamp();
+        if is_out_of_time {
+            log::warn!("Match {} start wait has exceeded max load-in time, forcing game start", self.game_guid());
+        }
         // trigger game start
-        if all_users_loading_complete {
+        if all_users_loading_complete || is_out_of_time {
+            self.last_load_stage_complete.store(now.timestamp(), std::sync::atomic::Ordering::SeqCst);
             let player_count = self.real_player_count();
-            log::info!("All players ({}) are ready for game {}", player_count, self.game_guid());
+            log::info!("Enough players ({}) are ready for game {}", player_count, self.game_guid());
             tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
             self.fakes_handler.on_ready(
                 self.users.read().await.iter()
                     .map(|(id, real_player)| (*id, real_player.connection.clone()))
                     .collect()
             );
-            let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;
+            let game_start = now + Self::COUNTDOWN_DURATION;
             if self.custom_logic_handler.on_countdown_start(self, game_start).await {
                 let mut senders = Vec::new();
                 for (player_id, conn) in self.users.read().await.iter() {
