@@ -105,7 +105,7 @@ pub fn db_into_data(garage: oj_rc_database::schema::garage::Model) -> crate::dat
         name: garage.name,
         cubes: cube_count,
         crf_id: garage.crf_id.unwrap_or(0) as u32,
-        was_rated: garage.was_rated,
+        was_rated: true,//garage.was_rated,
         movement_categories: movement_category_into_data(&garage.movement_categories),
         uuid: super::user::i64_split(garage.uuid),
         thumbnail_version: garage.thumbnail_version as u32,
