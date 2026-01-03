@@ -518,7 +518,17 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             //tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             //let id = users.len() as u8;
             let user_id = user.user_id();
-            let player_info = self.descriptors.values().find(|p| p.descriptor.user_id == Some(user_id)).unwrap();
+            let player_info_opt = self.descriptors.values().find(|p| p.descriptor.user_id == Some(user_id));
+            if player_info_opt.is_none() {
+                log::warn!("User {} tried to connect to match {} which they are not in", user_id, self.game_guid());
+                connection.goodbye(&sender).await;
+                response.send(Some(super::messages::ErrorMessage {
+                    message: format!("User {} not in match {})", user_id, self.game_guid()),
+                    inner: None,
+                })).unwrap_or_default();
+                return;
+            }
+            let player_info = player_info_opt.unwrap();
             let id = player_info.descriptor.player_id;
             let aliases = self.fakes_handler.get_client_ais().await.into_iter().find(|(key, _val)| *key == id).map(|(_key, val)| val).unwrap_or_default();
             log::info!("AIs running on new player {}: {:?}", id, aliases);
