@@ -74,7 +74,7 @@ impl AccountProvider {
 }
 
 #[async_trait::async_trait]
-impl <C: Clone> super::UserProvider<C> for AccountProvider {
+impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
     async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
         //let new_root = self.root.join(&token.uuid);
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
@@ -626,13 +626,36 @@ impl UserData {
         Ok(players)
     }
 
-    pub(super) async fn currency_op(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, oj_rc_database::sea_orm::DbErr> {
-        let desc = match ty {
+    #[inline]
+    fn currency_ty_to_db(ty: super::CurrencyType) -> oj_rc_database::schema::user_aux::Descriptor {
+        match ty {
             super::CurrencyType::Free => oj_rc_database::schema::user_aux::Descriptor::UserFreeCurrency,
             super::CurrencyType::Paid => oj_rc_database::schema::user_aux::Descriptor::UserPaidCurrency,
             super::CurrencyType::TechPoints => oj_rc_database::schema::user_aux::Descriptor::TechPoints,
             super::CurrencyType::Experience => oj_rc_database::schema::user_aux::Descriptor::UserXP,
-        };
+        }
+    }
+
+    async fn currency_sub_checked(&self, ty: super::CurrencyType, to_sub: u64) -> Result<bool, oj_rc_database::sea_orm::DbErr> {
+        let desc = Self::currency_ty_to_db(ty);
+        let model_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, desc.clone()).await?;
+        if let Some(model) = model_opt {
+            let existing_funds = model.data.parse::<u64>().unwrap_or_default();
+            if existing_funds < to_sub {
+                Ok(false)
+            } else {
+                let mut active = model.into_active_model();
+                active.data = oj_rc_database::sea_orm::ActiveValue::Set((existing_funds - to_sub).to_string());
+                self.db.update_user_aux_by_user_id_and_descriptor(active, self.account.id, desc).await?;
+                Ok(true)
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub(super) async fn currency_op(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, oj_rc_database::sea_orm::DbErr> {
+        let desc = Self::currency_ty_to_db(ty);
         let model_opt = match op {
             super::CurrencyOp::Get => {
                 self.db.update_user_aux_by_user_id_and_descriptor_custom(
@@ -646,7 +669,6 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        use oj_rc_database::sea_orm::IntoActiveModel;
                         let new_currency = model.data.parse::<u64>().unwrap_or_default() + to_add;
                         let mut am = model.to_owned().into_active_model();
                         am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
@@ -659,8 +681,7 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        use oj_rc_database::sea_orm::IntoActiveModel;
-                        let new_currency = model.data.parse::<u64>().unwrap_or_default() - to_sub;
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default().saturating_sub(to_sub);
                         let mut am = model.to_owned().into_active_model();
                         am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
                         Some(am)
@@ -672,7 +693,6 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        use oj_rc_database::sea_orm::IntoActiveModel;
                         let new_currency = (model.data.parse::<u64>().unwrap_or_default() as i64) + to_addsub;
                         let mut am = model.to_owned().into_active_model();
                         am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.clamp(0, i64::MAX).to_string());
@@ -696,7 +716,7 @@ const DATABASE_ERR: i16 = crate::data::error_codes::WebServicesError::DatabaseEr
 const UNEXPECTED_ERR: i16 = crate::data::error_codes::WebServicesError::UnexpectedError as i16; // 9
 
 #[async_trait::async_trait]
-impl <C: Clone> super::User<C> for UserData {
+impl <C: Clone + Send> super::User<C> for UserData {
     async fn unlocked_parts(&self) -> Vec<u32> {
         match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::UnlockedParts).await {
             Ok(Some(parts)) => {
@@ -1233,6 +1253,111 @@ impl <C: Clone> super::User<C> for UserData {
     fn current_game_event_setter(&self) -> Box<dyn super::GameEventSetter> {
         Box::new(GameEventSetterImpl {
             db: self.db.clone(),
+        })
+    }
+
+    async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<super::PurchaseResult, polariton_server::operations::SimpleOpError> {
+        if action.cost_free != 0 {
+            let is_ok = self.currency_sub_checked(super::CurrencyType::Free, action.cost_free as _).await
+            .map_err(|e| {
+                log::error!("Failed to apply free cost for purchase: {}", e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to apply free cost for purchase: {}", e),
+                )
+            })?;
+            if !is_ok {
+                log::debug!("Rejected purchase costing {} for user {} (insufficient free funds)", action.cost_free, self.account.id);
+                return Err(polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::NotEnoughMoney as i16,
+                    "Not enough free funds for purchase".to_owned(),
+                ))
+            }
+        }
+        if action.cost_paid != 0 {
+            let is_ok = self.currency_sub_checked(super::CurrencyType::Paid, action.cost_paid as _).await
+            .map_err(|e| {
+                log::error!("Failed to apply paid cost for purchase: {}", e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to apply paid cost for purchase: {}", e),
+                )
+            })?;
+            if !is_ok {
+                log::debug!("Rejected purchase costing {} for user {} (insufficient paid funds)", action.cost_paid, self.account.id);
+                return Err(polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::NotEnoughMoney as i16,
+                    "Not enough paid funds for purchase".to_owned(),
+                ))
+            }
+        }
+        let mut new_cubes = std::collections::HashMap::new();
+        let mut paid_currency = 0;
+        for award in action.gives.iter() {
+            match award {
+                crate::persist::config::ShopGain::Cube(x) => {
+                    new_cubes.insert(hex::encode((*x as i32).to_be_bytes()), 1);
+                },
+                crate::persist::config::ShopGain::Experience(xp) => {
+                    self.currency_op(
+                        crate::persist::user::CurrencyType::Experience,
+                        crate::persist::user::CurrencyOp::AddSub(*xp as _),
+                    ).await
+                    .map_err(|e| {
+                        log::error!("Failed to apply experience for purchase: {}", e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to apply experience for purchase: {}", e),
+                        )
+                    })?;
+                },
+                crate::persist::config::ShopGain::FreeCurrency(c) => {
+                    self.currency_op(
+                        crate::persist::user::CurrencyType::Free,
+                        crate::persist::user::CurrencyOp::AddSub(*c as _),
+                    ).await
+                    .map_err(|e| {
+                        log::error!("Failed to apply free currency for purchase: {}", e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to apply free currency for purchase: {}", e),
+                        )
+                    })?;
+                },
+                crate::persist::config::ShopGain::PaidCurrency(c) => {
+                    self.currency_op(
+                        crate::persist::user::CurrencyType::Paid,
+                        crate::persist::user::CurrencyOp::AddSub(*c as _),
+                    ).await
+                    .map_err(|e| {
+                        log::error!("Failed to apply paid currency for purchase: {}", e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to apply paid currency for purchase: {}", e),
+                        )
+                    })?;
+                    paid_currency += *c;
+                },
+                crate::persist::config::ShopGain::TechPoints(tp) => {
+                    self.currency_op(
+                        crate::persist::user::CurrencyType::TechPoints,
+                        crate::persist::user::CurrencyOp::AddSub(*tp as _),
+                    ).await
+                    .map_err(|e| {
+                        log::error!("Failed to apply tech point for purchase: {}", e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to apply tech points for purchase: {}", e),
+                        )
+                    })?;
+                },
+            }
+        }
+        Ok(super::PurchaseResult {
+            success: true,
+            cube_awards: new_cubes,
+            robopass_award: false,
+            paid_currency_award: paid_currency,
         })
     }
 }

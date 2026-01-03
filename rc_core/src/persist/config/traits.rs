@@ -37,6 +37,7 @@ pub trait ConfigProvider<C: Clone> {
     fn pit_settings(&self) -> PitSettings;
     fn tdm_settings(&self) -> TeamDeathMatchSettings;
     fn shop_entries(&self) -> ShopEntriesResolver;
+    fn promo_codes(&self) -> std::collections::HashMap<String, PromoCode>;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -485,4 +486,14 @@ pub enum ShopGain {
     FreeCurrency(i64),
     PaidCurrency(i64),
     TechPoints(i32)
+}
+
+#[derive(Debug)]
+pub struct PromoCode {
+    pub message: Option<String>,
+    pub bundle_id: String,
+    pub promo_id: String,
+    pub is_serial: bool,
+    pub value: f32,
+    pub transaction: ShopAction,
 }

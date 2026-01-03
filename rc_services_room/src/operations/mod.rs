@@ -100,6 +100,7 @@ mod garage_slot_copy;
 mod steam_promo;
 mod campaign_save_result;
 mod item_shop_purchase;
+mod code_redeem;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -225,4 +226,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         //.add(polariton_server::operations::Ack::<97, _>::default()) // TODO handle UpdateShopRobotOffsetRequest instead of ignoring it (this seems to break newly-uploaded vehicles for now)
         .add(steam_promo::steam_promos_provider())
         .add(item_shop_purchase::item_purchase_provider(&init_ctx.cubes))
+        .add(code_redeem::code_redeem_provider(&init_ctx.cubes))
 }

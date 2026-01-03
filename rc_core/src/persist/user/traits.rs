@@ -84,6 +84,7 @@ pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + Singlep
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
     fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
+    async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<PurchaseResult, polariton_server::operations::SimpleOpError>;
 }
 
 #[async_trait::async_trait]
@@ -196,6 +197,17 @@ pub struct GetAvatarInfo<C> {
 pub struct AvatarInfo {
     pub avatar_id: i32,
     pub use_custom: bool,
+}
+
+pub struct PurchaseResult {
+    pub success: bool,
+    //pub result_code:
+    //pub is_serial_key: bool,
+    //pub value: f32,
+    //pub promo_id: String,
+    pub cube_awards: std::collections::HashMap<String, u32>, // hex id -> count
+    pub robopass_award: bool,
+    pub paid_currency_award: i64,
 }
 
 #[async_trait::async_trait]

@@ -508,4 +508,24 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn shop_entries(&self) -> super::ShopEntriesResolver {
         super::ShopEntriesResolver::new(self.shop.items.clone())
     }
+
+    fn promo_codes(&self) -> std::collections::HashMap<String, super::PromoCode> {
+        let mut map = std::collections::HashMap::with_capacity(self.shop.promo_codes.len());
+        for (key, val) in self.shop.promo_codes.iter() {
+            let tx = super::ShopAction {
+                cost_free: 0,
+                cost_paid: 0,
+                gives: val.gives.iter().map(|x| x.to_owned().into()).collect(),
+            };
+            map.insert(key.to_owned(), super::PromoCode {
+                message: val.message.clone(),
+                bundle_id: val.bundle_id.to_owned().unwrap_or_else(|| key.to_owned()),
+                promo_id: val.promo_id.to_owned().unwrap_or_else(|| key.to_owned()),
+                is_serial: val.is_serial,
+                value: val.value,
+                transaction: tx,
+            });
+        }
+        map
+    }
 }

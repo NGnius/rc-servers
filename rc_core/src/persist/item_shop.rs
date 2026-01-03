@@ -4,6 +4,8 @@ use serde::{Serialize, Deserialize};
 pub struct ItemShopConfig {
     #[serde(default = "default_items")]
     pub items: Vec<ItemBundle>,
+    #[serde(default = "default_codes")]
+    pub promo_codes: std::collections::HashMap<String, ItemCode>,
 }
 
 impl super::config::SelfValidator for ItemShopConfig {
@@ -172,6 +174,19 @@ impl std::convert::From<ItemPurchase> for crate::persist::config::ShopGain {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ItemCode {
+    #[serde(default)]
+    pub message: Option<String>,
+    pub bundle_id: Option<String>,
+    pub promo_id: Option<String>,
+    #[serde(default)]
+    pub is_serial: bool,
+    #[serde(default)]
+    pub value: f32,
+    pub gives: Vec<ItemPurchase>,
+}
+
 pub fn default_items() -> Vec<ItemBundle> {
     vec![
         // weekly (top row of 3)
@@ -325,4 +340,17 @@ pub fn default_items() -> Vec<ItemBundle> {
             gives: vec![],
         },
     ]
+}
+
+pub fn default_codes() -> std::collections::HashMap<String, ItemCode> {
+    let mut map = std::collections::HashMap::new();
+    map.insert("TEST".to_owned(), ItemCode {
+        message: Some("Test passed".to_owned()),
+        bundle_id: None,
+        promo_id: None,
+        is_serial: false,
+        value: 1.5,
+        gives: vec![]
+    });
+    map
 }
