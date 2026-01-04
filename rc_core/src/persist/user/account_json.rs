@@ -325,7 +325,7 @@ pub(super) struct UserData {
 }
 
 impl UserData {
-    async fn load_garage_by_slot(&self, slot: i32) -> Result<Option<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
+    pub(super) async fn load_garage_by_slot(&self, slot: i32) -> Result<Option<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
         //let path = self.root.join(super::GARAGE_DIR).join(format!("{}.json", id));
         //crate::persist::GarageSlot::load(&path)
         self.db.garage_by_user_id_and_slot(self.account.id, slot).await
@@ -344,13 +344,16 @@ impl UserData {
         Ok(self.db.perms_by_user_id(self.account.id).await?.unwrap())
     }
 
-    async fn err_on_banned(&self) -> Result<(), i16> {
+    pub(super) async fn err_on_banned(&self) -> Result<(), polariton_server::operations::SimpleOpError> {
         let perms = self.double_check_permissions().await.map_err(|e| {
             log::error!("Failed to retrieve user {} permissions: {}", self.account.id, e);
-            DATABASE_ERR
+            polariton_server::operations::SimpleOpError::with_message(
+                DATABASE_ERR,
+                format!("Failed to retrieve user permissions: {}", e),
+            )
         })?;
         if perms.banned {
-            Err(crate::data::error_codes::WebServicesError::Banned as i16)
+            Err(polariton_server::operations::SimpleOpError::with_code(crate::data::error_codes::WebServicesError::Banned as i16))
         } else {
             Ok(())
         }
@@ -901,6 +904,7 @@ impl <C: Clone + Send> super::User<C> for UserData {
             name: if let Some(new_name) = vehicle.name { oj_rc_database::sea_orm::ActiveValue::Set(new_name) } else { Default::default() },
             total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.total as _),
             total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.cosmetic as _),
+            was_rated: if let Some(is_rated) = vehicle.was_rated { oj_rc_database::sea_orm::ActiveValue::Set(is_rated) } else { oj_rc_database::sea_orm::ActiveValue::NotSet },
             ..Default::default()
         };
         self.save_garage_by_slot(entity, vehicle.slot).await.map_err(|e| {
@@ -1156,29 +1160,6 @@ impl <C: Clone + Send> super::User<C> for UserData {
         }.as_transmissible())
     }
 
-    async fn prepare_factory_upload(&self, vehicle: super::VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16> {
-        self.err_on_banned().await?;
-        let slot = self.load_garage_by_slot(vehicle.slot).await.map_err(|e| {
-            log::error!("Failed to retrieve vehicle slot {} for user_id {} (prepare_factory_upload): {}", vehicle.slot, self.account.id, e);
-            DATABASE_ERR
-        })?.ok_or_else(|| {
-            log::error!("Failed to find vehicle slot {} for user_id {} (prepare_factory_upload)", vehicle.slot, self.account.id);
-            INVALID_ROBOT_ERR
-        })?;
-        Ok(oj_rc_factory::VehicleUploadInfo {
-            name: vehicle.name,
-            description: vehicle.description,
-            thumbnail: vehicle.thumbnail,
-            added_by: self.account.public_id.clone(),
-            added_by_display_name: self.account.display_name.clone(),
-            cpu: slot.total_robot_cpu as u32,
-            total_robot_ranking: slot.total_robot_ranking as u32,
-            build_version: vehicle.version,
-            cube_data: slot.robot_data,
-            colour_data: slot.colour_data,
-        })
-    }
-
     async fn last_seen(&self) -> Result<u64, i16> {
         self.err_on_banned().await?;
         let last_seen_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::LastSeen).await
@@ -1359,6 +1340,24 @@ impl <C: Clone + Send> super::User<C> for UserData {
             robopass_award: false,
             paid_currency_award: paid_currency,
         })
+    }
+
+    async fn currency_debit(&self, ty: super::CurrencyType, to_sub: u64) -> Result<(), polariton_server::operations::SimpleOpError> {
+        let is_ok = self.currency_sub_checked(ty, to_sub).await.map_err(|e| {
+            log::error!("Failed to apply currency debit of {} {:?} for user {}: {}", to_sub, ty, self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(
+                crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                format!("Failed to apply debit of {} {:?}: {}", to_sub, ty, e),
+            )
+        })?;
+        if is_ok {
+            Ok(())
+        } else {
+            Err(polariton_server::operations::SimpleOpError::with_message(
+                crate::data::error_codes::WebServicesError::NotEnoughMoney as i16,
+                format!("Not enough funds to apply debit of {} {:?}", to_sub, ty),
+            ))
+        }
     }
 }
 

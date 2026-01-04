@@ -165,7 +165,7 @@ pub fn default_new_slot(user_id: i32, slot: i32, bay_cpu: i32) -> oj_rc_database
         slot: oj_rc_database::sea_orm::ActiveValue::Set(slot),
         name: oj_rc_database::sea_orm::ActiveValue::Set(format!("Bay {}", slot)),
         crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
-        was_rated: oj_rc_database::sea_orm::ActiveValue::Set(false),
+        was_rated: oj_rc_database::sea_orm::ActiveValue::Set(true),
         movement_categories: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
         uuid: oj_rc_database::sea_orm::ActiveValue::Set(super::uuid_sanitize(current_time)),
         thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(0),

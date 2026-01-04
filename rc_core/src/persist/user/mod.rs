@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::{UnlockedParts, UnlockOverride};
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, IntercomListener, UserRole, SocialUser, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserInfo, UserLoginInfo, ExtraUserInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, IntercomListener, UserRole, SocialUser, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser};
 
 pub mod intercom;
 pub use intercom::generate_token as generate_intercom_token;
@@ -23,6 +23,7 @@ mod common;
 mod chat;
 mod social;
 mod singleplayer;
+mod factory;
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 

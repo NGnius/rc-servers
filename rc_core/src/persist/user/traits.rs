@@ -61,7 +61,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser {
+pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser + FactoryUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn selected_garage(&self) -> (String, u32);
@@ -79,12 +79,12 @@ pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + Singlep
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
     async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<polariton::operation::Typed<C>, i16>;
-    async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
     fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
     async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<PurchaseResult, polariton_server::operations::SimpleOpError>;
+    async fn currency_debit(&self, ty: CurrencyType, to_sub: u64) -> Result<(), polariton_server::operations::SimpleOpError>;
 }
 
 #[async_trait::async_trait]
@@ -132,6 +132,7 @@ pub struct VehicleData {
     pub colour_data: Vec<u8>,
     pub weapon_order: Vec<i32>,
     pub crf_id: Option<i32>,
+    pub was_rated: Option<bool>,
 }
 
 pub struct VehicleUploadData {
@@ -419,6 +420,7 @@ pub trait CommonUser: Send + Sync {
     async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum CurrencyType {
     Free,
     Paid,
@@ -457,4 +459,10 @@ pub struct MatchRewards {
 pub trait SingleplayerUser: Send + Sync {
     // regular singleplayer and campaign mode
     async fn save_game_result(&self, guid: &str, result: crate::data::game_result::GameResult) -> Result<(), polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
+pub trait FactoryUser {
+    async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, polariton_server::operations::SimpleOpError>;
+    async fn rate_vehicle(&self, slot: i32, combat: i32, cosmetic: i32) -> Result<Option<i32>, polariton_server::operations::SimpleOpError>;
 }

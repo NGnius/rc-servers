@@ -81,6 +81,7 @@ async fn do_save(params: ParameterTable<()>, user: &crate::UserTy, cpu_counter: 
                         colour_data: colour_data.vec,
                         weapon_order: weapon_order_filtered,
                         crf_id: None,
+                        was_rated: None,
                     };
                     user_info.save_slot(vehicle_data, cpu_counter).await?;
                     let mut params_out = std::collections::HashMap::with_capacity(1);
