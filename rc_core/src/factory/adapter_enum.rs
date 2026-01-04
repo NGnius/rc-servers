@@ -6,7 +6,7 @@ pub enum Factory {
 
 #[async_trait::async_trait]
 impl oj_rc_factory::VehicleFactoryAdapter for Factory {
-    async fn vehicle(&self, id: u32) -> Result<Option<(oj_rc_factory::VehicleInfo, oj_rc_factory::VehicleQueryInfo)>, Box<dyn std::error::Error>> {
+    async fn vehicle(&self, id: i32) -> Result<Option<(oj_rc_factory::VehicleInfo, oj_rc_factory::VehicleQueryInfo)>, Box<dyn std::error::Error>> {
         match self {
             Self::Arc(x) => x.vehicle(id).await,
             Self::Custom(x) => x.vehicle(id).await,

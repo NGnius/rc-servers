@@ -451,7 +451,7 @@ impl UserData {
                     Ok(Some(factory_vehicle)) => {
                         let uuid_i64 = crate::persist::user::uuid_sanitize(
                             standard_uuid_uniqueness
-                            ^ crate::persist::user::i64_join((1 << 30, *factory_id))
+                            ^ crate::persist::user::i64_join((1 << 30, *factory_id as u32))
                         );
                         let uuid_str = crate::persist::user::i64_as_uuid_str(uuid_i64);
                         let weapons_guess = weapon_order.guess_weapons(&mut std::io::Cursor::new(&factory_vehicle.0.cube_data));

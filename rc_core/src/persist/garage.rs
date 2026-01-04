@@ -200,7 +200,7 @@ impl PrefabVehicle {
 pub enum PrefabId {
     Factory {
         #[serde(alias="crf")]
-        factory: u32,
+        factory: i32,
     },
     Database {
         garage: i32,

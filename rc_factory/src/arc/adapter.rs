@@ -50,10 +50,10 @@ impl ArcAdapter {
 
 #[async_trait::async_trait]
 impl crate::VehicleFactoryAdapter for ArcAdapter {
-    async fn vehicle(&self, id: u32) -> Result<Option<(crate::VehicleInfo, crate::VehicleQueryInfo)>, Box<dyn std::error::Error>> {
+    async fn vehicle(&self, id: i32) -> Result<Option<(crate::VehicleInfo, crate::VehicleQueryInfo)>, Box<dyn std::error::Error>> {
         log::debug!("Get vehicle by id {}", id);
-        let cubes = super::entities::robot_cubes::Entity::find_by_id(id).one(&self.orm);
-        let meta = super::entities::robot_metadata::Entity::find_by_id(id).one(&self.orm);
+        let cubes = super::entities::robot_cubes::Entity::find_by_id(id as u32).one(&self.orm);
+        let meta = super::entities::robot_metadata::Entity::find_by_id(id as u32).one(&self.orm);
         let cubes = cubes.await?;
         let meta = meta.await?;
         if let (Some(cubes), Some(meta)) = (cubes, meta) {

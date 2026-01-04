@@ -311,7 +311,7 @@ pub struct VehicleInfo {
 #[derive(Clone, Debug)]
 pub enum VehicleDescriptor {
     Factory {
-        factory: u32,
+        factory: i32,
     },
     Database {
         garage: i32,

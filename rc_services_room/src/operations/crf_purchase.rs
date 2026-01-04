@@ -27,7 +27,7 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
                 if paid_cost < 0 {
                     return Err(oj_rc_core::data::error_codes::WebServicesError::NotEnoughMoney as i16);
                 }
-                let vehicle = factory.vehicle(factory_id as _).await.map_err(|e| {
+                let vehicle = factory.vehicle(factory_id).await.map_err(|e| {
                     log::error!("Failed to retrieve vehicle {} (for copy-construct) from factory: {}", factory_id, e);
                     oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
                 })?;
