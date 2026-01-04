@@ -56,6 +56,7 @@ pub struct ChatCommand {
     regex: regex::Regex,
     op: ChatOperation,
     perms: ExecutePermission,
+    is_hidden: bool,
 }
 
 impl ChatCommand {
@@ -64,6 +65,7 @@ impl ChatCommand {
             regex: regex::RegexBuilder::new(&command.regex).build()?,
             op: ChatOperation::from_persist(command.op),
             perms: ExecutePermission::from_persist(command.permission),
+            is_hidden: command.hidden,
         })
     }
 
@@ -220,9 +222,10 @@ impl BuiltIn {
             }
             Self::Help => {
                 use core::fmt::Write;
-                let force_all = text.trim().split(' ').any(|word| word == "--all");
+                let force_all = text.trim().split(' ').any(|word| word == "all");
                 let mut msg = String::new();
                 for command in ctx.chat_system.chat_config().commands.iter() {
+                    if command.is_hidden { continue; }
                     if command.perms.has_perms(ctx.user) || force_all {
                         let raw_re = command.regex.to_string();
                         let pretty_name = Self::prettify_re(&raw_re);

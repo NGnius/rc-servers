@@ -55,6 +55,8 @@ pub struct ChatCommand {
     pub regex: String,
     pub op: ChatOperation,
     pub permission: ChatPermission,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 impl super::config::SelfValidator for ChatCommand {
