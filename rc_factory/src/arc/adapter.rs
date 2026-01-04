@@ -42,6 +42,10 @@ impl ArcAdapter {
             meta
         }
     }
+
+    fn parse_cube_amounts(&self, cube_amounts: &str) -> std::collections::HashMap<u32, u32> {
+        serde_json::from_str(cube_amounts).unwrap_or_default()
+    }
 }
 
 #[async_trait::async_trait]
@@ -80,7 +84,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     banner_message: Default::default(),
                     combat_rating: meta.combat_rating,
                     cosmetic_rating: meta.cosmetic_rating,
-                    cube_amounts: Default::default(), // FIXME parse cube amounts
+                    cube_amounts: self.parse_cube_amounts(&cubes.cube_amounts),
                 }
             )))
         } else {
@@ -154,6 +158,15 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         let metadata_pages = query_params.paginate(&self.orm, query.page_size as u64);
         let metadatas = metadata_pages.fetch_page((query.page - 1) as u64).await?;
         let mut infos = Vec::with_capacity(metadatas.len());
+        let cubes_to_retrieve: std::collections::HashSet<_> = metadatas.iter().map(|meta| meta.id).collect();
+        let cube_amounts: std::collections::HashMap<u32, String> = super::entities::robot_cubes::Entity::find()
+            .filter(super::entities::robot_cubes::Column::Id.is_in(cubes_to_retrieve))
+            .all(&self.orm)
+            .await?
+            .into_iter()
+            .map(|cubes| (cubes.id, cubes.cube_amounts))
+            .collect();
+
         for meta in metadatas {
             //let cube_amounts = super::entities::robot_cubes::Entity::find_by_id(meta.id).one(&self.orm).await?.map(|x| x.cube_amounts).unwrap_or_else(|| "".to_owned());
             infos.push(
@@ -177,7 +190,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     banner_message: Default::default(),
                     combat_rating: meta.combat_rating,
                     cosmetic_rating: meta.cosmetic_rating,
-                    cube_amounts: Default::default(),
+                    cube_amounts: if let Some(cube_amounts) = cube_amounts.get(&meta.id) { self.parse_cube_amounts(cube_amounts) } else { Default::default() },
                 }
             );
         }
