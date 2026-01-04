@@ -34,7 +34,7 @@ async fn main() -> std::io::Result<()> {
 
     let chat_system = state::chat::ChatImpl::new(<oj_rc_core::ConfigImpl as ConfigProvider<()>>::chat_system_config(&cubes)).expect("Bad chat config data");
 
-    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(chat_system, &cubes), polariton_server::events::EventsHandler::new()));
+    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(chat_system.clone(), &cubes), polariton_server::events::EventsHandler::new()));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
@@ -46,11 +46,11 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server.clone(), users.clone()).await;
+        process_socket(socket, address, server.clone(), users.clone(), chat_system).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
-            tokio::spawn(process_socket(socket, address, server.clone(), users.clone()));
+            tokio::spawn(process_socket(socket, address, server.clone(), users.clone(), chat_system.clone()));
         }
     }
     server.join();
@@ -58,7 +58,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, chat: state::chat::ChatImpl) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -67,13 +67,13 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    ONLINE_USERS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    ONLINE_USERS.store(chat.system().await.user_count() as u64 + 1, std::sync::atomic::Ordering::SeqCst);
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
     let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(users, chann_tx.clone()));
     let (socket_r, socket_w) = socket.into_split();
     server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), polariton::packet::SerdesContext::from_boxed(Default::default(), enc), chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
-    ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    ONLINE_USERS.store(chat.system().await.user_count() as u64 - 1, std::sync::atomic::Ordering::SeqCst);
     if let Ok(user_info) = user_state.user() {
         update_status(user_info.as_ref().as_ref()).await;
     }

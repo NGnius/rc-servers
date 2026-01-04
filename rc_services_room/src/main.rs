@@ -15,6 +15,8 @@ pub type UserTy = std::sync::Arc<oj_rc_core::UserState<()>>;
 
 pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 pub static ONLINE_USERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static LOGINS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static USER_HANDLES: std::sync::Mutex<Vec<std::sync::Weak<u64>>> = std::sync::Mutex::new(Vec::new());
 
 pub struct InitConfig {
     pub cubes: oj_rc_core::persist::config::ConfigImpl,
@@ -66,7 +68,8 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, init_ctx: std::sync::Arc<InitConfig>) {
-    log::debug!("Accepting connection from address {}", address);
+    let login_num = std::sync::Arc::new(LOGINS.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+    log::debug!("Accepting connection from address {} (login #{})", address, login_num);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
         None => {
@@ -74,14 +77,32 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    ONLINE_USERS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    {
+        if let Ok(mut handles) = USER_HANDLES.lock() {
+            handles.push(std::sync::Arc::downgrade(&login_num));
+            ONLINE_USERS.store(handles.len() as u64, std::sync::atomic::Ordering::SeqCst);
+        } else {
+            // this should never happen
+            log::warn!("USER_HANDLES lock is poisoned, cannot track online users anymore (please restart)");
+        }
+    }
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
     let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(init_ctx.users.clone(), chann_tx.clone()));
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
     server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
-    log::debug!("Goodbye connection from address {}", address);
-    ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    log::debug!("Goodbye connection from address {} (login #{})", address, login_num);
+    drop(login_num); // explicit for good measure
+    {
+        if let Ok(mut handles) = USER_HANDLES.lock() {
+            handles.retain(|x| x.strong_count() != 0);
+            ONLINE_USERS.store(handles.len() as u64, std::sync::atomic::Ordering::SeqCst);
+        } else {
+            // this should never happen
+            ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            log::warn!("USER_HANDLES lock is poisoned, cannot track online users anymore (please restart)");
+        }
+    }
     if let Ok(user_info) = user_state.user() {
         update_status(user_info.as_ref().as_ref()).await;
     }
