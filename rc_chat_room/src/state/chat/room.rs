@@ -79,7 +79,11 @@ impl ChatRoom {
                     channel: crate::events::room_join::RoomJoined::CHANNEL,
                     reliable: true,
         });
-        self.online_users.push(handle);
+        if !self.online_users.iter().any(|other| other.name() == handle.name()) {
+            self.online_users.push(handle);
+        } else {
+            log::warn!("User {} tried to join channel {} again", handle.name(), self.name);
+        }
     }
 
     pub fn remove_user(&mut self, name: &str) -> bool {
