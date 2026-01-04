@@ -265,4 +265,38 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
 
         Ok(result)
     }
+
+    async fn rate_vehicle(&self, id: i32, combat: i32, cosmetic: i32) -> Result<(), Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            return Ok(());
+        }
+        // TODO this should probably be a transaction
+        if let Some(meta) = super::entities::robot_metadata::Entity::find_by_id(id as u32).one(&self.orm).await? {
+            let total_ratings = (meta.buy_count + meta.rent_count) as f64; // idk why/how these are different
+            let next_combat_rating = meta.combat_rating + (((combat as f64) - meta.combat_rating) / total_ratings);
+            let next_cosmetic_rating = meta.cosmetic_rating + (((cosmetic as f64) - meta.cosmetic_rating) / total_ratings);
+            super::entities::robot_metadata::ActiveModel {
+                id: sea_orm::ActiveValue::Set(id as u32),
+                cosmetic_rating: sea_orm::ActiveValue::Set(next_cosmetic_rating),
+                combat_rating: sea_orm::ActiveValue::Set(next_combat_rating),
+                ..Default::default()
+            }.update(&self.orm).await?;
+        }
+        Ok(())
+    }
+
+    async fn purchase(&self, id: i32) -> Result<(), Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            return Ok(());
+        }
+        // TODO this should probably be a transaction
+        if let Some(meta) = super::entities::robot_metadata::Entity::find_by_id(id as u32).one(&self.orm).await? {
+            super::entities::robot_metadata::ActiveModel {
+                id: sea_orm::ActiveValue::Set(id as u32),
+                buy_count: sea_orm::ActiveValue::Set(meta.buy_count + 1),
+                ..Default::default()
+            }.update(&self.orm).await?;
+        }
+        Ok(())
+    }
 }

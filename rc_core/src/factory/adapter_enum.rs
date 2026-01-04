@@ -33,6 +33,22 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
             }),
         }
     }
+
+    async fn rate_vehicle(&self, id: i32, combat: i32, cosmetic: i32) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.rate_vehicle(id, combat, cosmetic).await,
+            Self::Custom(x) => x.rate_vehicle(id, combat, cosmetic).await,
+            Self::None => Ok(()),
+        }
+    }
+
+    async fn purchase(&self, id: i32) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.purchase(id).await,
+            Self::Custom(x) => x.purchase(id).await,
+            Self::None => Ok(()),
+        }
+    }
 }
 
 impl Factory {

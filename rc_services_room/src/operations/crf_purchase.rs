@@ -47,6 +47,10 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
                     };
                     user_info.save_slot(to_save, cpu_counter).await?;
                     user_info.currency_debit(oj_rc_core::persist::user::CurrencyType::Free, free_cost as _).await?;
+                    factory.purchase(factory_id).await.map_err(|e| {
+                        log::error!("Failed to track factory purchase of vehicle {}: {}", factory_id, e);
+                        oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+                    })?;
                     if paid_cost > 0 {
                         user_info.currency_debit(oj_rc_core::persist::user::CurrencyType::Paid, paid_cost as _).await?;
                     }
