@@ -9,12 +9,16 @@ pub use cpu_count::CpuListParser;
 mod locations_of;
 pub use locations_of::{CubeLocationsParser, CubeLocationInfo};
 
+mod offsetter;
+pub use offsetter::OffsetParser;
+
 //pub mod prefabs;
 
 pub struct CubeParsers {
     weapon_list: std::sync::Arc<WeaponListParser>,
     cpu_counter: std::sync::Arc<CpuListParser>,
     locations: std::sync::Arc<CubeLocationsParser>,
+    offset: std::sync::Arc<OffsetParser>,
 }
 
 impl CubeParsers {
@@ -24,6 +28,7 @@ impl CubeParsers {
             weapon_list: std::sync::Arc::new(WeaponListParser::with_cubes(cubes.values())),
             cpu_counter: std::sync::Arc::new(CpuListParser::with_cubes(cubes.values())),
             locations: std::sync::Arc::new(CubeLocationsParser::with_cubes(cubes.values())),
+            offset: std::sync::Arc::new(OffsetParser::with_cubes(cubes.values())),
         }
     }
 
@@ -37,5 +42,9 @@ impl CubeParsers {
 
     pub fn locations_of(&self) -> std::sync::Arc<CubeLocationsParser> {
         self.locations.clone()
+    }
+
+    pub fn offset(&self) -> std::sync::Arc<OffsetParser> {
+        self.offset.clone()
     }
 }

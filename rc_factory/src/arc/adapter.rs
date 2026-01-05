@@ -1,4 +1,4 @@
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, ActiveModelTrait, Set, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, QueryOrder, Set, TransactionTrait};
 use base64::Engine;
 use std::collections::HashMap;
 
@@ -45,6 +45,23 @@ impl ArcAdapter {
 
     fn parse_cube_amounts(&self, cube_amounts: &str) -> std::collections::HashMap<u32, u32> {
         serde_json::from_str(cube_amounts).unwrap_or_default()
+    }
+
+    fn calculate_cube_amounts(&self, data: &[u8]) -> String {
+        let mut counts: HashMap<u32, u32> = HashMap::new();
+        let data = &data[4..];
+        for chunk in data.chunks_exact(8) {
+            let id_bytes: [u8; 4] = chunk[0..4].try_into().unwrap();
+            let part_id = u32::from_le_bytes(id_bytes);
+
+            *counts.entry(part_id).or_insert(0) += 1;
+        }
+        let mut str_map: HashMap<String, u32> = HashMap::new();
+        for (k, v) in counts {
+            str_map.insert(k.to_string(), v);
+        }
+
+        serde_json::to_string(&str_map).unwrap_or_else(|_| "{}".to_string())
     }
 }
 
@@ -208,22 +225,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         }
         let transaction = self.orm.begin().await?;
 
-        let cube_amounts = {
-            let mut counts: HashMap<u32, u32> = HashMap::new();
-            let data = &vehicle.cube_data[4..];
-            for chunk in data.chunks_exact(8) {
-                let id_bytes: [u8; 4] = chunk[0..4].try_into().unwrap();
-                let part_id = u32::from_le_bytes(id_bytes);
-
-                *counts.entry(part_id).or_insert(0) += 1;
-            }
-            let mut str_map: HashMap<String, u32> = HashMap::new();
-            for (k, v) in counts {
-                str_map.insert(k.to_string(), v);
-            }
-
-            serde_json::to_string(&str_map).unwrap_or_else(|_| "{}".to_string())
-        };
+        let cube_amounts = self.calculate_cube_amounts(&vehicle.cube_data);
         let cubes = super::entities::robot_cubes::ActiveModel {
             id: sea_orm::ActiveValue::NotSet,
             cube_data: Set(base64::prelude::BASE64_STANDARD.encode(&vehicle.cube_data)),
@@ -296,6 +298,26 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                 buy_count: sea_orm::ActiveValue::Set(meta.buy_count + 1),
                 ..Default::default()
             }.update(&self.orm).await?;
+        }
+        Ok(())
+    }
+
+    async fn update_vehicle(&self, id: i32, cube_data: Option<Vec<u8>>, colour_data: Option<Vec<u8>>) -> Result<(), Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            //return Ok(()); // this soft-locks the client into an infinite reload cycle
+            return Err("Unsupported: cannot update factory in read-only mode".into()); // this works though
+        }
+        // TODO this should probably be a transaction
+        if let Some(cubes) = super::entities::robot_cubes::Entity::find_by_id(id as u32).one(&self.orm).await? {
+            let mut to_update = cubes.into_active_model();
+            if let Some(cube_data) = cube_data {
+                to_update.cube_data = Set(base64::prelude::BASE64_STANDARD.encode(&cube_data));
+                to_update.cube_amounts = Set(self.calculate_cube_amounts(&cube_data));
+            }
+            if let Some(colour_data) = colour_data {
+                to_update.colour_data = Set(base64::prelude::BASE64_STANDARD.encode(&colour_data));
+            }
+            to_update.update(&self.orm).await?;
         }
         Ok(())
     }

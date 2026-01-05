@@ -85,4 +85,19 @@ impl Colour {
         }
         Ok(cubes)
     }
+
+    pub fn dump(&self, w: &mut dyn std::io::Write) -> std::io::Result<usize> {
+        w.write_all(&[self.colour, self.x, self.y, self.z])?;
+        Ok(4)
+    }
+
+    pub fn dump_list(items: Vec<Self>) -> std::io::Result<Vec<u8>> {
+        let mut buf = Vec::with_capacity(4 + (items.len() * 8));
+        let mut dumped = std::io::Cursor::new(&mut buf);
+        dumped.write_all(&(items.len() as u32).to_le_bytes())?;
+        for item in items {
+            item.dump(&mut dumped)?;
+        }
+        Ok(buf)
+    }
 }

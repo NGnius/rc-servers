@@ -102,6 +102,7 @@ mod campaign_save_result;
 mod item_shop_purchase;
 mod code_redeem;
 mod crf_rate_vehicle;
+mod crf_shift_vehicle;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -224,7 +225,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(garage_slot_copy::garage_slot_copy_provider())
         .add(polariton_server::operations::Ack::<12, _>::default()) // TODO handle UpdatePlayerDailyQuestProgressRequest instead of ignoring it
         .add(crf_rate_vehicle::crf_rating_provider(&init_ctx.factory))
-        //.add(polariton_server::operations::Ack::<97, _>::default()) // TODO handle UpdateShopRobotOffsetRequest instead of ignoring it (this seems to break newly-uploaded vehicles for now)
+        .add(crf_shift_vehicle::factory_offset_provider(&init_ctx.factory, init_ctx.parsers.offset()))
         .add(steam_promo::steam_promos_provider())
         .add(item_shop_purchase::item_purchase_provider(&init_ctx.cubes))
         .add(code_redeem::code_redeem_provider(&init_ctx.cubes))

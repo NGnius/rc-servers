@@ -49,6 +49,14 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
             Self::None => Ok(()),
         }
     }
+
+    async fn update_vehicle(&self, id: i32, cube_data: Option<Vec<u8>>, colour_data: Option<Vec<u8>>) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.update_vehicle(id, cube_data, colour_data).await,
+            Self::Custom(x) => x.update_vehicle(id, cube_data, colour_data).await,
+            Self::None => Ok(()),
+        }
+    }
 }
 
 impl Factory {
