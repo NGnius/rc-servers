@@ -1,10 +1,11 @@
 use polariton_server::operations::{Operation, OperationCode};
 
-pub struct VersionTeller;
+pub struct VersionTeller {
+    latest_version: i32,
+}
 
 impl VersionTeller {
     const VERSION_NUMBER_KEY: u8 = 112;
-    const LATEST_VERSION: i32 = 2855;
 }
 
 impl <C: Send + 'static> Operation<C> for VersionTeller {
@@ -12,7 +13,7 @@ impl <C: Send + 'static> Operation<C> for VersionTeller {
 
     fn handle(&self, _: polariton::operation::ParameterTable<C>, _: &Self::User) -> polariton::operation::OperationResponse<C> {
         let mut resp_params = std::collections::HashMap::new();
-        resp_params.insert(Self::VERSION_NUMBER_KEY, polariton::operation::Typed::Int(Self::LATEST_VERSION));
+        resp_params.insert(Self::VERSION_NUMBER_KEY, polariton::operation::Typed::Int(self.latest_version));
         polariton::operation::OperationResponse {
             code: 103,
             return_code: 0,
@@ -25,5 +26,11 @@ impl <C: Send + 'static> Operation<C> for VersionTeller {
 impl OperationCode for VersionTeller {
     fn op_code() -> u8 {
         103
+    }
+}
+
+pub fn version_teller(conf: &oj_rc_core::ConfigImpl) -> VersionTeller {
+    VersionTeller {
+        latest_version: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).minimum_version,
     }
 }

@@ -91,6 +91,7 @@ pub struct ServerConfig {
     pub cdn_url: String,
     pub auth_url: String,
     pub intercom_url: String,
+    pub minimum_version: i32,
 }
 
 pub enum QueueChangeMode {

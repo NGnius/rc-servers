@@ -110,7 +110,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .modify(oj_rc_core::polariton::RcOpModifier)
         .add(eac::EacChallengeIgnorer)
         .add(more_auth::MoreLobbyAuth)
-        .add(versioner::VersionTeller)
+        .add(versioner::version_teller(&init_ctx.cubes))
         .add(maintenancer::MaintenanceModeTeller)
         .add(game_quality::QualityConfigTeller)
         .add(login_flags::UserFlagsTeller)

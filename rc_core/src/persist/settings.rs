@@ -96,6 +96,8 @@ pub struct ServerSettings {
     pub support_url: String,
     #[serde(default = "default_wiki_url")]
     pub wiki_url: String,
+    #[serde(default = "default_game_version")]
+    pub min_version: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -121,6 +123,7 @@ fn default_server_conf() -> ServerSettings {
         feedback_url: default_feedback_url(),
         support_url: default_support_url(),
         wiki_url: default_wiki_url(),
+        min_version: default_game_version(),
     }
 }
 
@@ -146,4 +149,8 @@ fn default_support_url() -> String {
 
 fn default_wiki_url() -> String {
     "https://git.ngram.ca/OpenJam/servers/wiki".to_owned()
+}
+
+fn default_game_version() -> u32 {
+    2855
 }
