@@ -14518,15 +14518,6 @@
                 "permission": "Developer"
             },
             {
-                "regex": "\\?perms",
-                "op": {
-                    "type": "BuiltIn",
-                    "built_in": "System",
-                    "system": "CheckPermissions"
-                },
-                "permission": "Player"
-            },
-            {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",

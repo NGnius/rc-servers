@@ -138,7 +138,6 @@ pub enum IntercomChatOperation {
 #[serde(tag = "system")]
 pub enum SystemChatOperation {
     Permissions,
-    CheckPermissions,
 }
 
 

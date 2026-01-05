@@ -321,7 +321,6 @@ impl Intercom {
 
 enum System {
     Permissions,
-    CheckPermissions,
 }
 
 enum SystemPermission {
@@ -380,7 +379,6 @@ impl System {
     fn from_persist(sys: oj_rc_core::persist::SystemChatOperation) -> Self {
         match sys {
             oj_rc_core::persist::SystemChatOperation::Permissions => Self::Permissions,
-            oj_rc_core::persist::SystemChatOperation::CheckPermissions => Self::CheckPermissions,
         }
     }
 
@@ -408,13 +406,6 @@ impl System {
                     format!("Granted {} to {} (they should re-log)", perm.display(), &params[2])
                 }
             },
-            Self::CheckPermissions => {
-                let is_royal = ctx.user.is_royal();
-                let is_dev = ctx.user.is_dev();
-                let is_admin = ctx.user.is_dev();
-                let is_mod = ctx.user.is_mod();
-                format!("r:{} dev:{} adm:{} mod:{}", is_royal as u8, is_dev as u8, is_admin as u8, is_mod as u8)
-            }
         }
 
     }
@@ -422,7 +413,6 @@ impl System {
     fn do_help(&self) -> String {
         match self {
             Self::Permissions => "Grant permissions to an account".to_owned(),
-            Self::CheckPermissions => "Display permissions for current account".to_owned(),
         }
     }
 }
