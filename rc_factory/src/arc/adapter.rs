@@ -321,4 +321,16 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         }
         Ok(())
     }
+
+    async fn set_featured(&self, id: i32, is_featured: bool) -> Result<(), Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            return Ok(());
+        }
+        super::entities::robot_metadata::ActiveModel {
+            id: sea_orm::ActiveValue::Set(id as u32),
+            featured: sea_orm::ActiveValue::Set(is_featured as i32),
+            ..Default::default()
+        }.update(&self.orm).await?;
+        Ok(())
+    }
 }

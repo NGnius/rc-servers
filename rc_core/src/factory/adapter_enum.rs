@@ -57,6 +57,14 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
             Self::None => Ok(()),
         }
     }
+
+    async fn set_featured(&self, id: i32, is_featured: bool) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.set_featured(id, is_featured).await,
+            Self::Custom(x) => x.set_featured(id, is_featured).await,
+            Self::None => Ok(()),
+        }
+    }
 }
 
 impl Factory {

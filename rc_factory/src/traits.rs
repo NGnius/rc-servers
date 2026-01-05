@@ -7,6 +7,7 @@ pub trait VehicleFactoryAdapter: Send + Sync + 'static {
     /// Just update any purchase trackers
     async fn purchase(&self, id: i32) -> Result<(), Box<dyn std::error::Error>>;
     async fn update_vehicle(&self, id: i32, cube_data: Option<Vec<u8>>, colour_data: Option<Vec<u8>>) -> Result<(), Box<dyn std::error::Error>>;
+    async fn set_featured(&self, id: i32, is_featured: bool) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 #[derive(Debug, Clone)]

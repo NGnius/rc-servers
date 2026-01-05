@@ -103,6 +103,8 @@ mod item_shop_purchase;
 mod code_redeem;
 mod crf_rate_vehicle;
 mod crf_shift_vehicle;
+mod crf_make_featured;
+mod crf_unmake_featured;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -229,4 +231,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(steam_promo::steam_promos_provider())
         .add(item_shop_purchase::item_purchase_provider(&init_ctx.cubes))
         .add(code_redeem::code_redeem_provider(&init_ctx.cubes))
+        .add(crf_make_featured::factory_featured_provider(&init_ctx.factory))
+        .add(crf_unmake_featured::factory_featured_provider(&init_ctx.factory))
+        .add(polariton_server::operations::Ack::<101, _>::default()) // RestoreCRFFeaturedRobot unused and also redundant???
 }
