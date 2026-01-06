@@ -20,6 +20,7 @@ pub type UserTy = std::sync::Arc<oj_rc_core::UserState>;
 pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 pub static READY_DURATION_NS: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 pub static ONLINE_USERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static LOGINS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -67,6 +68,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
+    LOGINS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     ONLINE_USERS.store(chat.system().await.user_count() as u64 + 1, std::sync::atomic::Ordering::SeqCst);
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
     let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(users, chann_tx.clone()));

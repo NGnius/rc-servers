@@ -171,9 +171,13 @@ impl BuiltIn {
                         "db" | "database" => {
                             let db_stats = format!("(chat db) {}", ctx.user.db_metrics().await);
                             stats.push(db_stats);
+                            let counters = ctx.user.db_counters().await;
+                            for (key, val) in counters {
+                                stats.push(format!("(db) {}: {}", key, val));
+                            }
                         },
                         "perms" | "permission" | "permissions" => {
-                            let com_stats = format!("(perms {}) mod:{} admin:{} dev:{} banned:{} royal:{}",
+                            let com_stats = format!("(perms {}) mod:{} admin:{} dev:{} banned:{} r:{}",
                                                     ctx.user.public_id(),
                                                     ctx.user.is_mod(),
                                                     ctx.user.is_admin(),
@@ -245,7 +249,7 @@ impl BuiltIn {
             Self::System(s) => s.do_help(),
             Self::OnlineUsers => "Show total users online".to_owned(),
             Self::TotalUsers => "Show total users registered".to_owned(),
-            Self::Stats => "Show server metrics (db|perms)".to_owned(),
+            Self::Stats => "Show server metrics (db|perms|uptime|counts)".to_owned(),
             Self::Version => "Show chat server version information".to_owned(),
             Self::Help => "Display this message".to_owned(),
         }

@@ -168,6 +168,12 @@ impl Database {
         }
     }
 
+    pub async fn garage_count(&self) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .count(&self.orm)
+            .await
+    }
+
     pub async fn garage_max_slot_by_user_id(&self, user_id: i32) -> Result<i32, sea_orm::DbErr> {
         let result = crate::schema::garage::Entity::find()
             .select_only()
@@ -316,6 +322,12 @@ impl Database {
 
     pub async fn insert_sanction(&self, entity: crate::schema::sanction::ActiveModel) -> Result<crate::schema::sanction::Model, sea_orm::DbErr> {
         entity.insert(&self.orm).await
+    }
+
+    pub async fn game_count(&self) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::multiplayer_game::Entity::find()
+            .count(&self.orm)
+            .await
     }
 
     pub async fn game_by_guid(&self, game_guid: i64) -> Result<Option<crate::schema::multiplayer_game::Model>, sea_orm::DbErr> {

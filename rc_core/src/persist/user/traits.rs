@@ -417,6 +417,7 @@ pub trait CommonUser: Send + Sync {
     fn is_royal(&self) -> bool;
     fn is_banned(&self) -> bool;
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
+    async fn db_counters(&self) -> Vec<(&'static str, i64)>;
     async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
 }
 

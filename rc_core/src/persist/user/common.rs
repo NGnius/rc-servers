@@ -1,5 +1,9 @@
 use super::account_json::UserData;
 
+fn u64_negative_on_err<E>(result: Result<u64, E>) -> i64 {
+    result.map(|x| x as i64).unwrap_or(-1)
+}
+
 #[async_trait::async_trait]
 impl super::CommonUser for UserData {
     fn public_id(&self) -> &'_ str {
@@ -34,10 +38,20 @@ impl super::CommonUser for UserData {
         self.db.metrics().await
     }
 
+    async fn db_counters(&self) -> Vec<(&'static str, i64)> {
+        let mut count_map = Vec::with_capacity(4);
+        count_map.push(("users", u64_negative_on_err(self.db.user_count().await)));
+        count_map.push(("garages", u64_negative_on_err(self.db.garage_count().await)));
+        count_map.push(("games", u64_negative_on_err(self.db.game_count().await)));
+        count_map
+    }
+
     async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError> {
         self.currency_op(ty, op).await.map_err(|e| polariton_server::operations::SimpleOpError::with_message(
             crate::data::error_codes::WebServicesError::DatabaseError as i16,
             format!("Currency operation failed for user {}: {}", self.account.id, e),
         ))
     }
+
+
 }
