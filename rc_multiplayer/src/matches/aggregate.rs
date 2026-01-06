@@ -96,7 +96,6 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
-                    std::time::Duration::from_secs(20),
                 );
                 Ok(engine.spawn())
             },
@@ -119,7 +118,6 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
-                    std::time::Duration::from_secs(20),
                 );
                 Ok(engine.spawn())
             },
@@ -137,7 +135,6 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
-                    std::time::Duration::from_secs(20),
                 );
                 Ok(engine.spawn())
             },
@@ -155,7 +152,6 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
-                    std::time::Duration::from_secs(20),
                 );
                 Ok(engine.spawn())
             },
