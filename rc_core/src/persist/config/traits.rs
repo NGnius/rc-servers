@@ -27,6 +27,7 @@ pub trait ConfigProvider<C: Clone> {
     fn singleplayer_details(&self) -> SingleplayerConfig;
     fn players_per_game(&self) -> usize;
     fn is_multiplayer_enabled(&self) -> bool;
+    fn multiplayer_autostart_after(&self) -> std::time::Duration;
     // FIXME don't use serializable types in traits
     fn network_config(&self) -> crate::persist::NetworkConf;
     fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;

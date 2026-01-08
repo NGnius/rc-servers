@@ -40,10 +40,12 @@ struct QueueUser {
     emitter: polariton_server::events::EventEmitter,
     player: oj_rc_core::data::player_data::PlayerData,
     user_id: i32,
+    enqueued_at: chrono::DateTime<chrono::Utc>,
+    user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
 }
 
 pub struct QueueHandler {
-    users_in_queue: tokio::sync::Mutex<HashMap<QueueKey, Vec<QueueUser>>>,
+    users_in_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<QueueKey, Vec<QueueUser>>>>,
     users_per_game: usize,
     is_enabled: bool,
     hostname: String,
@@ -53,13 +55,15 @@ pub struct QueueHandler {
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
     weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
     change_strategy: GamemodeChangeStrategy,
+    autostart_after: std::time::Duration,
+    autostart_task_started: std::sync::atomic::AtomicBool,
 }
 
 impl QueueHandler {
     pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         Self {
-            users_in_queue: tokio::sync::Mutex::new(HashMap::new()),
+            users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
             is_enabled: oj_rc_core::ConfigProvider::<()>::is_multiplayer_enabled(conf),
             hostname: domain.to_owned(),
@@ -69,10 +73,122 @@ impl QueueHandler {
             cpu_counter,
             weapon_guesser,
             change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
+            autostart_after: oj_rc_core::ConfigProvider::<()>::multiplayer_autostart_after(conf),
+            autostart_task_started: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
-    async fn enter_match(&self, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+    fn ensure_autostart_task_running(&self) {
+        if self.autostart_task_started.swap(true, std::sync::atomic::Ordering::AcqRel) {
+            return;
+        }
+
+        let users_in_queue = self.users_in_queue.clone();
+        let users_per_game = self.users_per_game;
+        let hostname = self.hostname.clone();
+        let hostport = self.hostport;
+        let network_conf = self.network_conf.clone();
+        let factory = self.factory.clone();
+        let cpu_counter = self.cpu_counter.clone();
+        let weapon_guesser = self.weapon_guesser.clone();
+        let autostart_after = self.autostart_after;
+
+        tokio::spawn(async move {
+            loop {
+                let now = chrono::Utc::now();
+                let mut to_start: Vec<(QueueKey, Vec<QueueUser>)> = Vec::new();
+                let mut next_deadline: Option<chrono::DateTime<chrono::Utc>> = None;
+
+                {
+                    let mut lock = users_in_queue.lock().await;
+
+                    let mut empty_keys: Vec<QueueKey> = Vec::new();
+                    let mut expired_keys: Vec<QueueKey> = Vec::new();
+
+                    for (key, users) in lock.iter() {
+                        if users.is_empty() {
+                            empty_keys.push(key.clone());
+                            continue;
+                        }
+
+                        // first user is always oldest within a queue
+                        let deadline = users[0].enqueued_at + autostart_after;
+                        if now >= deadline {
+                            expired_keys.push(key.clone());
+                        } else {
+                            next_deadline = Some(match next_deadline {
+                                Some(d) => if deadline < d { deadline } else { d },
+                                None => deadline,
+                            });
+                        }
+                    }
+
+                    for k in empty_keys {
+                        lock.remove(&k);
+                    }
+
+                    for k in expired_keys {
+                        if let Some(players) = lock.remove(&k) {
+                            if !players.is_empty() {
+                                to_start.push((k, players));
+                            }
+                        }
+                    }
+                }
+
+                // start expired queues outside the lock
+                for (key, players) in to_start {
+                    // choose the oldest queued user's LobbyUser handle
+                    let starter = match players.first() {
+                        Some(p) => p.user.clone(),
+                        None => continue,
+                    };
+
+                    QueueHandler::enter_match_static(
+                        hostname.clone(), 
+                        hostport, 
+                        network_conf.clone(), 
+                        factory.clone(), 
+                        cpu_counter.clone(), 
+                        weapon_guesser.clone(), 
+                        users_per_game, 
+                        key, 
+                        players, 
+                        starter.as_ref().as_ref(),
+                    ).await;
+                }
+
+                let sleep_dur = if let Some(deadline) = next_deadline {
+                    let now2 = chrono::Utc::now();
+                    match (deadline - now2).to_std() {
+                        Ok(d) => d,
+                        Err(_) => std::time::Duration::from_secs(0),
+                    }
+                } else {
+                    std::time::Duration::from_secs(1)
+                };
+
+                tokio::time::sleep(sleep_dur).await;
+            }
+        });
+    }
+
+    async fn enter_match(&self, key: QueueKey, players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+        Self::enter_match_static(
+            self.hostname.clone(),
+            self.hostport,
+            self.network_conf.clone(),
+            self.factory.clone(),
+            self.cpu_counter.clone(),
+            self.weapon_guesser.clone(),
+            self.users_per_game,
+            key,
+            players,
+            user,
+        ).await
+    }
+
+    async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         let guid_str = key.guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
@@ -100,14 +216,15 @@ impl QueueHandler {
             display_name: x.player.display_name.clone(),
         }).collect();
 
-        match user.start_game(game_desc, player_descs, self.factory.as_ref(), &self.cpu_counter, &self.weapon_guesser, &team_picker).await {
+        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, &team_picker).await {
             Ok(fakes) => {
+                let missing = users_per_game.saturating_sub(players.len());
                 let player_datas = players.iter().map(|x| x.player.clone())
-                    .chain(fakes.players.into_iter().map(|(desc, _emu)| desc))
+                    .chain(fakes.players.into_iter().take(missing).map(|(desc, _emu)| desc),)
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
-                    host: self.hostname.clone(),
-                    port: self.hostport,
+                    host: hostname.clone(),
+                    port: hostport,
                     map: key.map.clone(),
                     mode: key.mode,
                     guid: guid_str.clone(),
@@ -116,7 +233,7 @@ impl QueueHandler {
                     visibility: Some(key.visibility),
                     auto_heal: key.auto_heal,
                     player_datas,
-                    network_config: self.network_conf.clone(),
+                    network_config: network_conf.clone(),
                 };
                 let arc_event = std::sync::Arc::new(enter_battle_ev);
                 for player in players.iter() {
@@ -144,7 +261,7 @@ impl QueueHandler {
         }
     }
 
-    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync), event_emitter: polariton_server::events::EventEmitter) {
+    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
         if !self.is_enabled {
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
                 code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
@@ -152,15 +269,21 @@ impl QueueHandler {
             });
             return;
         }
+
+        self.ensure_autostart_task_running();
+
         let key = QueueKey {
             map, mode, visibility, auto_heal,
         };
-        match user.player_data(&self.cpu_counter).await {
+        let lobby_user = user.as_ref().as_ref();
+        match lobby_user.player_data(&self.cpu_counter).await {
             Ok(player_data) => {
                 let new_player = QueueUser {
                     emitter: event_emitter,
                     player: player_data,
-                    user_id: user.user_id(),
+                    user_id: oj_rc_core::persist::user::LobbyUser::user_id(lobby_user),
+                    enqueued_at: chrono::Utc::now(),
+                    user: user.clone(),
                 };
                 let mut lock = self.users_in_queue.lock().await;
                 // handle game event change
@@ -177,7 +300,10 @@ impl QueueHandler {
                                 } else {
                                     new_queue_map.insert(key.clone(), users);
                                 }
+                            }
 
+                            for users in new_queue_map.values_mut() {
+                                users.sort_by_key(|u| u.enqueued_at);
                             }
                             *lock = new_queue_map;
                             if count != 0 {
@@ -217,7 +343,7 @@ impl QueueHandler {
                 let players = if game_ready { lock.remove(&key) } else { None };
                 drop(lock);
                 if let Some(players) = players {
-                    self.enter_match(key, players, user).await;
+                    self.enter_match(key, players, lobby_user).await;
                 }
             },
             Err(e) => {
@@ -229,8 +355,8 @@ impl QueueHandler {
         }
     }
 
-    pub async fn leave_queue(&self, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
-        let user_id = user.user_id();
+    pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
+        let user_id = oj_rc_core::persist::user::LobbyUser::user_id(user.as_ref().as_ref());
         for queue in self.users_in_queue.lock().await.values_mut() {
             if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
                 queue.remove(i);

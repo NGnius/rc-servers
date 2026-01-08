@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 pub struct MultiplayerConfig {
     pub players_per_game: usize,
     pub enabled: bool,
+    pub autostart_after_s: u64,
     #[serde(default = "default_net_conf")]
     pub network: NetworkConf,
     #[serde(default = "default_fake_users")]

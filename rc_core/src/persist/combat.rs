@@ -619,6 +619,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
     super::MultiplayerConfig {
         players_per_game: 2,
         enabled: true,
+        autostart_after_s: 180,
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),
         battle_arena: super::multiplayer::default_ba_conf(),

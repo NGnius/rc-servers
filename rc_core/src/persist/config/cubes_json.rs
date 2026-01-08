@@ -403,6 +403,10 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn is_multiplayer_enabled(&self) -> bool {
         self.battle.multiplayer.enabled
     }
+    
+    fn multiplayer_autostart_after(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(self.battle.multiplayer.autostart_after_s)
+    }
 
     fn network_config(&self) -> crate::persist::NetworkConf {
         self.battle.multiplayer.network.clone()

@@ -85,7 +85,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
     server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
     if let Ok(user_info) = user_state.user() {
-        queue.leave_queue(user_info.as_ref().as_ref()).await;
+        queue.leave_queue(user_info.clone()).await;
     } else {
         log::debug!("Unauthenticated user disconnected");
     }

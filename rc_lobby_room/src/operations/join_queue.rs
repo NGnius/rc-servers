@@ -42,7 +42,7 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                         current_lobby.mode,
                                         current_lobby.visibility,
                                         current_lobby.auto_heal,
-                                        user_info.as_ref().as_ref(),
+                                        user_info.clone(),
                                         events.to_owned(),
                                     ).await;
                                 }
