@@ -1,14 +1,16 @@
 pub struct LnlEventHandler {
     event_handlers: std::collections::HashMap<i16, Box<dyn super::EventCodeHandler>>,
     motion_handler: Box<dyn super::RobotMotionHandler>,
+    disconnect_handler: Box<dyn super::DisconnectHandler>,
     user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>
 }
 
 impl LnlEventHandler {
-    pub fn new<M: super::RobotMotionHandler + 'static>(user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, motion_handler: M) -> Self {
+    pub fn new<M: super::RobotMotionHandler + 'static, D: super::DisconnectHandler + 'static>(user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, motion_handler: M, disconnect_handler: D) -> Self {
         Self {
             event_handlers: std::collections::HashMap::new(),
             motion_handler: Box::new(motion_handler),
+            disconnect_handler: Box::new(disconnect_handler),
             user_provider,
         }
     }
@@ -75,12 +77,12 @@ impl literustlib_server::EventHandler for LnlEventHandler {
     }
 
     async fn on_disconnect(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData) {
+        self.disconnect_handler.handle(peer, user).await;
         if let Some(user_info) = user.user().await {
             log::info!("Disconnect from user {} ({})", user_info.user_id(), peer.id());
         } else {
             log::debug!("Disconnect from connection {}", peer.id());
         }
-
     }
 }
 

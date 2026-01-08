@@ -19,7 +19,11 @@ mod player_leave;
 mod heal_assist_bonus;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
-    crate::handler::LnlEventHandler::new(init_ctx.users.clone(), crate::vehicle_motion::handler(init_ctx))
+    crate::handler::LnlEventHandler::new(
+        init_ctx.users.clone(),
+        crate::vehicle_motion::handler(init_ctx),
+        crate::disconnect::handler(init_ctx),
+    )
         .add(validate_game_guid::handler(init_ctx))
         .add(loading_progress::handler(init_ctx))
         .add(all_loading_progress::handler(init_ctx))

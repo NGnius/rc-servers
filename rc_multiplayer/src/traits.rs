@@ -15,4 +15,9 @@ pub trait RobotMotionHandler: Send + Sync {
     async fn handle(&self, data: &bytes::Bytes, user: &UserData);
 }
 
+#[async_trait::async_trait]
+pub trait DisconnectHandler: Send + Sync {
+    async fn handle(&self, peer: &std::sync::Arc<literustlib_server::Connection<PacketData>>, user: &UserData);
+}
+
 pub trait Broadcastable: byteserde::ser_heap::ByteSerializeHeap + core::any::Any + Send + Sync + 'static {}

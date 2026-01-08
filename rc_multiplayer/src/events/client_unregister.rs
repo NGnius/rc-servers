@@ -22,6 +22,7 @@ impl crate::handlers::DatalessEventCodeHandler for ClientUnregisterer {
         if let Some(user_info) = user.user().await {
             super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::EndConnection {
                 user_id: user_info.user_id(),
+                is_unregister: true,
             }).await);
         } else {
             log::error!("Failed to handle sync loading request for unknown user");

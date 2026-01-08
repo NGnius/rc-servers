@@ -1,13 +1,14 @@
 mod cli;
 mod handler;
 mod traits;
-pub use traits::{EventCodeHandler, UserData, PacketData, EventCode, RobotMotionHandler, Broadcastable};
+pub use traits::{EventCodeHandler, UserData, PacketData, EventCode, RobotMotionHandler, DisconnectHandler, Broadcastable};
 mod data;
 mod events;
 mod handlers;
 mod user;
 mod matches;
 mod vehicle_motion;
+mod disconnect;
 
 pub struct InitConfig {
     pub config: oj_rc_core::persist::config::ConfigImpl,

@@ -427,8 +427,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     super::GameMessage::NewConnection { user, game_guid, connection, response, sender } => {
                         self.on_new_connection(user, game_guid, connection, response, sender).await;
                     },
-                    super::GameMessage::EndConnection { user_id } => {
-                        is_engaged = self.on_end_connection(user_id).await;
+                    super::GameMessage::EndConnection { user_id, is_unregister } => {
+                        is_engaged = self.on_end_connection(user_id, is_unregister).await;
                     },
                     super::GameMessage::RequestLeave { user_id } => {
                         self.on_request_leave(user_id).await;
@@ -569,7 +569,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    async fn on_end_connection(&self, user_id: i32) -> bool {
+    async fn on_end_connection(&self, user_id: i32, _is_unregister: bool) -> bool {
         if let Some(player_id) = self.user_key_by_user_id(user_id) {
             let conn_opt = self.users.write().await.remove(&player_id);
             if let Some(conn) = conn_opt {
@@ -642,7 +642,14 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
             }
         }
-        true
+        for user in self.descriptors.values() {
+            if user.descriptor.user_id.is_none() { continue; } // skip non-players
+            let mode = ConnectionMode::from_u8(user.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+            if !matches!(mode, ConnectionMode::Disconnected) {
+                return true;
+            }
+        }
+        false
     }
 
     async fn on_request_leave(&self, user_id: i32) {

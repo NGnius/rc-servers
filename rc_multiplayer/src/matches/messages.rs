@@ -8,6 +8,7 @@ pub enum GameMessage {
     },
     EndConnection {
         user_id: i32,
+        is_unregister: bool,
     },
     RequestLeave {
         user_id: i32,
