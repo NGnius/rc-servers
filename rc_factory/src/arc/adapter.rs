@@ -36,7 +36,7 @@ impl ArcAdapter {
     }
 
     fn thumbnail_url(&self, meta: String, id: u32) -> String {
-        if self.override_cdn {
+        if self.override_cdn && id <= 7_946_212 {
             format!("{}/roboshop/arc/Live/{}", &self.cdn, id)
         } else {
             meta
@@ -85,7 +85,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     id: meta.id as _,
                     name: meta.name,
                     description: meta.description,
-                    thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
+                    thumbnail: meta.thumbnail,
                     added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
@@ -191,7 +191,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     id: meta.id as _,
                     name: meta.name,
                     description: meta.description,
-                    thumbnail: meta.thumbnail,
+                    thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
                     added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
