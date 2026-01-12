@@ -188,6 +188,7 @@ impl QueueHandler {
         ).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         let guid_str = key.guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {

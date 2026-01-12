@@ -1052,7 +1052,7 @@ impl <C: Clone + Send> super::User<C> for UserData {
             log::error!("No selected vehicle slot for user_id {}", self.account.id);
             DATABASE_ERR
         })?;
-        let inc_opt = self.garage_upgrades.increments.iter().enumerate().filter(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu as u32).next_back();
+        let inc_opt = self.garage_upgrades.increments.iter().enumerate().rfind(|(_i, inc)| inc.cpu <= selected_slot.bay_cpu as u32);
         if let Some((i, _)) = inc_opt {
             let max_upgrade = self.garage_upgrades.increments.len() - 1;
             let upgrade_to = i + (increments as usize);
