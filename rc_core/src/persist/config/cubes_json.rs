@@ -187,30 +187,28 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         Typed::IntArr(keys_vec.into())
     }
 
-    fn tech_tree_nodes(&self, unlocked_cubes: &std::collections::HashSet<u32>) -> Typed<C> {
-        let mut seen_cubes = std::collections::HashSet::with_capacity(self.cubes.len());
-        let mut needed_cubes = std::collections::HashSet::with_capacity(self.cubes.len());
-        let mut typed_nodes = Vec::new();
+    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider {
+        let mut nodes = indexmap::IndexMap::with_capacity(self.cubes.len());
         for cube in self.cubes.values() {
             if let Some(tree_data) = &cube.tree {
-                let is_unlocked = unlocked_cubes.contains(&cube.id);
-                let is_unlockable = tree_data.requires.iter().all(|id| unlocked_cubes.contains(id));
-                tree_data.neighbours.iter().for_each(|id| { needed_cubes.insert(*id); });
-                seen_cubes.insert(cube.id);
-                let node_data = tree_data.to_owned().into_data(cube.id, is_unlocked, is_unlockable);
-                typed_nodes.push(node_data.as_transmissible_key_val());
+                nodes.insert(cube.id, tree_data.to_owned());
             }
         }
-        for needed_cube_id in needed_cubes {
-            if !seen_cubes.contains(&needed_cube_id) {
-                log::warn!("Tech tree needs cube {} but it doesn't have tree info", needed_cube_id);
+        nodes.shrink_to_fit();
+        super::TechTreeNodeProvider {
+            tree: nodes,
+        }
+    }
+
+    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32> { // cube id (hex) -> tech point cost
+        let mut costs = std::collections::HashMap::with_capacity(self.cubes.len());
+        for cube in self.cubes.values() {
+            if let Some(tree_data) = &cube.tree {
+                costs.insert(hex::encode(cube.id.to_be_bytes()), tree_data.tech_points);
             }
         }
-        Typed::Dict(Dict {
-            key_ty: TypePrefix::Str,
-            val_ty: TypePrefix::HashMap,
-            items: typed_nodes,
-        })
+        costs.shrink_to_fit(); // probably unnecessary, but free memory usage reduction!
+        costs
     }
 
     fn ids(&self) -> Vec<u32> {

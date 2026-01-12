@@ -7,7 +7,8 @@ pub trait ConfigProvider<C: Clone> {
     fn weapon_list(&self) -> Typed<C>;
     fn weapon_upgrade_list(&self) -> Typed<C>;
     fn weapon_keys(&self) -> Typed<C>;
-    fn tech_tree_nodes(&self, unlocked_cubes: &std::collections::HashSet<u32>) -> Typed<C>;
+    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider;
+    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32>; // cube id (hex) -> tech point cost
     fn ids(&self) -> Vec<u32>;
     fn regen_config(&self) -> Typed<C>;
     fn after_battle_vote_config(&self) -> Typed<C>;

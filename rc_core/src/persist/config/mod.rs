@@ -10,6 +10,9 @@ pub use validation::{SelfValidator, ValidationInfo, ValidationMessage};
 mod campaign;
 pub use campaign::{CampaignResolver, CompleteCampaignProvider};
 
+mod tech_tree;
+pub use tech_tree::TechTreeNodeProvider;
+
 pub type ConfigImpl = CubeConfig;
 
 fn __must_impl<T: ConfigProvider<()>>() {}
