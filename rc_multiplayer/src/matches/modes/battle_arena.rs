@@ -1130,8 +1130,18 @@ impl BattleArenaLogic {
                     z: 10.0 * (player_team as f32) + 10.0,
                 }
             };
-            let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
-            tokio::task::spawn(super::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
+            if let Some(player_desc) = generic.user_descriptor(player_id) {
+                let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+                tokio::task::spawn(super::respawn_player_after(
+                    respawn_timestamp,
+                    connections,
+                    spawn_point,
+                    player_id,
+                    player_desc.machine.is_alive.clone(),
+                ));
+            } else {
+                log::error!("Player {} cannot respawn because they are not in the game!?", player_id);
+            }
         } else {
             log::error!("Player {} cannot respawn because they are not in a team!?", player_id);
         }

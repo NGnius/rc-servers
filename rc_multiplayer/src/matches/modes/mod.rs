@@ -16,7 +16,7 @@ pub use team_death_match::TeamDeathMatchLogic;
 
 mod trackers;
 
-async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8) {
+async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, player_id: u8, alive_flag: std::sync::Arc<std::sync::atomic::AtomicBool>) {
     let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
     tokio::time::sleep(sleep_dur).await;
     let spawn_payload = rlnl::events::sync::SpawnPoint {
@@ -36,4 +36,5 @@ async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec
             &player.connection,
         ).await);
     }
+    alive_flag.store(true, std::sync::atomic::Ordering::Relaxed);
 }

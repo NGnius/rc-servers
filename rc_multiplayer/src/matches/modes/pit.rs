@@ -238,7 +238,12 @@ impl PitLogic {
             player_streak.store(0, std::sync::atomic::Ordering::Relaxed);
         }
         if let Some(player_streak) = self.player_tracking.streaks.get(&killer) {
-            player_streak.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if let Some(victim_respawn) = self.player_tracking.respawns.get(&victim) {
+                let now = chrono::Utc::now().timestamp();
+                if victim_respawn.load(std::sync::atomic::Ordering::Relaxed) <= now {
+                    player_streak.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
         }
         self.do_leader_update(generic, killer, victim).await;
     }
@@ -314,19 +319,27 @@ impl PitLogic {
         if let Some(player_respawn) = self.player_tracking.respawns.get(&player_id) {
             player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
         }
-        let respawn_payload = rlnl::events::ingame::RespawnTime {
-            owner: player_id,
-            waiting_time: self.settings.respawn_time_seconds as i16,
-        };
-        generic.broadcast(
-            rlnl::event_code::NetworkEvent::SetRespawnWaitingTime,
-            literustlib::packet::Property::ReliableOrdered,
-            &respawn_payload,
-            true
-        ).await;
-        let spawn_point = Self::choose_spawn_point(&generic.map_config, player_id).1;
-        let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
-        tokio::task::spawn(super::respawn_player_after(respawn_timestamp, connections, spawn_point, player_id));
+        if let Some(player_desc) = generic.user_descriptor(player_id) {
+            let respawn_payload = rlnl::events::ingame::RespawnTime {
+                owner: player_id,
+                waiting_time: self.settings.respawn_time_seconds as i16,
+            };
+            generic.broadcast(
+                rlnl::event_code::NetworkEvent::SetRespawnWaitingTime,
+                literustlib::packet::Property::ReliableOrdered,
+                &respawn_payload,
+                true
+            ).await;
+            let spawn_point = Self::choose_spawn_point(&generic.map_config, player_id).1;
+            let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+            tokio::task::spawn(super::respawn_player_after(
+                respawn_timestamp,
+                connections,
+                spawn_point,
+                player_id,
+                player_desc.machine.is_alive.clone(),
+            ));
+        }
     }
 }
 

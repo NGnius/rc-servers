@@ -73,6 +73,7 @@ impl UserState {
 pub(super) struct MachineState {
     pub(super) selected_weapon: WeaponInfo,
     pub(super) location: Location,
+    pub(super) is_alive: std::sync::Arc<std::sync::atomic::AtomicBool>
 }
 
 impl MachineState {
@@ -80,6 +81,7 @@ impl MachineState {
         Self {
             selected_weapon: WeaponInfo::new(),
             location: Location::new(),
+            is_alive: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
         }
     }
 }
@@ -225,6 +227,35 @@ impl ConnectionMode {
     }
 }
 
+struct UnclaimedStats {
+    kills: tokio::sync::Mutex<std::collections::HashMap<KillAttribution, chrono::DateTime<chrono::Utc>>>,
+}
+
+impl UnclaimedStats {
+    const DEBOUNCE_PERIOD: std::time::Duration = std::time::Duration::from_secs(2);
+    fn new() -> Self {
+        Self {
+            kills: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+        }
+    }
+
+    // returns true if is new
+    async fn debounce_kill(&self, attr: KillAttribution) -> bool {
+        let now = chrono::Utc::now();
+        if let Some(time) = self.kills.lock().await.insert(attr, now) {
+            (now - time).to_std().unwrap_or_default() > Self::DEBOUNCE_PERIOD
+        } else {
+            true
+        }
+    }
+}
+
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+struct KillAttribution {
+    killer: u8,
+    victim: u8,
+}
+
 pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub users: tokio::sync::RwLock<std::collections::HashMap<u8, std::sync::Arc<UserConnection>>>,
     descriptors: std::collections::HashMap<u8, UserDescriptor>,
@@ -241,6 +272,7 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     pub custom_logic_handler: L,
     //pub fake_users: std::collections::HashMap<u8, FakeUser>,
     pub fakes_handler: super::fake::Handler,
+    unclaimed: UnclaimedStats,
 }
 
 impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
@@ -279,6 +311,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             game_duration: std::time::Duration::from_secs((config.game_time_minutes as u64) * 60),
             custom_logic_handler: custom,
             fakes_handler,
+            unclaimed: UnclaimedStats::new(),
         }
     }
 
@@ -872,14 +905,19 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         if self.custom_logic_handler.on_vehicle_destroyed(self, killer_player, remote_player).await {
             // the kill tracking is initiated separately by the client with kill bonus event
             if let Some(killed) = self.user_descriptor(remote_player) {
-                killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let data = killed.counters.get_generic_packet(remote_player, rlnl::types::IngameStatId::RobotDestroyed, None);
-                self.broadcast(
-                    rlnl::event_code::NetworkEvent::UpdateGameStats,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &data,
-                    true,
-                ).await;
+                let was_killed = killed.machine.is_alive.swap(false, std::sync::atomic::Ordering::Relaxed);
+                if was_killed {
+                    killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    killed.machine.is_alive.store(false, std::sync::atomic::Ordering::Relaxed);
+                    let data = killed.counters.get_generic_packet(remote_player, rlnl::types::IngameStatId::RobotDestroyed, None);
+                    self.broadcast(
+                        rlnl::event_code::NetworkEvent::UpdateGameStats,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &data,
+                        true,
+                    ).await;
+                    //self.unclaimed.debounce_kill(KillAttribution { killer: killer_player, victim: remote_player }).await;
+                }
             }
         }
     }
@@ -950,25 +988,27 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         shooter: u8,
     ) {
         if self.custom_logic_handler.on_kill_bonus(self, shooter, shootee).await {
-            if let Some(to_reward) = self.users.read().await.get(&shooter) {
-                let to_reward_desc = self.user_descriptor(shooter).unwrap();
-                to_reward_desc.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
-                    &rlnl::events::ingame::Kill {
-                        killee_player_id: shootee,
-                        killer_player_id: shooter,
-                    },
-                    rlnl::event_code::NetworkEvent::ConfirmedKill,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &to_reward.connection.connection
-                ).await);
-                let data = to_reward_desc.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::Kill, None);
-                self.broadcast(
-                    rlnl::event_code::NetworkEvent::UpdateGameStats,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &data,
-                    true,
-                ).await;
+            if self.unclaimed.debounce_kill(KillAttribution { killer: shooter, victim: shootee }).await {
+                if let Some(to_reward) = self.users.read().await.get(&shooter) {
+                    let to_reward_desc = self.user_descriptor(shooter).unwrap();
+                    to_reward_desc.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
+                        &rlnl::events::ingame::Kill {
+                            killee_player_id: shootee,
+                            killer_player_id: shooter,
+                        },
+                        rlnl::event_code::NetworkEvent::ConfirmedKill,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &to_reward.connection.connection
+                    ).await);
+                    let data = to_reward_desc.counters.get_generic_packet(shooter, rlnl::types::IngameStatId::Kill, None);
+                    self.broadcast(
+                        rlnl::event_code::NetworkEvent::UpdateGameStats,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &data,
+                        true,
+                    ).await;
+                }
             }
         }
     }
