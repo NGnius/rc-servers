@@ -41,8 +41,9 @@ async fn main() -> std::io::Result<()> {
     };
 
     let mtu = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config).max_packet_size;
+    let dos_protection = oj_rc_core::ConfigProvider::<()>::server_config(&init_ctx.config).dos_protect;
     let event_handler = events::handler(&init_ctx).await;
-    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu).await.expect("Bad server");
+    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu, dos_protection).await.expect("Bad server");
 
     let start_time = chrono::Utc::now();
     START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);

@@ -93,6 +93,7 @@ pub struct ServerConfig {
     pub auth_url: String,
     pub intercom_url: String,
     pub minimum_version: i32,
+    pub dos_protect: bool,
 }
 
 pub enum QueueChangeMode {

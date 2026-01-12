@@ -98,6 +98,8 @@ pub struct ServerSettings {
     pub wiki_url: String,
     #[serde(default = "default_game_version")]
     pub min_version: u32,
+    #[serde(default = "default_true")]
+    pub dos_protection: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -124,6 +126,7 @@ fn default_server_conf() -> ServerSettings {
         support_url: default_support_url(),
         wiki_url: default_wiki_url(),
         min_version: default_game_version(),
+        dos_protection: default_true(),
     }
 }
 
@@ -153,4 +156,8 @@ fn default_wiki_url() -> String {
 
 fn default_game_version() -> u32 {
     2855
+}
+
+fn default_true() -> bool {
+    true
 }
