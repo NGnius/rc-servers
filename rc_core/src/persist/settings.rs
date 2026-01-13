@@ -55,7 +55,7 @@ fn default_slot_upgrades() -> Vec<GarageSlotUpgrade> {
     vec![
         GarageSlotUpgrade {
             cpu: 100,
-            cost: 100,
+            cost: 0, // the first needs to be zero cost otherwise the client doesn't do upgrade cost math correctly
         },
         GarageSlotUpgrade {
             cpu: 200,

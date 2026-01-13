@@ -973,6 +973,12 @@ impl <C: Clone + Send> super::User<C> for UserData {
             log::error!("No vehicle slot {} to copy for user_id {}", slot, self.account.id);
             UNEXPECTED_ERR
         })?;
+        let vehicle_cpu = slot_to_copy.total_robot_cpu as u32;
+        let minimum_upgrade_to_cpu = self.garage_upgrades.increments.iter()
+            .find(|x| x.cpu >= vehicle_cpu)
+            .map(|x| x.cpu as u32)
+            .unwrap_or(vehicle_cpu); // increments probably misconfigured
+        log::info!("Minimum upgrade to bay CPU of {} (vehicle CPU {})", minimum_upgrade_to_cpu, vehicle_cpu);
         let new_name = format!("{} {}", slot_to_copy.name, append);
         let new_slot = if let Some(existing_slot) = into_slot {
             log::info!("Copy slot {} -> {} as `{}`", slot, existing_slot, new_name);
@@ -981,7 +987,16 @@ impl <C: Clone + Send> super::User<C> for UserData {
                 DATABASE_ERR
             })? {
                 use oj_rc_database::sea_orm::IntoActiveModel;
+                let existing_bay_cpu = existing_g.bay_cpu as u32;
                 let mut to_update = existing_g.into_active_model();
+                // subtract bay upgrade cost from user free currency
+                let total_cost: u32 = self.garage_upgrades.increments.iter()
+                    .map(|x| if x.cpu <= existing_bay_cpu || x.cpu > minimum_upgrade_to_cpu { 0 } else { x.cost })
+                    .sum();
+                self.currency_sub_checked(super::CurrencyType::Free, total_cost as u64).await.map_err(|e| {
+                    log::error!("Failed to debit user for cpu upgrade during clone of {} to slot {} for user_id {}: {}", slot, existing_slot, self.account.id, e);
+                    DATABASE_ERR
+                })?;
                 // copy everything except id, user_id, creation_time, slot, was_rated, bay_cpu, mastery_level, selected
                 to_update.name = oj_rc_database::sea_orm::ActiveValue::Set(new_name);
                 to_update.crf_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.crf_id);
@@ -1014,6 +1029,15 @@ impl <C: Clone + Send> super::User<C> for UserData {
         } else {
             log::info!("Copy slot {} -> <new slot> as `{}`", slot, new_name);
             use oj_rc_database::sea_orm::IntoActiveModel;
+            // subtract bay upgrade cost from user free currency
+            let total_cost: u32 = self.garage_upgrades.increments.iter()
+                .map(|x| if x.cpu > minimum_upgrade_to_cpu { 0 } else { x.cost })
+                .sum();
+            log::info!("Bay CPU upgrade costs {}", total_cost);
+            self.currency_sub_checked(super::CurrencyType::Free, total_cost as u64).await.map_err(|e| {
+                log::error!("Failed to debit user for cpu upgrade during fresh clone to slot {} for user_id {}: {}", slot, self.account.id, e);
+                DATABASE_ERR
+            })?;
             let mut to_insert = slot_to_copy.into_active_model();
             let max_slot = self.db.garage_max_slot_by_user_id(self.account.id).await.map_err(|e| {
                 log::error!("Failed to get max garage slot during copy for user_id {}: {}", self.account.id, e);
@@ -1061,6 +1085,13 @@ impl <C: Clone + Send> super::User<C> for UserData {
                 Ok(polariton::operation::Typed::Bool(false))
             } else {
                 let upgrade_to_cpu = self.garage_upgrades.increments[upgrade_to].cpu;
+                // subtract bay cpu upgrade cost from user free currency
+                let total_cost: u32 = self.garage_upgrades.increments[i+1..=upgrade_to].iter().map(|x| x.cost).sum();
+                self.currency_sub_checked(super::CurrencyType::Free, total_cost as u64).await.map_err(|e| {
+                    log::error!("Failed to debit user for cpu upgrade of {} to selected vehicle slot for user_id {}: {}", upgrade_to_cpu, self.account.id, e);
+                    DATABASE_ERR
+                })?;
+                // apply upgrade to bay
                 let entity = oj_rc_database::schema::garage::ActiveModel {
                     bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(upgrade_to_cpu as i32),
                     ..Default::default()
@@ -1069,7 +1100,6 @@ impl <C: Clone + Send> super::User<C> for UserData {
                     log::error!("Failed to upgrade selected vehicle slot to bay cpu of {} for user_id {}: {}", upgrade_to_cpu, self.account.id, e);
                     DATABASE_ERR
                 })?;
-                // TODO subtract upgrade cost from user free currency total
                 Ok(polariton::operation::Typed::Bool(true))
             }
         } else {

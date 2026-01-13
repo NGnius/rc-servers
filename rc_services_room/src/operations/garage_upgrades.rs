@@ -1,5 +1,4 @@
 use polariton::operation::{ParameterTable, OperationResponse};
-use oj_rc_core::ConfigProvider;
 
 const CODE: u8 = 1;
 
@@ -7,7 +6,7 @@ const PARAM_KEY: u8 = 1;
 
 pub(super) fn garage_upgrades_provider(conf: &oj_rc_core::ConfigImpl) -> GarageUpgradesProvider {
     GarageUpgradesProvider {
-        upgrades: <oj_rc_core::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf),
+        upgrades: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::garage_upgrades(conf),
     }
 }
 
