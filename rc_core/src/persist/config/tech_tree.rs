@@ -12,7 +12,7 @@ impl TechTreeNodeProvider {
         let mut needed_cubes = std::collections::HashSet::with_capacity(self.tree.len());
         let mut typed_nodes = Vec::new();
         for (cube_id, tree_data) in self.tree.iter() {
-            let is_unlocked = unlocked_cubes.contains(&cube_id);
+            let is_unlocked = unlocked_cubes.contains(cube_id);
             let is_unlockable = tree_data.requires.iter().all(|id| unlocked_cubes.contains(id));
             tree_data.neighbours.iter().for_each(|id| { needed_cubes.insert(*id); });
             seen_cubes.insert(cube_id);
