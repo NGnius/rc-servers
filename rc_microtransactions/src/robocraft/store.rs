@@ -1,15 +1,7 @@
 use actix_web::{web::{Data, Json}, Error, post};
 use serde::Serialize;
 
-#[derive(Serialize)]
-struct Response<T> {
-    response: T
-}
-
-#[derive(Serialize)]
-struct ResponseData<T> {
-    data: Vec<T>
-}
+use super::{Response, ResponseData};
 
 #[derive(Serialize)]
 struct StoreBundle {

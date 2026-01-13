@@ -32,6 +32,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(cli_args2.clone())
             .service(index)
             .service(robocraft::robopay_store)
+            .service(robocraft::robopay_token)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()
