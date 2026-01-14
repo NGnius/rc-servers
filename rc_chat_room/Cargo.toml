@@ -23,3 +23,5 @@ async-trait.workspace = true
 git-version.workspace = true
 chrono.workspace = true
 oj_serdes.workspace = true
+oj_rc_plugins = { version = "*", path = "../rc_plugins" }
+futures.workspace = true

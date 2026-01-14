@@ -19,12 +19,18 @@ impl ChatProvider {
     pub async fn system_mut(&self) -> tokio::sync::RwLockWriteGuard<'_, crate::state::chat::ChatSystem> {
         self.chat_system.write().await
     }
+
+    pub async fn init_provider(&self) {
+        let provider = crate::ProviderWrapper::new(self.chat_system.clone());
+        self.chat_system.read().await.plugin.set_provider(std::sync::Arc::new(Box::new(provider)));
+    }
 }
 
 pub struct ChatSystem {
     chats: HashMap<String, super::ChatRoom>,
     online_users: HashMap<String, super::UserHandle>,
     config: super::ChatSystemConfig,
+    plugin: crate::PluginWrapper,
 }
 
 impl ChatSystem {
@@ -51,6 +57,10 @@ impl ChatSystem {
         }
 
         total_removed_users + to_be_removed.len()
+    }
+
+    pub(crate) fn get_channel(&self, channel: &str) -> Option<&super::ChatRoom> {
+        self.chats.get(&channel.to_lowercase())
     }
 
     pub fn connect_user(&mut self, display_name: String, channels: Vec<String>, event_tx: tokio::sync::mpsc::UnboundedSender<polariton_server::ToSend>) {
@@ -92,11 +102,11 @@ impl ChatSystem {
             if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty).await;
             }
-        } else if let Some(room) = self.chats.get(&channel.to_lowercase()) {
+        } else if let Some(room) = self.get_channel(&channel) {
             let event_params = crate::events::chat_message::PublicMessage {
                 sender_name: user.public_id().to_owned(),
                 sender_display_name: user.display_name().to_owned(),
-                text,
+                text: text.clone(),
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),
                 is_admin: user.is_admin(),
@@ -104,8 +114,29 @@ impl ChatSystem {
                 channel_ty,
             };
             room.send_public_message(event_params);
+            self.plugin.on_message(&text, &room.canon_name(), user.display_name()).await;
         } else {
             log::warn!("Got message for non-existent chat room {} (variant: {:?})", channel, channel_ty);
+        }
+    }
+
+    pub async fn send_fake_message(&self, message: String, channel: String, username: String) -> bool {
+        if let Some(room) = self.get_channel(&channel) {
+            let event_params = crate::events::chat_message::PublicMessage {
+                sender_name: username.clone(),
+                sender_display_name: username.clone(),
+                text: message.clone(),
+                is_dev: false,
+                is_mod: false,
+                is_admin: false,
+                channel_name: room.canon_name(),
+                channel_ty: crate::data::channel::ChatChannelType::Public,
+            };
+            room.send_public_message(event_params);
+            self.plugin.on_message(&message, &room.canon_name(), &username).await;
+            true
+        } else {
+            false
         }
     }
 
@@ -172,6 +203,7 @@ impl ChatSystem {
             chats: HashMap::new(),
             online_users: HashMap::new(),
             config: super::ChatSystemConfig::from_persist(config)?,
+            plugin: crate::PluginWrapper::new(vec![]), // TODO construct plugins
         })
     }
 

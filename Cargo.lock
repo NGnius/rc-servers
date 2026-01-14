@@ -2469,10 +2469,12 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "futures",
  "git-version",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
+ "oj_rc_plugins",
  "oj_serdes",
  "polariton",
  "polariton_server",
@@ -2600,6 +2602,13 @@ dependencies = [
  "rand 0.9.2",
  "rlnl",
  "tokio",
+]
+
+[[package]]
+name = "oj_rc_plugins"
+version = "1.1.0"
+dependencies = [
+ "log",
 ]
 
 [[package]]

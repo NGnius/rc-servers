@@ -3,6 +3,8 @@ mod cli;
 mod state;
 mod op_handler;
 pub use op_handler::SimpleChatFunc;
+mod plugin_wrapper;
+pub use plugin_wrapper::{PluginWrapper, ProviderWrapper};
 
 mod data;
 mod operations;
