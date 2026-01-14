@@ -6,9 +6,9 @@ pub struct ChatProvider {
 }
 
 impl ChatProvider {
-    pub fn new(conf: oj_rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
+    pub fn new(conf: oj_rc_core::persist::config::ChatSystemConfig, dir: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         Ok(Self {
-            chat_system: std::sync::Arc::new(tokio::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf)?)),
+            chat_system: std::sync::Arc::new(tokio::sync::RwLock::new(crate::state::chat::ChatSystem::new(conf, dir)?)),
         })
     }
 
@@ -198,12 +198,12 @@ impl ChatSystem {
         handle.send_private_message(response);
     }
 
-    pub fn new(config: oj_rc_core::persist::config::ChatSystemConfig) -> std::io::Result<Self> {
+    pub fn new(config: oj_rc_core::persist::config::ChatSystemConfig, dir: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         Ok(Self {
             chats: HashMap::new(),
             online_users: HashMap::new(),
             config: super::ChatSystemConfig::from_persist(config)?,
-            plugin: crate::PluginWrapper::new(vec![]), // TODO construct plugins
+            plugin: crate::PluginWrapper::new(crate::plugin_wrapper::load_chat_plugins(dir)),
         })
     }
 

@@ -35,7 +35,8 @@ async fn main() -> std::io::Result<()> {
     let cubes = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
 
-    let chat_system = state::chat::ChatImpl::new(<oj_rc_core::ConfigImpl as ConfigProvider<()>>::chat_system_config(&cubes)).expect("Bad chat config data");
+    let chat_plugin_path = std::path::PathBuf::from(&args.data).join("plugins/chat");
+    let chat_system = state::chat::ChatImpl::new(<oj_rc_core::ConfigImpl as ConfigProvider<()>>::chat_system_config(&cubes), chat_plugin_path).expect("Bad chat config data");
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(chat_system.clone(), &cubes), polariton_server::events::EventsHandler::new()));
 

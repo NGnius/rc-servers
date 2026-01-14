@@ -51,3 +51,43 @@ impl oj_rc_plugins::chat::ChatProvider for ProviderWrapper {
         tokio::task::spawn(Self::do_send_message(self.provider.clone(), message.to_owned(), channel.to_owned(), username.to_owned()));
     }
 }
+
+pub fn load_chat_plugins(from_dir: impl AsRef<std::path::Path>) -> Vec<Box<dyn oj_rc_plugins::chat::ChatPlugin>> {
+    let path_ref = from_dir.as_ref();
+    if path_ref.exists() {
+        log::warn!("Chat plugins are experimental and insecure");
+    } else {
+        log::info!("Not loading chat plugins; {} does not exist", path_ref.display());
+        return Vec::default();
+    }
+    match path_ref.read_dir() {
+        Ok(dir) => {
+            let mut plugins = Vec::new();
+            for entry in dir {
+                match entry {
+                    Ok(entry) => {
+                        if entry.path().is_file() {
+                            match oj_rc_plugins::chat::ChatCPlugin::new(entry.path()) {
+                                Ok(plugin) => {
+                                    plugins.push(Box::new(plugin) as Box<dyn oj_rc_plugins::chat::ChatPlugin>);
+                                },
+                                Err(e) => {
+                                    log::warn!("Failed to load chat plugin {}: {}", entry.path().display(), e);
+                                }
+                            }
+
+                        }
+                    },
+                    Err(e) => {
+                        log::warn!("Failed to read entry in {}: {}", path_ref.display(), e);
+                    }
+                }
+            }
+            plugins
+        },
+        Err(e) => {
+            log::error!("Failed to load chat plugins from {}: {}", path_ref.display(), e);
+            Vec::default()
+        }
+    }
+}
