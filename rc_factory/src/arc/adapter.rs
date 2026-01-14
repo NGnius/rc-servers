@@ -85,7 +85,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     id: meta.id as _,
                     name: meta.name,
                     description: meta.description,
-                    thumbnail: meta.thumbnail,
+                    thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
                     added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
