@@ -976,7 +976,7 @@ impl <C: Clone + Send> super::User<C> for UserData {
         let vehicle_cpu = slot_to_copy.total_robot_cpu as u32;
         let minimum_upgrade_to_cpu = self.garage_upgrades.increments.iter()
             .find(|x| x.cpu >= vehicle_cpu)
-            .map(|x| x.cpu as u32)
+            .map(|x| x.cpu)
             .unwrap_or(vehicle_cpu); // increments probably misconfigured
         log::info!("Minimum upgrade to bay CPU of {} (vehicle CPU {})", minimum_upgrade_to_cpu, vehicle_cpu);
         let new_name = format!("{} {}", slot_to_copy.name, append);
