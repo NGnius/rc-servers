@@ -16,7 +16,7 @@ async fn index() -> impl Responder {
 }
 
 fn io_error(e: impl ToString) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+    std::io::Error::other(e.to_string())
 }
 
 #[actix_web::main]

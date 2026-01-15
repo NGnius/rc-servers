@@ -9,6 +9,7 @@ fn db_to_impl(client_emu: &oj_rc_database::schema::multiplayer_game_player::Clie
 }
 
 impl UserData {
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_fake_players_data(
         &self,
         _guid: i64,
@@ -57,6 +58,7 @@ impl UserData {
         Ok(fakes)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_forced_fake_players_data(
         &self,
         guid: i64,
@@ -77,6 +79,7 @@ impl UserData {
         ).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_filler_players_data(
         &self,
         guid: i64,

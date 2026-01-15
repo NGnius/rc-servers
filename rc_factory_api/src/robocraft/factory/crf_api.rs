@@ -19,7 +19,7 @@ fn parse_filter(filter: &str) -> Vec<u32> {
 fn payload_to_query(payload: &ListPayload) -> ListQuery {
     ListQuery {
         page: (payload.page.max(1)) as usize,
-        page_size: (payload.page_size.max(1).min(100)) as usize,
+        page_size: (payload.page_size.clamp(1, 100)) as usize,
         order: FactoryOrderType::try_from(payload.order.clamp(0, u8::MAX.into()) as u8).unwrap_or(FactoryOrderType::Suggested),
         player_filter: payload.player_filter,
         movement_filter: parse_filter(&payload.movement_filter),
@@ -91,11 +91,8 @@ fn get_info(qi: VehicleQueryInfo, vi: VehicleInfo) -> FactoryRobotGetInfo {
 
 #[post("/api/roboShopItems/list")]
 pub async fn list(factory: Data<oj_rc_core::factory::Factory>, body: Json<ListPayload>) -> HttpResponse {
-    match factory.get_ref() {
-        oj_rc_core::factory::Factory::None => {
-            return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
-        }
-        _ => {}
+    if let oj_rc_core::factory::Factory::None = factory.get_ref() {
+        return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
     }
 
     let query = payload_to_query(&body.into_inner());
@@ -114,11 +111,8 @@ pub async fn list(factory: Data<oj_rc_core::factory::Factory>, body: Json<ListPa
 
 #[get("/api/roboShopItems/list")]
 pub async fn list_default(factory: Data<oj_rc_core::factory::Factory>) -> HttpResponse {
-    match factory.get_ref() {
-        oj_rc_core::factory::Factory::None => {
-            return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
-        }
-        _ => {}
+    if let oj_rc_core::factory::Factory::None = factory.get_ref() {
+        return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
     }
 
     let query = payload_to_query(&ListPayload::default());
@@ -137,11 +131,8 @@ pub async fn list_default(factory: Data<oj_rc_core::factory::Factory>) -> HttpRe
 
 #[get("/api/roboShopItems/get/{id}")]
 pub async fn get(factory: Data<oj_rc_core::factory::Factory>, id: Path<i32>) -> HttpResponse {
-    match factory.get_ref() {
-        oj_rc_core::factory::Factory::None => {
-            return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
-        }
-        _ => {}
+    if let oj_rc_core::factory::Factory::None = factory.get_ref() {
+        return HttpResponse::ServiceUnavailable().body("factory adapter disabled");
     }
     match factory.vehicle(*id).await {
         Ok(Some((vehicle_info, query_info))) => HttpResponse::Ok().json(FactoryInfo {

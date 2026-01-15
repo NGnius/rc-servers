@@ -46,7 +46,7 @@ impl CubeLocationsParser {
         let target_x = point.0 as f32;
         let target_y = point.1 as f32;
         let target_z = point.2 as f32;
-        let mut relevant_cubes: Vec<(f32, CubeLocationInfo)> = cubes.into_iter()
+        let mut relevant_cubes: Vec<(f32, CubeLocationInfo)> = cubes.iter()
             .filter(|x| x.id == locations_of_id)
             .map(|cube| {
                 let distance = (
