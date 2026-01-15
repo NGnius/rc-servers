@@ -58,6 +58,7 @@ impl super::LobbyUser for UserData {
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
         chooser: &TeamChooser,
+        missing_players: usize,
     ) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
         let guid = crate::persist::user::str_to_i64(&game.guid)
@@ -73,7 +74,8 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let fake_players = self.generate_fake_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
+        let forced_fake_players = self.generate_forced_fake_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
+        let filler_players = self.generate_filler_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser, missing_players).await?;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,
@@ -95,6 +97,7 @@ impl super::LobbyUser for UserData {
         })?;
 
         let players_len = players.len();
+        let forced_fake_players_len = forced_fake_players.len();
 
         let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.into_iter()
             .enumerate()
@@ -113,7 +116,7 @@ impl super::LobbyUser for UserData {
                     variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
-            .chain(fake_players.iter()
+            .chain(forced_fake_players.iter()
                 .enumerate()
                 .map(|(i, (fake, variant))| {
                     oj_rc_database::schema::multiplayer_game_player::ActiveModel {
@@ -122,6 +125,24 @@ impl super::LobbyUser for UserData {
                         game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                         creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                         player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len) as u8) as _),
+                        team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team),
+                        group: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                        is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(true),
+                        public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.clone()),
+                        display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.clone()),
+                        variant: oj_rc_database::sea_orm::ActiveValue::Set(fake_impl_to_db(variant)),
+                    }
+                })
+            )
+            .chain(filler_players.iter()
+                .enumerate()
+                .map(|(i, (fake, variant))| {
+                    oj_rc_database::schema::multiplayer_game_player::ActiveModel {
+                        id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        user_id: oj_rc_database::sea_orm::ActiveValue::Set(None), // if ClientAI, they will be assigned to a user during game loading
+                        game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
+                        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                        player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len + forced_fake_players_len) as u8) as _),
                         team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team),
                         group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                         is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(true),
@@ -140,6 +161,8 @@ impl super::LobbyUser for UserData {
             )
         })?;
 
-        Ok(super::FakePlayers { players: fake_players })
+        Ok(super::FakePlayers {
+            players: forced_fake_players.into_iter().chain(filler_players).collect(),
+        })
     }
 }

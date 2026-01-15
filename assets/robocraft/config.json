@@ -12264,7 +12264,8 @@
                 "active": true,
                 "protonium": true,
                 "visibility": "None",
-                "ignore_in_weapon_list": true
+                "ignore_in_weapon_list": true,
+                "health": 10000
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
             "nameStrKey": "strProtoniumCrystalName",

@@ -34,6 +34,7 @@ pub trait ConfigProvider<C: Clone> {
     fn maps(&self) -> std::collections::HashMap<GameMap, MapConfig>;
     fn url_links(&self) -> LinksConfig;
     fn fake_players(&self) -> Vec<FakePlayer>;
+    fn filler_players(&self) -> Vec<FakePlayer>;
     fn energy(&self) -> EnergyConfig;
     fn ba_settings(&self) -> BattleArenaResolver;
     fn pit_settings(&self) -> PitSettings;

@@ -488,6 +488,14 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }).collect()
     }
 
+    fn filler_players(&self) -> Vec<super::FakePlayer> {
+        self.battle.multiplayer.filler.iter().map(|player| super::FakePlayer {
+            team: player.team,
+            vehicle: player.vehicle.into_conf(),
+            implementation: player.implementation.clone().to_config(),
+        }).collect()
+    }
+
     fn energy(&self) -> super::EnergyConfig {
         super::EnergyConfig {
             refill_rate: self.battle.energy.refill_rate_per_s,

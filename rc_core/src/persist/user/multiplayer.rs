@@ -17,10 +17,11 @@ impl UserData {
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
         chooser: &super::TeamChooser,
+        fake_players: &[crate::persist::config::FakePlayer],
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
-        let mut fakes = Vec::with_capacity(self.fake_players.len());
+        let mut fakes = Vec::with_capacity(fake_players.len());
         let mut fake_i = real_players.len();
-        for fake in self.fake_players.iter() {
+        for fake in fake_players.iter() {
             let vehicle = self.resolve_vehicle(&fake.vehicle, factory, weapon_lister, cpu_counter).await?;
             let out = (
                 crate::data::player_data::PlayerData {
@@ -54,6 +55,47 @@ impl UserData {
             fakes.push(out);
         }
         Ok(fakes)
+    }
+
+    pub(super) async fn generate_forced_fake_players_data(
+        &self,
+        guid: i64,
+        real_players: &[super::PlayerLobbyDescriptor],
+        factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
+        cpu_counter: &crate::cubes::CpuListParser,
+        weapon_lister: &crate::cubes::WeaponListParser,
+        chooser: &super::TeamChooser,
+    ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+        self.generate_fake_players_data(
+            guid,
+            real_players,
+            factory,
+            cpu_counter,
+            weapon_lister,
+            chooser,
+            &self.fake_players,
+        ).await
+    }
+
+    pub(super) async fn generate_filler_players_data(
+        &self,
+        guid: i64,
+        real_players: &[super::PlayerLobbyDescriptor],
+        factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
+        cpu_counter: &crate::cubes::CpuListParser,
+        weapon_lister: &crate::cubes::WeaponListParser,
+        chooser: &super::TeamChooser,
+        count: usize,
+    ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+        self.generate_fake_players_data(
+            guid,
+            real_players,
+            factory,
+            cpu_counter,
+            weapon_lister,
+            chooser,
+            &self.filler_players[0..count],
+        ).await
     }
 }
 

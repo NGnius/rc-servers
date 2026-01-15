@@ -336,7 +336,7 @@ fn default_game_modes() -> GameModes {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
-            game_time_m: 2,
+            game_time_m: 20,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,
@@ -622,6 +622,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         autostart_after_s: 180,
         network: super::multiplayer::default_net_conf(),
         fakes: super::multiplayer::default_fake_users(),
+        filler: super::multiplayer::default_filler_users(),
         battle_arena: super::multiplayer::default_ba_conf(),
         pit_config: super::multiplayer::default_pit_conf(),
         team_death_match: super::multiplayer::default_tdm_conf(),

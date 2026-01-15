@@ -2425,6 +2425,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "oj_factory_api"
+version = "1.1.0"
+dependencies = [
+ "actix-web",
+ "base64",
+ "clap",
+ "env_logger",
+ "git-version",
+ "libfj",
+ "log",
+ "oj_rc_core",
+ "oj_rc_factory",
+ "serde_json",
+]
+
+[[package]]
 name = "oj_polariton_auth"
 version = "1.1.0"
 dependencies = [

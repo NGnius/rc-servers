@@ -217,11 +217,12 @@ impl QueueHandler {
             display_name: x.player.display_name.clone(),
         }).collect();
 
-        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, &team_picker).await {
+        let missing = users_per_game.saturating_sub(players.len());
+
+        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, &team_picker, missing).await {
             Ok(fakes) => {
-                let missing = users_per_game.saturating_sub(players.len());
                 let player_datas = players.iter().map(|x| x.player.clone())
-                    .chain(fakes.players.into_iter().take(missing).map(|(desc, _emu)| desc),)
+                    .chain(fakes.players.into_iter().map(|(desc, _emu)| desc),)
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
                     host: hostname.clone(),

@@ -721,7 +721,7 @@ struct BaseTickInfo {
 }
 
 impl BaseTracker {
-    const DOMINATING_MULT: f32 = 10.0;
+    const DOMINATING_MULT: f32 = 4.0;
 
     fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
         let mut bases = std::collections::HashMap::new();
@@ -735,19 +735,40 @@ impl BaseTracker {
         }
     }
 
+    fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, base: &BaseInfo, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
+        //let base = self.bases.get(&base_id).unwrap();
+        let target_crystals = &crystals[old_index..new_index];
+        for crystal_i in old_index..new_index {
+            base.crystals_healths[crystal_i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
+        }
+        rlnl::events::HealedCubes {
+            healed_machine: base_id as u16,
+            type_performing_healing: rlnl::types::TargetType::TeamBase,
+            target_type: rlnl::types::TargetType::TeamBase,
+            num_healed_cubes: target_crystals.len() as _,
+            hit_cubes: target_crystals
+                .iter()
+                .map(|loc| rlnl::types::HitCubeInfo {
+                    pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
+                    damage: crystal_health as i32,
+                })
+                .collect(),
+        }
+    }
+
     async fn tick(&self, tick_info: &PointTickInfo, crystals: &[oj_rc_core::cubes::CubeLocationInfo], generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, capture_points_count: usize, crystal_health: u32, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> BaseTickInfo {
         let multiplier = if let Some(dominant_team) = tick_info.dominating {
             if !self.dominating.swap(true, std::sync::atomic::Ordering::Relaxed) {
                 log::info!("Team {} is now dominating game {}", dominant_team, generic.game_guid());
-                // FIXME this doesn't seem to trigger the announcement client-side
                 generic.broadcast(
                     rlnl::event_code::NetworkEvent::CapturePointNotification,
                     literustlib::packet::Property::ReliableOrdered,
                     &rlnl::events::ingame::CapturePointNotification {
                         notification: rlnl::types::CapturePointNotificationType::Dominating,
-                        id: dominant_team,
-                        defending_team: dominant_team as i8,
-                        attacking_team: (((dominant_team as usize) + 1) % generic.map_config.bases.len()) as i8
+                        id: u8::MAX, // ignored?
+                        attacking_team: dominant_team as i8,
+                        defending_team: -1, // ignored?
+                        //defending_team: (((dominant_team as usize) + 1) % generic.map_config.bases.len()) as i8
                     },
                     true
                 ).await;
@@ -795,7 +816,8 @@ impl BaseTracker {
                                 ],
                             }
                         } else {
-                            let target_crystals = &crystals[old_index..new_index];
+                            self.apply_partial_base_heal(crystals, crystal_health, *base_id, tracked_base, old_index, new_index)
+                            /*let target_crystals = &crystals[old_index..new_index];
                             for crystal_i in old_index..new_index {
                                 tracked_base.crystals_healths[crystal_i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
                             }
@@ -811,7 +833,7 @@ impl BaseTracker {
                                         damage: crystal_health as i32,
                                     })
                                     .collect(),
-                            }
+                            }*/
                         };
 
                         generic.broadcast(
@@ -974,6 +996,7 @@ impl BattleArenaLogic {
     pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, parsers: &oj_rc_core::cubes::CubeParsers, players: &[oj_rc_core::persist::user::PlayerDescriptor], ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
         let cube_parser = parsers.locations_of();
         let crystals = cube_parser.locations_of_by_distance_to_first(&mut std::io::Cursor::new(&ba_config.base_machine_map), Self::CRYSTAL_ID, Self::CLASP_ID);
+        //let crystals = cube_parser.locations_of_by_distance_from(&mut std::io::Cursor::new(&ba_config.base_machine_map), Self::CRYSTAL_ID, (44, 255, 46));
         Self {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
@@ -1147,7 +1170,7 @@ impl BattleArenaLogic {
         }
     }
 
-    async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>, actual_damage_data: impl FnOnce(Vec<rlnl::types::CubeState>) -> crate::matches::RlnlPacket) {
+    async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>, _actual_damage_data: impl FnOnce(Vec<rlnl::types::CubeState>) -> crate::matches::RlnlPacket) {
         let base_id = cube_damage.hit_machine_id as u8;
         let mut total_destroyed = 0;
         let mut valid_cubes = Vec::with_capacity(cube_damage.hit_cubes.len());
@@ -1178,29 +1201,48 @@ impl BattleArenaLogic {
                 },
                 true,
             ).await;*/
-            let actual_damage_data = actual_damage_data(valid_cubes);
-            generic.broadcast(
+            //let actual_damage_data = actual_damage_data(valid_cubes);
+            /*generic.broadcast(
                 actual_damage_data.event,
                 actual_damage_data.property,
                 actual_damage_data.data.as_ref(),
                 true,
-            ).await;
-            generic.broadcast(
+            ).await;*/
+            /*generic.broadcast(
                 rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
                 literustlib::packet::Property::ReliableOrdered,
                 &base.generate_full_base_heal(base_id, self.config.protonium_health as u32, &self.crystals),
                 true,
-            ).await;
+            ).await;*/
         }
         if total_destroyed != 0 {
             if let Some(team_id) = self.player_tracking.team(cube_damage.shooting_machine_id as u8).await {
                 if let Some(base) = self.base_tracking.bases.get(&team_id) {
                     //log::info!("Player {} stole {} crystals", cube_damage.shooting_machine_id, total_destroyed);
-                    base.cube_index.fetch_add(total_destroyed as f32, std::sync::atomic::Ordering::SeqCst);
-                    generic.broadcast(
+                    let total_destroyed_f32 = total_destroyed as f32;
+                    let old_float_index = base.cube_index.fetch_add(total_destroyed_f32, std::sync::atomic::Ordering::SeqCst);
+                    let new_float_index = old_float_index + total_destroyed_f32;
+                    let old_index = (old_float_index.ceil() as usize).clamp(0, self.crystals.len());
+                    let new_index = (new_float_index.ceil() as usize).clamp(0, self.crystals.len());
+                    let payload = self.base_tracking.apply_partial_base_heal(
+                        &self.crystals,
+                        self.config.protonium_health as u32,
+                        team_id,
+                        base,
+                        old_index,
+                        new_index,
+                    );
+                    /*generic.broadcast(
                         rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
                         literustlib::packet::Property::ReliableOrdered,
                         &base.generate_full_base_heal(team_id, self.config.protonium_health as u32, &self.crystals),
+                        true,
+                    ).await;*/
+
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &payload,
                         true,
                     ).await;
                 }
@@ -1470,7 +1512,7 @@ impl CustomGameLogic for BattleArenaLogic {
                                 }
                             };
                             self.do_team_base_stealing(&pseudo, generic, actual_damage_data).await;
-                            false
+                            true
                         },
                         rlnl::types::TargetType::EqualizerCrystal => {
                             self.do_equalizer_damage(&pseudo, generic).await;
@@ -1502,7 +1544,7 @@ impl CustomGameLogic for BattleArenaLogic {
                                 }
                             };
                             self.do_team_base_stealing(cube_damage, generic, &actual_damage_data).await;
-                            false
+                            true
                         },
                         rlnl::types::TargetType::EqualizerCrystal => {
                             self.do_equalizer_damage(cube_damage, generic).await;

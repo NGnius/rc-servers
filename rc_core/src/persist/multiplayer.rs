@@ -9,6 +9,8 @@ pub struct MultiplayerConfig {
     pub network: NetworkConf,
     #[serde(default = "default_fake_users")]
     pub fakes: Vec<FakePlayerConf>,
+    #[serde(default = "default_filler_users")]
+    pub filler: Vec<FakePlayerConf>,
     #[serde(default = "default_ba_conf")]
     pub battle_arena: BattleArenaConfig,
     #[serde(default = "default_pit_conf")]
@@ -166,6 +168,10 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
     ]
 }
 
+pub(super) fn default_filler_users() -> Vec<FakePlayerConf> {
+    default_fake_users()
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "impl")]
 pub enum ClientEmulation {
@@ -242,7 +248,7 @@ fn default_ba_base() -> super::garage::PrefabVehicle {
 }
 
 fn default_crystal_health() -> u32 {
-    1_000
+    10_000
 }
 
 fn default_respawn_time() -> u64 {
