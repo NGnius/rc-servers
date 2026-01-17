@@ -4,7 +4,7 @@ mod robocraft;
 use actix_web::{App, HttpServer, Responder};
 use oj_rc_core::persist::config::{ConfigImpl, ConfigProvider};
 
-#[actix_web::get("/")]
+#[actix_web::get("/version")]
 async fn index() -> impl Responder {
     let name = env!("CARGO_PKG_NAME");
     let version = env!("CARGO_PKG_VERSION");
@@ -26,13 +26,33 @@ async fn main() -> std::io::Result<()> {
 
     let conf = ConfigImpl::load(&cli_args.assets).map_err(io_error)?;
     let factory_enum = <ConfigImpl as ConfigProvider<()>>::factory(&conf).await.map_err(io_error)?;
-
     let factory_data = actix_web::web::Data::new(factory_enum);
+
+    let mut handlebars_conf = handlebars::Handlebars::new();
+    let mut dir_conf = handlebars::DirectorySourceOptions::default();
+    dir_conf.tpl_extension = ".html.hbs".to_owned();
+    dir_conf.hidden = false;
+    dir_conf.temporary = false;
+    handlebars_conf
+        .register_templates_directory(
+            std::path::PathBuf::from(&cli_args.assets).parent().expect("Bad asset path").join("templates"),
+            dir_conf,
+        )
+        .unwrap();
+    let handlebars_ref = actix_web::web::Data::new(handlebars_conf);
+
+    let assets_root = actix_web::web::Data::new(std::path::PathBuf::from(&cli_args.assets));
 
     HttpServer::new(move || {
         App::new()
             .app_data(factory_data.clone())
+            .app_data(assets_root.clone())
+            .app_data(handlebars_ref.clone())
             .service(index)
+            .service(robocraft::web_ui::index)
+            .service(robocraft::web_ui::app_js)
+            .service(robocraft::web_ui::favicon)
+            .service(robocraft::web_ui::favicon_standard)
             .service(robocraft::factory::crf_api::list)
             .service(robocraft::factory::crf_api::list_default)
             .service(robocraft::factory::crf_api::get)

@@ -1,5 +1,5 @@
 [package]
-name = "oj_factory_api"
+name = "oj_factory_web"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -9,12 +9,15 @@ readme.workspace = true
 
 [dependencies]
 actix-web.workspace = true
+actix-files.workspace = true
 clap.workspace = true
 log.workspace = true
 env_logger.workspace = true
 git-version.workspace = true
 base64.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+handlebars = { version = "6", features = ["dir_source"] }
 
 libfj.workspace = true
 oj_rc_core = { version = "*", path = "../rc_core" }

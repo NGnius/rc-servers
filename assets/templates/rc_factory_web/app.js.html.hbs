@@ -1,0 +1,220 @@
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  const TIER_MAX = {
+    "1": 1000,
+    "2": 6434,
+    "3": 79999,
+    "4": 1299999,
+    "5": 20000000,
+    "M": 100000000,
+  };
+
+  const state = {
+    page: 1,
+    pageSize: 100,
+    lastItemCount: 0,
+  };
+
+  const basePayload = {
+    page: 1,
+    pageSize: 100,
+    order: 0,
+    playerFilter: false,
+    movementFilter: "100000,200000,300000,400000,500000,600000,700000,800000,900000,1000000,1100000,1200000",
+    movementCategoryFilter: "100000,200000,300000,400000,500000,600000,700000,800000,900000,1000000,1100000,1200000",
+    weaponFilter: "10000000,20000000,25000000,30000000,40000000,50000000,60000000,65000000,70100000,75000000",
+    weaponCategoryFilter: "10000000,20000000,25000000,30000000,40000000,50000000,60000000,65000000,70100000,75000000",
+    minimumCpu: -1,
+    maximumCpu: -1,
+    textFilter: "",
+    textSearchField: 0, // ALL=0, PLAYER=1, NAME=2
+    buyable: true,
+    prependFeaturedRobot: false,
+    featuredOnly: false,
+    defaultPage: false
+  };
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  async function fetchJson(url, opts) {
+    const r = await fetch(url, opts);
+    const t = await r.text();
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${t}`);
+    try { return JSON.parse(t); } catch { return t; }
+  }
+
+  function buildPayload() {
+    const q = ($("q").value || "").trim();
+    const textSearchField = Number($("searchField").value || "0"); // ALL=0, PLAYER=1, NAME=2
+    const order = Number($("order").value || "0");
+    const tier = $("tier").value || ""; // "" or "1".."5" or "M"
+
+    const p = { ...basePayload };
+    p.page = state.page;
+    p.pageSize = state.pageSize;
+    p.order = order;
+    p.textFilter = q;
+    p.textSearchField = textSearchField;
+
+    p.playerFilter = (textSearchField === 1);
+
+    if (tier !== "") {
+      const mx = TIER_MAX[tier] ?? 0;
+      if (mx > 0) {
+        p.minimumRobotRanking = 0;
+        p.maximumRobotRanking = mx;
+      }
+    }
+
+    return p;
+  }
+
+  function setStatus(msg) {
+    $("status").textContent = msg || "";
+  }
+
+  function setPagerEnabled() {
+    const prevDisabled = state.page <= 1;
+    $("btnPrevTop").disabled = prevDisabled;
+    $("btnPrevBottom").disabled = prevDisabled;
+
+    const nextDisabled = state.lastItemCount < state.pageSize;
+    $("btnNextTop").disabled = nextDisabled;
+    $("btnNextBottom").disabled = nextDisabled;
+  }
+
+  function renderList(data) {
+    const grid = $("grid");
+    grid.innerHTML = "";
+
+    const items = data?.response?.roboShopItems ?? [];
+    state.lastItemCount = items.length;
+
+    setStatus(`page: ${state.page} / items: ${items.length}`);
+
+    for (const it of items) {
+      const id = it.itemId;
+      const name = it.itemName;
+      const thumb = it.thumbnail;
+      const author = it.addedByDisplayName;
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const img = document.createElement("img");
+      img.className = "thumb";
+      img.loading = "lazy";
+      if (thumb) img.src = thumb;
+      card.appendChild(img);
+
+      const h = document.createElement("div");
+      h.style.marginTop = "8px";
+      h.innerHTML = `<strong>${escapeHtml(name)}</strong><div class="muted">id: ${escapeHtml(id ?? "?")}</div>`;
+      card.appendChild(h);
+
+      const p = document.createElement("div");
+      p.className = "muted";
+      p.textContent = author ? `by: ${author}` : "";
+      p.style.marginTop = "6px";
+      card.appendChild(p);
+
+      const btn = document.createElement("button");
+      btn.className = "btn";
+      btn.textContent = "About";
+      btn.addEventListener("click", async () => {
+        if (id == null) return;
+        try { await doGet(id); } catch (e) { showDialog(`id: ${id}`, String(e)); }
+      });
+      card.appendChild(btn);
+
+      grid.appendChild(card);
+    }
+
+    setPagerEnabled();
+  }
+
+  function showDialog(title, body) {
+    $("dlgTitle").textContent = title || "";
+    $("detail").textContent = body || "";
+    const dlg = $("dlg");
+    if (!dlg.open) dlg.showModal();
+  }
+
+  async function doSearch(resetPage) {
+    if (resetPage) state.page = 1;
+
+    setStatus("loading...");
+
+    const payload = buildPayload();
+    const data = await fetchJson("/api/roboShopItems/list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    renderList(data);
+  }
+
+  async function doGet(id) {
+    const data = await fetchJson(`/api/roboShopItems/get/${encodeURIComponent(id)}`, { method: "GET" });
+
+    if (typeof data === "string") {
+      showDialog(`id: ${id}`, data);
+      return;
+    }
+
+    const resp = data?.response ?? data;
+
+    const title =
+      resp?.name
+        ? `${resp.name} (id: ${resp.id ?? id})`
+        : `id: ${id}`;
+
+    showDialog(title, JSON.stringify(resp, null, 2));
+  }
+
+  $("btnSearch").addEventListener("click", async () => {
+    try { await doSearch(true); } catch (e) { setStatus(String(e)); }
+  });
+
+  $("btnPrevTop").addEventListener("click", async () => {
+    if (state.page <= 1) return;
+    state.page--;
+    try { await doSearch(false); } catch (e) { setStatus(String(e)); }
+  });
+  $("btnPrevBottom").addEventListener("click", async () => {
+    if (state.page <= 1) return;
+    state.page--;
+    try { await doSearch(false); } catch (e) { setStatus(String(e)); }
+  });
+
+  $("btnNextTop").addEventListener("click", async () => {
+    state.page++;
+    try { await doSearch(false); } catch (e) { setStatus(String(e)); }
+  });
+  $("btnNextBottom").addEventListener("click", async () => {
+    state.page++;
+    try { await doSearch(false); } catch (e) { setStatus(String(e)); }
+  });
+
+  $("q").addEventListener("keydown", async (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      try { await doSearch(true); } catch (e) { setStatus(String(e)); }
+    }
+  });
+
+  $("dlgClose").addEventListener("click", () => {
+    $("dlg").close();
+  });
+
+  doSearch(true).catch((e) => setStatus(String(e)));
+})();
