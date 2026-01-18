@@ -5,6 +5,7 @@ pub struct GameMatches {
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
     //fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
+    ba_sorted_crystals: tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>>, // cached after first calculation
     ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
     pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
@@ -23,6 +24,7 @@ impl GameMatches {
                 .collect(),
             //fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
             cube_parsers,
+            ba_sorted_crystals: tokio::sync::RwLock::new(std::sync::Arc::new(Vec::default())),
             ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
             pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
             tdm_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tdm_settings(conf)),
@@ -110,7 +112,17 @@ impl GameMatches {
                      code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
                      message: e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Failed to resolve special settings for Battle Arena".to_owned()),
                 })?;
-                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &self.cube_parsers, &players, resolved_ba_conf);
+                let crystals = if self.ba_sorted_crystals.read().await.is_empty() {
+                    let crystals = std::sync::Arc::new(
+                        self.cube_parsers.locations_of()
+                            .locations_of_reactor_sort(&mut std::io::Cursor::new(&resolved_ba_conf.base_machine_map))
+                    );
+                    *self.ba_sorted_crystals.write().await = crystals.clone();
+                    crystals
+                } else {
+                    self.ba_sorted_crystals.read().await.clone()
+                };
+                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &players, resolved_ba_conf, crystals);
                 let engine = super::GenericGamemodeEngine::new(
                     game_info,
                     map_config,

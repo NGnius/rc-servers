@@ -19,6 +19,7 @@ impl <C: Send + 'static> SimpleOperation<C> for BattleArenaConfigurer {
 
     async fn handle(&self, params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let user_info = user.user()?;
+        log::warn!("Retrieved ba config");
         let data = self.ba_conf.resolve_typed(user_info.as_ref().as_ref(), self.factory.as_ref(), &self.weapon_list, &self.cpu_counter).await?;
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, data);

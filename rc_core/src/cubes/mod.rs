@@ -1,4 +1,4 @@
- mod parser;
+mod parser;
 
 mod weapon_list;
 pub use weapon_list::WeaponListParser;
@@ -11,6 +11,12 @@ pub use locations_of::{CubeLocationsParser, CubeLocationInfo};
 
 mod offsetter;
 pub use offsetter::OffsetParser;
+
+mod connections;
+pub use connections::CUBE_CONNECTIONS;
+
+mod rotations;
+pub use rotations::CUBE_ROTATIONS;
 
 //pub mod prefabs;
 
