@@ -43,8 +43,11 @@ impl ArcAdapter {
         }
     }
 
-    fn parse_cube_amounts(&self, cube_amounts: &str) -> std::collections::HashMap<u32, u32> {
-        serde_json::from_str(cube_amounts).unwrap_or_default()
+    fn parse_cube_amounts(&self, cube_amounts: &str) -> HashMap<u32, u32> {
+        let mut m: HashMap<u32, u32> = serde_json::from_str(cube_amounts).unwrap_or_default();
+        let bad_ids = super::bad_part_ids::bad_part_id_set();
+        m.retain(|part_id, _| !bad_ids.contains(part_id));
+        m
     }
 
     fn calculate_cube_amounts(&self, data: &[u8]) -> String {
