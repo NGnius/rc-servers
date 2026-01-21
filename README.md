@@ -1,8 +1,9 @@
 # OpenJam Servers
 
-[![Revolt chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)](https://rvlt.gg/jtVE0pD5)
+[![Stoat chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)](https://stt.gg/jtVE0pD5)
 [![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)](https://git.ngram.ca/OpenJam/rc-servers/releases)
 [![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Frc-servers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
+[![patrons](https://img.shields.io/liberapay/patrons/NGram.svg?logo=liberapay)](https://liberapay.com/NGram/)
 
 
 A collection of open source servers for [Robocraft](https://store.steampowered.com/app/301520/Robocraft/)
@@ -31,13 +32,20 @@ The current PC's MAC address is also sent to the server (this is a Robocraft cli
 
 Please refer to the [wiki](/OpenJam/rc-servers/wiki/Dev).
 
-## Contributing
+### Contributing
 
 If you can program or are learning Rust, pull requests are appreciated! If you can't and would prefer not to learn, reporting issues is also welcome.
 
 Note: New users cannot create repositories on this git server and so can't create pull requests. If you're interested in contributing code, please ask NGnius to lift that restriction on your account.
 
 If you'd like to discuss, join the [Signal group](https://signal.group/#CjQKIEPim2GPSftMpRv03dhesLxwY9v7TWo2zyBVc8MhaC_zEhDWJ5kEkYBEsj4Fa-0gLcXs) for the project.
+
+### AI/LLMs
+
+Pull requests which contain LLM-generated changes must disclose this and will be subject to a more intensive review process.
+LLM use is discouraged because it introduces a larger burden on project maintainers and has lasting negative external consequences.
+Maintainers (users with repository write access) are not permitted to use LLMs.
+AI, as understood by the modern definition/marketing, does not exist.
 
 # Acknowledgements
 
