@@ -70,6 +70,7 @@ pub struct NetworkConf {
     pub resend_delay_rtt_mult: f64,
     pub network_peer_update_interval: i32,
     pub max_delay_for_disconnect_ms: i32,
+    pub max_bulk_resend: u8,
 }
 
 pub(super) fn default_net_conf() -> NetworkConf {
@@ -90,6 +91,7 @@ pub(super) fn default_net_conf() -> NetworkConf {
         resend_delay_rtt_mult: 0.5,
         network_peer_update_interval: 1,
         max_delay_for_disconnect_ms: 5000,
+        max_bulk_resend: 2,
     }
 }
 
