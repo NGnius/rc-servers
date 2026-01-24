@@ -10,7 +10,8 @@ pub struct ItemShopConfig {
 
 impl super::config::SelfValidator for ItemShopConfig {
     type Context = crate::ConfigImpl;
-    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
+        let mut is_ok = true;
         let daily_count = self.items.iter().filter(|x| matches!(x.recurrence, Recurrence::Daily)).count();
         if daily_count < 6 {
             info.warn(crate::persist::config::ValidationMessage {
@@ -35,8 +36,14 @@ impl super::config::SelfValidator for ItemShopConfig {
                 message: "More than 3 weekly items in shop so some will never be shown".to_owned(),
             });
         }
+        for (i, item) in self.items.iter().enumerate() {
+            is_ok &= item.validate_in(info, ctx, &format!("items[{}]", i));
+        }
+        for (code_name, item_code) in self.promo_codes.iter() {
+            is_ok &= item_code.validate_in(info, ctx, &format!("promo_codes[\"{}\"]", code_name));
+        }
         // TODO
-        true
+        is_ok
     }
 }
 
@@ -82,6 +89,16 @@ impl ItemBundle {
             owns_required_cube: contains_all,
             is_limited_edition: self.is_limited_edition,
         }
+    }
+}
+
+impl super::config::SelfValidator for ItemBundle {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
+        for (i, give) in self.gives.iter().enumerate() {
+            give.validate_in(info, ctx, &format!("gives[{}]", i));
+        }
+        true
     }
 }
 
@@ -174,6 +191,19 @@ impl std::convert::From<ItemPurchase> for crate::persist::config::ShopGain {
     }
 }
 
+impl super::config::SelfValidator for ItemPurchase {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        if matches!(self, Self::Experience { xp: _ }) {
+            info.warn(crate::persist::config::ValidationMessage {
+                path: vec!["xp".to_owned()],
+                message: "Experience rewards cause (client-side only) UI desync of the XP bar".to_owned(),
+            });
+        }
+        true
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ItemCode {
     #[serde(default)]
@@ -185,6 +215,16 @@ pub struct ItemCode {
     #[serde(default)]
     pub value: f32,
     pub gives: Vec<ItemPurchase>,
+}
+
+impl super::config::SelfValidator for ItemCode {
+    type Context = crate::ConfigImpl;
+    fn validate(&self, info: &mut super::config::ValidationInfo, ctx: &Self::Context) -> bool {
+        for (i, give) in self.gives.iter().enumerate() {
+            give.validate_in(info, ctx, &format!("gives[{}]", i));
+        }
+        true
+    }
 }
 
 pub fn default_items() -> Vec<ItemBundle> {
@@ -351,6 +391,18 @@ pub fn default_codes() -> std::collections::HashMap<String, ItemCode> {
         is_serial: false,
         value: 1.5,
         gives: vec![]
+    });
+    map.insert("LEVEL10".to_owned(), ItemCode {
+        message: Some("Please re-log".to_owned()),
+        bundle_id: None,
+        promo_id: None,
+        is_serial: false,
+        value: 1.5,
+        gives: vec![
+            ItemPurchase::Experience {
+                xp: 10_000,
+            }
+        ]
     });
     map
 }

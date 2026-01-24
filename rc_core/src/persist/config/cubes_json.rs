@@ -59,6 +59,7 @@ impl CubeConfig {
         let battle_res = self.battle.validate_in(&mut validation_info, self, "battle");
         let chat_res = self.chat.validate_in(&mut validation_info, self, "chat");
         let factory_res = self.factory.validate_in(&mut validation_info, self, "factory");
+        let shop_res = self.shop.validate_in(&mut validation_info, self, "shop");
         let settings_res = self.settings.validate_in(&mut validation_info, self, "settings");
 
         validation_info.info(super::ValidationMessage {
@@ -70,6 +71,7 @@ impl CubeConfig {
         battle_res
             && chat_res
             && factory_res
+            && shop_res
             && settings_res
             && validation_info.is_ok()
     }
