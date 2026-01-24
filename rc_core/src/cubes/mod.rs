@@ -13,10 +13,16 @@ mod offsetter;
 pub use offsetter::OffsetParser;
 
 mod connections;
-pub use connections::CUBE_CONNECTIONS;
+pub use connections::{CUBE_CONNECTIONS, DEFAULT_CONNECTION};
 
 mod rotations;
 pub use rotations::CUBE_ROTATIONS;
+
+mod graph;
+pub use graph::{CubeGraph, CellPoint};
+
+pub const CRYSTAL_ID: u32 = 3950293873;
+pub const CLASP_ID: u32 = 606866102;
 
 //pub mod prefabs;
 

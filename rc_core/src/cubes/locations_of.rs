@@ -1,8 +1,8 @@
-const CRYSTAL_ID: u32 = 3950293873;
-const CLASP_ID: u32 = 606866102;
+use super::{CLASP_ID, CRYSTAL_ID};
 
 pub struct CubeLocationsParser;
 
+#[derive(Clone)]
 pub struct CubeLocationInfo {
     pub x: u8,
     pub y: u8,
@@ -193,19 +193,12 @@ impl CubeLocationsParser {
                 };
                 // calculate connect target connection points
                 let mut abs_connected_to = None;
-                let mut target_cube_loc = None;
                 for cube in cubes.iter() {
                     if cube.id == CLASP_ID {
                         let rot_index = cube.orientation & 0b01111111;
                         let rot = &CUBE_ROTATIONS[rot_index as usize];
                         log::trace!("Calculating target connection points");
                         abs_connected_to = Some(calculate_absolute_connections(connected_to_connections, rot, (cube.x, cube.y, cube.z)));
-                        target_cube_loc = Some(CubeLocationInfo {
-                            x: cube.x,
-                            y: cube.y,
-                            z: cube.z,
-                            extras: cube.orientation,
-                        });
                         break;
                     }
                 }
@@ -215,7 +208,6 @@ impl CubeLocationsParser {
                     log::error!("Failed to find cube with id {} to calculate connections to", CLASP_ID);
                     return Vec::default();
                 };
-                let target_cube_loc = target_cube_loc.unwrap();
                 // find cubes connected to target (or to another relevant cube connected to the target)
                 let mut to_be_sorted = std::collections::HashMap::new();
                 for (i, cube) in cubes.iter().enumerate() {
@@ -228,7 +220,6 @@ impl CubeLocationsParser {
                     }
                 }
                 let mut sorted = Vec::with_capacity(to_be_sorted.len() + 1);
-                sorted.push(target_cube_loc);
                 let mut iteration = 0;
                 let mut random = rand::rng();
                 let mut to_be_released = Vec::new();

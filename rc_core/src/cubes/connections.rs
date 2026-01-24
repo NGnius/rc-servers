@@ -1,3 +1,33 @@
+pub const DEFAULT_CONNECTION: CubeConnections = CubeConnections {
+    id: 0, // (default)
+    connections: &[
+        CubeConnection {
+            direction: (0, 0, 1),
+            position: (0, 0, 0),
+        },
+        CubeConnection {
+            direction: (0, 1, 0),
+            position: (0, 0, 0),
+        },
+        CubeConnection {
+            direction: (1, 0, 0),
+            position: (0, 0, 0),
+        },
+        CubeConnection {
+            direction: (0, 0, -1),
+            position: (0, 0, 0),
+        },
+        CubeConnection {
+            direction: (0, -1, 0),
+            position: (0, 0, 0),
+        },
+        CubeConnection {
+            direction: (-1, 0, 0),
+            position: (0, 0, 0),
+        },
+    ],
+};
+
 pub const CUBE_CONNECTIONS: &[CubeConnections] = &[
     CubeConnections {
         id: 606866102, // Protonium Clasp
@@ -343,35 +373,7 @@ pub const CUBE_CONNECTIONS: &[CubeConnections] = &[
             },
         ],
     },
-    CubeConnections {
-        id: 0, // (default)
-        connections: &[
-            CubeConnection {
-                direction: (0, 0, 1),
-                position: (0, 0, 0),
-            },
-            CubeConnection {
-                direction: (0, 1, 0),
-                position: (0, 0, 0),
-            },
-            CubeConnection {
-                direction: (1, 0, 0),
-                position: (0, 0, 0),
-            },
-            CubeConnection {
-                direction: (0, 0, -1),
-                position: (0, 0, 0),
-            },
-            CubeConnection {
-                direction: (0, -1, 0),
-                position: (0, 0, 0),
-            },
-            CubeConnection {
-                direction: (-1, 0, 0),
-                position: (0, 0, 0),
-            },
-        ],
-    },
+    DEFAULT_CONNECTION,
 ];
 
 #[derive(Copy, Clone)]

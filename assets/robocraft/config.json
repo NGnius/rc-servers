@@ -12303,7 +12303,8 @@
                 "type": "NotAFunctionalItem",
                 "active": true,
                 "visibility": "None",
-                "ignore_in_weapon_list": true
+                "ignore_in_weapon_list": true,
+                "indestructible": true
             },
             "spriteName": "CubeThumb_LightChassis_Cube",
             "nameStrKey": "strProtoniumClaspName",

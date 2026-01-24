@@ -723,39 +723,15 @@ struct BaseTickInfo {
 impl BaseTracker {
     const DOMINATING_MULT: f32 = 4.0;
 
-    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> Self {
+    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
         let mut bases = std::collections::HashMap::new();
         for base_id in bases_iter {
-            bases.insert(*base_id, BaseInfo::new(crystals));
+            bases.insert(*base_id, BaseInfo::new(crystals, base_graph));
         }
         Self {
             bases,
             equalizer: EqualizerTracker::new(ba_config),
             dominating: std::sync::atomic::AtomicBool::new(false),
-        }
-    }
-
-    fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, base: &BaseInfo, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
-        //let base = self.bases.get(&base_id).unwrap();
-        let target_crystals = &crystals[old_index..new_index];
-        for crystal_i in old_index..new_index {
-            base.crystals_healths[crystal_i].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
-        }
-        rlnl::events::HealedCubes {
-            healed_machine: base_id as u16,
-            type_performing_healing: rlnl::types::TargetType::TeamBase,
-            target_type: rlnl::types::TargetType::TeamBase,
-            num_healed_cubes: target_crystals.len() as _,
-            hit_cubes: target_crystals
-                .iter()
-                .map(|loc| {
-                    log::trace!("Healing base cube at grid ({}, {}, {})", loc.x, loc.y, loc.z);
-                    rlnl::types::HitCubeInfo {
-                        pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
-                        damage: crystal_health as i32,
-                    }
-                })
-                .collect(),
         }
     }
 
@@ -790,24 +766,26 @@ impl BaseTracker {
                     * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                     * ((self.bases.len() as f32) / (capture_points_count as f32));
                     let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick * multiplier;
-                    #[cfg(debug_assertions)]
-                    let increment = increment + 0.1;
                     let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
                     let new_float_index = old_float_index + increment;
                     let old_index = (old_float_index.ceil() as usize).clamp(0, crystals.len());
                     let new_index = (new_float_index.ceil() as usize).clamp(0, crystals.len());
                     if new_index != old_index {
-                        log::trace!("Base {} increment passed a crystal index barrier", base_id);
+                        log::trace!("Base {} increment passed a crystal index barrier in game {}", base_id, generic.game_guid());
                         let first_damaged = tracked_base.first_damaged(old_index, crystal_health);
                         let payload = if new_index - old_index == 1 && first_damaged.is_some() {
                             // undo cube_index update
-                            tracked_base.cube_index.fetch_sub(increment, std::sync::atomic::Ordering::SeqCst);
-                            log::trace!("Skipping increment in favour of healing damaged/destroyed cube");
+                            tracked_base.cube_index.fetch_sub(1.0, std::sync::atomic::Ordering::SeqCst);
+                            //log::info!("Skipping increment in favour of healing damaged/destroyed cube");
                             #[allow(clippy::unnecessary_unwrap)] // have you seen the mess this would be with another if statement?
                             let first_damaged = first_damaged.unwrap();
-                            //let healing = crystal_health - tracked_base.calculate_crystal_health(first_damaged, crystal_health);
+                            let existing_health = tracked_base.calculate_crystal_health(first_damaged);
+                            let healing = crystal_health - existing_health;
                             tracked_base.crystals_healths[first_damaged].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
                             let target_crystal = &crystals[first_damaged];
+                            if existing_health == 0 {
+                                tracked_base.add_crystals_update_graph(vec![target_crystal.to_owned()], crystal_health);
+                            }
                             rlnl::events::HealedCubes {
                                 healed_machine: *base_id as u16,
                                 type_performing_healing: rlnl::types::TargetType::TeamBase,
@@ -816,30 +794,13 @@ impl BaseTracker {
                                 hit_cubes: vec![
                                     rlnl::types::HitCubeInfo {
                                         pos: rlnl::types::Byte3 { x: target_crystal.x, y: target_crystal.y, z: target_crystal.z, },
-                                        //damage: healing as i32,
-                                        damage: crystal_health.saturating_sub(2) as i32,
+                                        damage: healing as i32,
                                     }
                                 ],
                             }
                         } else {
-                            self.apply_partial_base_heal(crystals, crystal_health, *base_id, tracked_base, old_index, new_index)
-                            /*let target_crystals = &crystals[old_index..new_index];
-                            for crystal_i in old_index..new_index {
-                                tracked_base.crystals_healths[crystal_i].store(u8::MAX, std::sync::atomic::Ordering::Relaxed);
-                            }
-                            rlnl::events::HealedCubes {
-                                healed_machine: *base_id as u16,
-                                type_performing_healing: rlnl::types::TargetType::TeamBase,
-                                target_type: rlnl::types::TargetType::TeamBase,
-                                num_healed_cubes: target_crystals.len() as _,
-                                hit_cubes: target_crystals
-                                    .iter()
-                                    .map(|loc| rlnl::types::HitCubeInfo {
-                                        pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
-                                        damage: crystal_health as i32,
-                                    })
-                                    .collect(),
-                            }*/
+                            //log::info!("Doing base heal tick");
+                            tracked_base.apply_partial_base_heal(crystals, crystal_health, *base_id, old_index, new_index)
                         };
 
                         generic.broadcast(
@@ -859,7 +820,6 @@ impl BaseTracker {
 
                         if new_index == crystals.len() {
                             // team base is charged to 100%
-                            //self.do_win(*base_id, WinMode::BaseFull, generic).await;
                             return BaseTickInfo {
                                 win: Some((*base_id, WinMode::BaseFull)),
                             };
@@ -876,16 +836,18 @@ impl BaseTracker {
 
 struct BaseInfo {
     cube_index: atomic_float::AtomicF32,
-    crystals_healths: Vec<std::sync::atomic::AtomicU32>,
+    crystals_healths: std::sync::Arc<Vec<std::sync::atomic::AtomicU32>>,
+    base_graph: std::sync::Arc<oj_rc_core::cubes::CubeGraph>,
 }
 
 impl BaseInfo {
-    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> Self {
+    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo], base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
         Self {
             cube_index: atomic_float::AtomicF32::new(0.0),
-            crystals_healths: (0..crystals.len())
+            crystals_healths: std::sync::Arc::new((0..crystals.len())
                 .map(|_| std::sync::atomic::AtomicU32::new(0))
-                .collect()
+                .collect()),
+            base_graph: std::sync::Arc::new(base_graph.to_owned()),
         }
     }
 
@@ -912,7 +874,7 @@ impl BaseInfo {
     fn first_damaged(&self, old_index: usize, max_health: u32) -> Option<usize> {
         for i in 0..old_index {
             let health = self.calculate_crystal_health(i);
-            if health != 0 && health != max_health {
+            if health < max_health {
                 return Some(i);
             }
         }
@@ -935,7 +897,7 @@ impl BaseInfo {
     fn damage_crystal(&self, i: usize, damage: i32) -> bool {
         let damage = damage as u32;
         let old_health = self.crystals_healths[i].fetch_sub(damage, std::sync::atomic::Ordering::Relaxed);
-        log::info!("Crystal {} damaged (was {}, now {}, delta {})", i, old_health, old_health.saturating_sub(damage), damage);
+        //log::info!("Crystal {} damaged (was {}, now {}, delta {})", i, old_health, old_health.saturating_sub(damage), damage);
         if damage > old_health {
             // guarantee underflow behaviour
             self.crystals_healths[i].store(0, std::sync::atomic::Ordering::Relaxed);
@@ -943,8 +905,60 @@ impl BaseInfo {
         old_health != 0 && damage >= old_health
     }
 
+    fn destroy_crystals_update_graph(
+        &self,
+        positions: Vec<rlnl::types::Byte3>,
+        crystal_positions: &std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>,
+    ) {
+        let base_graph = self.base_graph.clone();
+        let crystal_healths = self.crystals_healths.clone();
+        let crystal_positions = crystal_positions.to_owned();
+        tokio::task::spawn_blocking(move || {
+            for pos in positions {
+                let actual_destroyed = base_graph.remove_cube(&oj_rc_core::cubes::CellPoint {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                });
+                for (i, loc) in crystal_positions.iter().enumerate() {
+                    let point = oj_rc_core::cubes::CellPoint {
+                        x: loc.x,
+                        y: loc.y,
+                        z: loc.z,
+                    };
+                    if actual_destroyed.contains(&point) {
+                        crystal_healths[i].store(0, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+    }
+
+    fn add_crystals_update_graph(
+        &self,
+        positions: Vec<oj_rc_core::cubes::CubeLocationInfo>,
+        health: u32,
+    ) {
+        let base_graph = self.base_graph.clone();
+        tokio::task::spawn_blocking(move || {
+            for pos in positions {
+                let point = oj_rc_core::cubes::CellPoint {
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z,
+                };
+                base_graph.add_cube(
+                    &point,
+                    oj_rc_core::cubes::CRYSTAL_ID,
+                    health,
+                    pos.orientation(),
+                );
+            }
+        });
+    }
+
     /// returns whether crystal exists
-    fn destroy_crystal_at_pos(&self, pos: rlnl::types::Byte3, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> bool {
+    fn destroy_crystal_at_pos(&self, pos: rlnl::types::Byte3, crystals: &std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> bool {
         if let Some((index, _)) = crystals.iter().enumerate().find(|(_i, crystal)| crystal.x == pos.x && crystal.y == pos.y && crystal.z == pos.z) {
             let max_index = self.max_index();
             if index > max_index { return false; }
@@ -980,6 +994,34 @@ impl BaseInfo {
             hit_cubes: target_crystals,
         }
     }
+
+    fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
+        //let base = self.bases.get(&base_id).unwrap();
+        let target_crystals = &crystals[old_index..new_index];
+        let mut healed = Vec::with_capacity(target_crystals.len());
+        #[allow(clippy::needless_range_loop)] // this suggestion is deranged and way too long
+        for crystal_i in old_index..new_index {
+            self.crystals_healths[crystal_i].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
+            healed.push(crystals[crystal_i].clone());
+        }
+        self.add_crystals_update_graph(healed, crystal_health);
+        rlnl::events::HealedCubes {
+            healed_machine: base_id as u16,
+            type_performing_healing: rlnl::types::TargetType::TeamBase,
+            target_type: rlnl::types::TargetType::TeamBase,
+            num_healed_cubes: target_crystals.len() as _,
+            hit_cubes: target_crystals
+                .iter()
+                .map(|loc| {
+                    log::trace!("Healing base cube at grid ({}, {}, {})", loc.x, loc.y, loc.z);
+                    rlnl::types::HitCubeInfo {
+                        pos: rlnl::types::Byte3 { x: loc.x, y: loc.y, z: loc.z, },
+                        damage: crystal_health as i32,
+                    }
+                })
+                .collect(),
+        }
+    }
 }
 
 enum WinMode {
@@ -987,6 +1029,13 @@ enum WinMode {
     OutOfTime,
     OutOfPlayers,
     Surrender,
+}
+
+fn crystal_health_map(crystal_health: u32) -> std::collections::HashMap<u32, u32> {
+    let mut map = std::collections::HashMap::with_capacity(2);
+    map.insert(oj_rc_core::cubes::CLASP_ID, 1);
+    map.insert(oj_rc_core::cubes::CRYSTAL_ID, crystal_health);
+    map
 }
 
 pub struct BattleArenaLogic {
@@ -1006,6 +1055,11 @@ impl BattleArenaLogic {
     pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData, crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> Self {
         //let min_y = crystals.iter().min_by_key(|x| x.y).unwrap();
         //log::warn!("First crystal is as ({}, {}, {})", min_y.x, min_y.y, min_y.z);
+        let base_graph = oj_rc_core::cubes::CubeGraph::with_data(
+            &mut std::io::Cursor::new(&ba_config.base_machine_map),
+            crystal_health_map(ba_config.protonium_health as u32),
+            oj_rc_core::cubes::CLASP_ID,
+        ).expect("Invalid Battle Arena base cube data");
         Self {
             respawn_full_heal_duration: config.respawn_full_heal_duration,
             respawn_heal_duration: config.respawn_heal_duration,
@@ -1013,7 +1067,7 @@ impl BattleArenaLogic {
             player_tracking: PlayerTracker::new(players),
             capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
-            base_tracking: BaseTracker::new(map.bases.keys(), &crystals, &ba_config),
+            base_tracking: BaseTracker::new(map.bases.keys(), &crystals, &ba_config, &base_graph),
             //cube_parser,
             //ba_base: teambase,
             //ba_equalizer: equalizer,
@@ -1184,6 +1238,7 @@ impl BattleArenaLogic {
         let mut total_destroyed = 0;
         let mut total_damaged = 0;
         let mut actual_cube_damage = Vec::with_capacity(cube_damage.hit_cubes.len());
+        let mut destroyed_cubes_positions = Vec::with_capacity(cube_damage.hit_cubes.len());
         if let Some(base) = self.base_tracking.bases.get(&base_id) {
             for hit_cube in cube_damage.hit_cubes.iter() {
                 if let Some(damage) = hit_cube.status.damage {
@@ -1195,15 +1250,16 @@ impl BattleArenaLogic {
                     }
                 } else if matches!(hit_cube.status.ty, rlnl::types::CubeHistoryEventType::Destroy) {
                     if base.destroy_crystal_at_pos(hit_cube.loc, &self.crystals) {
-                        // TODO handle cube graph disconnects
                         actual_cube_damage.push(hit_cube.to_owned());
+                        destroyed_cubes_positions.push(hit_cube.loc);
                         total_destroyed += 1;
                     } else {
                         log::warn!("Could not destroy cube with destroy status");
                     }
                 }
             }
-            log::debug!("Destroyed {} ({} damaged) base cubes; {}/{} valid", total_destroyed, total_damaged, actual_cube_damage.len(), cube_damage.hit_cubes.len());
+            base.destroy_crystals_update_graph(destroyed_cubes_positions, &self.crystals);
+            log::debug!("Destroyed {} ({} damaged) base cubes; {}/{} valid, game {}", total_destroyed, total_damaged, actual_cube_damage.len(), cube_damage.hit_cubes.len(), generic.game_guid());
             let actual_damage_data = actual_damage_data(actual_cube_damage);
             generic.broadcast(
                 actual_damage_data.event,
@@ -1221,11 +1277,10 @@ impl BattleArenaLogic {
                     let new_float_index = old_float_index + total_destroyed_f32;
                     let old_index = (old_float_index.ceil() as usize).clamp(0, self.crystals.len());
                     let new_index = (new_float_index.ceil() as usize).clamp(0, self.crystals.len());
-                    let payload = self.base_tracking.apply_partial_base_heal(
+                    let payload = base.apply_partial_base_heal(
                         &self.crystals,
                         self.config.protonium_health as u32,
                         team_id,
-                        base,
                         old_index,
                         new_index,
                     );
