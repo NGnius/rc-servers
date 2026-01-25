@@ -227,6 +227,33 @@ impl ConnectionMode {
     }
 }
 
+#[repr(u8)]
+#[derive(Debug, Copy, Clone)]
+enum LoadingState {
+    Starting = 0,
+    InSync = 1,
+    InGame  = 2,
+    End = 3,
+}
+
+impl LoadingState {
+    #[inline]
+    pub(super) fn from_u8(num: u8) -> Self {
+        match num {
+            0 => Self::Starting,
+            1 => Self::InSync,
+            2 => Self::InGame,
+            3 => Self::End,
+            x => panic!("Unrecognized ConnectionMode {}", x),
+        }
+    }
+
+    #[inline]
+    pub(super) fn to_u8(self) -> u8 {
+        self as u8
+    }
+}
+
 struct UnclaimedStats {
     kills: tokio::sync::Mutex<std::collections::HashMap<KillAttribution, chrono::DateTime<chrono::Utc>>>,
 }
@@ -273,6 +300,9 @@ pub(super) struct GenericGamemodeEngine<L: super::CustomGameLogic> {
     //pub fake_users: std::collections::HashMap<u8, FakeUser>,
     pub fakes_handler: super::fake::Handler,
     unclaimed: UnclaimedStats,
+    loading_state: std::sync::Arc<std::sync::atomic::AtomicU8>,
+    self_sender: Option<tokio::sync::mpsc::Sender<super::GameMessage>>,
+    mp_config: std::sync::Arc<oj_rc_core::persist::config::MultiplayerSettings>,
 }
 
 impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
@@ -286,6 +316,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
         custom: L,
         fakes_handler: super::fake::Handler,
+        mp_config: std::sync::Arc<oj_rc_core::persist::config::MultiplayerSettings>,
     ) -> Self {
 
         /*let fake_users = players.iter()
@@ -312,6 +343,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             custom_logic_handler: custom,
             fakes_handler,
             unclaimed: UnclaimedStats::new(),
+            loading_state: std::sync::Arc::new(std::sync::atomic::AtomicU8::new(LoadingState::Starting.to_u8())),
+            self_sender: None,
+            mp_config,
         }
     }
 
@@ -446,8 +480,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    pub(super) fn spawn(self) -> tokio::sync::mpsc::Sender<super::GameMessage> {
+    pub(super) fn spawn(mut self) -> tokio::sync::mpsc::Sender<super::GameMessage> {
         let (tx, rx) = tokio::sync::mpsc::channel(super::CHANNEL_BOUND);
+        self.self_sender = Some(tx.clone());
         tokio::spawn(self.run(rx));
         tx
     }
@@ -527,6 +562,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         self.on_motion(user_id, motion).await;
                     },
                     super::GameMessage::NoOp => {},
+                    super::GameMessage::LoadingTimeout { timeout, response } => {
+                        self.on_timeout(timeout, response).await;
+                    }
                 }
             }
         }
@@ -587,6 +625,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
                 }
                 let mut users = self.users.write().await;
+                let was_empty = users.is_empty();
                 users.insert(id, new_user.clone());
                 for fake_id in new_user.aliases.iter() {
                     if let Some(player_desc) = self.user_descriptor(*fake_id) {
@@ -596,6 +635,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     } else {
                         log::warn!("Non-existent fake player id {} was encountered while connecting, ignoring", *fake_id);
                     }
+                }
+                if was_empty {
+                    self.start_loading_sync_timeouter().await;
                 }
             }
             response.send(None).unwrap_or_default();
@@ -740,7 +782,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     }
 
     async fn on_request_loading_progress(&self, user_id: i32) {
-        log::info!("Got request loading progress");
+        //log::info!("Got request loading progress");
         if let Some(user_key) = self.user_key_by_user_id(user_id) {
             if let Some(user_info) = self.users.read().await.get(&user_key) {
                 let mut client_ai_map = self.fakes_handler.get_client_ais().await;
@@ -794,6 +836,58 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
+    async fn start_loading_sync_timeouter(&self) {
+        let game_state = self.loading_state.clone();
+        let tx = self.self_sender.clone().unwrap();
+        if let Some(loading_autostart_after) = self.mp_config.loading_autostart_after {
+            super::modes::trackers::Timeout::new(loading_autostart_after)
+                .on_timeout(move || {
+                    // start sync
+                    let tx_clone = tx.clone();
+                    let (tx_oneshot, rx_oneshot) = tokio::sync::oneshot::channel();
+                    tokio::spawn(async move {
+                        tx_clone.send(crate::matches::GameMessage::LoadingTimeout {
+                            timeout: crate::matches::messages::TimeoutVariant::WaitingForLoadingSync,
+                            response: tx_oneshot,
+                        }).await.unwrap_or_default();
+                    });
+                    rx_oneshot.blocking_recv().unwrap_or(true)
+                })
+                .with_cancel_check(move || {
+                    // check if sync is already started
+                    let state = LoadingState::from_u8(game_state.load(std::sync::atomic::Ordering::Relaxed));
+                    !matches!(state, LoadingState::Starting)
+                })
+                .start().await;
+        }
+    }
+
+    async fn start_game_start_timeouter(&self) {
+        let game_state = self.loading_state.clone();
+        let tx = self.self_sender.clone().unwrap();
+        if let Some(loading_autostart_after) = self.mp_config.loading_autostart_after {
+            super::modes::trackers::Timeout::new(loading_autostart_after)
+                .on_timeout(move || {
+                    // start sync
+                    let tx_clone = tx.clone();
+                    let (tx_oneshot, rx_oneshot) = tokio::sync::oneshot::channel();
+                    tokio::spawn(async move {
+                        tx_clone.send(crate::matches::GameMessage::LoadingTimeout {
+                            timeout: crate::matches::messages::TimeoutVariant::WaitingForGameStart,
+                            response: tx_oneshot,
+                        }).await.unwrap_or_default();
+                    });
+                    rx_oneshot.blocking_recv().unwrap_or(true)
+                })
+                .with_cancel_check(move || {
+                    // check if sync is already started
+                    let state = LoadingState::from_u8(game_state.load(std::sync::atomic::Ordering::Relaxed));
+                    !matches!(state, LoadingState::InSync)
+                })
+                .start().await;
+        }
+    }
+
     async fn on_request_loading_sync(&self, user_id: i32) {
         // wait for all users to be ready before transitioning to loading sync
         let mut ready_count = 0;
@@ -805,7 +899,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
                     continue;
                 }
-                log::info!("User {} (player {}) is awaiting sync", user_id, player_id);
+                log::info!("User {} (player {}) is awaiting sync in game {}", user_id, player_id, self.game_guid());
                 user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
                 ready_count += 1;
             } else if matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
@@ -813,17 +907,36 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             }
         }
         let player_count = self.real_player_count();
-        log::info!("Real players {}, ready players {}", player_count, ready_count);
+        //log::info!("Real players {}, ready players {}", player_count, ready_count);
         if ready_count == player_count {
-            log::info!("All players ({}) awaiting sync for game {}", player_count, self.game_guid());
-            for (user_key, conn) in self.users.read().await.iter() {
-                let user_info = self.user_descriptor(*user_key).unwrap();
-                let extra_packets = self.custom_logic_handler.extra_sync_events(self, conn, user_info).await;
-                self.spawn_send_sync_events(conn, conn.user.user_id(), *user_key, self.players_info(), extra_packets, self.map_config.clone());
-                let user_desc = self.user_descriptor(*user_key).unwrap();
-                user_desc.state.mode.store(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+            self.start_sync().await;
+        }
+    }
+
+    async fn start_sync(&self) {
+        self.loading_state.store(LoadingState::InSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        let ready_players = count_users_in_mode(ConnectionMode::WaitingForSync, self.descriptors.values());
+        let player_count = self.real_player_count();
+        log::info!("Starting sync for {}/{} players in game {}", ready_players, player_count, self.game_guid());
+        let mut to_disconnect = Vec::with_capacity(player_count - ready_players);
+        for (user_key, conn) in self.users.read().await.iter() {
+            let user_info = self.user_descriptor(*user_key).unwrap();
+            let extra_packets = self.custom_logic_handler.extra_sync_events(self, conn, user_info).await;
+            let user_desc = self.user_descriptor(*user_key).unwrap();
+            self.spawn_send_sync_events(conn, user_desc.descriptor.user_id, *user_key, self.players_info(), extra_packets, self.map_config.clone());
+            let old_mode = user_desc.state.mode.swap(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+            let old_mode = ConnectionMode::from_u8(old_mode);
+            if !matches!(old_mode, ConnectionMode::WaitingForSync) {
+                if let Some(user_id) = user_desc.descriptor.user_id {
+                    to_disconnect.push(user_id);
+                    //conn.connection.connection.goodbye(&conn.connection.sender).await;
+                }
             }
         }
+        for user_id in to_disconnect {
+            self.on_end_connection(user_id, false).await;
+        }
+        self.start_game_start_timeouter().await;
     }
 
     async fn on_load_complete(&self, user_id: i32) {
@@ -847,31 +960,42 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             return;
         }
         // wait for all users to be ready for starting game start countdown
-        let mut all_users_loading_complete = true;
-        for player_info in self.descriptors.values() {
-            if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let mode = ConnectionMode::from_u8(player_info.state.mode.load(std::sync::atomic::Ordering::Relaxed));
-            all_users_loading_complete &= matches!(mode, ConnectionMode::WaitingToStart);
-        }
+        let all_users_loading_complete = is_all_users_in_mode(ConnectionMode::WaitingToStart, self.descriptors.values());
         // trigger game start
         if all_users_loading_complete {
-            let player_count = self.real_player_count();
-            log::info!("All players ({}) are ready for game {}", player_count, self.game_guid());
-            tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
-            self.fakes_handler.on_ready(
-                self.users.read().await.iter()
-                    .map(|(id, real_player)| (*id, real_player.connection.clone()))
-                    .collect()
-            );
-            let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;
-            if self.custom_logic_handler.on_countdown_start(self, game_start).await {
-                let mut senders = Vec::new();
-                for (player_id, conn) in self.users.read().await.iter() {
-                    let user_desc = self.user_descriptor(*player_id).unwrap();
-                    senders.push((conn.connection.clone(), user_desc.state.clone()));
+            self.start_game().await;
+        }
+    }
+
+    async fn start_game(&self) {
+        self.loading_state.store(LoadingState::InGame.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        let ready_players = count_users_in_mode(ConnectionMode::WaitingToStart, self.descriptors.values());
+        let player_count = self.real_player_count();
+        log::info!("Starting game for {}/{} players in game {}", ready_players, player_count, self.game_guid());
+        tokio::time::sleep(Self::END_OF_SYNC_DELAY).await;
+        self.fakes_handler.on_ready(
+            self.users.read().await.iter()
+                .map(|(id, real_player)| (*id, real_player.connection.clone()))
+                .collect()
+        );
+        let game_start = chrono::Utc::now() + Self::COUNTDOWN_DURATION;
+        if self.custom_logic_handler.on_countdown_start(self, game_start).await {
+            let mut senders = Vec::with_capacity(self.descriptors.len());
+            let mut to_disconnect = Vec::with_capacity(player_count - ready_players);
+            for (player_id, conn) in self.users.read().await.iter() {
+                let user_desc = self.user_descriptor(*player_id).unwrap();
+                if let Some(user_id) = user_desc.descriptor.user_id {
+                    let mode = ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+                    if !matches!(mode, ConnectionMode::WaitingToStart) {
+                        to_disconnect.push(user_id);
+                    }
                 }
-                self.game_start.store(game_start.timestamp(), std::sync::atomic::Ordering::Relaxed);
-                super::countdown::match_countdown(senders, game_start);
+                senders.push((conn.connection.clone(), user_desc.state.clone()));
+            }
+            self.game_start.store(game_start.timestamp(), std::sync::atomic::Ordering::Relaxed);
+            super::countdown::match_countdown(senders, game_start);
+            for user_id in to_disconnect {
+                self.on_end_connection(user_id, false).await;
             }
         }
     }
@@ -1201,6 +1325,40 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
+    async fn on_timeout(&self, timeout: super::messages::TimeoutVariant, response: tokio::sync::oneshot::Sender<bool>) {
+        let loading_state = LoadingState::from_u8(self.loading_state.load(std::sync::atomic::Ordering::Relaxed));
+        match timeout {
+            super::messages::TimeoutVariant::WaitingForLoadingSync => {
+                if matches!(loading_state, LoadingState::Starting) {
+                    let is_any_users_waiting = is_any_users_in_mode(ConnectionMode::WaitingForSync, self.descriptors.values());
+                    if is_any_users_waiting {
+                        response.send(true).unwrap_or_default();
+                        log::info!("Reached max time waiting for loading sync, starting sync for game {}", self.game_guid());
+                        self.start_sync().await;
+                    } else {
+                        response.send(false).unwrap_or_default();
+                    }
+                } else {
+                    response.send(true).unwrap_or_default();
+                }
+            },
+            super::messages::TimeoutVariant::WaitingForGameStart => {
+                if matches!(loading_state, LoadingState::InSync) {
+                    let is_any_users_waiting = is_any_users_in_mode(ConnectionMode::WaitingToStart, self.descriptors.values());
+                    if is_any_users_waiting {
+                        response.send(true).unwrap_or_default();
+                        log::info!("Reached max time waiting for game start, starting countdown for game {}", self.game_guid());
+                        self.start_game().await;
+                    } else {
+                        response.send(false).unwrap_or_default();
+                    }
+                } else {
+                    response.send(true).unwrap_or_default();
+                }
+            }
+        }
+    }
+
     fn spawn_send_loading_events(&self, user: &UserConnection, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, client_ais: Vec<u8>) {
         let connection = user.connection.clone();
         let user_id = user.user.user_id();
@@ -1248,15 +1406,15 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         Ok(())
     }
 
-    fn spawn_send_sync_events(&self, user: &UserConnection, user_id: i32, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, extra_packets: Vec<super::RlnlPacket>, map: std::sync::Arc<oj_rc_core::persist::config::MapConfig>) {
+    fn spawn_send_sync_events(&self, user: &UserConnection, user_id: Option<i32>, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, extra_packets: Vec<super::RlnlPacket>, map: std::sync::Arc<oj_rc_core::persist::config::MapConfig>) {
         let connection = user.connection.clone();
         tokio::spawn(Self::send_sync_events_wrapper(connection, user_id, player_id, players, extra_packets, map));
         //user.state.mode.store(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
     }
 
-    async fn send_sync_events_wrapper(connection: UserSender, user_id: i32, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, extra_packets: Vec<super::RlnlPacket>, map: std::sync::Arc<oj_rc_core::persist::config::MapConfig>) {
+    async fn send_sync_events_wrapper(connection: UserSender, user_id: Option<i32>, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, extra_packets: Vec<super::RlnlPacket>, map: std::sync::Arc<oj_rc_core::persist::config::MapConfig>) {
         if let Err(e) = Self::send_sync_events(connection, player_id, players, extra_packets, map).await {
-            log::error!("Failed to send Sync events for user {}: {}", user_id, e);
+            log::error!("Failed to send Sync events for user {}: {}", user_id.unwrap_or(-1), e);
         }
     }
 
@@ -1418,6 +1576,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         if old {
             log::warn!("Game {} was marked as done again", self.game_guid());
         } else {
+            //panic!("Game should not be done!");
             log::debug!("Game {} is marked done (handler will exit once all players have disconnected)", self.game_guid());
         }
     }
@@ -1436,4 +1595,26 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         //log::info!("{} away from sphere", distance);
         distance < sphere.radius
     }
+}
+
+fn count_users_in_mode<'a>(wants_mode: ConnectionMode, descriptors: impl std::iter::Iterator<Item = &'a UserDescriptor>) -> usize {
+    descriptors.filter(|desc|
+        desc.descriptor.user_id.is_some()
+            && desc.state.mode.load(std::sync::atomic::Ordering::Relaxed) == wants_mode.to_u8()
+    ).count()
+}
+
+fn is_any_users_in_mode<'a>(wants_mode: ConnectionMode, mut descriptors: impl std::iter::Iterator<Item = &'a UserDescriptor>) -> bool {
+    descriptors.any(|desc|
+        desc.descriptor.user_id.is_some()
+            && desc.state.mode.load(std::sync::atomic::Ordering::Relaxed) == wants_mode.to_u8()
+    )
+}
+
+fn is_all_users_in_mode<'a>(wants_mode: ConnectionMode, mut descriptors: impl std::iter::Iterator<Item = &'a UserDescriptor>) -> bool {
+    descriptors.all(|desc| {
+        let mode = ConnectionMode::from_u8(desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+        desc.descriptor.user_id.is_some()
+            && (mode.to_u8() == wants_mode.to_u8() || matches!(mode, ConnectionMode::Disconnected))
+    })
 }

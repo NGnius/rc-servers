@@ -353,6 +353,11 @@ impl CustomGameLogic for PitLogic {
         if generic.is_game_done() {
             return true;
         }
+        let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        if game_start == i64::MIN || game_start > chrono::Utc::now().timestamp() {
+            // game has not started yet, player probably timed out while loading (which we can ignore)
+            return true;
+        }
         let read_lock = generic.users.read().await;
         if read_lock.len() == 1 {
             // nobody to play against, automatically end the game

@@ -401,12 +401,20 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         self.battle.multiplayer.players_per_game
     }
 
-    fn is_multiplayer_enabled(&self) -> bool {
+    /*fn is_multiplayer_enabled(&self) -> bool {
         self.battle.multiplayer.enabled
     }
     
     fn multiplayer_autostart_after(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.battle.multiplayer.autostart_after_s)
+    }*/
+
+    fn multiplayer_settings(&self) -> super::MultiplayerSettings {
+        super::MultiplayerSettings {
+            is_enabled: self.battle.multiplayer.enabled,
+            lobby_autostart_after: self.battle.multiplayer.autostart_after_s.map(std::time::Duration::from_secs),
+            loading_autostart_after: self.battle.multiplayer.continue_loading_after_s.map(std::time::Duration::from_secs),
+        }
     }
 
     fn network_config(&self) -> crate::persist::NetworkConf {

@@ -29,7 +29,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
     type UserData = super::UserData;
 
     async fn on_receive(&self, data: Self::PacketData, header: &literustlib::packet::Header, peer: &std::sync::Arc< literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
-        log::debug!("Got message {:?} (len: {}) from connection id {}", data.message_ty, data.data.len(), peer.id());
+        log::trace!("Got message {:?} (len: {}) from connection id {}", data.message_ty, data.data.len(), peer.id());
         match data.message_ty {
             crate::data::MessageType::ClientMsg => {
                 if let Some(handler) = self.event_handlers.get(&data.variant) {
@@ -47,7 +47,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
                 }
             },
             crate::data::MessageType::ServerMsg => {
-                log::debug!("Got message from server but I'm the server??? (ignoring)");
+                log::warn!("Got message from server but I'm the server??? (ignoring) peer:{}", peer.id());
             },
             crate::data::MessageType::RobotMotion => {
                 self.motion_handler.handle(&data.data, user).await;
@@ -116,7 +116,7 @@ impl EventData {
 
 impl literustlib::packet::PacketData for EventData {
     fn parse(bytes: bytes::Bytes, _header: &literustlib::packet::Header) -> std::io::Result<Self> {
-        log::debug!("Got packet data ({}) {:?}", bytes.len(), &bytes[..]);
+        log::trace!("Got packet data ({}) {:?}", bytes.len(), &bytes[..]);
         if bytes.len() >= 6 {
             let data = bytes.slice(6..);
             let net_message_num = i16::from_le_bytes([bytes[0], bytes[1]]);

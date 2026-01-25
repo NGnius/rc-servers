@@ -1322,6 +1322,11 @@ impl CustomGameLogic for BattleArenaLogic {
         if generic.is_game_done() {
             return true;
         }
+        let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        if game_start == i64::MIN || game_start > chrono::Utc::now().timestamp() {
+            // game has not started yet, player probably timed out while loading (which we can ignore)
+            return true;
+        }
         let player_id = player.descriptor.player_id;
         self.do_destruct_tasks(generic, player_id).await;
         self.player_tracking.disconnect_player(player_id).await;
@@ -1620,12 +1625,18 @@ impl CustomGameLogic for BattleArenaLogic {
         }
         if generic.is_game_done() {
             self.abort_timer_sync().await;
+            #[cfg(debug_assertions)]
+            log::debug!("Game {} is already complete", generic.game_guid());
             return true;
         }
         if self.check_if_match_time_is_done(generic).await {
+            #[cfg(debug_assertions)]
+            log::debug!("Out of time for game {}", generic.game_guid());
             return true;
         }
         if generic.map_config.capture_points.is_empty() {
+            #[cfg(debug_assertions)]
+            log::debug!("No capture points for game {}", generic.game_guid());
             return true; // don't bother trying to track whether players are in capture points since there are none
         }
         if let Some(player_team) = self.player_tracking.team(motion.player_id).await {
@@ -1646,6 +1657,8 @@ impl CustomGameLogic for BattleArenaLogic {
                     self.capture_tracking.on_exit(generic, was_in_point, motion.player_id, player_team as i8, self.config.num_segments as f32).await;
                 }
             }
+        } else {
+            log::warn!("Unknown team for player {} in game {}", motion.player_id, generic.game_guid());
         }
         if let Some(tick_info) = self.capture_tracking.tick(generic, self.config.num_segments as f32).await {
             // handle shield (de)activation

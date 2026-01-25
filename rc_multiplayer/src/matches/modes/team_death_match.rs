@@ -325,6 +325,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         if generic.is_game_done() {
             return true;
         }
+        let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        if game_start == i64::MIN || game_start > chrono::Utc::now().timestamp() {
+            // game has not started yet, player probably timed out while loading (which we can ignore)
+            return true;
+        }
         if let Some(winning_team) = PlayerTracker::single_remaining_team(generic).await {
             log::info!("All players except those on team {} have disconnected, ending game {} early", winning_team, generic.game_guid());
             self.do_win(WinReason::OutOfPlayers, generic, winning_team).await;

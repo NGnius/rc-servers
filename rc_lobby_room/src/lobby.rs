@@ -55,17 +55,18 @@ pub struct QueueHandler {
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
     weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
     change_strategy: GamemodeChangeStrategy,
-    autostart_after: std::time::Duration,
+    autostart_after: Option<std::time::Duration>,
     autostart_task_started: std::sync::atomic::AtomicBool,
 }
 
 impl QueueHandler {
     pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
+        let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
         Self {
             users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
-            is_enabled: oj_rc_core::ConfigProvider::<()>::is_multiplayer_enabled(conf),
+            is_enabled: mp_settings.is_enabled,
             hostname: domain.to_owned(),
             hostport: port_str.parse().expect("Invalid redirect port"),
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
@@ -73,13 +74,13 @@ impl QueueHandler {
             cpu_counter,
             weapon_guesser,
             change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
-            autostart_after: oj_rc_core::ConfigProvider::<()>::multiplayer_autostart_after(conf),
+            autostart_after: mp_settings.lobby_autostart_after,
             autostart_task_started: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
     fn ensure_autostart_task_running(&self) {
-        if self.autostart_task_started.swap(true, std::sync::atomic::Ordering::AcqRel) {
+        if self.autostart_task_started.swap(true, std::sync::atomic::Ordering::AcqRel) || self.autostart_after.is_none() {
             return;
         }
 
@@ -91,7 +92,7 @@ impl QueueHandler {
         let factory = self.factory.clone();
         let cpu_counter = self.cpu_counter.clone();
         let weapon_guesser = self.weapon_guesser.clone();
-        let autostart_after = self.autostart_after;
+        let autostart_after = self.autostart_after.unwrap();
 
         tokio::spawn(async move {
             loop {

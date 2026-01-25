@@ -2,7 +2,7 @@ mod cubes_json;
 pub use cubes_json::CubeConfig;
 
 mod traits;
-pub use traits::{ConfigProvider, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings, ShopEntriesResolver, ShopAction, ShopGain, PromoCode};
+pub use traits::{ConfigProvider, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings, ShopEntriesResolver, ShopAction, ShopGain, PromoCode, MultiplayerSettings};
 
 mod validation;
 pub use validation::{SelfValidator, ValidationInfo, ValidationMessage};

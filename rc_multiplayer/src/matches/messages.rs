@@ -1,3 +1,8 @@
+pub enum TimeoutVariant {
+    WaitingForLoadingSync,
+    WaitingForGameStart,
+}
+
 pub enum GameMessage {
     NewConnection {
         user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>>,
@@ -105,6 +110,10 @@ pub enum GameMessage {
         motion: rlnl::machine_motion::MachineMotion,
     },
     NoOp,
+    LoadingTimeout {
+        timeout: TimeoutVariant,
+        response: tokio::sync::oneshot::Sender<bool>,
+    },
 }
 
 impl GameMessage {
@@ -136,6 +145,7 @@ impl GameMessage {
             Self::PlayerInputChanged { user_id, .. } => *user_id,
             Self::Motion { user_id, .. } => *user_id,
             Self::NoOp => unreachable!("NoOp is irrelevant for user ID"),
+            Self::LoadingTimeout { .. } => unreachable!("Timeout is irrelevant for user ID"),
         }
     }
 }

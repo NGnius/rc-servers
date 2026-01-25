@@ -418,6 +418,11 @@ impl CustomGameLogic for EliminationLogic {
         if generic.is_game_done() {
             return true;
         }
+        let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        if game_start == i64::MIN || game_start > chrono::Utc::now().timestamp() {
+            // game has not started yet, player probably timed out while loading (which we can ignore)
+            return true;
+        }
         if chrono::Utc::now().timestamp() >= generic.game_end() {
             generic.game_done();
             self.abort_timer_sync().await;

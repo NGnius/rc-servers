@@ -10,6 +10,7 @@ pub struct GameMatches {
     pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+    mp_settings: std::sync::Arc<oj_rc_core::persist::config::MultiplayerSettings>,
 }
 
 impl GameMatches {
@@ -29,6 +30,7 @@ impl GameMatches {
             pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
             tdm_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tdm_settings(conf)),
             factory,
+            mp_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::multiplayer_settings(conf)),
         }
     }
 
@@ -98,6 +100,7 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
+                    self.mp_settings.clone(),
                 );
                 Ok(engine.spawn())
             },
@@ -130,6 +133,7 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
+                    self.mp_settings.clone(),
                 );
                 Ok(engine.spawn())
             },
@@ -147,6 +151,7 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
+                    self.mp_settings.clone(),
                 );
                 Ok(engine.spawn())
             },
@@ -164,6 +169,7 @@ impl GameMatches {
                     players,
                     inner,
                     fakes_handler,
+                    self.mp_settings.clone(),
                 );
                 Ok(engine.spawn())
             },
@@ -226,7 +232,7 @@ impl GameMatches {
         log::info!("Match message router has started");
         while !rx.is_closed() {
             if let Some(msg) = rx.recv().await {
-                log::debug!("Match message router got a message");
+                log::trace!("Match message router got a message");
                 match msg {
                     super::GameMessage::NewConnection { user, game_guid, connection, response, sender } => {
                         if let Some(tx) = self.matches.get(&game_guid) {

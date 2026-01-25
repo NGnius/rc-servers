@@ -4,7 +4,10 @@ use serde::{Serialize, Deserialize};
 pub struct MultiplayerConfig {
     pub players_per_game: usize,
     pub enabled: bool,
-    pub autostart_after_s: u64,
+    #[serde(default = "default_match_autostart_after_s")]
+    pub autostart_after_s: Option<u64>,
+    #[serde(default = "default_continue_loading_after_s")]
+    pub continue_loading_after_s: Option<u64>,
     #[serde(default = "default_net_conf")]
     pub network: NetworkConf,
     #[serde(default = "default_fake_users")]
@@ -71,6 +74,14 @@ pub struct NetworkConf {
     pub network_peer_update_interval: i32,
     pub max_delay_for_disconnect_ms: i32,
     pub max_bulk_resend: u8,
+}
+
+pub(super) fn default_match_autostart_after_s() -> Option<u64> {
+    Some(180)
+}
+
+pub(super) fn default_continue_loading_after_s() -> Option<u64> {
+    Some(30)
 }
 
 pub(super) fn default_net_conf() -> NetworkConf {
