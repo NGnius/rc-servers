@@ -34,7 +34,7 @@ impl <C: Send + 'static> SimpleOperation<C> for PublicMessageSender {
                         "<unknown location>".to_owned()
                     };
                     let chat_system = self.chat.system().await;
-                    log::debug!("Got message `{}` from user {} ({} @ {}/{:?})", message_text.string, user.public_id(), chat_loc, channel_name.string, channel_enum);
+                    log::debug!("Got message `{}` from user {} ({} @ {}/{:?})", message_text.string, user.public_id(), channel_name.string, chat_loc, channel_enum);
                     chat_system.handle_public_message(user.as_ref().as_ref(), message_text.string, channel_name.string, channel_enum).await;
                 }
             }

@@ -80,9 +80,11 @@ impl ChatSystem {
 
     pub fn join_channel(&mut self, display_name: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if let Some(user_handle) = self.online_users.get(&display_name) {
-            if let Some(chat_room) = self.chats.get_mut(&channel) {
+            if let Some(chat_room) = self.chats.get_mut(&channel.to_lowercase()) {
+                log::debug!("Connecting {} to channel {} ({:?})", display_name, channel, channel_ty);
                 chat_room.connect_user(user_handle.to_owned());
             } else {
+                log::debug!("Connecting {} to new channel {} ({:?})", display_name, channel, channel_ty);
                 let mut new_room = super::ChatRoom::new(channel.clone(), channel_ty);
                 new_room.connect_user(user_handle.to_owned());
                 self.chats.insert(channel.to_lowercase(), new_room);
