@@ -6,6 +6,10 @@ fn u64_negative_on_err<E>(result: Result<u64, E>) -> i64 {
 
 #[async_trait::async_trait]
 impl super::CommonUser for UserData {
+    fn account_id(&self) -> i32 {
+        self.account.id
+    }
+
     fn public_id(&self) -> &'_ str {
         &self.account.public_id
     }

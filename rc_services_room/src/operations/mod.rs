@@ -106,6 +106,7 @@ mod crf_shift_vehicle;
 mod crf_make_featured;
 mod crf_unmake_featured;
 mod tech_tree_unlock_cube;
+mod crf_remove;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -236,4 +237,6 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(crf_unmake_featured::factory_featured_provider(&init_ctx.factory))
         .add(polariton_server::operations::Ack::<101, _>::default()) // RestoreCRFFeaturedRobot unused and also redundant???
         .add(tech_tree_unlock_cube::tech_tree_cube_unlock_provider(&init_ctx.cubes))
+        .add(crf_remove::factory_remove_provider(&init_ctx.factory))
+        .add(polariton_server::operations::Ack::<94, _>::default()) // ReportCommunityShopItemRequest FIXME: log reports
 }

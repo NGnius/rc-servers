@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
     let config = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
     users.multiplayer_init().await.expect("Multiplayer init task failed");
-    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory::<'_, '_>(&config).await.expect("Bad vehicle factory (CRF) config"));
+    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&config, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config"));
     let parsers = std::sync::Arc::new(oj_rc_core::cubes::CubeParsers::new(&config));
     let matches = matches::GameMatches::new(&config, parsers.clone(), factory.clone());
     let matches_chann = matches.spawn();

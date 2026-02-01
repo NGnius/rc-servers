@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 
     let cubes = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
-    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory::<'_, '_>(&cubes).await.expect("Bad vehicle factory (CRF) config"));
+    let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&cubes, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config"));
     let parsers = oj_rc_core::cubes::CubeParsers::new(&cubes);
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,

@@ -10,6 +10,8 @@ pub mod multiplayer_game;
 pub mod multiplayer_game_player;
 pub mod game_event;
 pub mod multiplayer_game_score;
+#[cfg(feature = "factory")]
+pub mod factory;
 
 pub fn parse_int_csv(s: &str) -> Vec<u32> {
     s.split(',').filter_map(|i_as_s| {

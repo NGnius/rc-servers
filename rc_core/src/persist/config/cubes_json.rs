@@ -310,8 +310,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
     }
 
-    async fn factory(&self) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>> {
-        crate::factory::Factory::from_config(&self.factory, &<Self as super::ConfigProvider<()>>::server_config(self)).await
+    async fn factory(&self, builtin_factory_provider: &(dyn (Fn() -> oj_rc_database::FactoryDatabase) + Sync)) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>> {
+        crate::factory::Factory::from_config(&self.factory, &<Self as super::ConfigProvider<()>>::server_config(self), builtin_factory_provider).await
     }
 
     fn cubes(&self) -> &'_ indexmap::IndexMap<String, crate::persist::Cube> {

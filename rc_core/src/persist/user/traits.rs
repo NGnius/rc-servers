@@ -410,6 +410,7 @@ pub struct ResolvedVehicle {
 
 #[async_trait::async_trait]
 pub trait CommonUser: Send + Sync {
+    fn account_id(&self) -> i32;
     async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
     fn public_id(&self) -> &'_ str;
     fn is_mod(&self) -> bool;

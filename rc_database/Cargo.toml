@@ -12,9 +12,14 @@ all_databases = ["mysql", "postgres", "sqlite"]
 mysql = [ "sea-orm/sqlx-mysql" ]
 postgres = [ "sea-orm/sqlx-postgres" ]
 sqlite = [ "sea-orm/sqlx-sqlite" ]
-default = [ "all_databases" ]
+default = [ "all_databases", "factory" ]
+factory = [ "oj_rc_factory", "libfj", "async-trait", "sea-orm/with-chrono", "serde_json" ]
 
 [dependencies]
 sea-orm = { version = "1.1.10", features = [ "runtime-tokio-rustls", "macros" ] }
 sea-orm-migration = "1.1.10"
 itertools = "0.14"
+oj_rc_factory = { version = "*", path = "../rc_factory", optional = true }
+async-trait = { workspace = true, optional = true }
+libfj = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }

@@ -294,14 +294,10 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         if self.is_readonly {
             return Ok(());
         }
-        // TODO this should probably be a transaction
-        if let Some(meta) = super::entities::robot_metadata::Entity::find_by_id(id as u32).one(&self.orm).await? {
-            super::entities::robot_metadata::ActiveModel {
-                id: sea_orm::ActiveValue::Set(id as u32),
-                buy_count: sea_orm::ActiveValue::Set(meta.buy_count + 1),
-                ..Default::default()
-            }.update(&self.orm).await?;
-        }
+        super::entities::robot_metadata::Entity::update_many()
+            .col_expr(super::entities::robot_metadata::Column::BuyCount, super::entities::robot_metadata::Column::BuyCount.into_expr().add(1))
+            .filter(super::entities::robot_metadata::Column::Id.eq(id))
+            .exec(&self.orm).await?;
         Ok(())
     }
 
@@ -322,6 +318,18 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
             }
             to_update.update(&self.orm).await?;
         }
+        Ok(())
+    }
+
+    async fn remove_vehicle(&self, id: i32, _user_id: i32) -> Result<(), Box<dyn std::error::Error>> {
+        if self.is_readonly {
+            return Ok(());
+        }
+        super::entities::robot_metadata::ActiveModel {
+            id: sea_orm::ActiveValue::Set(id as u32),
+            buyable: sea_orm::ActiveValue::Set(0),
+            ..Default::default()
+        }.update(&self.orm).await?;
         Ok(())
     }
 

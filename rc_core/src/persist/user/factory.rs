@@ -23,6 +23,8 @@ impl super::FactoryUser for UserData {
             thumbnail: vehicle.thumbnail,
             added_by: self.account.public_id.clone(),
             added_by_display_name: self.account.display_name.clone(),
+            added_by_id: self.account.id,
+            garage_id: slot.id,
             cpu: slot.total_robot_cpu as u32,
             total_robot_ranking: slot.total_robot_ranking as u32,
             build_version: vehicle.version,

@@ -14,6 +14,10 @@ pub struct CliArgs {
     /// Assets root
     #[arg(long, default_value_t = {"../assets/robocraft".to_string()})]
     pub assets: String,
+
+    /// User data root
+    #[arg(long, default_value_t = {"../data/robocraft".to_string()})]
+    pub data: String,
 }
 
 impl CliArgs {

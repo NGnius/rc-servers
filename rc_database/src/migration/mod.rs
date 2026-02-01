@@ -13,6 +13,8 @@ mod m20250722_000001_create_game_event_table;
 mod m20250816_000001_add_fake_players;
 mod m20250918_000001_add_player_variant;
 mod m20251228_000001_create_score_table;
+#[cfg(feature = "factory")]
+mod m20260126_000001_create_factory_vehicle_table;
 
 pub struct Migrator;
 
@@ -33,6 +35,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250816_000001_add_fake_players::Migration),
             Box::new(m20250918_000001_add_player_variant::Migration),
             Box::new(m20251228_000001_create_score_table::Migration),
+            #[cfg(feature = "factory")]
+            Box::new(m20260126_000001_create_factory_vehicle_table::Migration),
         ]
     }
 }

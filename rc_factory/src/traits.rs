@@ -7,6 +7,7 @@ pub trait VehicleFactoryAdapter: Send + Sync + 'static {
     /// Just update any purchase trackers
     async fn purchase(&self, id: i32) -> Result<(), Box<dyn std::error::Error>>;
     async fn update_vehicle(&self, id: i32, cube_data: Option<Vec<u8>>, colour_data: Option<Vec<u8>>) -> Result<(), Box<dyn std::error::Error>>;
+    async fn remove_vehicle(&self, id: i32, user_id: i32) -> Result<(), Box<dyn std::error::Error>>;
     async fn set_featured(&self, id: i32, is_featured: bool) -> Result<(), Box<dyn std::error::Error>>;
 }
 
@@ -64,6 +65,8 @@ pub struct VehicleUploadInfo {
     pub thumbnail: Vec<u8>,
     pub added_by: String,
     pub added_by_display_name: String,
+    pub added_by_id: i32,
+    pub garage_id: i32,
     pub cpu: u32,
     pub total_robot_ranking: u32,
     pub cube_data: Vec<u8>,

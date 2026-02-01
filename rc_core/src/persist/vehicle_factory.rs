@@ -23,6 +23,8 @@ fn default_variant() -> AdapterSettings {
 pub enum AdapterSettings {
     #[serde(alias = "sqlite")]
     Arc(ArcFactorySettings),
+    #[serde(alias = "integrated")]
+    BuiltIn,
     None,
 }
 

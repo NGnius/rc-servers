@@ -14531,7 +14531,7 @@
     },
     "factory": {
         "adapter": {
-            "variant": "Arc",
+            "variant": "BuiltIn",
             "uri": "sqlite:../data/robocraft/rc_archive.db?mode=ro"
         }
     },

@@ -41,6 +41,10 @@ impl AccountProvider {
         })
     }
 
+    pub fn factory_impl(&self) -> oj_rc_database::FactoryDatabase {
+        self.db.vehicle_factory(self.cdn.clone())
+    }
+
     pub async fn multiplayer_init(&self) -> Result<(), oj_rc_database::sea_orm::DbErr> {
         self.db.complete_all_games().await
     }

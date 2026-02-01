@@ -2546,9 +2546,13 @@ dependencies = [
 name = "oj_rc_database"
 version = "1.1.0"
 dependencies = [
+ "async-trait",
  "itertools",
+ "libfj",
+ "oj_rc_factory",
  "sea-orm",
  "sea-orm-migration",
+ "serde_json",
 ]
 
 [[package]]

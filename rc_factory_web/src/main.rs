@@ -25,7 +25,8 @@ async fn main() -> std::io::Result<()> {
     let cli_args = cli::CliArgs::get();
 
     let conf = ConfigImpl::load(&cli_args.assets).map_err(io_error)?;
-    let factory_enum = <ConfigImpl as ConfigProvider<()>>::factory(&conf).await.map_err(io_error)?;
+    let users = oj_rc_core::persist::user::UserImpl::load(&cli_args.data, &conf).await.map_err(io_error)?;
+    let factory_enum = <ConfigImpl as ConfigProvider<()>>::factory(&conf, &|| users.factory_impl()).await.map_err(io_error)?;
     let factory_data = actix_web::web::Data::new(factory_enum);
 
     let mut handlebars_conf = handlebars::Handlebars::new();
