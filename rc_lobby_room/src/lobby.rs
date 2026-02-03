@@ -26,11 +26,20 @@ struct QueueKey {
 }
 
 impl QueueKey {
-    fn guid(&self) -> String {
+    fn display_guid(&self) -> String {
         use std::hash::Hasher;
         let mut hasher = std::hash::DefaultHasher::new();
         self.hash(&mut hasher);
         //chrono::Utc::now().timestamp_micros().hash(&mut hasher);
+        let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
+        oj_rc_core::persist::user::i64_as_uuid_str(guid)
+    }
+
+    fn unique_guid(&self) -> String {
+        use std::hash::Hasher;
+        let mut hasher = std::hash::DefaultHasher::new();
+        self.hash(&mut hasher);
+        chrono::Utc::now().timestamp_micros().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
         oj_rc_core::persist::user::i64_as_uuid_str(guid)
     }
@@ -191,7 +200,7 @@ impl QueueHandler {
 
     #[allow(clippy::too_many_arguments)]
     async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
-        let guid_str = key.guid();
+        let guid_str = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
             map: key.map.clone(),
@@ -310,7 +319,7 @@ impl QueueHandler {
                             }
                             *lock = new_queue_map;
                             if count != 0 {
-                                log::info!("Upgraded {} users in queue to new gamemode {}", count, key.guid());
+                                log::info!("Upgraded {} users in queue to new gamemode {}", count, key.display_guid());
                             }
                         },
                         GamemodeChangeStrategy::Notify => {
@@ -325,20 +334,20 @@ impl QueueHandler {
                                 }
                             }
                             if count != 0 {
-                                log::info!("Notified {} users in queue of new gamemode {}", count, key.guid());
+                                log::info!("Notified {} users in queue of new gamemode {}", count, key.display_guid());
                             }
                         },
                         GamemodeChangeStrategy::Ignore => {
-                            log::debug!("Gamemode appears to have changed to {}, ignoring already-queued players", key.guid());
+                            log::debug!("Gamemode appears to have changed to {}, ignoring already-queued players", key.display_guid());
                         }
                     }
                 }
                 let players_len = if let Some(players) = lock.get_mut(&key) {
-                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.guid());
+                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.display_guid());
                     players.push(new_player);
                     players.len()
                 } else {
-                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.guid());
+                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.display_guid());
                     lock.insert(key.clone(), vec![new_player]);
                     1
                 };
