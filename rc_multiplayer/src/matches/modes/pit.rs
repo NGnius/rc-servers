@@ -97,6 +97,7 @@ impl WinTracker {
 
 struct PlayerTracker {
     streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
+    best_streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
     respawns: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>,
 }
 
@@ -104,6 +105,7 @@ impl PlayerTracker {
     fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
         Self {
             streaks: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicU32::new(0))).collect(),
+            best_streaks: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicU32::new(0))).collect(),
             respawns: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicI64::new(0))).collect(),
         }
     }
@@ -137,7 +139,7 @@ impl PlayerTracker {
             if let Some(user) = users.get(player_id) {
                 player_stats.push(rlnl::types::PitPlayerStats {
                     player_id: *player_id,
-                    score: user.counters.generic_score(),
+                    score: user.counters.kills.load(std::sync::atomic::Ordering::Relaxed),
                     streak: streak.load(std::sync::atomic::Ordering::Relaxed),
                 });
             }
@@ -190,7 +192,7 @@ impl PitLogic {
             return;
         };
         let killer_score = if let Some(user) = generic.user_descriptor(killer) {
-            user.counters.generic_score()
+            user.counters.kills.load(std::sync::atomic::Ordering::Relaxed)
         } else {
             log::warn!("Player {} score not found", killer);
             return;
@@ -241,7 +243,39 @@ impl PitLogic {
             if let Some(victim_respawn) = self.player_tracking.respawns.get(&victim) {
                 let now = chrono::Utc::now().timestamp();
                 if victim_respawn.load(std::sync::atomic::Ordering::Relaxed) <= now {
-                    player_streak.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let killer_score = generic.user_descriptor(killer).map(|desc| desc.counters.generic_score()).unwrap_or_default();
+                    let old_streak = player_streak.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    if let Some(player_best_streak) = self.player_tracking.best_streaks.get(&killer) {
+                        let old_best_streak = player_best_streak.fetch_max(old_streak + 1, std::sync::atomic::Ordering::Relaxed);
+                        if old_best_streak == old_streak {
+                            let data = rlnl::events::ingame::UpdateGameStats {
+                                player_id: killer,
+                                stat_id: rlnl::types::IngameStatId::BestKillStreak,
+                                amount: old_streak + 1,
+                                score: killer_score,
+                                delta_score: 0,
+                            };
+                            generic.broadcast(
+                                rlnl::event_code::NetworkEvent::UpdateGameStats,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &data,
+                                true,
+                            ).await;
+                        }
+                    }
+                    let data = rlnl::events::ingame::UpdateGameStats {
+                        player_id: killer,
+                        stat_id: rlnl::types::IngameStatId::CurrentKillStreak,
+                        amount: old_streak + 1,
+                        score: killer_score,
+                        delta_score: 0,
+                    };
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::UpdateGameStats,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &data,
+                        true,
+                    ).await;
                 }
             }
         }
@@ -419,14 +453,28 @@ impl CustomGameLogic for PitLogic {
                 literustlib::packet::Property::ReliableOrdered,
                 &to_reward.connection.connection
             ).await);*/
-            let data = to_reward.counters.get_generic_packet(killer, rlnl::types::IngameStatId::Kill, None);
+            self.do_leaderboard_update(generic).await;
+            // TODO make this a merged packet because this is a lot of network spam
+            let generic_packet = to_reward.counters.get_generic_packet(killer, rlnl::types::IngameStatId::Kill, None);
+            let data = rlnl::events::ingame::UpdateGameStats {
+                player_id: killer,
+                stat_id: rlnl::types::IngameStatId::Points,
+                amount: to_reward.counters.kills.load(std::sync::atomic::Ordering::Relaxed),
+                score: generic_packet.score,
+                delta_score: generic_packet.delta_score,
+            };
             generic.broadcast(
                 rlnl::event_code::NetworkEvent::UpdateGameStats,
                 literustlib::packet::Property::ReliableOrdered,
                 &data,
                 true,
             ).await;
-            self.do_leaderboard_update(generic).await;
+            generic.broadcast(
+                rlnl::event_code::NetworkEvent::UpdateGameStats,
+                literustlib::packet::Property::ReliableOrdered,
+                &generic_packet,
+                true,
+            ).await;
         }
         false
     }

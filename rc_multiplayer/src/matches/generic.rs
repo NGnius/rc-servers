@@ -167,6 +167,7 @@ impl UserData {
             rlnl::types::IngameStatId::HealAssist => (self.heal_assists.load(std::sync::atomic::Ordering::SeqCst), 200),
             rlnl::types::IngameStatId::RobotDestroyed => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 0),
             rlnl::types::IngameStatId::DestroyedProtoniumCubes => (self.deaths.load(std::sync::atomic::Ordering::Relaxed), 25),
+            //rlnl::types::IngameStatId::Points => (self.kills.load(std::sync::atomic::Ordering::Relaxed), 1),
             s => panic!("Cannot generate game stat {:?}", s)
         };
         rlnl::events::ingame::UpdateGameStats {
