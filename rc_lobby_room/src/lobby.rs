@@ -26,13 +26,23 @@ struct QueueKey {
 }
 
 impl QueueKey {
-    fn display_guid(&self) -> String {
-        use std::hash::Hasher;
-        let mut hasher = std::hash::DefaultHasher::new();
-        self.hash(&mut hasher);
-        //chrono::Utc::now().timestamp_micros().hash(&mut hasher);
-        let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
-        oj_rc_core::persist::user::i64_as_uuid_str(guid)
+    fn short(&self) -> impl std::fmt::Display {
+        let mode = match self.mode {
+            oj_rc_core::data::game_mode::GameMode::BattleArena => "BA",
+            oj_rc_core::data::game_mode::GameMode::SuddenDeath => "Classic",
+            oj_rc_core::data::game_mode::GameMode::Pit => "P",
+            oj_rc_core::data::game_mode::GameMode::TestMode => "T",
+            oj_rc_core::data::game_mode::GameMode::SinglePlayer => "SP",
+            oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => "TDM",
+            oj_rc_core::data::game_mode::GameMode::Campaign => "C",
+        };
+        let visibility = match self.visibility {
+            oj_rc_core::data::game_mode::MapVisibility::Good => "0",
+            oj_rc_core::data::game_mode::MapVisibility::Poor => "o",
+            oj_rc_core::data::game_mode::MapVisibility::Bad => ".",
+        };
+        let auto_heal = if self.auto_heal { "+" } else { "" };
+        format!("{}@{}|{}{}", mode, self.map, visibility, auto_heal)
     }
 
     fn unique_guid(&self) -> String {
@@ -319,7 +329,7 @@ impl QueueHandler {
                             }
                             *lock = new_queue_map;
                             if count != 0 {
-                                log::info!("Upgraded {} users in queue to new gamemode {}", count, key.display_guid());
+                                log::info!("Upgraded {} users in queue to new gamemode {}", count, key.short());
                             }
                         },
                         GamemodeChangeStrategy::Notify => {
@@ -334,20 +344,20 @@ impl QueueHandler {
                                 }
                             }
                             if count != 0 {
-                                log::info!("Notified {} users in queue of new gamemode {}", count, key.display_guid());
+                                log::info!("Notified {} users in queue of new gamemode {}", count, key.short());
                             }
                         },
                         GamemodeChangeStrategy::Ignore => {
-                            log::debug!("Gamemode appears to have changed to {}, ignoring already-queued players", key.display_guid());
+                            log::debug!("Gamemode appears to have changed to {}, ignoring already-queued players", key.short());
                         }
                     }
                 }
                 let players_len = if let Some(players) = lock.get_mut(&key) {
-                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.display_guid());
+                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.short());
                     players.push(new_player);
                     players.len()
                 } else {
-                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.display_guid());
+                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.short());
                     lock.insert(key.clone(), vec![new_player]);
                     1
                 };
@@ -369,10 +379,10 @@ impl QueueHandler {
 
     pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
         let user_id = oj_rc_core::persist::user::LobbyUser::user_id(user.as_ref().as_ref());
-        for queue in self.users_in_queue.lock().await.values_mut() {
+        for (queue_key, queue) in self.users_in_queue.lock().await.iter_mut() {
             if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
                 queue.remove(i);
-                log::info!("User {} was removed from a queue", user_id);
+                log::info!("User {} was removed from queue {}", user_id, queue_key.short());
                 break;
             }
         }
