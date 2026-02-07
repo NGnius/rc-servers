@@ -645,7 +645,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    async fn on_end_connection(&self, user_id: i32, _is_unregister: bool) -> bool {
+    async fn on_end_connection(&self, user_id: i32, is_unregister: bool) -> bool {
         if let Some(player_id) = self.user_key_by_user_id(user_id) {
             let conn_opt = self.users.write().await.remove(&player_id);
             if let Some(conn) = conn_opt {
@@ -713,7 +713,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     if let Err(e) = conn.user.save_player_connected_status(self.game_guid(), false).await {
                         log::error!("Failed to mark player {} (user {}) as disconnected in game {}: {}", player_id, user_id, self.game_guid(), e);
                     }
-                    conn.connection.connection.goodbye(&conn.connection.sender).await;
+                    if !is_unregister {
+                        conn.connection.connection.goodbye(&conn.connection.sender).await;
+                    }
                     return has_active_connections;
                 }
             }
