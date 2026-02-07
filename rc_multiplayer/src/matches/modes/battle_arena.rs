@@ -1352,7 +1352,7 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
         vec![
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -1363,7 +1363,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 }),
             }),
             // TeamBase
-            if generic.map_config.bases.is_empty() {
+            if generic.map_config.bases.is_empty() || player.descriptor.user_id.is_none() {
                 None
             } else {
                 Some(crate::matches::RlnlPacket {
@@ -1383,7 +1383,7 @@ impl CustomGameLogic for BattleArenaLogic {
                 })
             },
             // RegisterCapturePoints
-            if generic.map_config.capture_points.is_empty() {
+            if generic.map_config.capture_points.is_empty() || player.descriptor.user_id.is_none() {
                 None
             } else {
                 Some(crate::matches::RlnlPacket {
@@ -1399,17 +1399,21 @@ impl CustomGameLogic for BattleArenaLogic {
                 })
             },
             // RegisterEqualizer
-            Some(crate::matches::RlnlPacket {
-                event: rlnl::event_code::NetworkEvent::RegisterEqualizer,
-                property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::sync::GetEqualizer {
-                    pos: rlnl::types::PosQuatPair {
-                        pos: (generic.map_config.equalizer.x, generic.map_config.equalizer.y, generic.map_config.equalizer.z).into(),
-                        rot: (0.0, 0.0, 0.0, 0.0).into(),
-                    },
-                    total_health: self.config.equalizer_health as i32,
-                }),
-            }),
+            if player.descriptor.user_id.is_none() {
+                None
+            } else {
+                Some(crate::matches::RlnlPacket {
+                    event: rlnl::event_code::NetworkEvent::RegisterEqualizer,
+                    property: literustlib::packet::Property::ReliableOrdered,
+                    data: Box::new(rlnl::events::sync::GetEqualizer {
+                        pos: rlnl::types::PosQuatPair {
+                            pos: (generic.map_config.equalizer.x, generic.map_config.equalizer.y, generic.map_config.equalizer.z).into(),
+                            rot: (0.0, 0.0, 0.0, 0.0).into(),
+                        },
+                        total_health: self.config.equalizer_health as i32,
+                    }),
+                })
+            },
             // SetShieldState
             /*if generic.map_config.bases.contains_key(&0) {
                 Some(crate::matches::RlnlPacket {

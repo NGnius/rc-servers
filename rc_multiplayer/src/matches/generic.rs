@@ -1617,7 +1617,10 @@ fn is_any_users_in_mode<'a>(wants_mode: ConnectionMode, mut descriptors: impl st
 fn is_all_users_in_mode<'a>(wants_mode: ConnectionMode, mut descriptors: impl std::iter::Iterator<Item = &'a UserDescriptor>) -> bool {
     descriptors.all(|desc| {
         let mode = ConnectionMode::from_u8(desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
-        desc.descriptor.user_id.is_some()
+        desc.descriptor.user_id.is_none()
+        || (
+            desc.descriptor.user_id.is_some()
             && (mode.to_u8() == wants_mode.to_u8() || matches!(mode, ConnectionMode::Disconnected))
+        )
     })
 }
