@@ -197,8 +197,8 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
                 },
             },
             implementation: ClientEmulation::ClientAI,
-        },*/
-        /*FakePlayerConf {
+        },
+        FakePlayerConf {
             team: None,
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake3".to_owned()),
@@ -215,6 +215,54 @@ pub(super) fn default_fake_users() -> Vec<FakePlayerConf> {
             vehicle: super::garage::PrefabVehicle {
                 name: Some("fake4".to_owned()),
                 username: "Server4".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake5".to_owned()),
+                username: "Server5".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake6".to_owned()),
+                username: "Server6".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake7".to_owned()),
+                username: "Server7".to_owned(),
+                id: super::garage::PrefabId::Raw {
+                    cube_data: Vec::from(crate::persist::VALID_ROBOT),
+                    colour_data: Vec::from(crate::persist::VALID_COLOUR),
+                },
+            },
+            implementation: ClientEmulation::ClientAI,
+        },
+        FakePlayerConf {
+            team: None,
+            vehicle: super::garage::PrefabVehicle {
+                name: Some("fake8".to_owned()),
+                username: "Server8".to_owned(),
                 id: super::garage::PrefabId::Raw {
                     cube_data: Vec::from(crate::persist::VALID_ROBOT),
                     colour_data: Vec::from(crate::persist::VALID_COLOUR),
@@ -313,6 +361,10 @@ pub struct BattleArenaConfig {
     pub base: super::garage::PrefabVehicle,
     #[serde(default = "default_segments")]
     pub num_segments: u16,
+    #[serde(default = "default_max_base_iterations")]
+    pub max_base_iterations: u32,
+    #[serde(default = "default_max_base_random_iterations")]
+    pub max_base_random_iterations: u32,
 }
 
 pub(super) fn default_ba_conf() -> BattleArenaConfig {
@@ -326,6 +378,8 @@ pub(super) fn default_ba_conf() -> BattleArenaConfig {
         equalizer_duration_s: default_equalizer_duration(),
         base: default_ba_base(),
         num_segments: default_segments(),
+        max_base_iterations: default_max_base_iterations(),
+        max_base_random_iterations: default_max_base_random_iterations(),
     }
 }
 
@@ -375,6 +429,14 @@ fn default_equalizer_duration() -> u64 {
 }
 
 fn default_segments() -> u16 {
+    3
+}
+
+fn default_max_base_iterations() -> u32 {
+    64
+}
+
+fn default_max_base_random_iterations() -> u32 {
     3
 }
 

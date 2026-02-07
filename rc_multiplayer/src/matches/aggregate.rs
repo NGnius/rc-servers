@@ -5,16 +5,19 @@ pub struct GameMatches {
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
     //fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
-    ba_sorted_crystals: tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>>, // cached after first calculation
+    ba_sorted_crystals: std::sync::Arc<tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>>>, // cached after first calculation
     ba_settings: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
     pit_settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     mp_settings: std::sync::Arc<oj_rc_core::persist::config::MultiplayerSettings>,
+    is_crystal_regen_running: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl GameMatches {
     pub fn new(conf: &oj_rc_core::persist::config::ConfigImpl, cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>, factory: std::sync::Arc<oj_rc_core::factory::Factory>) -> Self {
+        let ba_settings = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf));
+        let ba_sorted_crystals = std::sync::Arc::new(Self::maybe_init_ba_sorted_crystals(&ba_settings, &cube_parsers));
         Self {
             matches: std::collections::HashMap::new(),
             routing: std::collections::HashMap::new(),
@@ -25,13 +28,42 @@ impl GameMatches {
                 .collect(),
             //fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
             cube_parsers,
-            ba_sorted_crystals: tokio::sync::RwLock::new(std::sync::Arc::new(Vec::default())),
-            ba_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf)),
+            ba_sorted_crystals,
+            ba_settings,
             pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
             tdm_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tdm_settings(conf)),
             factory,
             mp_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::multiplayer_settings(conf)),
+            is_crystal_regen_running: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
+    }
+
+    fn maybe_init_ba_sorted_crystals(ba_conf: &oj_rc_core::persist::config::BattleArenaResolver, cube_parsers: &oj_rc_core::cubes::CubeParsers) -> tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>> {
+        if let Some(base_machine_map) = ba_conf.resolve_base_machine_immediate_early() {
+            let gen_start = chrono::Utc::now();
+            let gen_params = ba_conf.crystal_sort_params();
+            let crystals = Self::generate_ordered_crystal_list(&gen_params, cube_parsers, &base_machine_map);
+            let gen_end = chrono::Utc::now();
+            let delta = gen_end.signed_duration_since(gen_start);
+            log::info!("Early base crystal list initialization took {}ms for {} crystals", delta.num_milliseconds(), crystals.len());
+            tokio::sync::RwLock::new(std::sync::Arc::new(crystals))
+        } else {
+            log::warn!("First Batte Arena match will take longer to initialization due to non-raw base machine");
+            tokio::sync::RwLock::new(std::sync::Arc::new(Vec::default()))
+        }
+    }
+
+    fn generate_ordered_crystal_list(
+        gen_params: &oj_rc_core::persist::config::BattleArenaCrystalParams,
+        cube_parsers: &oj_rc_core::cubes::CubeParsers,
+        vehicle_data: &[u8],
+    ) -> Vec<oj_rc_core::cubes::CubeLocationInfo> {
+        cube_parsers.locations_of()
+            .locations_of_reactor_sort_custom(
+                &mut std::io::Cursor::new(vehicle_data),
+                gen_params.max_iterations,
+                gen_params.max_random_iterations,
+            )
     }
 
     pub fn spawn(self) -> tokio::sync::mpsc::Sender<super::GameMessage> {
@@ -117,6 +149,8 @@ impl GameMatches {
                 })?;
                 let crystals = if self.ba_sorted_crystals.read().await.is_empty() {
                     let crystals = std::sync::Arc::new(
+                        // NOTE: this uses default (lower) crystal sort params to prevent sorting from taking too long
+                        // if this takes too long, players can be disconnected from the multiplayer due to client timeout
                         self.cube_parsers.locations_of()
                             .locations_of_reactor_sort(&mut std::io::Cursor::new(&resolved_ba_conf.base_machine_map))
                     );
@@ -207,6 +241,16 @@ impl GameMatches {
         };
         self.matches.insert(game_guid.clone(), tx.clone());
         self.routing.insert(user.user_id(), game_guid.clone());
+        if !self.is_crystal_regen_running.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            tokio::task::spawn(Self::regenerate_crystal_order_task(
+                self.ba_sorted_crystals.clone(),
+                self.cube_parsers.clone(),
+                self.factory.clone(),
+                self.ba_settings.clone(),
+                user.clone(),
+                self.is_crystal_regen_running.clone(),
+            ));
+        }
         if tx.send(super::GameMessage::NewConnection { user, game_guid, connection, response, sender }).await.is_err() {
             log::error!("Failed to send NewConnection game message to new match");
         }
@@ -274,5 +318,57 @@ impl GameMatches {
             }
         }
         log::warn!("Match message router has completed");
+    }
+
+    async fn regenerate_crystal_order_task(
+        crystal_order: std::sync::Arc<tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>>>,
+        parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
+        factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+        ba_resolver: std::sync::Arc<oj_rc_core::persist::config::BattleArenaResolver>,
+        user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>>,
+        tracker: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ) {
+        //tracker.store(true, std::sync::atomic::Ordering::SeqCst);
+        let ba_resolved_result = ba_resolver.resolve(
+            user.as_ref().as_ref(),
+            factory.as_ref(),
+            parsers.weapon_order().as_ref(),
+            parsers.cpu_counter().as_ref(),
+        ).await;
+        match ba_resolved_result {
+            Ok(ba_resolved) => {
+                log::info!("Regenerate crystal order task started successfully, task sleeping for now");
+                // wait a long while to prevent this from interfering with the match's startup
+                tokio::time::sleep(std::time::Duration::from_secs(5 * 60)).await; // 5 minutes
+                let gen_start = chrono::Utc::now();
+                let new_order_result = tokio::task::spawn_blocking(move || {
+                    Self::generate_ordered_crystal_list(
+                        &ba_resolver.crystal_sort_params(),
+                        parsers.as_ref(),
+                        &ba_resolved.base_machine_map,
+                    )
+                }).await;
+                match new_order_result {
+                    Ok(new_order) => {
+                        let gen_end = chrono::Utc::now();
+                        let delta = gen_end.signed_duration_since(gen_start);
+                        log::info!("Base crystal order re-gen took {}ms for {} crystals", delta.num_milliseconds(), new_order.len());
+                        *crystal_order.write().await = std::sync::Arc::new(new_order);
+                    },
+                    Err(e) => {
+                        log::error!("Failed to regenerate crystal order: {}", e);
+                    }
+                }
+
+            },
+            Err(e) => {
+                if let Some(e_msg) = e.error_msg() {
+                    log::error!("Failed to regenerate crystal order: {} ({})", e_msg, e.error_code());
+                } else {
+                    log::error!("Failed to regenerate crystal order ({})", e.error_code());
+                }
+            }
+        }
+        tracker.store(false, std::sync::atomic::Ordering::SeqCst);
     }
 }

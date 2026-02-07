@@ -177,6 +177,21 @@ impl CubeLocationsParser {
     }
 
     pub fn locations_of_reactor_sort(&self, r: &mut dyn std::io::Read) -> Vec<CubeLocationInfo> {
+        self.locations_of_reactor_sort_custom(r, 32, 2)
+    }
+
+    /// Generate sorted crystal cube list using custom thresholds
+    ///
+    /// `bail_after_iters` is the maximum loops to attempt before giving up trying to sort the vehicle's cubes.
+    /// Decreasing this guarantees a faster function return but increases the risk of the result being incomplete.
+    /// In the game client, an incomplete result will cause the match to end at a base charge lower than 100%.
+    ///
+    /// `deterministic_after_iters` is the maxiumum initial loops to allow for random connection traversal.
+    /// Decreasing this makes the crystal order more consistent and makes the function return faster.
+    /// Increasing this makes the crystal order more random and interesting but usually requires more iterations (slower).
+    ///
+    /// Usually, this algorithm takes `deterministic_after_iters + 2` iterations to complete.
+    pub fn locations_of_reactor_sort_custom(&self, r: &mut dyn std::io::Read, bail_after_iters: usize, deterministic_after_iters: usize) -> Vec<CubeLocationInfo> {
         use super::{CUBE_CONNECTIONS, CUBE_ROTATIONS};
         match super::parser::Cube::parse_list(r) {
             Ok(cubes) => {
@@ -223,15 +238,15 @@ impl CubeLocationsParser {
                 let mut iteration = 0;
                 let mut random = rand::rng();
                 let mut to_be_released = Vec::new();
-                while !to_be_sorted.is_empty() && iteration < 32 {
+                while !to_be_sorted.is_empty() && iteration < bail_after_iters {
                     for (cube_i, calc_conns) in to_be_sorted.iter() {
                         let connection = is_sharing_connection(calc_conns, &available_faces)
                             .and_then(|(cube_face_i, face_available_i)| {
-                                use rand::Rng;
                                 if face_available_i < connected_to_connections.connections.len() && sorted.len() < connected_to_connections.connections.len() {
                                     // prioritize finding all target connections first
                                     Some((cube_face_i, face_available_i))
-                                } else if iteration < 3 || (face_available_i >= connected_to_connections.connections.len() && sorted.len() < connected_to_connections.connections.len()) {
+                                } else if iteration < deterministic_after_iters || (face_available_i >= connected_to_connections.connections.len() && sorted.len() < connected_to_connections.connections.len()) {
+                                    use rand::Rng;
                                     let random_face = random.random_range(0..calc_conns.len());
                                     if cube_face_i >= random_face {
                                         Some((cube_face_i, face_available_i))

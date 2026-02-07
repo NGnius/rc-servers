@@ -412,6 +412,28 @@ impl BattleArenaResolver {
             ],
         }))
     }
+
+    pub fn resolve_base_machine_immediate_early(&self) -> Option<Vec<u8>> {
+        match &self.data.base.id {
+            crate::persist::PrefabId::Raw { cube_data, .. } => {
+                Some(cube_data.to_owned())
+            },
+            _ => None,
+        }
+    }
+
+    pub fn crystal_sort_params(&self) -> BattleArenaCrystalParams {
+        BattleArenaCrystalParams {
+            max_iterations: self.data.max_base_iterations as usize,
+            max_random_iterations: self.data.max_base_random_iterations as usize,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct BattleArenaCrystalParams {
+    pub max_iterations: usize,
+    pub max_random_iterations: usize,
 }
 
 #[derive(Debug)]
