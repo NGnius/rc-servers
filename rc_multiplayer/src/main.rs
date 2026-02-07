@@ -40,11 +40,18 @@ async fn main() -> std::io::Result<()> {
         matches_chann,
     };
 
-    let mtu = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config).max_packet_size;
+    let net_conf = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config);
     let dos_protection = oj_rc_core::ConfigProvider::<()>::server_config(&init_ctx.config).dos_protect;
-    let max_bulk_resend = oj_rc_core::ConfigProvider::<()>::network_config(&init_ctx.config).max_bulk_resend;
     let event_handler = events::handler(&init_ctx).await;
-    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), mtu, dos_protection, max_bulk_resend as usize).await.expect("Bad server");
+    let server_conf = literustlib_server::ServerConfig {
+        max_bulk_resends: net_conf.max_bulk_resend as usize,
+        resend_delay_base: net_conf.resend_delay_base,
+        resend_delay_rtt_mult: net_conf.resend_delay_rtt_mult,
+        timeout: std::time::Duration::from_millis(net_conf.max_delay_for_disconnect_ms as u64),
+        dos_protection,
+        mtu: net_conf.max_packet_size,
+    };
+    let server = literustlib_server::Server::new(event_handler, (args.ip, args.port), server_conf).await.expect("Bad server");
 
     let start_time = chrono::Utc::now();
     START_TIMESTAMP_S.store(start_time.timestamp(), std::sync::atomic::Ordering::Relaxed);

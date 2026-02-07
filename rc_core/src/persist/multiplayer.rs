@@ -51,6 +51,7 @@ impl super::config::SelfValidator for MultiplayerConfig {
                 message: "Game match may have broken vehicle flipping functionality due to more than 1 ClientAI per player".to_owned(),
             });
         }
+        is_ok &= self.network.validate_in(info, &(), "network");
         // TODO
         is_ok
     }
@@ -74,6 +75,49 @@ pub struct NetworkConf {
     pub network_peer_update_interval: i32,
     pub max_delay_for_disconnect_ms: i32,
     pub max_bulk_resend: u8,
+}
+
+impl super::config::SelfValidator for NetworkConf {
+    type Context = ();
+    fn validate(&self, info: &mut super::config::ValidationInfo, _ctx: &Self::Context) -> bool {
+        let mut is_ok = true;
+        if self.max_delay < 0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["max_delay".to_owned()],
+                message: "Max delay cannot be negative (how do you live in the future!?)".to_owned(),
+            });
+            is_ok = false;
+        }
+        if self.resend_delay_base < 0.0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["resend_delay_base".to_owned()],
+                message: "Resend delay cannot be negative (how do you live in the future!?)".to_owned(),
+            });
+            is_ok = false;
+        }
+        if self.resend_delay_rtt_mult < 0.0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["resend_delay_rtt_mult".to_owned()],
+                message: "Resend delay multiplier cannot be negative (how do you live in the future!?)".to_owned(),
+            });
+            is_ok = false;
+        }
+        if self.network_peer_update_interval < 0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["network_peer_update_interval".to_owned()],
+                message: "Update interval cannot be negative (how do you live in the future!?)".to_owned(),
+            });
+            is_ok = false;
+        }
+        if self.max_delay_for_disconnect_ms < 0 {
+            info.error(super::config::ValidationMessage {
+                path: vec!["max_delay_for_disconnect_ms".to_owned()],
+                message: "Max delay cannot be negative (how do you live in the future!?)".to_owned(),
+            });
+            is_ok = false;
+        }
+        is_ok
+    }
 }
 
 pub(super) fn default_match_autostart_after_s() -> Option<u64> {
