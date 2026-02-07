@@ -498,6 +498,7 @@ pub struct PromoCode {
     pub bundle_id: String,
     pub promo_id: String,
     pub is_serial: bool,
+    pub is_repeatable: bool,
     pub value: f32,
     pub transaction: ShopAction,
 }

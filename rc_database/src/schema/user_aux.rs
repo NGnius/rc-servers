@@ -43,4 +43,5 @@ pub enum Descriptor {
     LastSeen, // u64, seconds since Unix epoch
     SubscribedChannels, // Vec<String>, JSON
     AvatarId, // u32, u32::MAX means custom avatar
+    RedeemedPromoCodes, // Vec<String>, JSON
 }

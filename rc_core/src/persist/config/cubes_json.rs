@@ -544,6 +544,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                 bundle_id: val.bundle_id.to_owned().unwrap_or_else(|| key.to_owned()),
                 promo_id: val.promo_id.to_owned().unwrap_or_else(|| key.to_owned()),
                 is_serial: val.is_serial,
+                is_repeatable: val.is_repeatable,
                 value: val.value,
                 transaction: tx,
             });

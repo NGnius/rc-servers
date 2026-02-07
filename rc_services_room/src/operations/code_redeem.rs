@@ -41,6 +41,22 @@ impl SimpleOperation<()> for PromoCodeApplier {
         if let Some(Typed::Str(promo_code)) = params.remove(&CODE_NAME_PARAM_KEY) {
             let user_info = user.user()?;
             if let Some(code_info) = self.code_map.get(&promo_code.string) {
+                if !code_info.is_repeatable {
+                    if !user_info.mark_code_redeemed(promo_code.string.clone()).await? {
+                        params.insert(SUCCESS_PARAM_KEY, Typed::Bool(false));
+                        params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(PromoResultCode::AlreadyAwarded as _));
+                        params.insert(IS_SERIAL_PARAM_KEY, Typed::Bool(false));
+                        params.insert(VALUE_PARAM_KEY, Typed::Float(0.0));
+                        params.insert(PROMO_ID_PARAM_KEY, Typed::Str(promo_code.clone()));
+                        params.insert(CUBES_AWARDED_PARAM_KEY, Typed::Str("{}".into()));
+                        params.insert(MSG_PARAM_KEY, Typed::Str("".into()));
+                        params.insert(BUNDLE_ID_PARAM_KEY, Typed::Str(code_info.bundle_id.clone().into()));
+                        params.insert(ROBOPASS_PARAM_KEY, Typed::Bool(false));
+                        params.insert(PAID_CURRENCY_PARAM_KEY, Typed::Long(0));
+                        log::debug!("Code \"{}\" not redeemed by {} (code already redeemed)", promo_code.string, user_info.public_id());
+                        return Ok(params);
+                    }
+                }
                 let result = user_info.apply_purchase(&code_info.transaction).await?;
                 params.insert(SUCCESS_PARAM_KEY, Typed::Bool(result.success));
                 params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(PromoResultCode::Success as _));

@@ -1398,6 +1398,71 @@ impl <C: Clone + Send> super::User<C> for UserData {
             ))
         }
     }
+
+    async fn mark_code_redeemed(&self, code: String) -> Result<bool, polariton_server::operations::SimpleOpError> {
+        // TODO support serial (single global use) codes
+        // FIXME this should probably be a transaction
+        let codes_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::RedeemedPromoCodes).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve RedeemedPromoCodes (user_aux) for user_id {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    "Failed to retrieve RedeemedPromoCodes".to_owned(),
+                )
+            })?;
+        if let Some(codes_entity) = codes_opt {
+            match serde_json::from_str::<Vec<String>>(&codes_entity.data) {
+                Ok(mut codes) => {
+                    if codes.contains(&code) {
+                        Ok(false)
+                    } else {
+                        codes.push(code);
+                        let active_model = oj_rc_database::schema::user_aux::ActiveModel {
+                            data: oj_rc_database::sea_orm::ActiveValue::Set(serde_json::to_string(&codes).unwrap()),
+                            ..Default::default()
+                        };
+                        self.db.update_user_aux_by_user_id_and_descriptor(
+                            active_model,
+                            self.account.id,
+                            oj_rc_database::schema::user_aux::Descriptor::RedeemedPromoCodes,
+                        ).await.map_err(|e| {
+                            log::error!("Failed to update RedeemedPromoCodes (user_aux id {}) for user_id {}: {}", codes_entity.id, self.account.id, e);
+                            polariton_server::operations::SimpleOpError::with_message(
+                                crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                                "Failed to update RedeemedPromoCodes".to_owned(),
+                            )
+                        })?;
+                        Ok(true)
+                    }
+                },
+                Err(e) => {
+                    log::error!("Failed to parse RedeemedPromoCodes (user_aux id {}) for user_id {}: {}", self.account.id, codes_entity.id, e);
+                    return Err(polariton_server::operations::SimpleOpError::with_message(
+                        crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                        "Failed to parse RedeemedPromoCodes JSON".to_owned(),
+                    ));
+                }
+            }
+        } else {
+            // user_aux entry needs to be created
+            let new_codes = oj_rc_database::schema::user_aux::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                user_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                creation_time: oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp()),
+                descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::RedeemedPromoCodes),
+                data: oj_rc_database::sea_orm::ActiveValue::Set(serde_json::to_string(&vec![code]).unwrap()),
+            };
+            self.db.insert_user_aux(vec![new_codes]).await
+                .map_err(|e| {
+                    log::error!("Failed to insert RedeemedPromoCodes (user_aux) for user_id {}: {}", self.account.id, e);
+                    polariton_server::operations::SimpleOpError::with_message(
+                        crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                        "Failed to insert updated RedeemedPromoCodes".to_owned(),
+                    )
+                })?;
+            Ok(true)
+        }
+    }
 }
 
 struct GameEventSetterImpl {

@@ -213,6 +213,8 @@ pub struct ItemCode {
     #[serde(default)]
     pub is_serial: bool,
     #[serde(default)]
+    pub is_repeatable: bool,
+    #[serde(default)]
     pub value: f32,
     pub gives: Vec<ItemPurchase>,
 }
@@ -389,6 +391,16 @@ pub fn default_codes() -> std::collections::HashMap<String, ItemCode> {
         bundle_id: None,
         promo_id: None,
         is_serial: false,
+        is_repeatable: true,
+        value: 1.5,
+        gives: vec![]
+    });
+    map.insert("TEST-ONCE".to_owned(), ItemCode {
+        message: Some("Test passed".to_owned()),
+        bundle_id: None,
+        promo_id: None,
+        is_serial: false,
+        is_repeatable: false,
         value: 1.5,
         gives: vec![]
     });
@@ -397,6 +409,7 @@ pub fn default_codes() -> std::collections::HashMap<String, ItemCode> {
         bundle_id: None,
         promo_id: None,
         is_serial: false,
+        is_repeatable: false,
         value: 1.5,
         gives: vec![
             ItemPurchase::Experience {
