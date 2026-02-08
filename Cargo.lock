@@ -2033,6 +2033,8 @@ checksum = "bcc35a38544a891a5f7c865aca548a982ccb3b8650a5b06d0fd33a10283c56fc"
 [[package]]
 name = "libfj"
 version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68fff2e457fb18346f6de760a0bbfe2de69febc5ab1782c5ff470db14de2241d"
 dependencies = [
  "async-trait",
  "base64",

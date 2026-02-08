@@ -30,8 +30,8 @@ members = [
 [workspace.dependencies]
 actix-web = { version = "4", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd", "ws"] }
 actix-files = "0.6"
-libfj = { version = "0.10", path = "../libfj" }
-#libfj = { version = "0.9" }
+#libfj = { version = "0.10", path = "../libfj" }
+libfj = { version = "0.10" }
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4.5", features = [ "derive" ] }
