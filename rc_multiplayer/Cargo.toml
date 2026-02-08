@@ -20,6 +20,7 @@ chrono.workspace = true
 atomic_float = "1.1"
 num-quaternion.workspace = true
 rand.workspace = true
+git-version.workspace = true
 
 literustlib_server = { version = "0.4", path = "../../LiteRustLib/server" }
 literustlib = { version = "0.4", path = "../../LiteRustLib" }

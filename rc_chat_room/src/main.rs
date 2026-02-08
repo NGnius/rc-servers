@@ -289,12 +289,15 @@ async fn do_connect_handshake(
 }
 
 pub async fn update_status(user_info: &dyn oj_rc_core::persist::user::IntercomUser) {
+    let version = env!("CARGO_PKG_VERSION");
+    let git_version = git_version::git_version!(args = ["--always", "--dirty=+"]);
+    let full_version = format!("{}:{}", version, git_version);
     user_info.update_status(
         env!("CARGO_PKG_NAME"),
         oj_serdes::ServerStatus {
             uptime_s: (chrono::Utc::now().timestamp() - crate::START_TIMESTAMP_S.load(std::sync::atomic::Ordering::Relaxed)).try_into().unwrap_or_default(),
             players: ONLINE_USERS.load(std::sync::atomic::Ordering::SeqCst),
-            version: env!("CARGO_PKG_VERSION").to_owned(),
+            version: full_version,
         },
     ).await;
 }

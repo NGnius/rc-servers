@@ -24,5 +24,6 @@ oj_rc_core = { version = "*", path = "../rc_core" }
 oj_rc_factory = { version = "*", path = "../rc_factory" }
 rand.workspace = true
 async-trait.workspace = true
+git-version.workspace = true
 libfj.workspace = true
 oj_serdes.workspace = true

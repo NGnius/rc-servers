@@ -2592,6 +2592,7 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "git-version",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
@@ -2627,6 +2628,7 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "git-version",
  "literustlib",
  "literustlib_server",
  "log",
@@ -2668,6 +2670,7 @@ dependencies = [
  "clap",
  "env_logger",
  "futures",
+ "git-version",
  "hex",
  "libfj",
  "log",
@@ -2704,6 +2707,7 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "git-version",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
@@ -2734,6 +2738,7 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "git-version",
  "log",
  "oj_polariton_auth",
  "oj_rc_core",
@@ -2745,9 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "oj_serdes"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "986fe9d0d1382b2e04678db42e8e3754b8263203b590bfca72b18751250bbb72"
+version = "0.3.0"
 dependencies = [
  "quick-xml",
  "serde",
