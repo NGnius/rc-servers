@@ -25,6 +25,8 @@ pub enum AdapterSettings {
     Arc(ArcFactorySettings),
     #[serde(alias = "integrated")]
     BuiltIn,
+    #[serde(alias = "online")]
+    Web(WebFactorySettings),
     None,
 }
 
@@ -41,4 +43,9 @@ pub struct ArcFactorySettings {
 
 fn default_true() -> bool {
     true
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct WebFactorySettings {
+    pub url: String,
 }

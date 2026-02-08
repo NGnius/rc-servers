@@ -1,6 +1,7 @@
 pub enum Factory {
     Arc(oj_rc_factory::arc::ArcAdapter),
     Primary(oj_rc_database::FactoryDatabase),
+    Web(oj_rc_factory::web::WebAdapter),
     Custom(Box<dyn oj_rc_factory::VehicleFactoryAdapter + Send + Sync + 'static>),
     None,
 }
@@ -11,6 +12,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.vehicle(id).await,
             Self::Primary(x) => x.vehicle(id).await,
+            Self::Web(x) => x.vehicle(id).await,
             Self::Custom(x) => x.vehicle(id).await,
             Self::None => Ok(None),
         }
@@ -20,6 +22,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.list(query).await,
             Self::Primary(x) => x.list(query).await,
+            Self::Web(x) => x.list(query).await,
             Self::Custom(x) => x.list(query).await,
             Self::None => Ok(Vec::default()),
         }
@@ -29,6 +32,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.upload(vehicle).await,
             Self::Primary(x) => x.upload(vehicle).await,
+            Self::Web(x) => x.upload(vehicle).await,
             Self::Custom(x) => x.upload(vehicle).await,
             Self::None => Ok(oj_rc_factory::VehicleThumbnailInfo {
                 id: i32::MIN,
@@ -42,6 +46,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.rate_vehicle(id, combat, cosmetic).await,
             Self::Primary(x) => x.rate_vehicle(id, combat, cosmetic).await,
+            Self::Web(x) => x.rate_vehicle(id, combat, cosmetic).await,
             Self::Custom(x) => x.rate_vehicle(id, combat, cosmetic).await,
             Self::None => Ok(()),
         }
@@ -51,6 +56,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.purchase(id).await,
             Self::Primary(x) => x.purchase(id).await,
+            Self::Web(x) => x.purchase(id).await,
             Self::Custom(x) => x.purchase(id).await,
             Self::None => Ok(()),
         }
@@ -60,6 +66,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.update_vehicle(id, cube_data, colour_data).await,
             Self::Primary(x) => x.update_vehicle(id, cube_data, colour_data).await,
+            Self::Web(x) => x.update_vehicle(id, cube_data, colour_data).await,
             Self::Custom(x) => x.update_vehicle(id, cube_data, colour_data).await,
             Self::None => Ok(()),
         }
@@ -69,6 +76,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.remove_vehicle(id, user_id).await,
             Self::Primary(x) => x.remove_vehicle(id, user_id).await,
+            Self::Web(x) => x.remove_vehicle(id, user_id).await,
             Self::Custom(x) => x.remove_vehicle(id, user_id).await,
             Self::None => Ok(()),
         }
@@ -78,6 +86,7 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         match self {
             Self::Arc(x) => x.set_featured(id, is_featured).await,
             Self::Primary(x) => x.set_featured(id, is_featured).await,
+            Self::Web(x) => x.set_featured(id, is_featured).await,
             Self::Custom(x) => x.set_featured(id, is_featured).await,
             Self::None => Ok(()),
         }
@@ -89,6 +98,7 @@ impl Factory {
         Ok(match &conf.adapter {
             crate::persist::AdapterSettings::Arc(x) => Self::Arc(oj_rc_factory::arc::ArcAdapter::init(&x.uri, x.show_expired, settings.cdn_url.to_owned(), x.override_cdn, x.spoof_username).await?),
             crate::persist::AdapterSettings::BuiltIn => Self::Primary(builtin_factory_provider()),
+            crate::persist::AdapterSettings::Web(x) => Self::Web(oj_rc_factory::web::WebAdapter::init(&x.url, &settings.auth_url).await?),
             crate::persist::AdapterSettings::None => Self::None,
         })
     }
