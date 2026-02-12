@@ -2228,7 +2228,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
     map.insert(super::combat::GameMap::Neptune1, MapConfig { // level8
         spawn_points: vec![
             // team 0
-            SpawnPoint { // FIXME: at least this spawn is wrong
+            SpawnPoint {
                 team: Some(0),
                 x: -2.100,
                 y: -0.669,
@@ -2570,7 +2570,7 @@ pub(super) fn default_map() -> std::collections::HashMap<super::combat::GameMap,
                 z: 0.000000,
                 w: 0.908095,
             })*/,
-        ].into_iter().map(|x| x.offset(283.600, 4.592, -24.100).scale(0.8)).collect(),
+        ].into_iter().map(|x| x.scale(0.8).offset(283.600, 4.592, -24.100)).collect(),
         bases: vec![
             CaptureBase {
                 team: 0,
