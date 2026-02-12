@@ -118,7 +118,7 @@ fn default_server_conf() -> ServerSettings {
     ServerSettings {
         database: default_db_conn(),
         auto_signup: false,
-        queue_mode: QueueMode::Upgrade,
+        queue_mode: QueueMode::Notify,
         cdn_url: default_cdn_root_url(),
         auth_url: default_auth_root_url(),
         intercom_url: default_intercom_root_url(),
