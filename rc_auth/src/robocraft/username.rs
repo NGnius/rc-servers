@@ -11,17 +11,9 @@ pub async fn user_password_auth(body: Json<libfj::robocraft::EmailUserAuthentica
     }
     let display_name = body.display_name.clone().unwrap();
     log::info!("Authenticating {} user {}", body.target, display_name);
-    let payload = libfj::robocraft::TokenPayload {
-        public_id: display_name.clone(),
-        display_name: display_name.clone(),
-        robocraft_name: display_name.clone(),
-        email_address: body.email_address.clone(),
-        email_verified: true,
-        flags: Vec::new(),
-    };
-    let user_info = oj_rc_core::persist::user::UserInfo {
-        payload,
-        extra: oj_rc_core::persist::user::ExtraUserInfo::Username { password: body.password.clone() },
+    let user_info = oj_rc_core::persist::user::UserAuthInfo::Username {
+        username: display_name.clone(),
+        password: body.password.clone(),
     };
     let response = config.account_provider.login(user_info).await
         .map_err(|e| {

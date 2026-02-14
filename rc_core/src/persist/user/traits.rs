@@ -6,20 +6,32 @@ pub struct UserToken {
     pub refresh_token: String,
 }
 
-pub struct UserInfo {
-    pub payload: libfj::robocraft::TokenPayload,
+/*pub struct UserInfo {
+    //pub payload: libfj::robocraft::TokenPayload,
     pub extra: ExtraUserInfo,
-}
+}*/
 
-pub enum ExtraUserInfo {
+pub enum UserAuthInfo {
     Steam {
         id: u64,
     },
     Username {
+        username: String,
         password: String,
     },
     Email {
+        email: String,
         password: String,
+    }
+}
+
+impl UserAuthInfo {
+    pub(super) fn display_id(&self) -> String {
+        match self {
+            Self::Steam { id } => format!("steamID:{}", id),
+            Self::Username { username, .. } => format!("username:{}", username),
+            Self::Email { email, .. } => format!("email:{}", email),
+        }
     }
 }
 
@@ -55,7 +67,7 @@ pub trait UserProvider<C> {
 
 #[async_trait::async_trait]
 pub trait UserAuthenticator {
-    async fn login(&self, info: UserInfo) -> Result<UserLoginInfo, AuthError>;
+    async fn login(&self, info: UserAuthInfo) -> Result<UserLoginInfo, AuthError>;
     async fn user_exists(&self, user: UserId) -> Result<bool, String>;
     async fn register(&self, info: RegistrationInfo) -> Result<i32, String>;
 }

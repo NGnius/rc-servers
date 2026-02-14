@@ -90,6 +90,7 @@ pub struct ServerConfig {
     pub database: String,
     pub auto_signup: bool,
     pub queue_mode: QueueChangeMode,
+    pub domain: String,
     pub cdn_url: String,
     pub auth_url: String,
     pub intercom_url: String,

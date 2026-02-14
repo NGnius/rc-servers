@@ -10,6 +10,7 @@ pub struct AccountProvider {
     fake_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     filler_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     auto_signups: bool,
+    domain: std::sync::Arc<String>,
     cdn: std::sync::Arc<String>,
     auth: std::sync::Arc<String>,
     intercom: std::sync::Arc<String>,
@@ -33,6 +34,7 @@ impl AccountProvider {
             fake_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::fake_players(conf)),
             filler_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::filler_players(conf)),
             auto_signups: server_settings.auto_signup,
+            domain: std::sync::Arc::new(server_settings.domain),
             cdn: std::sync::Arc::new(server_settings.cdn_url),
             auth: std::sync::Arc::new(server_settings.auth_url),
             intercom: std::sync::Arc::new(server_settings.intercom_url),
@@ -86,11 +88,12 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
-        jsonwebtoken::decode::<libfj::robocraft::TokenPayload>(&token.token, &secret, &validation).map_err(|e| super::AuthError {
+        let token_data = jsonwebtoken::decode::<crate::auth::Token>(&token.token, &secret, &validation).map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
         })?;
-        let user_info = if let Some(user_info) = self.db.user_by_any_unique_id(token.uuid.clone()).await.map_err(|e| super::AuthError {
+        let display_name = token_data.claims.client_details.display_name.clone();
+        let user_info = if let Some(user_info) = self.db.user_by_display_name(display_name.clone()).await.map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
         })? {
@@ -112,6 +115,8 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
                 code: crate::data::error_codes::AuthErrorCode::BadCredentials,
             });
         };
+        #[cfg(debug_assertions)]
+        log::info!("Authenticated user {} with flags {:?}", display_name, token_data.claims.client_details.flags.as_slice());
         //let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
         Ok(Box::new(UserData {
             account: user_info,
@@ -171,13 +176,13 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
 
 #[async_trait::async_trait]
 impl super::UserAuthenticator for AccountProvider {
-    async fn login(&self, info: super::UserInfo) -> Result<super::UserLoginInfo, super::AuthError> {
+    async fn login(&self, info: super::UserAuthInfo) -> Result<super::UserLoginInfo, super::AuthError> {
         //let new_root = self.root.join(&info.payload.public_id);
         let is_new_user;
-        let user_opt = match &info.extra {
-            super::ExtraUserInfo::Steam { id } => self.db.user_by_steam_id(*id).await,
-            super::ExtraUserInfo::Email { .. } => self.db.user_by_email(info.payload.email_address.clone()).await,
-            super::ExtraUserInfo::Username { .. } => self.db.user_by_display_name(info.payload.display_name.clone()).await,
+        let user_opt = match &info {
+            super::UserAuthInfo::Steam { id } => self.db.user_by_steam_id(*id).await,
+            super::UserAuthInfo::Email { email, .. } => self.db.user_by_email(email.to_owned()).await,
+            super::UserAuthInfo::Username { username, .. } => self.db.user_by_display_name(username.to_owned()).await,
         }.map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
@@ -188,17 +193,23 @@ impl super::UserAuthenticator for AccountProvider {
         } else {
             is_new_user = true;
             if self.auto_signups {
-                log::info!("New user {}", info.payload.public_id);
-                super::setup_new_user(&info, &self.db).await.map_err(|e| super::AuthError {
+                log::info!("New user {}", info.display_id());
+                let auto_name = match &info {
+                    super::UserAuthInfo::Steam { id } => id.to_string(),
+                    super::UserAuthInfo::Email { email, .. } => email.to_owned(),
+                    super::UserAuthInfo::Username { username, .. } => username.to_owned(),
+                };
+                super::setup_new_user(&info, auto_name.clone(), &self.db).await.map_err(|e| super::AuthError {
                     message: e.to_string(),
                     code: crate::data::error_codes::AuthErrorCode::Unknown,
                 })?;
-                self.db.user_by_display_name(info.payload.display_name.clone()).await.map_err(|e| super::AuthError {
+
+                self.db.user_by_display_name(auto_name).await.map_err(|e| super::AuthError {
                     message: e.to_string(),
                     code: crate::data::error_codes::AuthErrorCode::Unknown,
                 })?.unwrap()
             } else {
-                log::info!("Rejecting user sign-in for `{}` (set settings.server.auto_signup=true to disable this behaviour)", info.payload.public_id);
+                log::info!("Rejecting user sign-in for `{}` (set settings.server.auto_signup=true to disable this behaviour)", info.display_id());
                 return Err(super::AuthError {
                     message: "User not found".to_owned(),
                     code: crate::data::error_codes::AuthErrorCode::BadCredentials,
@@ -206,8 +217,8 @@ impl super::UserAuthenticator for AccountProvider {
             }
         };
         let override_password = user_info.password.is_empty() && user_info.steam_id.is_none();
-        match info.extra {
-            super::ExtraUserInfo::Steam { id } => {
+        match &info {
+            super::UserAuthInfo::Steam { id } => {
                 let id_str = id.to_string();
                 if let Some(expected_steam_id) = user_info.steam_id {
                     if expected_steam_id != id_str {
@@ -223,8 +234,8 @@ impl super::UserAuthenticator for AccountProvider {
                     });
                 }
             },
-            super::ExtraUserInfo::Email { password }
-            | super::ExtraUserInfo::Username { password } => {
+            super::UserAuthInfo::Email { password, .. }
+            | super::UserAuthInfo::Username { password, .. } => {
                 use argon2::password_hash::PasswordHasher;
                 let argon2_algo = argon2::Argon2::default();
                 if override_password {
@@ -276,12 +287,32 @@ impl super::UserAuthenticator for AccountProvider {
             alg: jsonwebtoken::Algorithm::HS256,
             ..Default::default()
         };
-        let mut payload = info.payload;
-        payload.public_id = user_info.public_id;
-        payload.display_name = user_info.display_name.clone();
-        payload.robocraft_name = user_info.display_name;
-        payload.email_address = user_info.email;
-        payload.email_verified = true;
+
+        let login_method = match &info {
+            super::UserAuthInfo::Steam { .. } => crate::auth::LoginMethod::Steam,
+            super::UserAuthInfo::Email { .. } => crate::auth::LoginMethod::Email,
+            super::UserAuthInfo::Username { .. } => crate::auth::LoginMethod::Username,
+        };
+
+        let client_details = libfj::robocraft::TokenPayload {
+            public_id: user_info.public_id.clone(),
+            display_name: user_info.display_name.clone(),
+            robocraft_name: user_info.display_name,
+            email_address: user_info.email,
+            email_verified: true,
+            flags: vec![
+                "federated=false".to_owned(),
+            ],
+        };
+        let payload = crate::auth::Token {
+            client_details,
+            federate: false,
+            auth_time: chrono::Utc::now().timestamp(),
+            qualified_name: format!("{}@{}", user_info.public_id, self.domain),
+            login_method,
+        };
+        #[cfg(debug_assertions)]
+        log::debug!("Token payload\n{}", serde_json::to_string_pretty(&payload).unwrap());
         let secret = jsonwebtoken::EncodingKey::from_secret(&self.secret);
         let token = jsonwebtoken::encode(&header, &payload, &secret)
             .unwrap_or_else(|e| {

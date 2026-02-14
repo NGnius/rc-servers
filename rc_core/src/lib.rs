@@ -13,3 +13,5 @@ pub mod polariton;
 pub mod factory;
 
 pub mod cubes;
+
+mod auth;

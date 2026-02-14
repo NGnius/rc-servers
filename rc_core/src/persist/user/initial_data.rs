@@ -4,22 +4,22 @@ fn current_unix_time() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
-async fn build_new_account_data(user: &super::UserInfo, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
+async fn build_new_account_data(user: &super::UserAuthInfo, username: String, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
     let reg_info = super::RegistrationInfo {
-        display_name: user.payload.display_name.clone(),
-        password: if let super::ExtraUserInfo::Email { password } | super::ExtraUserInfo::Username { password } = &user.extra {
+        display_name: username,
+        password: if let super::UserAuthInfo::Email { password, .. } | super::UserAuthInfo::Username { password, .. } = &user {
             password.to_owned()
         } else {
             "".to_owned()
         },
         email: None,
-        steam_id: if let super::ExtraUserInfo::Steam { id } = &user.extra { Some(*id) } else { None },
+        steam_id: if let super::UserAuthInfo::Steam { id } = &user { Some(*id) } else { None },
     };
     register_new_user(&reg_info, db).await?;
     Ok(())
 }
 
-pub async fn setup_new_user(user: &super::UserInfo, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
+pub async fn setup_new_user(user: &super::UserAuthInfo, username: String, db: &oj_rc_database::Database) -> Result<(), oj_rc_database::sea_orm::DbErr> {
     /*let ref_path = new_dir.as_ref().parent().unwrap().join(REFERENCE_DIR);
     if !ref_path.exists() {
         log::debug!("Initialising reference directory {}", ref_path.display());
@@ -27,7 +27,7 @@ pub async fn setup_new_user(user: &super::UserInfo, db: &oj_rc_database::Databas
     }
     log::debug!("Copying reference directory for new user: {}", new_dir.as_ref().display());
     so::copy_dir_all(ref_path, new_dir)?;*/
-    build_new_account_data(user, db).await?;
+    build_new_account_data(user, username, db).await?;
     Ok(())
 }
 

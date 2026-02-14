@@ -293,6 +293,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             database: self.settings.server.database.clone(),
             auto_signup: self.settings.server.auto_signup,
             queue_mode: super::QueueChangeMode::from_persist(self.settings.server.queue_mode.clone()),
+            domain: self.settings.server.domain.to_owned(),
             cdn_url: self.settings.server.cdn_url.trim_end_matches('/').to_owned(),
             auth_url: self.settings.server.auth_url.trim_end_matches('/').to_owned(),
             intercom_url: self.settings.server.intercom_url.trim_end_matches('/').to_owned(),

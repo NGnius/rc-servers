@@ -84,6 +84,8 @@ pub struct ServerSettings {
     pub auto_signup: bool,
     #[serde(default)]
     pub queue_mode: QueueMode,
+    #[serde(default = "default_domain_root")]
+    pub domain: String,
     #[serde(default = "default_cdn_root_url")]
     pub cdn_url: String,
     #[serde(default = "default_auth_root_url")]
@@ -119,6 +121,7 @@ fn default_server_conf() -> ServerSettings {
         database: default_db_conn(),
         auto_signup: false,
         queue_mode: QueueMode::Notify,
+        domain: default_domain_root(),
         cdn_url: default_cdn_root_url(),
         auth_url: default_auth_root_url(),
         intercom_url: default_intercom_root_url(),
@@ -128,6 +131,10 @@ fn default_server_conf() -> ServerSettings {
         min_version: default_game_version(),
         dos_protection: default_true(),
     }
+}
+
+fn default_domain_root() -> String {
+    "127.0.0.1".to_owned()
 }
 
 fn default_cdn_root_url() -> String {
