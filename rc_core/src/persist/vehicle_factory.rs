@@ -15,7 +15,7 @@ impl super::config::SelfValidator for FactoryConfig {
 }
 
 fn default_variant() -> AdapterSettings {
-    AdapterSettings::None
+    AdapterSettings::BuiltIn
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

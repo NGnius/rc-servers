@@ -2444,25 +2444,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "oj_factory_web"
-version = "1.1.0"
-dependencies = [
- "actix-files",
- "actix-web",
- "base64",
- "clap",
- "env_logger",
- "git-version",
- "handlebars",
- "libfj",
- "log",
- "oj_rc_core",
- "oj_rc_factory",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "oj_polariton_auth"
 version = "1.1.0"
 dependencies = [
@@ -2587,6 +2568,25 @@ dependencies = [
  "sea-orm",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "oj_rc_factory_web"
+version = "1.1.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "base64",
+ "clap",
+ "env_logger",
+ "git-version",
+ "handlebars",
+ "libfj",
+ "log",
+ "oj_rc_core",
+ "oj_rc_factory",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
