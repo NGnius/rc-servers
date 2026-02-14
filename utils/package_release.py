@@ -32,7 +32,7 @@ BINARIES_TO_INCLUDE = {
     "oj_rc_auth": generate_ip_script,
     "oj_cdn": generate_ip_script,
     "oj_rc_chat": lambda name: generate_ip_redirect_script(name, 4537), "oj_rc_chat_room": generate_ip_script,
-    "oj_rc_microtransactions": generate_plain_script,
+    "oj_rc_microtransactions": generate_ip_script,
     "oj_rc_services": lambda name: generate_ip_redirect_script(name, 4533), "oj_rc_services_room": generate_ip_script,
     "oj_rc_singleplayer": lambda name: generate_ip_redirect_script(name, 4539), "oj_rc_singleplayer_room": generate_ip_script,
     "oj_rc_social": lambda name: generate_ip_redirect_script(name, 4535), "oj_rc_social_room": generate_ip_script,
