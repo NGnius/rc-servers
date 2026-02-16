@@ -73,7 +73,7 @@ pub trait UserAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser + FactoryUser {
+pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser + FactoryUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn selected_garage(&self) -> (String, u32);
@@ -453,9 +453,19 @@ pub enum CurrencyOp {
 
 #[async_trait::async_trait]
 pub trait SocialUser: Send + Sync {
+    async fn accept_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn decline_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn cancel_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn remove_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn list_friends(&self) -> Result<Vec<FriendData>, polariton_server::operations::SimpleOpError>;
     async fn has_unclaimed_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn get_unclaimed_match_rewards(&self) -> Result<MatchRewards, polariton_server::operations::SimpleOpError>;
     async fn claim_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
+pub trait SocialUserC<C>: Send + Sync {
+    async fn invite_friend(&self, username: String) -> Result<FriendInviteReturn<C>, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct MatchRewards {
@@ -469,6 +479,46 @@ pub struct MatchRewards {
     pub clan_experience: i32,
     pub robits_earned: i32,
     pub premium_robits_earned: i32,
+}
+
+pub struct FriendInviteReturn<C> {
+    pub target_public_id: String,
+    pub target_display_name: String,
+    pub my_clan_name: Option<String>,
+    pub target_clan_name: Option<String>,
+    pub my_avatar_id: u32,
+    pub target_player: polariton::operation::Typed<C>,
+}
+
+pub struct FriendData {
+    pub public_id: String,
+    pub display_name: String,
+    pub clan_name: Option<String>,
+    pub state: FriendInviteStatus, // FIXME don't directly pass database type
+    pub avatar_id: u32,
+}
+
+pub enum FriendInviteStatus {
+    InviteSent,
+    InvitePending,
+    Accepted,
+    Declined,
+    Cancelled,
+    Removed,
+}
+
+impl FriendInviteStatus {
+    #[inline]
+    pub(super) fn from_db(state: oj_rc_database::schema::friend::FriendStatus) -> Self {
+        match state {
+            oj_rc_database::schema::friend::FriendStatus::InviteSent => Self::InviteSent,
+            oj_rc_database::schema::friend::FriendStatus::InvitePending => Self::InvitePending,
+            oj_rc_database::schema::friend::FriendStatus::Accepted => Self::Accepted,
+            oj_rc_database::schema::friend::FriendStatus::Declined => Self::Declined,
+            oj_rc_database::schema::friend::FriendStatus::Cancelled => Self::Cancelled,
+            oj_rc_database::schema::friend::FriendStatus::Removed => Self::Removed,
+        }
+    }
 }
 
 #[async_trait::async_trait]

@@ -1,7 +1,15 @@
 use polariton::operation::Typed;
 use polariton_server::operations::{Operation, OperationCode};
 
-pub struct MoreLobbyAuth;
+pub fn more_lobby_auth(init_ctx: &crate::InitConfig) -> MoreLobbyAuth {
+    MoreLobbyAuth {
+        social: init_ctx.social.clone(),
+    }
+}
+
+pub struct MoreLobbyAuth {
+    social: std::sync::Arc<crate::SocialMesh>,
+}
 
 impl MoreLobbyAuth {
     const AUTH_PAYLOAD_KEY: u8 = 245;
@@ -15,6 +23,10 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
         let params_dict = params.to_dict();
         if let Some(Typed::Str(auth_payload)) = params_dict.get(&Self::AUTH_PAYLOAD_KEY) {
             if user.update_with_auth(&auth_payload.string).await {
+                self.social.add_user(
+                    user.user().unwrap().public_id().to_owned(),
+                    user.event_sender().to_owned().downgrade(),
+                ).await;
                 crate::update_status(user.user().unwrap().as_ref().as_ref()).await;
                 let mut resp_params = std::collections::HashMap::with_capacity(1);
                 resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));

@@ -3,6 +3,9 @@ mod cli;
 
 mod data;
 mod operations;
+mod events;
+mod social_services;
+pub use social_services::SocialMesh;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -15,16 +18,30 @@ pub type UserTy = std::sync::Arc<oj_rc_core::UserState<crate::data::custom::Cust
 pub static START_TIMESTAMP_S: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 pub static ONLINE_USERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+pub struct InitConfig {
+    pub config: oj_rc_core::persist::config::ConfigImpl,
+    pub social: std::sync::Arc<SocialMesh>,
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let args = cli::CliArgs::get();
     log::debug!("Got cli args {:?}", args);
 
-    let cubes = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
-    let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
+    let config = oj_rc_core::persist::config::ConfigImpl::load(&args.assets).expect("Bad config data");
+    let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
+    let social = std::sync::Arc::new(SocialMesh::new());
 
-    let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(), polariton_server::events::EventsHandler::new()));
+    let init_ctx = InitConfig {
+        config,
+        social: social.clone(),
+    };
+
+    let server = std::sync::Arc::new(polariton_server::Server::new(
+        operations::handler(&init_ctx),
+        polariton_server::events::EventsHandler::new(),
+    ));
 
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
@@ -36,11 +53,11 @@ async fn main() -> std::io::Result<()> {
     if args.once {
         log::warn!("Handling first connection and then exiting");
         let (socket, address) = listener.accept().await?;
-        process_socket(socket, address, server.clone(), users.clone()).await;
+        process_socket(socket, address, server.clone(), users.clone(), social.clone()).await;
     } else {
         loop {
             let (socket, address) = listener.accept().await?;
-            tokio::spawn(process_socket(socket, address, server.clone(), users.clone()));
+            tokio::spawn(process_socket(socket, address, server.clone(), users.clone(), social.clone()));
         }
     }
     server.join();
@@ -48,7 +65,7 @@ async fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy, crate::data::custom::CustomType>>, users: std::sync::Arc<oj_rc_core::UserImpl>) {
+async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy, crate::data::custom::CustomType>>, users: std::sync::Arc<oj_rc_core::UserImpl>, social: std::sync::Arc<SocialMesh>) {
     log::debug!("Accepting connection from address {}", address);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -65,9 +82,19 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     let ctx = polariton::packet::SerdesContext::from_boxed(op_ctx, enc);
     server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {}", address);
-    ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    ONLINE_USERS.store(social.online_count_read().await - 1, std::sync::atomic::Ordering::SeqCst);
     if let Ok(user_info) = user_state.user() {
         update_status(user_info.as_ref().as_ref()).await;
+        if let Ok(friends) = user_info.list_friends().await {
+            for friend in friends {
+                social.send_event_to(&friend.public_id, crate::events::friend_status::FriendStatus {
+                    friend_public_id: user_info.public_id().to_owned(),
+                    friend_display_name: user_info.display_name().to_owned(),
+                    is_online: false,
+                    invite_status: crate::data::friend::InviteStatus::from_core(&friend.state).reciprocal(),
+                }).await;
+            }
+        }
     }
 }
 

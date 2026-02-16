@@ -1,5 +1,5 @@
 use sea_orm_migration::MigratorTrait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait, sea_query::ExprTrait};
 
 pub struct Database {
     orm: std::sync::Arc<sea_orm::DatabaseConnection>,
@@ -34,6 +34,30 @@ impl Database {
             .filter(sea_orm::sea_query::Expr::expr(
                 sea_orm::sea_query::Func::lower(crate::schema::user::Column::DisplayName.into_expr())
                 ).eq(public_id.to_lowercase())
+            )
+            .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn user_by_public_id(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .filter(crate::schema::user::Column::PublicId.eq(public_id))
+            .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn user_by_some_social_id(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        let lower_public_id = public_id.to_lowercase();
+        crate::schema::user::Entity::find()
+            .filter(sea_orm::sea_query::Expr::expr(
+                    sea_orm::sea_query::Func::lower(crate::schema::user::Column::DisplayName.into_expr())
+                ).eq(&lower_public_id).or(
+                    sea_orm::sea_query::Func::lower(crate::schema::user::Column::PublicId.into_expr())
+                        .eq(&lower_public_id)
+                ).or(
+                    sea_orm::sea_query::Func::lower(crate::schema::user::Column::Email.into_expr())
+                        .eq(&lower_public_id)
+                )
             )
             .one(self.orm.as_ref())
             .await
@@ -86,6 +110,14 @@ impl Database {
             .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
             .filter(crate::schema::user_aux::Column::Descriptor.eq(descriptor))
             .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn user_auxs_by_user_ids_and_descriptor(&self, user_ids: impl std::iter::IntoIterator<Item=i32>, descriptor: crate::schema::user_aux::Descriptor) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+        crate::schema::user_aux::Entity::find()
+            .filter(crate::schema::user_aux::Column::UserId.is_in(user_ids))
+            .filter(crate::schema::user_aux::Column::Descriptor.eq(descriptor))
+            .all(self.orm.as_ref())
             .await
     }
 
@@ -550,6 +582,43 @@ impl Database {
             .order_by_asc(crate::schema::multiplayer_game_player::Column::CreationTime)
             .count(self.orm.as_ref())
             .await
+    }
+
+    pub async fn friends_by_user_id(&self, user_id: i32, status_not_in: impl IntoIterator<Item=crate::schema::friend::FriendStatus>) -> Result<Vec<(crate::schema::friend::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::friend::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .filter(crate::schema::friend::Column::FriendSource.eq(user_id))
+            .filter(crate::schema::friend::Column::State.is_not_in(status_not_in))
+            .order_by_asc(crate::schema::friend::Column::CreationTime)
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(friend, user_opt)| user_opt.map(|user| (friend, user)))
+            .collect())
+    }
+
+    pub async fn insert_friends(&self, entities: impl std::iter::IntoIterator<Item=crate::schema::friend::ActiveModel>) -> Result<(), sea_orm::DbErr> {
+        crate::schema::friend::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
+        Ok(())
+    }
+
+    pub async fn update_friends_state(&self, user_id_1: i32, user_id_2: i32, state: crate::schema::friend::FriendStatus) -> Result<(), sea_orm::DbErr> {
+        crate::schema::friend::Entity::update_many()
+            .filter(
+                sea_orm::sea_query::Condition::any()
+                    .add(
+                        sea_orm::sea_query::Expr::expr(crate::schema::friend::Column::FriendSource.eq(user_id_1))
+                            .and(crate::schema::friend::Column::FriendTarget.eq(user_id_2))
+                    ).add(
+                        sea_orm::sea_query::Expr::expr(crate::schema::friend::Column::FriendSource.eq(user_id_2))
+                            .and(crate::schema::friend::Column::FriendTarget.eq(user_id_1))
+                    )
+            )
+            .filter(crate::schema::friend::Column::State.is_not_in(crate::schema::friend::FINAL_STATUSES))
+            .col_expr(crate::schema::friend::Column::State, sea_orm::sea_query::Expr::value(state))
+            .exec(self.orm.as_ref())
+            .await?;
+        Ok(())
     }
 
     pub async fn metrics(&self) -> super::DatabaseMetrics {

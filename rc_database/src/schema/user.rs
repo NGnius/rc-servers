@@ -27,6 +27,8 @@ pub enum Relation {
     Player,
     #[sea_orm(has_many = "super::factory::vehicle::Entity")]
     FactoryUploads,
+    #[sea_orm(has_many = "super::friend::Entity")]
+    Friends, // this will probably join the wrong column (i.e. in the wrong direction)
 }
 
 impl Related<super::permissions::Entity> for Entity {
@@ -62,6 +64,12 @@ impl Related<super::multiplayer_game_player::Entity> for Entity {
 impl Related<super::factory::vehicle::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::FactoryUploads.def()
+    }
+}
+
+impl Related<super::friend::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Friends.def()
     }
 }
 

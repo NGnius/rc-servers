@@ -15,6 +15,7 @@ mod m20250918_000001_add_player_variant;
 mod m20251228_000001_create_score_table;
 #[cfg(feature = "factory")]
 mod m20260126_000001_create_factory_vehicle_table;
+mod m20260215_000001_create_friend_table;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251228_000001_create_score_table::Migration),
             #[cfg(feature = "factory")]
             Box::new(m20260126_000001_create_factory_vehicle_table::Migration),
+            Box::new(m20260215_000001_create_friend_table::Migration),
         ]
     }
 }

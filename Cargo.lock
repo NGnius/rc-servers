@@ -3013,18 +3013,14 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "polariton"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dcc388d509743a0419f5a5197a8c79e0f3fd484d5bd0b60e6f361887a8aa301"
+version = "0.6.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "polariton_server"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51ea2a26537f7434f154e34d7c522ab10552442241e608e919d7cfc413ac3abc"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "log",
