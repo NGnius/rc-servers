@@ -30,6 +30,7 @@ impl SimpleOperation<()> for ItemBundleBuyer {
                             let purchase_result = user_info.apply_purchase(transaction).await?;
                             let new_cubes = polariton::operation::Typed::Arr(polariton::operation::Arr {
                                 ty: polariton::serdes::TypePrefix::Str,
+                                custom_ty: None,
                                 items: purchase_result.cube_awards.into_keys()
                                     .map(|k| polariton::operation::Typed::Str(k.into()))
                                     .collect(),

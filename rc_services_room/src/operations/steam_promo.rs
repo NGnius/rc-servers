@@ -12,6 +12,7 @@ pub(super) fn steam_promos_provider() -> Immediate<CODE, crate::UserTy> {
         let mut params = std::collections::HashMap::with_capacity(4);
         params.insert(PROMO_LIST_PARAM_KEY, Typed::Arr(polariton::operation::Arr {
             ty: polariton::serdes::TypePrefix::Str,
+            custom_ty: None,
             items: Vec::default(),
         }));
         params.insert(STEAM_PROMOS_PARAM_KEY, Typed::Str("{}".into()));

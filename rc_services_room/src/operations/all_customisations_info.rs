@@ -192,14 +192,17 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
         let mut params = params.to_dict();
         params.insert(SKINS_KEY, Typed::Arr(Arr {
             ty: TypePrefix::HashMap, // hashtable
+            custom_ty: None,
             items: all_skins().into_iter().map(|x| x.as_transmissible()).collect(),
         }));
         params.insert(SPAWNS_KEY, Typed::Arr(Arr {
             ty: TypePrefix::HashMap, // hashtable
+            custom_ty: None,
             items: all_spawns().into_iter().map(|x| x.as_transmissible()).collect(),
         }));
         params.insert(DEATHS_KEY, Typed::Arr(Arr {
             ty: TypePrefix::HashMap, // hashtable
+            custom_ty: None,
             items: all_deaths().into_iter().map(|x| x.as_transmissible()).collect(),
         }));
 

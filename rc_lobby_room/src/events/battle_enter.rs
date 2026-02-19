@@ -30,6 +30,7 @@ impl BattleEnter {
     fn as_transmissible<C>(&self) -> Vec<(u8, polariton::operation::Typed<C>)> {
         let player_datas = polariton::operation::Typed::Arr(polariton::operation::Arr {
             ty: polariton::serdes::TypePrefix::HashMap,
+            custom_ty: None,
             items: self.player_datas.iter().map(|x| x.as_transmissible()).collect()
         });
         let mut vec = Vec::with_capacity(11);

@@ -193,6 +193,7 @@ impl GameEventSequence {
         GameEventTransmissible {
             maps: Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Str,
+                custom_ty: None,
                 items: vec![
                     Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().into()),
                     Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().into()),
@@ -200,6 +201,7 @@ impl GameEventSequence {
             }),
             visibilities: Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Int,
+                custom_ty: None,
                 items: vec![
                     Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility) as _),
                     Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility) as _),
@@ -207,6 +209,7 @@ impl GameEventSequence {
             }),
             modes: Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Int,
+                custom_ty: None,
                 items: vec![
                     Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode) as _),
                     Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.multiplayer.mode) as _),
@@ -214,6 +217,7 @@ impl GameEventSequence {
             }),
             auto_heals: Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Bool,
+                custom_ty: None,
                 items: vec![
                     Typed::Bool(item_now.singleplayer.auto_heal),
                     Typed::Bool(item_now.multiplayer.auto_heal),

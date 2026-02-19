@@ -46,6 +46,13 @@ impl Database {
             .await
     }
 
+    pub async fn users_by_public_id<'a>(&self, public_ids: impl std::iter::Iterator<Item=&'a String>) -> Result<Vec<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .filter(crate::schema::user::Column::PublicId.is_in(public_ids))
+            .all(self.orm.as_ref())
+            .await
+    }
+
     pub async fn user_by_some_social_id(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         let lower_public_id = public_id.to_lowercase();
         crate::schema::user::Entity::find()
@@ -113,7 +120,7 @@ impl Database {
             .await
     }
 
-    pub async fn user_auxs_by_user_ids_and_descriptor(&self, user_ids: impl std::iter::IntoIterator<Item=i32>, descriptor: crate::schema::user_aux::Descriptor) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
+    pub async fn user_auxs_by_user_ids_and_descriptor(&self, user_ids: impl std::iter::Iterator<Item=i32>, descriptor: crate::schema::user_aux::Descriptor) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
         crate::schema::user_aux::Entity::find()
             .filter(crate::schema::user_aux::Column::UserId.is_in(user_ids))
             .filter(crate::schema::user_aux::Column::Descriptor.eq(descriptor))

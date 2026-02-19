@@ -10,6 +10,7 @@ pub(super) fn clan_invites_provider<C: Send + Sync>() -> SimpleFunc<39, crate::U
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::<C>::Arr(Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashmap
+            custom_ty: None,
             /*items: vec![
                 ClanInviteInfo {
                     username: "RE_user1".to_owned(),

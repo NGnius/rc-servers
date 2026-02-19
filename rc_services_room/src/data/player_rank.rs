@@ -15,6 +15,7 @@ impl PlayerRankStaticInfo {
                 (Typed::Str("subRankCount".into()), Typed::Int(self.sub_rank_count)),
                 (Typed::Str("subRankThresholds".into()), Typed::Arr(Arr {
                     ty: TypePrefix::Int, // int
+                    custom_ty: None,
                     items: self.sub_rank_thresholds.iter().map(|x| Typed::Int(*x)).collect(),
                 })),
             ],

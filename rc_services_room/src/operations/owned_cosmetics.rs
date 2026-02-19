@@ -8,6 +8,7 @@ pub(super) fn owned_cosmetics_provider() -> SimpleFunc<23, crate::UserTy, impl (
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Str, // str
+            custom_ty: None,
             items: vec![Typed::Str("1".into())],
         }));
         Ok(params.into())
@@ -19,6 +20,7 @@ pub(super) fn selected_cosmetics_provider() -> SimpleFunc<21, crate::UserTy, imp
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Str, // str
+            custom_ty: None,
             items: vec![Typed::Str("1".into())],
         }));
         Ok(params.into())

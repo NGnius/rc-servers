@@ -8,6 +8,7 @@ pub(super) fn cube_awards_provider() -> SimpleFunc<206, crate::UserTy, impl (Fn(
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Str, // str
+            custom_ty: None,
             items: Vec::default(),
         }));
         Ok(params.into())

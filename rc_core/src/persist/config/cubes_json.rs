@@ -284,6 +284,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     fn public_channels(&self) -> Typed<C> {
         Typed::Arr(polariton::operation::Arr {
             ty: TypePrefix::Str,
+            custom_ty: None,
             items: self.chat.public_channels.iter().map(|s| Typed::Str(s.into())).collect(),
         })
     }

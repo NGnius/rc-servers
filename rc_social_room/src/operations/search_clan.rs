@@ -23,6 +23,7 @@ pub(super) fn search_clans_provider<C: Send + Sync>() -> SimpleFunc<32, crate::U
         }
         params.insert(RESULTS_PARAM_KEY, Typed::Arr(Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashmap
+            custom_ty: None,
             items: vec![
                 ClanInfo {
                     clan_name: "RE_clan_search_name".to_owned(),

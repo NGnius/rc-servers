@@ -23,12 +23,14 @@ pub(super) fn player_data_provider() -> SimpleFunc<61, crate::UserTy, impl (Fn(P
         params.insert(CONTROL_OPTIONS_KEY, ControlOptions { vertical_strafing: false, sideways_driving: false, tracks_turn_on_spot: false, }.as_transmissible());
         params.insert(WEAPON_ORDER_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Int, // int
+            custom_ty: None,
             items: vec![
                 Typed::Int(0),
             ],
         }));
         params.insert(ITEM_CATEGORY_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Int, // int
+            custom_ty: None,
             items: vec![
                 Typed::Int(ItemCategory::Wheel.but_bigger()),
             ],

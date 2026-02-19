@@ -7,6 +7,7 @@ impl super::ChatUser for UserData {
         log::info!("User is subscribed to channels {:?}", channels);
         Ok(polariton::operation::Typed::Arr(polariton::operation::Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashtable
+            custom_ty: None,
             items: channels.into_iter().map(|name| crate::data::channel::ChatChannelInfo {
                 channel_name: name,
                 members: vec![
@@ -103,6 +104,7 @@ impl super::ChatUser for UserData {
             })?;
             Ok(polariton::operation::Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Str,
+                custom_ty: None,
                 items: sanctions.into_iter().map(|x| {
                     let data = crate::data::sanction::SanctionJson {
                         type_: crate::data::sanction::SanctionType::from_db(x.descriptor),

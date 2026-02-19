@@ -21,6 +21,7 @@ impl TechTreeNode {
             (Typed::Str("tp".into()), Typed::Int(self.tech_points as i32)),
             (Typed::Str("neighbours".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Str, // str
+                custom_ty: None,
                 items: self.neighbours.iter().map(|cube_id| Typed::Str(hex::encode(cube_id.to_be_bytes()).into())).collect(),
             })),
         ].into())

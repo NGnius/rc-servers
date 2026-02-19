@@ -458,6 +458,7 @@ pub trait SocialUser: Send + Sync {
     async fn cancel_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn remove_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn list_friends(&self) -> Result<Vec<FriendData>, polariton_server::operations::SimpleOpError>;
+    async fn list_social_info(&self, public_ids: &[String]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
     async fn has_unclaimed_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn get_unclaimed_match_rewards(&self) -> Result<MatchRewards, polariton_server::operations::SimpleOpError>;
     async fn claim_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
@@ -496,6 +497,13 @@ pub struct FriendData {
     pub clan_name: Option<String>,
     pub state: FriendInviteStatus, // FIXME don't directly pass database type
     pub avatar_id: u32,
+}
+
+#[derive(Clone)]
+pub struct SocialInfo {
+    pub public_id: String,
+    pub display_name: String,
+    pub avatar_id: Option<i32>,
 }
 
 pub enum FriendInviteStatus {

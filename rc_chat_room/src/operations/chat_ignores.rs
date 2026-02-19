@@ -8,6 +8,7 @@ pub(super) fn ignores_provider() -> SimpleFunc<8, crate::UserTy, impl (Fn(Parame
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::Arr(Arr {
             ty: polariton::serdes::TypePrefix::Str,
+            custom_ty: None,
             items: vec![
                 Typed::Str("Pluto".into()),
             ],

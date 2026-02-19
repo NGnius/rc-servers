@@ -117,6 +117,7 @@ impl WeaponData {
             let typed_arr: Vec<Typed<C>> = self.group_fire_scales.iter().map(|x| Typed::Float(*x)).collect();
             out.push((Typed::Str("groupFireScales".into()), Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Float,
+                custom_ty: None,
                 items: typed_arr,
             })));
         }

@@ -16,6 +16,7 @@ pub(super) fn clan_info_provider<C: Send + Sync>() -> SimpleFunc<33, crate::User
             log::debug!("Requested info on clan {}", clan_name.string);
             params.insert(MEMBERS_PARAM_KEY, Typed::Arr(Arr {
                 ty: polariton::serdes::TypePrefix::HashMap, // hashmap
+                custom_ty: None,
                 items: vec![
                     ClanMember {
                         username: "RE_clan_user_idk0".to_owned(),

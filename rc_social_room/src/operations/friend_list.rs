@@ -44,6 +44,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for FriendsLister {
         // Typed::Custom(crate::data::custom::CustomType::FriendInfo)
         params.insert(FRIENDS_PARAM_KEY, Typed::Arr(Arr {
             ty: polariton::serdes::TypePrefix::Custom, // custom
+            custom_ty: Some(0),
             items: friends.iter().map(|friend|
                 Typed::Custom(crate::data::custom::CustomType::FriendInfo(crate::data::friend::FriendInfo {
                     status: crate::data::friend::InviteStatus::from_core(&friend.state),
@@ -56,6 +57,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for FriendsLister {
         }));
         params.insert(AVATAR_PARAM_KEY, Typed::Arr(Arr {
             ty: polariton::serdes::TypePrefix::HashMap, // hashmap
+            custom_ty: None,
             items: friends.iter()
                 .map(|friend|
                     AvatarInfo {

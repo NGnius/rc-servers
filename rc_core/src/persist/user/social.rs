@@ -57,7 +57,7 @@ impl super::SocialUser for UserData {
                     format!("Failed to retrieve friends: {}", e),
                 )
             })?;
-        let friend_ids: Vec<i32> = friends.iter().map(|(_, user)| user.id).collect();
+        let friend_ids = friends.iter().map(|(_, user)| user.id);
         let friend_avatars = self.db.user_auxs_by_user_ids_and_descriptor(friend_ids, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
             .map_err(|e| {
                 log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
@@ -76,6 +76,37 @@ impl super::SocialUser for UserData {
                 clan_name: None, // TODO clan
                 state: super::FriendInviteStatus::from_db(friend.state),
                 avatar_id: friend_avatar_map.get(&user.id).copied().unwrap_or(u32::MAX)
+            })
+            .collect()
+        )
+    }
+
+    async fn list_social_info(&self, public_ids: &[String]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
+        let users = self.db.users_by_public_id(public_ids.iter()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::SocialErrorCode::DatabaseError as i16,
+                    format!("Failed to retrieve friend avatars: {}", e),
+                )
+            })?;
+        let user_ids = users.iter().map(|user| user.id);
+        let user_avatars = self.db.user_auxs_by_user_ids_and_descriptor(user_ids, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::SocialErrorCode::DatabaseError as i16,
+                    format!("Failed to retrieve friend avatars: {}", e),
+                )
+            })?;
+        let avatar_map: std::collections::HashMap<i32, u32> = user_avatars.iter()
+            .filter_map(|avatar| avatar.data.parse().ok().map(|avatar_id| (avatar.user_id, avatar_id)))
+            .collect();
+        Ok(users.iter()
+            .map(|user| super::SocialInfo {
+                public_id: user.public_id.clone(),
+                display_name: user.display_name.clone(),
+                avatar_id: avatar_map.get(&user.id).and_then(|&avatar_id| if avatar_id == u32::MAX { None } else { Some(avatar_id as i32) }),
             })
             .collect()
         )

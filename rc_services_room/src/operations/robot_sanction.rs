@@ -12,6 +12,7 @@ pub(super) fn robot_sanction_provider() -> SimpleFunc<174, crate::UserTy, impl (
         }
         params.insert(SANCTION_JSONS_PARAM_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Str, // str
+            custom_ty: None,
             items: Vec::default(),
         }));
         Ok(params.into())
@@ -23,6 +24,7 @@ pub(super) fn all_robot_sanctions_provider() -> SimpleFunc<176, crate::UserTy, i
         let mut params = params.to_dict();
         params.insert(SANCTION_JSONS_PARAM_KEY, Typed::Arr(Arr {
             ty: TypePrefix::Str, // str
+            custom_ty: None,
             items: Vec::default(),
         }));
         Ok(params.into())

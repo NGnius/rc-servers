@@ -32,6 +32,7 @@ impl GarageSlotInfo {
             (Typed::Str("wasRated".into()), Typed::Bool(self.was_rated)),
             (Typed::Str("movementCategories".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Int, // int
+                custom_ty: None,
                 items: self.movement_categories.iter().map(|x| Typed::Int(x.but_bigger())).collect(),
             })),
             (Typed::Str("uniqueId1".into()), Typed::Int(self.uuid.0 as i32)),
@@ -49,6 +50,7 @@ impl GarageSlotInfo {
             (Typed::Str("baySkinId".into()), Typed::Str(self.bay_skin_id.clone().into())),
             (Typed::Str("weaponOrder".into()), Typed::Arr(Arr {
                 ty: TypePrefix::Int, // int
+                custom_ty: None,
                 items: self.weapon_order.iter().map(|x| Typed::Int(*x)).collect(),
             })),
         ].into())
@@ -85,6 +87,7 @@ impl ControlOptions {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         Typed::Arr(Arr {
             ty: TypePrefix::Bool, // bool
+            custom_ty: None,
             items: vec![
                 Typed::Bool(self.vertical_strafing),
                 Typed::Bool(self.sideways_driving),
