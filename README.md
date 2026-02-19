@@ -1,7 +1,8 @@
 # OpenJam Servers
 
 [![Stoat chat](https://img.shields.io/revolt/invite/jtVE0pD5?label=chat&style=flat-square)](https://stt.gg/jtVE0pD5)
-[![release version](https://img.shields.io/gitea/v/release/OpenJam/servers?gitea_url=https%3A%2F%2Fgit.ngram.ca%2F&style=flat-square&label=release)](https://git.ngram.ca/OpenJam/rc-servers/releases)
+[![release version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgit.ngram.ca%2Fapi%2Fv1%2Frepos%2FOpenJam%2Frc-servers%2Freleases%3Fpage%3D1%26limit%3D1&query=%24%5B0%5D.tag_name&style=flat-square&label=release
+)](https://git.ngram.ca/OpenJam/rc-servers/releases)
 [![indev version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgit.ngram.ca%2FOpenJam%2Frc-servers%2Fraw%2Fbranch%2Fmain%2FCargo.toml&query=workspace.package.version&label=indev&style=flat-square)](#)
 [![patrons](https://img.shields.io/liberapay/patrons/NGram.svg?logo=liberapay)](https://liberapay.com/NGram/)
 
