@@ -6,16 +6,18 @@
 [![patrons](https://img.shields.io/liberapay/patrons/NGram.svg?logo=liberapay)](https://liberapay.com/NGram/)
 
 
-A collection of open source servers for [Robocraft](https://store.steampowered.com/app/301520/Robocraft/)
+The official servers shut down in January 2025, but [Robocraft](https://store.steampowered.com/app/301520/Robocraft/) never stops.
+This project re-implements Robocraft web services to get the latest version working again in ${current_year}.
+This is how you sunset a game, FreeJam.
+
+The main repository is https://git.ngram.ca/OpenJam/rc-servers -- anything else is a mirror or a fork.
+Some links in this document may not work on mirrors/forks.
 
 ## Usage
 
-NOTE: Please refer to the latest [release](/OpenJam/rc-servers/releases) for more detailed instructions for accessing the public OpenJam servers.
+Please refer to the latest [release](/OpenJam/rc-servers/releases) for instructions for accessing the public OpenJam server instances.
 
-To get the Robocraft client to use these servers, place [this servenvmulti.config](assets/robocraft/servenvmulti.config) file in the game files.
-You may need to change the `activegroup` from `dev` to `ngram` (or another group name depending on which servers you want to connect to).
-
-Before you can login the first time, you will need to create an account through the `rc_auth` (aka `authUrl`) server: `http://<rc_auth server address>:<port (maybe)>/register` (unless you've enabled automatic sign ups)
+If you're trying to run your own local server, refer to the [quickstart guide](https://git.ngram.ca/OpenJam/rc-servers/wiki/Dev).
 
 ## Privacy
 
@@ -28,24 +30,9 @@ If email and/or Steam account identifier are provided during registration, those
 This information is all associated with a unique user identifier.
 The current PC's MAC address is also sent to the server (this is a Robocraft client feature, it is not recorded by any server).
 
-## Development
+## Contributing
 
-Please refer to the [wiki](/OpenJam/rc-servers/wiki/Dev).
-
-### Contributing
-
-If you can program or are learning Rust, pull requests are appreciated! If you can't and would prefer not to learn, reporting issues is also welcome.
-
-Note: New users cannot create repositories on this git server and so can't create pull requests. If you're interested in contributing code, please ask NGnius to lift that restriction on your account.
-
-If you'd like to discuss, join the [Signal group](https://signal.group/#CjQKIEPim2GPSftMpRv03dhesLxwY9v7TWo2zyBVc8MhaC_zEhDWJ5kEkYBEsj4Fa-0gLcXs) for the project.
-
-### AI/LLMs
-
-Pull requests which contain LLM-generated changes must disclose this and will be subject to a more intensive review process.
-LLM use is discouraged because it introduces a larger burden on project maintainers and has lasting negative external consequences.
-Maintainers (users with repository write access) are not permitted to use LLMs.
-AI, as understood by the modern definition/marketing, does not exist.
+Please refer to the [wiki](/OpenJam/rc-servers/wiki/Dev), especially the page on [contributing](https://git.ngram.ca/OpenJam/rc-servers/wiki/Contributing).
 
 # Acknowledgements
 
