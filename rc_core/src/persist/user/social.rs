@@ -389,7 +389,7 @@ impl super::SocialUser for UserData {
                     format!("Failed to retrieve avatar info: {}", e),
                 )
             })?
-            .map(|x| x.data.parse().ok()).flatten();
+            .and_then(|x| x.data.parse().ok());
 
         if !avatar.is_empty() {
             self.save_clan_avatar(avatar, &clan.name).await?;
@@ -545,7 +545,7 @@ impl super::SocialUser for UserData {
                 log::warn!("User {} tried to leave clan {} that they lead", self.account.id, joined_clan.id);
                 return Err(polariton_server::operations::SimpleOpError::with_message(
                     crate::data::error_codes::SocialErrorCode::NotClanLeader as i16,
-                    format!("Failed to leave clan: you are the leader"),
+                    "Failed to leave clan: you are the leader".to_string(),
                 ));
             }
             let new_model = oj_rc_database::schema::clan_member::ActiveModel {
@@ -583,7 +583,7 @@ impl super::SocialUser for UserData {
                 log::warn!("User {} tried to remove user {} from clan {} without permission", self.account.id, public_id, joined_clan.id);
                 return Err(polariton_server::operations::SimpleOpError::with_message(
                     crate::data::error_codes::SocialErrorCode::ClanRankTooLow as i16,
-                    format!("Failed to remove user from clan: no permission"),
+                    "Failed to remove user from clan: no permission".to_string(),
                 ));
             }
             let members = self.db.clan_members_by_clan_id(joined_clan.id).await
@@ -606,7 +606,7 @@ impl super::SocialUser for UserData {
                     log::warn!("User {} tried to remove user {} from clan {} with insufficient permission", self.account.id, target_user.id, joined_clan.id);
                     return Err(polariton_server::operations::SimpleOpError::with_message(
                         crate::data::error_codes::SocialErrorCode::ClanRankTooLow as i16,
-                        format!("Failed to remove user from clan: insufficient permission"),
+                        "Failed to remove user from clan: insufficient permission".to_string(),
                     ));
                 }
                 let new_model = oj_rc_database::schema::clan_member::ActiveModel {
@@ -627,7 +627,7 @@ impl super::SocialUser for UserData {
                 log::warn!("User {} tried to remove non-existent user {} from clan {}", self.account.id, public_id, joined_clan.id);
                 return Err(polariton_server::operations::SimpleOpError::with_message(
                     crate::data::error_codes::SocialErrorCode::UserNotFoundInClan as i16,
-                    format!("Failed to remove user from clan: user not in clan"),
+                    "Failed to remove user from clan: user not in clan".to_string(),
                 ));
             }
         } else {
@@ -651,7 +651,7 @@ impl super::SocialUser for UserData {
                 log::debug!("User {} is not leader but tried to modify clan {}", self.account.id, joined_clan.id);
                 return Err(polariton_server::operations::SimpleOpError::with_message(
                     crate::data::error_codes::SocialErrorCode::NotClanLeader as i16,
-                    format!("Failed to modify clan: user is not the leader"),
+                    "Failed to modify clan: user is not the leader".to_string(),
                 ));
             }
             let new_clan = oj_rc_database::schema::clan::ActiveModel {
@@ -677,7 +677,7 @@ impl super::SocialUser for UserData {
             log::debug!("User {} is not in a clan but tried to modify clan", self.account.id);
             return Err(polariton_server::operations::SimpleOpError::with_message(
                 crate::data::error_codes::SocialErrorCode::UserNotInClan as i16,
-                format!("Failed to modify clan for user not in clan"),
+                "Failed to modify clan for user not in clan".to_string(),
             ));
         }
     }
@@ -775,7 +775,7 @@ impl super::SocialUser for UserData {
                 public_id: target_user.public_id,
                 display_name: target_user.display_name,
                 is_confirmed: false,
-                avatar_id: avatar_id,
+                avatar_id,
                 rank: super::ClanMemberRank::Member,
                 season_xp: 0,
             })
@@ -783,7 +783,7 @@ impl super::SocialUser for UserData {
             log::debug!("User {} tried to invite user {} to their non-existent clan", self.account.id, public_id);
             Err(polariton_server::operations::SimpleOpError::with_message(
                 crate::data::error_codes::SocialErrorCode::UserNotInClan as i16,
-                format!("Failed to invite user to clan for user: invitee is not in clan"),
+                "Failed to invite user to clan for user: invitee is not in clan".to_string(),
             ))
         }
     }
@@ -868,7 +868,7 @@ impl super::SocialUser for UserData {
             log::debug!("User {} cannot decline non-existent invite to clan {}", self.account.id, clan_name);
             Err(polariton_server::operations::SimpleOpError::with_message(
                 crate::data::error_codes::SocialErrorCode::NoInvite as i16,
-                format!("User cannot decline non-existent clan invite"),
+                "User cannot decline non-existent clan invite".to_string(),
             ))
         }
     }
