@@ -29,6 +29,7 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::user_avatar::get)
             .service(robocraft::user_avatar::post)
             .service(robocraft::clan_avatar::get)
+            .service(robocraft::clan_avatar::post)
             .service(robocraft::brawl_data::get)
             .service(robocraft::campaign_data::get)
             .service(robocraft::factory::arc::get)

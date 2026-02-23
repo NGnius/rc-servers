@@ -33,6 +33,22 @@ impl super::account_json::UserData {
             .await?;
         Ok(())
     }
+
+    pub(super) async fn save_clan_avatar(&self, image: Vec<u8>, clan_name: &str) -> Result<(), polariton_server::operations::SimpleOpError> {
+        // seems to always be jpg
+        let token = generate_token(clan_name.as_bytes(), &self.secret);
+        let auth_header_val = format!("Internal {}", token);
+        let url = format!("{}/clanavatar/Live/{}", self.cdn, clan_name);
+        if let Err(e) = self.http_client.post(url)
+            .header("Authorization", auth_header_val)
+            .body(image)
+            .send()
+            .await {
+            log::error!("Failed to update clan avatar for {} ({}): {}", self.account.public_id, self.account.id, e);
+            return Err((crate::data::error_codes::SocialErrorCode::UnexpectedError as i16).into());
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]

@@ -16,6 +16,8 @@ mod m20251228_000001_create_score_table;
 #[cfg(feature = "factory")]
 mod m20260126_000001_create_factory_vehicle_table;
 mod m20260215_000001_create_friend_table;
+mod m20260221_000001_create_clan_table;
+mod m20260221_000002_create_clan_member_table;
 
 pub struct Migrator;
 
@@ -39,6 +41,8 @@ impl MigratorTrait for Migrator {
             #[cfg(feature = "factory")]
             Box::new(m20260126_000001_create_factory_vehicle_table::Migration),
             Box::new(m20260215_000001_create_friend_table::Migration),
+            Box::new(m20260221_000001_create_clan_table::Migration),
+            Box::new(m20260221_000002_create_clan_member_table::Migration),
         ]
     }
 }

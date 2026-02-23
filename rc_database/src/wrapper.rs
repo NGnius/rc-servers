@@ -628,6 +628,154 @@ impl Database {
         Ok(())
     }
 
+    pub async fn clan_by_name(&self, name: String) -> Result<Option<crate::schema::clan::Model>, sea_orm::DbErr> {
+        crate::schema::clan::Entity::find()
+            .filter(
+                sea_orm::sea_query::Func::lower(crate::schema::clan::Column::Name.into_expr())
+                .eq(name.to_lowercase())
+            )
+            .one(self.orm.as_ref()).await
+    }
+
+    pub async fn clan_by_user_id(&self, user_id: i32) -> Result<Option<(crate::schema::clan::Model, crate::schema::clan_member::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan::Entity::find()
+            .find_also_related(crate::schema::clan_member::Entity)
+            .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Confirmed))
+            .one(self.orm.as_ref())
+            .await?
+            .and_then(|(clan, member)| member.map(|member| (clan, member))))
+    }
+
+    pub async fn clans_invited_to_for_user_id(&self, user_id: i32) -> Result<Vec<(crate::schema::clan::Model, crate::schema::clan_member::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan::Entity::find()
+            .find_also_related(crate::schema::clan_member::Entity)
+            .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Invited))
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(clan, member)| member.map(|member| (clan, member)))
+            .collect())
+    }
+
+    pub async fn clan_invited_to_for_user_id_and_clan_id(&self, user_id: i32, clan_id: i32) -> Result<Option<(crate::schema::clan::Model, crate::schema::clan_member::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan::Entity::find()
+            .find_also_related(crate::schema::clan_member::Entity)
+            .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+            .filter(crate::schema::clan_member::Column::ClanId.eq(clan_id))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Invited))
+            .one(self.orm.as_ref())
+            .await?
+            .and_then(|(clan, member)| member.map(|member| (clan, member))))
+    }
+
+    pub async fn clan_invited_to_for_user_id_and_clan_name(&self, user_id: i32, clan_name: String) -> Result<Option<(crate::schema::clan::Model, crate::schema::clan_member::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan::Entity::find()
+            .find_also_related(crate::schema::clan_member::Entity)
+            .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+            .filter(
+                sea_orm::sea_query::Func::lower(crate::schema::clan::Column::Name.into_expr())
+                .eq(clan_name.to_lowercase())
+            )
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Invited))
+            .one(self.orm.as_ref())
+            .await?
+            .and_then(|(clan, member)| member.map(|member| (clan, member))))
+    }
+
+    pub async fn clans_by_search(&self, s: String, start: u64, _end: u64, types: impl std::iter::Iterator<Item=crate::schema::clan::ClanType>) -> Result<Vec<crate::schema::clan::Model>, sea_orm::DbErr> {
+        let lower_s_like = format!("%{}%", s.trim_matches('%').to_lowercase());
+        let types: Vec<_> = types.collect();
+        crate::schema::clan::Entity::find()
+            .filter(
+                sea_orm::sea_query::Expr::expr(
+                    sea_orm::sea_query::Func::lower(crate::schema::clan::Column::Name.into_expr())
+                ).like(&lower_s_like)
+            )
+            .filter(if types.is_empty() {
+                crate::schema::clan::Column::Variant.is_in([
+                    crate::schema::clan::ClanType::Public,
+                    crate::schema::clan::ClanType::Private,
+                ])
+            } else {
+                crate::schema::clan::Column::Variant.is_in(types)
+            })
+            // FIXME don't return clans that are not strictly in the start..end range
+            .paginate(self.orm.as_ref(), 50)
+            .fetch_page(start / 50)
+            .await
+    }
+
+    pub async fn insert_clan(&self, entity: crate::schema::clan::ActiveModel) -> Result<crate::schema::clan::Model, sea_orm::DbErr> {
+        #[cfg(debug_assertions)]
+        assert!(matches!(entity.id, sea_orm::ActiveValue::NotSet));
+        entity.insert(self.orm.as_ref()).await
+    }
+
+    pub async fn update_clan(&self, entity: crate::schema::clan::ActiveModel) -> Result<crate::schema::clan::Model, sea_orm::DbErr> {
+        entity.update(self.orm.as_ref()).await
+    }
+
+    pub async fn clan_members_by_clan_id(&self, clan_id: i32) -> Result<Vec<(crate::schema::clan_member::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan_member::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .filter(crate::schema::clan_member::Column::ClanId.eq(clan_id))
+            .filter(crate::schema::clan_member::Column::Status.is_in([
+                crate::schema::clan_member::ClanMemberStatus::Invited,
+                crate::schema::clan_member::ClanMemberStatus::Confirmed,
+            ]))
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(member, user)| user.map(|user| (member, user)))
+            .collect()
+        )
+    }
+
+    pub async fn clan_leaders_by_clan_ids(&self, clan_ids: impl std::iter::Iterator<Item=i32>) -> Result<Vec<(crate::schema::clan_member::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::clan_member::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .filter(crate::schema::clan_member::Column::ClanId.is_in(clan_ids))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Confirmed))
+            .filter(crate::schema::clan_member::Column::Rank.eq(crate::schema::clan_member::ClanMemberRank::Leader))
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(member, user)| user.map(|user| (member, user)))
+            .collect()
+        )
+    }
+
+    pub async fn insert_clan_member(&self, entity: crate::schema::clan_member::ActiveModel) -> Result<crate::schema::clan_member::Model, sea_orm::DbErr> {
+        #[cfg(debug_assertions)]
+        assert!(matches!(entity.id, sea_orm::ActiveValue::NotSet));
+        entity.insert(self.orm.as_ref()).await
+    }
+
+    pub async fn update_clan_member(&self, entity: crate::schema::clan_member::ActiveModel) -> Result<crate::schema::clan_member::Model, sea_orm::DbErr> {
+        entity.update(self.orm.as_ref()).await
+    }
+
+    pub async fn update_clan_member_decline_all_invites(&self, user_id: i32) -> Result<(), sea_orm::DbErr> {
+        crate::schema::clan_member::Entity::update_many()
+            .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Invited))
+            .col_expr(crate::schema::clan_member::Column::Status, sea_orm::sea_query::Expr::value(crate::schema::clan_member::ClanMemberStatus::Deactivated))
+            .exec(self.orm.as_ref())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn count_clan_members_by_clan_id(&self, clan_id: i32) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::clan_member::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .filter(crate::schema::clan_member::Column::ClanId.eq(clan_id))
+            .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Confirmed))
+            .count(self.orm.as_ref())
+            .await
+    }
+
     pub async fn metrics(&self) -> super::DatabaseMetrics {
         self.metrics.lock().unwrap().snapshot()
     }

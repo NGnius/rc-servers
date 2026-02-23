@@ -23,6 +23,19 @@ mod platoon_leave;
 mod platoon_kick;
 mod platoon_invites;
 mod platoon_status;
+mod clan_create;
+mod clan_my_info;
+mod clan_join;
+mod clan_leave;
+mod clan_member_remove;
+mod clan_modify;
+mod clan_invite_to;
+mod clan_invite_accept;
+mod clan_invite_decline;
+mod clan_invite_decline_all;
+mod clan_invite_cancel;
+mod clan_member_rerank;
+mod clan_experience_poll;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -30,14 +43,12 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy,
     OperationsHandler::<crate::UserTy, crate::data::custom::CustomType>::new()
         .modify(oj_rc_core::polariton::RcOpModifier)
         .add(more_auth::more_lobby_auth(init_ctx))
-        //.add(polariton_server::operations::Ack::<33, _>::default()) // get user clan info (this is equivalent to not being in a clan)
         .add(friend_list::friends_provider(init_ctx)) // TODO friend object parsing Token: 0x0200169C RID: 5788
         .add(settings::settings_provider()) // TODO save settings persistently
-        .add(polariton_server::operations::Ack::<43, _>::default()) // get my clan info (this is equivalent to not being in a clan)
-        .add(clan_invite::clan_invites_provider())
-        //.add(polariton_server::operations::Ack::<19, _>::default()) // get pending platoon invite (this is equivalent to having no pending invite)
+        .add(clan_my_info::clan_info_provider())
+        .add(clan_invite::clan_invites_provider(init_ctx))
         .add(platoon_invites::platoon_pending_provider(init_ctx))
-        .add(clan_info::clan_info_provider())
+        .add(clan_info::clan_info_provider(init_ctx))
         .add(search_clan::search_clans_provider())
         .add(polariton_server::operations::Ack::<52, _>::default()) // validate pending season rewards (this just always needs to be ack-ed)
         .add(season_rewards::season_rewards_provider())
@@ -60,4 +71,16 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy,
         .add(platoon_leave::platoon_leave_provider(init_ctx))
         .add(platoon_kick::platoon_kick_provider(init_ctx))
         .add(platoon_status::platoon_update_provider(init_ctx))
+        .add(clan_create::creat_clan_provider(init_ctx))
+        .add(clan_join::clan_join_provider(init_ctx))
+        .add(clan_leave::clan_leave_provider(init_ctx))
+        .add(clan_member_remove::clan_remove_provider(init_ctx))
+        .add(clan_modify::update_clan_provider(init_ctx))
+        .add(clan_invite_to::invite_to_clan_provider(init_ctx))
+        .add(clan_invite_accept::clan_accept_provider(init_ctx))
+        .add(clan_invite_decline::clan_decline_provider(init_ctx))
+        .add(clan_invite_decline_all::clan_decline_all_provider(init_ctx))
+        .add(clan_invite_cancel::clan_cancel_provider(init_ctx))
+        .add(clan_member_rerank::clan_rank_change_provider(init_ctx))
+        .add(clan_experience_poll::clan_experience_provider())
 }

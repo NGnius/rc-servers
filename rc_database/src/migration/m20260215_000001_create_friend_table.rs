@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CreationTime).big_integer().not_null())
+                    .col(ColumnDef::new(crate::schema::friend::Column::CreationTime).big_integer().not_null())
                     .col(ColumnDef::new(crate::schema::friend::Column::FriendSource).integer().not_null())
                     .foreign_key(
                         ForeignKey::create()

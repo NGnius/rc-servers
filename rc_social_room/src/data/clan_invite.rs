@@ -21,4 +21,15 @@ impl ClanInviteInfo {
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),
         ].into())
     }
+
+    pub fn from_core(core: oj_rc_core::persist::user::ClanInviteData) -> Self {
+        Self {
+            username: core.public_id,
+            display_name: core.display_name,
+            clan_name: core.clan_name,
+            clan_size: core.size,
+            use_custom_avatar: core.avatar_id.is_none(),
+            avatar_id: core.avatar_id.unwrap_or_default(),
+        }
+    }
 }

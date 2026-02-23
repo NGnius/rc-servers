@@ -30,25 +30,84 @@ impl ClanMember {
 #[repr(u8)]
 #[derive(Copy, Clone)]
 pub enum ClanMemberState {
-    Idk0,
-    Idk1,
-    Idk2,
-    // TODO figure out how many of these there are (and what they mean)
+    Invited = 0, // Invited
+    Confirmed = 1, // Confirmed
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ClanMemberRank {
     Member = 0,
     Officer = 1,
     Leader = 2,
 }
 
+impl ClanMemberRank {
+    #[inline]
+    pub fn from_core(rank: oj_rc_core::persist::user::ClanMemberRank) -> Self {
+        match rank {
+            oj_rc_core::persist::user::ClanMemberRank::Member => Self::Member,
+            oj_rc_core::persist::user::ClanMemberRank::Officer => Self::Officer,
+            oj_rc_core::persist::user::ClanMemberRank::Leader => Self::Leader,
+        }
+    }
+
+    #[inline]
+    pub fn to_core(self) -> oj_rc_core::persist::user::ClanMemberRank {
+        match self {
+            Self::Member => oj_rc_core::persist::user::ClanMemberRank::Member,
+            Self::Officer => oj_rc_core::persist::user::ClanMemberRank::Officer,
+            Self::Leader => oj_rc_core::persist::user::ClanMemberRank::Leader,
+        }
+    }
+
+    pub fn from_u8(num: u8) -> Option<Self> {
+        match num {
+            0 => Some(Self::Member),
+            1 => Some(Self::Officer),
+            2 => Some(Self::Leader),
+            _ => None,
+        }
+    }
+}
+
 #[repr(u8)]
 #[derive(Copy, Clone)]
 pub enum ClanType {
-    Open = 1,
-    Closed = 2,
+    Open = 0,
+    Closed = 1,
+}
+
+impl ClanType {
+    #[inline]
+    pub fn from_u8(num: u8) -> Option<Self> {
+        match num {
+            0 => Some(Self::Open),
+            1 => Some(Self::Closed),
+            _ => None
+        }
+    }
+
+    #[inline]
+    pub fn to_u8(self) -> u8 {
+        self as u8
+    }
+
+    #[inline]
+    pub fn to_core(self) -> oj_rc_core::persist::user::ClanType {
+        match self {
+            Self::Open => oj_rc_core::persist::user::ClanType::Open,
+            Self::Closed => oj_rc_core::persist::user::ClanType::Closed,
+        }
+    }
+
+    #[inline]
+    pub fn from_core(ty: oj_rc_core::persist::user::ClanType) -> Self {
+        match ty {
+            oj_rc_core::persist::user::ClanType::Open => Self::Open,
+            oj_rc_core::persist::user::ClanType::Closed => Self::Closed,
+        }
+    }
 }
 
 pub struct ClanInfo {

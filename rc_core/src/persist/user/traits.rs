@@ -462,6 +462,20 @@ pub trait SocialUser: Send + Sync {
     async fn has_unclaimed_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn get_unclaimed_match_rewards(&self) -> Result<MatchRewards, polariton_server::operations::SimpleOpError>;
     async fn claim_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn my_clan_info(&self, include_members: bool) -> Result<Option<(ClanData, Vec<ClanMember>)>, polariton_server::operations::SimpleOpError>;
+    async fn clan_info(&self, clan_name: &str) -> Result<Option<(ClanData, Vec<ClanMember>)>, polariton_server::operations::SimpleOpError>;
+    async fn search_clan(&self, search: ClanSearchQuery)-> Result<Vec<ClanData>, polariton_server::operations::SimpleOpError>;
+    async fn create_clan(&self, clan: ClanData, avatar: Vec<u8>)-> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
+    async fn join_clan(&self, clan_name: &str) -> Result<(ClanData, Vec<ClanMember>), polariton_server::operations::SimpleOpError>;
+    async fn leave_clan(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn remove_user_from_clan(&self, public_id: &str) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn update_clan(&self, name: Option<String>, description: Option<String>, ty: Option<ClanType>, avatar: Option<Vec<u8>>) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
+    async fn invite_to_clan(&self, public_id: &str) -> Result<ClanMember, polariton_server::operations::SimpleOpError>;
+    async fn my_clan_invites(&self) -> Result<Vec<ClanInviteData>, polariton_server::operations::SimpleOpError>;
+    async fn decline_clan_invite(&self, clan_name: &str) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
+    async fn decline_all_clan_invites(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn cancel_invite_to_clan(&self, public_id: &str) -> Result<(ClanData, Vec<ClanMember>), polariton_server::operations::SimpleOpError>;
+    async fn update_clan_member(&self, public_id: &str, rank: ClanMemberRank) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
 }
 
 #[async_trait::async_trait]
@@ -506,6 +520,7 @@ pub struct SocialInfo {
     pub avatar_id: Option<i32>,
 }
 
+#[derive(Clone, Copy)]
 pub enum FriendInviteStatus {
     InviteSent,
     InvitePending,
@@ -527,6 +542,92 @@ impl FriendInviteStatus {
             oj_rc_database::schema::friend::FriendStatus::Removed => Self::Removed,
         }
     }
+}
+
+pub struct ClanData {
+    pub name: String,
+    pub description: String,
+    pub ty: ClanType,
+    pub size: i32,
+}
+
+pub struct ClanInviteData {
+    pub public_id: String,
+    pub display_name: String,
+    pub avatar_id: Option<i32>,
+    pub clan_name: String,
+    pub clan_description: String,
+    pub size: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ClanType {
+    Open,
+    Closed,
+}
+
+impl ClanType {
+    #[inline]
+    pub(super) fn db_to_core(status: &oj_rc_database::schema::clan::ClanType) -> Self {
+        match status {
+            oj_rc_database::schema::clan::ClanType::Public => Self::Open,
+            oj_rc_database::schema::clan::ClanType::Private => Self::Closed,
+            oj_rc_database::schema::clan::ClanType::Banned => Self::Closed,
+            oj_rc_database::schema::clan::ClanType::Abandoned => Self::Closed,
+        }
+    }
+
+    #[inline]
+    pub(super) fn core_to_db(self) -> oj_rc_database::schema::clan::ClanType {
+        match self {
+            Self::Open => oj_rc_database::schema::clan::ClanType::Public,
+            Self::Closed => oj_rc_database::schema::clan::ClanType::Private,
+        }
+    }
+}
+
+pub struct ClanMember {
+    pub public_id: String,
+    pub display_name: String,
+    pub is_confirmed: bool,
+    pub avatar_id: Option<i32>,
+    pub rank: ClanMemberRank,
+    pub season_xp: i32,
+}
+
+#[derive(Clone, Copy)]
+pub enum ClanMemberRank {
+    Member,
+    Officer,
+    Leader,
+}
+
+impl ClanMemberRank {
+    #[inline]
+    pub(super) fn db_to_core(status: &oj_rc_database::schema::clan_member::ClanMemberRank) -> Self {
+        match status {
+            oj_rc_database::schema::clan_member::ClanMemberRank::Member => Self::Member,
+            oj_rc_database::schema::clan_member::ClanMemberRank::Officer => Self::Officer,
+            oj_rc_database::schema::clan_member::ClanMemberRank::Leader => Self::Leader,
+        }
+    }
+    #[inline]
+    pub(super) fn core_to_db(self) -> oj_rc_database::schema::clan_member::ClanMemberRank {
+        match self {
+            Self::Member => oj_rc_database::schema::clan_member::ClanMemberRank::Member,
+            Self::Officer => oj_rc_database::schema::clan_member::ClanMemberRank::Officer,
+            Self::Leader => oj_rc_database::schema::clan_member::ClanMemberRank::Leader,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ClanSearchQuery {
+    pub search_string: String,
+    pub days_since_active: i32,
+    pub start_range: i32,
+    pub end_range: i32,
+    pub types: Vec<ClanType>,
 }
 
 #[async_trait::async_trait]
