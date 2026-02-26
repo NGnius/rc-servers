@@ -1,5 +1,6 @@
 use actix_web::{web::{Data, Json}, Error, post};
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 
 use super::Response;
 
@@ -26,7 +27,7 @@ struct TokenRequest {
 
 #[derive(Serialize)]
 struct TokenResponse {
-    // url and data should be mutually exclusive
+    // TODO url and data should be mutually exclusive
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<String>, // open browser to URL
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -36,12 +37,16 @@ struct TokenResponse {
 type ItemResponse = Response<TokenResponse>;
 
 #[post("/robopay/token")]
-pub async fn robopay_token(_cli: Data<crate::cli::CliArgs>, body: Json<TokenRequest>) -> Result<Json<ItemResponse>, Error> {
-    // TODO authentication (Authorization header is "Robocraft {JWT token from auth}")
-    log::debug!("robopay token post body: {:?}", body);
+pub async fn robopay_token(_cli: Data<crate::cli::CliArgs>, _body: Json<TokenRequest>, auth: super::PaymentToken) -> Result<Json<ItemResponse>, Error> {
+    //log::debug!("robopay token post body: {:?}", body);
+    //log::debug!("robopay token post token: {:?}", auth.token);
+    //log::debug!("robopay token post user: {:?}", auth.data.public_id);
+    let hashed_token = sha2::Sha512::digest(auth.token.as_bytes());
+    let hex_token = hex::encode(&hashed_token);
+    let tagged_url = format!("https://cheofoundation.donordrive.com/participants/64767?referrer=openjam&token={}", hex_token);
     Ok(Json(Response {
         response: TokenResponse {
-            url: Some("https://cncycle.cheofoundation.com/".to_owned()),
+            url: Some(tagged_url),
             data: None,
         }
     }))

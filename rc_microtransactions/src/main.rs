@@ -21,6 +21,7 @@ async fn main() -> std::io::Result<()> {
     let cli_args = cli::CliArgs::get();
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
+    let token_secret = actix_web::web::Data::new(robocraft::TokenSecret::load(&cli_args.data_robocraft).await?);
 
     HttpServer::new(move || {
         App::new()
@@ -30,6 +31,7 @@ async fn main() -> std::io::Result<()> {
                 srv.call(req)
             })
             .app_data(cli_args2.clone())
+            .app_data(token_secret.clone())
             .service(index)
             .service(robocraft::robopay_store)
             .service(robocraft::robopay_token)

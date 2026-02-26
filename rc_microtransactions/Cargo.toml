@@ -16,3 +16,10 @@ git-version.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+tokio = { version = "1.43", features = [ "net", "macros", "rt-multi-thread", "io-util" ] }
+# token transforming
+jsonwebtoken.workspace = true
+oj_rc_core = { version = "*", path = "../rc_core" }
+sha2 = "0.10"
+hex.workspace = true

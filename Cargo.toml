@@ -52,3 +52,4 @@ hex = "0.4"
 base64 = "0.22"
 #oj_serdes = { version = "0.3.0", path = "../oj_core/serdes" }
 oj_serdes = "0.3.0"
+jsonwebtoken = { version = "10", features = [ "rust_crypto" ] }

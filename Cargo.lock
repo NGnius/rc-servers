@@ -2623,10 +2623,15 @@ dependencies = [
  "clap",
  "env_logger",
  "git-version",
+ "hex",
+ "jsonwebtoken",
  "libfj",
  "log",
+ "oj_rc_core",
  "serde",
  "serde_json",
+ "sha2",
+ "tokio",
 ]
 
 [[package]]
