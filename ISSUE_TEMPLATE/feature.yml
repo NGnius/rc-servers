@@ -1,0 +1,23 @@
+name: "Feature Request"
+description: "Request new functionality"
+labels: "feature"
+body:
+  - type: textarea
+    id: desired-behaviour
+    attributes:
+      label: What should be added?
+      description: A clear and concise description of the feature you'd like.
+      placeholder: |
+        E14 should be winning since Bang Bang Badger is backing them.
+    validations:
+      required: true
+  - type: textarea
+    id: extras
+    attributes:
+      label: Anything else?
+      description: |
+        Screenshots? Version? Miscellaneous thoughts? Motivation?
+
+        Tip: You can attach files by clicking this area to highlight it and then dragging them in.
+    validations:
+      required: false

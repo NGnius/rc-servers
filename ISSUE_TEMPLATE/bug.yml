@@ -1,6 +1,7 @@
 name: "Bug Report"
 description: "Report an issue"
 labels: "bug"
+projects: "HQ"
 body:
   - type: textarea
     id: buggy-behaviour
@@ -21,24 +22,15 @@ body:
         4. See error......
     validations:
       required: true
-  - type: dropdown
-    id: game
-    attributes:
-      label: Game
-      multiple: true
-      options:
-        - Cardlife
-        - Robocraft
-    validations:
-      required: true
   - type: textarea
     id: extras
     attributes:
       label: Anything else?
       description: |
         Screenshots? Operating System? Version?
-        Please include the log (in your Robocraft folder, `outputLog#.txt` where `#` is a digit 0 through 9).
+        Please include the client log (in your Robocraft folder, `outputLog#.txt` where `#` is a digit 0 through 9).
+        If you have access to the server logs, please also include any relevant service logs.
 
-        Tip: You can attach files by clicking this area to highlight it and then dragging them in.
+        Tip: You can attach files by clicking this area to highlight it and then dragging the files in.
     validations:
       required: false

@@ -6,17 +6,7 @@ body:
     attributes:
       label: Description
       description: What does this change accomplish?
-      placeholder: 'This changes the sky from blue to red and fixes issue #42'
-    validations:
-      required: true
-  - type: dropdown
-    id: game
-    attributes:
-      label: Game
-      multiple: true
-      options:
-        - Cardlife
-        - Robocraft
+      placeholder: 'This changes the CF-Alliance to E14 and fixes issue #42'
     validations:
       required: true
   - type: checkboxes
@@ -24,9 +14,11 @@ body:
     attributes:
       label: Please confirm
       options:
-        - label: I am the legal owner or represent the owner of all work submitted
+        - label: I am the legal owner or represent the legal owner of all work submitted (including LLM-generated code, if any)
           required: true
-        - label: I consent to my submission being added to this FOSS project
+        - label: I consent to my changes being added to this FOSS project
+          required: true
+        - label: I have confirmed that this does not add new errors or warnings with `utils/clippy.sh`
           required: true
         - label: This PR used LLMs to generate some or all of the code changes
           required: false

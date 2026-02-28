@@ -1,0 +1,32 @@
+name: "Enhancement"
+description: "Request an improvement to existing functionality"
+labels: "enhancement"
+body:
+  - type: textarea
+    id: current-behaviour
+    attributes:
+      label: What currently happens?
+      description: A clear and concise description of what happens now.
+      placeholder: |
+        The CF-Alliance is winning the war.
+    validations:
+      required: true
+  - type: textarea
+    id: desired-behaviour
+    attributes:
+      label: What should happen instead?
+      description: A clear and concise description of the change you'd like made.
+      placeholder: |
+        E14 should be winning since Bang Bang Badger is backing them.
+    validations:
+      required: true
+  - type: textarea
+    id: extras
+    attributes:
+      label: Anything else?
+      description: |
+        Screenshots? Version? Miscellaneous thoughts? Motivation?
+
+        Tip: You can attach files by clicking this area to highlight it and then dragging them in.
+    validations:
+      required: false
