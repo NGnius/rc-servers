@@ -19,7 +19,7 @@ impl ChatCPlugin {
         let dll = unsafe { libloading::Library::new(file.as_ref()) }?;
         Ok(Self {
             dll,
-            pretty_name: file.as_ref().to_string_lossy().to_string(),
+            pretty_name: file.as_ref().display().to_string(),
             provider: std::sync::Mutex::new(None),
         })
     }

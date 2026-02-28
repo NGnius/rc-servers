@@ -29,3 +29,4 @@ pub mod quest;
 pub mod score_multipliers;
 //pub use oj_rc_core::data::campaign;
 pub use oj_rc_core::data::crf;
+pub mod vehicle_validation;

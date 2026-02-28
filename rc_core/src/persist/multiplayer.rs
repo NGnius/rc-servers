@@ -20,6 +20,8 @@ pub struct MultiplayerConfig {
     pub pit_config: PitConfig,
     #[serde(default = "default_tdm_conf")]
     pub team_death_match: TeamDeathMatchConfig,
+    #[serde(default = "default_validator")]
+    pub vehicle_validator: super::VehicleValidator,
 }
 
 impl super::config::SelfValidator for MultiplayerConfig {
@@ -523,5 +525,12 @@ pub(super) fn default_tdm_conf() -> TeamDeathMatchConfig {
     TeamDeathMatchConfig {
         respawn_time_s: default_respawn_time(),
         self_destruct_is_kill: true,
+    }
+}
+
+pub(super) fn default_validator() -> super::VehicleValidator {
+    super::VehicleValidator::Cpu {
+        min: 100,
+        max: 2_000,
     }
 }

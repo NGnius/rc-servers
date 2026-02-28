@@ -859,6 +859,36 @@ impl <C: Clone + Send> super::User<C> for UserData {
         })
     }
 
+    async fn selected_vehicle_data(&self) -> Result<super::VehicleData, polariton_server::operations::SimpleOpError> {
+        let garage = self.db.garage_selected(self.account.id).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve selected garage data for user_id {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    "Failed to retrieve selected garage data for user".to_owned(),
+                )
+            })?
+            .ok_or_else(|| {
+                log::error!("No selected garage data for user_id {}", self.account.id);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::UnexpectedError as i16,
+                    "No selected garage data for user".to_owned(),
+                )
+            })?;
+        Ok(super::VehicleData {
+            name: Some(garage.name),
+            slot: garage.slot,
+            robot_data: garage.robot_data,
+            colour_data: garage.colour_data,
+            weapon_order: oj_rc_database::schema::parse_int_csv(&garage.weapon_order)
+                .into_iter()
+                .map(|x| x as i32)
+                .collect(),
+            crf_id: garage.crf_id,
+            was_rated: Some(garage.was_rated),
+        })
+    }
+
     async fn all_slots(&self) -> super::UserSlots<C> {
         let slots = match self.all_vehicles().await {
             Ok(slots) => slots,

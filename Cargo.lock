@@ -2661,6 +2661,7 @@ dependencies = [
  "oj_polariton_auth",
  "oj_rc_core",
  "oj_rc_factory",
+ "oj_rc_plugins",
  "oj_serdes",
  "polariton",
  "polariton_server",

@@ -40,6 +40,7 @@ pub trait ConfigProvider<C: Clone> {
     fn tdm_settings(&self) -> TeamDeathMatchSettings;
     fn shop_entries(&self) -> ShopEntriesResolver;
     fn promo_codes(&self) -> std::collections::HashMap<String, PromoCode>;
+    fn vehicle_validation(&self) -> VehicleValidators;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -535,4 +536,12 @@ pub struct MultiplayerSettings {
     pub is_enabled: bool,
     pub lobby_autostart_after: Option<std::time::Duration>,
     pub loading_autostart_after: Option<std::time::Duration>,
+}
+
+pub struct VehicleValidators {
+    // FIXME don't use serializable types in traits
+    pub multiplayer: crate::persist::VehicleValidator,
+    pub custom_game: crate::persist::VehicleValidator,
+    pub singleplayer: crate::persist::VehicleValidator,
+    pub campaigns: std::collections::HashMap<String, crate::persist::VehicleValidator>,
 }

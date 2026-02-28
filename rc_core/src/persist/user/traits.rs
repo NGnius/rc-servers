@@ -78,6 +78,7 @@ pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + Multipla
     async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
+    async fn selected_vehicle_data(&self) -> Result<VehicleData, polariton_server::operations::SimpleOpError>;
     async fn all_slots(&self) -> UserSlots<C>;
     async fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
     async fn save_slot(&self, vehicle: VehicleData, cpu_counter: &crate::cubes::CpuListParser) -> Result<(), i16>;

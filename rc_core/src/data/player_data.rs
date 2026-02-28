@@ -108,7 +108,7 @@ impl PlayerDatas {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
         let mut buf = Vec::new();
         let write_size = self.dump(&mut std::io::Cursor::new(&mut buf)).unwrap();
-        log::debug!("PlayerDatas serialized to {} bytes: {:?}", write_size, buf);
+        log::debug!("PlayerDatas serialized to {} bytes", write_size);
         Typed::Bytes(buf.into())
     }
 }

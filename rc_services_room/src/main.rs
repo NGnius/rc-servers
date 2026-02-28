@@ -4,6 +4,7 @@ mod cli;
 mod data;
 mod events;
 mod operations;
+mod vehicle_validators;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -23,6 +24,7 @@ pub struct InitConfig {
     pub users: std::sync::Arc<oj_rc_core::persist::user::UserImpl>,
     pub factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     pub parsers: oj_rc_core::cubes::CubeParsers,
+    pub vehicle_validators: vehicle_validators::InitedVehicleValidators,
 }
 
 #[tokio::main]
@@ -35,11 +37,18 @@ async fn main() -> std::io::Result<()> {
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &cubes).await.expect("Bad user data"));
     let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&cubes, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config"));
     let parsers = oj_rc_core::cubes::CubeParsers::new(&cubes);
+    let vehicle_validator_plugins_path = std::path::PathBuf::from(&args.data).join("plugins/vehicle_validation");
+    let vehicle_validators = vehicle_validators::validators_from_conf(
+        &<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::vehicle_validation(&cubes),
+        &parsers,
+        vehicle_validator_plugins_path,
+    );
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,
         factory,
         parsers,
+        vehicle_validators
     });
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));

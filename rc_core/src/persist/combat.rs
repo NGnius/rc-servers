@@ -428,6 +428,7 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
                         time_max: 60,
                     }
                 ],
+                vehicle_validator: super::VehicleValidator::None,
             }
         ],
         vehicles: vec![
@@ -454,6 +455,7 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
         ],
         max_teammates: 0,
         max_enemies: 5,
+        vehicle_validator: super::VehicleValidator::None,
     }
 }
 
@@ -629,6 +631,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         battle_arena: super::multiplayer::default_ba_conf(),
         pit_config: super::multiplayer::default_pit_conf(),
         team_death_match: super::multiplayer::default_tdm_conf(),
+        vehicle_validator: super::multiplayer::default_validator(),
     }
 }
 

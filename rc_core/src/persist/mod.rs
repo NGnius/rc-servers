@@ -44,6 +44,9 @@ pub use maps::{MapsConfig, MapConfig};
 mod item_shop;
 pub use item_shop::{ItemShopConfig, ItemBundle};
 
+mod vehicle_validator;
+pub use vehicle_validator::VehicleValidator;
+
  const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

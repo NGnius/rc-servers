@@ -75,7 +75,8 @@ mod reconnect_game;
 mod regen_config;
 mod pageantry;
 mod signup_time;
-mod validate_machine;
+mod validate_vehicle_by_lobby;
+mod validate_vehicle_by_campaign;
 mod game_mode_config;
 mod score_multipliers_config;
 mod player_robot_rank;
@@ -202,11 +203,11 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(regen_config::auto_regen_config_provider(&init_ctx.cubes))
         .add(pageantry::after_battle_vote_thresholds_provider(&init_ctx.cubes))
         .add(signup_time::user_signup_date_provider())
-        .add(validate_machine::validate_robot_provider())
+        .add(validate_vehicle_by_lobby::validate_robot_provider(&init_ctx.vehicle_validators))
         .add(game_mode_config::game_mode_config_provider(&init_ctx.cubes))
         .add(score_multipliers_config::tdm_ai_score_config_provider())
         .add(player_robot_rank::player_robot_rank_provider())
-        .add(validate_machine::validate_campaign_robot_provider())
+        .add(validate_vehicle_by_campaign::validate_campaign_robot_provider(&init_ctx.vehicle_validators))
         .add(singleplayer_campaigns::singleplayer_complete_campaign_provider(init_ctx))
         .add(campaign_save_result::campaign_save_awards_provider())
         .add(singleplayer_campaigns::singleplayer_save_complete_campaign_provider()) // TODO handle UpdatePlayerCompletedCampaignWaveRequest saving

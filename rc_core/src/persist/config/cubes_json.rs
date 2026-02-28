@@ -553,4 +553,15 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
         map
     }
+
+    fn vehicle_validation(&self) -> super::VehicleValidators {
+        super::VehicleValidators {
+            multiplayer: self.battle.multiplayer.vehicle_validator.clone(),
+            custom_game: crate::persist::VehicleValidator::None, // TODO
+            singleplayer: self.battle.singleplayer.vehicle_validator.clone(),
+            campaigns: self.battle.singleplayer.campaigns.iter()
+                .map(|campaign| (campaign.id.clone(), campaign.vehicle_validator.clone()))
+                .collect(),
+        }
+    }
 }

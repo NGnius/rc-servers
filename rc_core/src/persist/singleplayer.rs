@@ -7,6 +7,8 @@ pub struct SingleplayerConfig {
     pub vehicles: Vec<super::PrefabVehicle>,
     pub max_teammates: u32,
     pub max_enemies: u32,
+    #[serde(default = "default_singleplayer_vehicle_validator")]
+    pub vehicle_validator: super::VehicleValidator,
 }
 
 impl SingleplayerConfig {
@@ -62,6 +64,8 @@ pub struct Campaign {
     pub map: String,
     pub campaign_type: CampaignType,
     pub waves: Vec<Wave>,
+    #[serde(default = "default_campaign_vehicle_validator")]
+    pub vehicle_validator: super::VehicleValidator,
 }
 
 impl Campaign {
@@ -192,4 +196,12 @@ impl std::convert::From<CampaignType> for crate::data::campaign::CampaignType {
 
 fn default_campaigns() -> Vec<Campaign> {
     super::combat::default_campaigns().campaigns
+}
+
+fn default_campaign_vehicle_validator() -> super::VehicleValidator {
+    super::VehicleValidator::None
+}
+
+fn default_singleplayer_vehicle_validator() -> super::VehicleValidator {
+    super::VehicleValidator::None
 }
