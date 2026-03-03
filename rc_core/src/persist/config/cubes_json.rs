@@ -300,6 +300,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             intercom_url: self.settings.server.intercom_url.trim_end_matches('/').to_owned(),
             minimum_version: self.settings.server.min_version as i32,
             dos_protect: self.settings.server.dos_protection,
+            maintenance_message: self.settings.server.maintenance_message.clone(),
         }
     }
 

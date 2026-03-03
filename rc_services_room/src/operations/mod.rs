@@ -117,7 +117,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(eac::EacChallengeIgnorer)
         .add(more_auth::MoreLobbyAuth)
         .add(versioner::version_teller(&init_ctx.cubes))
-        .add(maintenancer::MaintenanceModeTeller)
+        .add(maintenancer::maintenace_teller(&init_ctx.cubes))
         .add(game_quality::QualityConfigTeller)
         .add(login_flags::UserFlagsTeller)
         .add(polariton_server::operations::Ack::<132, _>::default()) // verify user level
