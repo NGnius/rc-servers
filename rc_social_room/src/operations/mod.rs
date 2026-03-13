@@ -36,6 +36,7 @@ mod clan_invite_decline_all;
 mod clan_invite_cancel;
 mod clan_member_rerank;
 mod clan_experience_poll;
+mod user_can_be_custom_gamed;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -66,6 +67,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy,
         .add(friend_remove::friend_remove_provider(init_ctx))
         .add(platoon_invite_to::platoon_invite_provider(init_ctx))
         .add(user_can_be_platooned::can_invite_to_platoon_provider(init_ctx))
+        .add(user_can_be_custom_gamed::can_invite_to_custom_game_provider(init_ctx))
         .add(platoon_invite_accept::platoon_accepter_provider(init_ctx))
         .add(platoon_invite_decline::platoon_decliner_provider(init_ctx))
         .add(platoon_leave::platoon_leave_provider(init_ctx))

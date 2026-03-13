@@ -5,6 +5,8 @@ mod data;
 mod events;
 mod operations;
 mod vehicle_validators;
+mod custom_game_tracker;
+mod user_service;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -25,6 +27,8 @@ pub struct InitConfig {
     pub factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     pub parsers: oj_rc_core::cubes::CubeParsers,
     pub vehicle_validators: vehicle_validators::InitedVehicleValidators,
+    pub custom_games: std::sync::Arc<custom_game_tracker::CustomGameMesh>,
+    pub user_mesh: std::sync::Arc<user_service::UserMesh>,
 }
 
 #[tokio::main]
@@ -48,7 +52,9 @@ async fn main() -> std::io::Result<()> {
         users,
         factory,
         parsers,
-        vehicle_validators
+        vehicle_validators,
+        custom_games: std::sync::Arc::new(custom_game_tracker::CustomGameMesh::new()),
+        user_mesh: std::sync::Arc::new(user_service::UserMesh::new()),
     });
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));
@@ -77,7 +83,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAddr, server: std::sync::Arc<polariton_server::Server<crate::UserTy>>, init_ctx: std::sync::Arc<InitConfig>) {
-    let login_num = std::sync::Arc::new(LOGINS.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+    let login_num = LOGINS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     log::debug!("Accepting connection from address {} (login #{})", address, login_num);
     let enc = match do_connect_handshake(&mut socket).await {
         Some(x) => x,
@@ -86,31 +92,25 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
             return;
         }
     };
-    {
-        if let Ok(mut handles) = USER_HANDLES.lock() {
-            handles.push(std::sync::Arc::downgrade(&login_num));
-            ONLINE_USERS.store(handles.len() as u64, std::sync::atomic::Ordering::SeqCst);
-        } else {
-            // this should never happen
-            log::warn!("USER_HANDLES lock is poisoned, cannot track online users anymore (please restart)");
-        }
-    }
     let (socket_r, socket_w) = socket.into_split();
     let (chann_tx, chann_rx) = tokio::sync::mpsc::unbounded_channel();
     let user_state = std::sync::Arc::new(oj_rc_core::UserState::<()>::new(init_ctx.users.clone(), chann_tx.clone()));
     let ctx = polariton::packet::SerdesContext::from_boxed(Default::default(), enc);
     server.handle_async_with_channel_join(socket_r, socket_w, user_state.clone(), ctx, chann_tx, chann_rx).await;
     log::debug!("Goodbye connection from address {} (login #{})", address, login_num);
-    drop(login_num); // explicit for good measure
-    {
-        if let Ok(mut handles) = USER_HANDLES.lock() {
-            handles.retain(|x| x.strong_count() != 0);
-            ONLINE_USERS.store(handles.len() as u64, std::sync::atomic::Ordering::SeqCst);
-        } else {
-            // this should never happen
-            ONLINE_USERS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-            log::warn!("USER_HANDLES lock is poisoned, cannot track online users anymore (please restart)");
+    if let Ok(user) = user_state.user() {
+        let pub_id = user.public_id();
+        init_ctx.user_mesh.remove_user(pub_id.to_owned()).await;
+        if let Some(session) = init_ctx.custom_games.leave_game(pub_id).await.1 {
+            let session_members = session.users.iter()
+                .filter(|mem| !mem.is_invited)
+                .map(|mem| &mem.public_id as &str);
+            let update_event = crate::events::CustomGameRefresh {
+                session: session.session_id,
+            };
+            init_ctx.user_mesh.broadcast_event_to(session_members, update_event).await;
         }
+        ONLINE_USERS.store(init_ctx.user_mesh.user_count().await as u64, std::sync::atomic::Ordering::SeqCst);
     }
     if let Ok(user_info) = user_state.user() {
         update_status(user_info.as_ref().as_ref()).await;

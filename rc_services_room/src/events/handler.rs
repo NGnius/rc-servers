@@ -4,7 +4,7 @@ use oj_rc_core::persist::user::intercom::IntercomWebServiceUserMessage;
 pub struct IntercomHandler {
     listener: IntercomListener<IntercomWebServiceUserMessage>,
     user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
-    emitter: polariton_server::events::EventEmitter<()>,
+    emitter: polariton_server::events::WeakEventEmitter<()>,
 }
 
 impl IntercomHandler {
@@ -16,14 +16,14 @@ impl IntercomHandler {
         Self {
             listener,
             user: std::sync::Arc::downgrade(user),
-            emitter: emitter.to_owned(),
+            emitter: emitter.to_owned().downgrade(),
         }
     }
 
     async fn run_loop(
         listener: IntercomListener<IntercomWebServiceUserMessage>,
         user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
-        emitter: polariton_server::events::EventEmitter<()>
+        emitter: polariton_server::events::WeakEventEmitter<()>
     ) {
         use futures::StreamExt;
         let mut listener = listener.listen().await;

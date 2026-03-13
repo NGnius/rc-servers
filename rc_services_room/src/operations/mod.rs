@@ -108,6 +108,14 @@ mod crf_make_featured;
 mod crf_unmake_featured;
 mod tech_tree_unlock_cube;
 mod crf_remove;
+mod custom_game_create;
+mod custom_game_adjust;
+mod custom_game_leave;
+mod custom_game_invite_to;
+mod custom_game_invite_respond;
+mod custom_game_kick;
+mod custom_game_player_state;
+mod custom_game_can_join_queue;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -115,7 +123,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
     OperationsHandler::new()
         .modify(oj_rc_core::polariton::RcOpModifier)
         .add(eac::EacChallengeIgnorer)
-        .add(more_auth::MoreLobbyAuth)
+        .add(more_auth::more_auth_provider(&init_ctx.user_mesh))
         .add(versioner::version_teller(&init_ctx.cubes))
         .add(maintenancer::maintenace_teller(&init_ctx.cubes))
         .add(game_quality::QualityConfigTeller)
@@ -154,7 +162,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(dev_message::dev_message_provider(&init_ctx.cubes))
         .add(custom_games_maps::allowed_maps_provider())
         .add(avatar_info::avatar_get_provider())
-        .add(custom_game_session::get_custom_session_provider())
+        .add(custom_game_session::custom_session_provider(&init_ctx.custom_games))
         .add(user_xp::get_user_xp_provider())
         .add(garage_upgrades::garage_upgrades_provider(&init_ctx.cubes))
         .add(game_event_params::event_system_params_provider(&init_ctx.cubes))
@@ -174,8 +182,8 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(robot_mastery_settings::robot_mastery_settings_provider())
         .add(player_started_purchase::started_purchase_provider())
         .add(custom_games_team::team_setup_provider())
-        .add(polariton_server::operations::Ack::<152, _>::default()) // custom game player state changed (188 is desired state)
-        .add(custom_games_invite::pending_invite_provider())
+        //.add(polariton_server::operations::Ack::<152, _>::default()) // custom game player state changed (188 is desired state)
+        .add(custom_games_invite::pending_invite_provider(init_ctx))
         .add(chat_settings::chat_settings_provider())
         .add(polariton_server::operations::Ack::<19, _>::default()) // save chat settings
         .add(prebuilt_robots::garage_robot_data_provider())
@@ -240,4 +248,12 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(tech_tree_unlock_cube::tech_tree_cube_unlock_provider(&init_ctx.cubes))
         .add(crf_remove::factory_remove_provider(&init_ctx.factory))
         .add(polariton_server::operations::Ack::<94, _>::default()) // ReportCommunityShopItemRequest FIXME: log reports
+        .add(custom_game_create::game_create_provider(&init_ctx.custom_games))
+        .add(custom_game_adjust::game_adjust_provider(init_ctx))
+        .add(custom_game_leave::game_leave_provider(init_ctx))
+        .add(custom_game_invite_to::game_invite_provider(init_ctx))
+        .add(custom_game_invite_respond::game_invite_respond_provider(init_ctx))
+        .add(custom_game_kick::game_kick_provider(init_ctx))
+        .add(custom_game_player_state::game_player_status_update_provider(init_ctx))
+        .add(custom_game_can_join_queue::game_can_queue_provider(init_ctx))
 }

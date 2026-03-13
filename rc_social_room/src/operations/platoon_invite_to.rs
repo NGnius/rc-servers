@@ -96,25 +96,26 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                 }
             } else {
                 // create new platoon
-                let platoon_id = format!("{}-{}", user_info.public_id(), chrono::Utc::now().timestamp());
-                log::debug!("Creating new platoon {} for user {} to invite {}", platoon_id, user_info.public_id(), username.string);
                 let social_infos = user_info.list_social_info(&[
                     username.string.clone(),
                     user_info.public_id().to_owned(),
                 ]).await?;
                 if social_infos.len() != 2 {
-                    log::debug!("User {} info could not be retrieved while creating platoon {}", username.string, platoon_id);
+                    log::debug!("User {} info could not be retrieved while creating new platoon", username.string);
                     return Err(SimpleOpError::with_message(
                         oj_rc_core::data::error_codes::SocialErrorCode::UserDoesNotExist as i16,
                         "User's info could not be retrieved".to_owned(),
                     ));
                 }
-                if self.social.create_platoon(&platoon_id, user_info.public_id()).await.is_none() {
+                let platoon_id = if let Some((_, platoon_key)) = self.social.create_platoon(user_info.public_id()).await {
+                    log::debug!("Created new platoon {} for user {} to invite {}", platoon_key, user_info.public_id(), username.string);
+                    platoon_key
+                } else {
                     return Err(SimpleOpError::with_message(
                         oj_rc_core::data::error_codes::SocialErrorCode::UserNotInPlatoon as i16,
                         "Failed to create platoon".to_owned(),
                     ));
-                }
+                };
                 if let Some(timestamp) = self.social.add_user_to_platoon(&username.string, &platoon_id, crate::data::platoon::MemberStatus::Invited).await {
                     (platoon_id, social_infos, timestamp)
                 } else {

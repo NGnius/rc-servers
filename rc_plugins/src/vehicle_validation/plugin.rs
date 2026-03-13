@@ -1,4 +1,5 @@
 #[repr(u8)]
+#[derive(Debug)]
 pub enum ValidationResultCode {
     Invalid = 0,
     Ok = 1,

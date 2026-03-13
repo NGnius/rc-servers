@@ -1331,6 +1331,37 @@ impl <C: Clone + Send> super::User<C> for UserData {
         Ok(())
     }
 
+    async fn list_avatar_info(&self, public_ids: &[String]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
+        let users = self.db.users_by_public_id(public_ids.iter()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to retrieve friend avatars: {}", e),
+                )
+            })?;
+        let user_ids = users.iter().map(|user| user.id);
+        let user_avatars = self.db.user_auxs_by_user_ids_and_descriptor(user_ids, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    format!("Failed to retrieve friend avatars: {}", e),
+                )
+            })?;
+        let avatar_map: std::collections::HashMap<i32, u32> = user_avatars.iter()
+            .filter_map(|avatar| avatar.data.parse().ok().map(|avatar_id| (avatar.user_id, avatar_id)))
+            .collect();
+        Ok(users.iter()
+            .map(|user| super::SocialInfo {
+                public_id: user.public_id.clone(),
+                display_name: user.display_name.clone(),
+                avatar_id: avatar_map.get(&user.id).and_then(|&avatar_id| if avatar_id == u32::MAX { None } else { Some(avatar_id as i32) }),
+            })
+            .collect()
+        )
+    }
+
     fn current_game_event_setter(&self) -> Box<dyn super::GameEventSetter> {
         Box::new(GameEventSetterImpl {
             db: self.db.clone(),

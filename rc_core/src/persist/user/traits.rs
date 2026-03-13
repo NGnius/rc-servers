@@ -95,6 +95,7 @@ pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + Multipla
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
+    async fn list_avatar_info(&self, public_ids: &[String]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
     fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
     async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<PurchaseResult, polariton_server::operations::SimpleOpError>;
     async fn currency_debit(&self, ty: CurrencyType, to_sub: u64) -> Result<(), polariton_server::operations::SimpleOpError>;

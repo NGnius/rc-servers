@@ -27,6 +27,11 @@ pub struct PlatoonMemberInfo {
     pub timestamp: i64,
 }
 
+fn platoon_key(creator: &str) -> String {
+    let now = chrono::Utc::now().timestamp();
+    format!("{}_{}_p", creator, now)
+}
+
 impl SocialMesh {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -121,13 +126,14 @@ impl SocialMesh {
         }
     }
 
-    pub async fn create_platoon(&self, platoon_id: &str, public_id: &str) -> Option<i64> {
+    pub async fn create_platoon(&self, public_id: &str) -> Option<(i64, String)> {
         /*let user_handle = if let Some(handle) = self.users.read().await.get(public_id) {
             handle.to_owned()
         } else {
             return None;
         };*/
-        if self.platoons.platoon_by_id.read().await.contains_key(platoon_id) {
+        let platoon_id = platoon_key(public_id);
+        if self.platoons.platoon_by_id.read().await.contains_key(&platoon_id) {
             return None;
         }
         let mut platoon_members = Vec::with_capacity(5);
@@ -140,7 +146,7 @@ impl SocialMesh {
         });
         self.platoons.platoon_by_id.write().await.insert(platoon_id.to_owned(), platoon_members);
         self.platoons.platoon_by_user.write().await.insert(public_id.to_owned(), platoon_id.to_owned());
-        Some(timestamp)
+        Some((timestamp, platoon_id))
     }
 
     pub async fn remove_user_from_platoon(&self, public_id: &str) -> bool {

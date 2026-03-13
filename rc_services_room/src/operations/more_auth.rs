@@ -1,7 +1,15 @@
 use polariton::operation::Typed;
 use polariton_server::operations::{Operation, OperationCode};
 
-pub struct MoreLobbyAuth;
+pub struct MoreLobbyAuth {
+    mesh: std::sync::Arc<crate::user_service::UserMesh>,
+}
+
+pub fn more_auth_provider(mesh: &std::sync::Arc<crate::user_service::UserMesh>) -> MoreLobbyAuth {
+    MoreLobbyAuth {
+        mesh: mesh.to_owned()
+    }
+}
 
 impl MoreLobbyAuth {
     const AUTH_PAYLOAD_KEY: u8 = 245;
@@ -27,6 +35,11 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                 } else {
                     match user_info.webservice_listener().await {
                         Ok(listener) => {
+                            self.mesh.add_user(
+                                user_info.public_id().to_owned(),
+                                user.event_sender().to_owned().downgrade(),
+                            ).await;
+                            crate::ONLINE_USERS.store(self.mesh.user_count().await as u64, std::sync::atomic::Ordering::SeqCst);
                             crate::update_status(user_info.as_ref().as_ref()).await;
                             let mut resp_params = std::collections::HashMap::with_capacity(1);
                             resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
@@ -49,7 +62,8 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                         },
                     }
                 }
-
+            } else {
+                log::debug!("Authentication failed for user");
             }
         }
         polariton::operation::OperationResponse {

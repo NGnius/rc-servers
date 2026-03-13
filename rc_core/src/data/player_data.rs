@@ -112,3 +112,16 @@ impl PlayerDatas {
         Typed::Bytes(buf.into())
     }
 }
+
+pub struct AvatarInfo {
+    pub avatar_id: Option<i32>,
+}
+
+impl AvatarInfo {
+    pub fn as_transmissible<C>(&self) -> Typed<C> {
+        Typed::HashMap(vec![
+            (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.avatar_id.is_none())),
+            (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id.unwrap_or(0))),
+        ].into())
+    }
+}

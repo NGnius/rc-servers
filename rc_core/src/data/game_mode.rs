@@ -194,4 +194,22 @@ impl MapVisibility {
             Self::Bad => oj_rc_database::schema::multiplayer_game::MapVisibility::Bad,
         }
     }
+
+    #[inline]
+    pub fn from_u8(num: u8) -> Option<Self> {
+        match num {
+            0 => Some(Self::Good),
+            1 => Some(Self::Poor),
+            2 => Some(Self::Bad),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Good => "Good",
+            Self::Poor => "Poor",
+            Self::Bad => "VeryPoor",
+        }
+    }
 }
