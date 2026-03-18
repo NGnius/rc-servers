@@ -27,7 +27,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
                 params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(CustomGameInviteCode::PendingInvite as _));
                 // build invite data
                 let leader = session.users.first().unwrap();
-                let leader_avatar = user_info.list_avatar_info(&[leader.public_id.clone()]).await?;
+                let leader_avatar = user_info.list_avatar_info(std::slice::from_ref(&leader.public_id)).await?;
                 let resp = CustomGameInvite {
                     inviter_public_id: leader_avatar[0].public_id.clone(),
                     inviter_display_name: leader_avatar[0].display_name.clone(),

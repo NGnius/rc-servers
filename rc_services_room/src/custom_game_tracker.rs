@@ -126,7 +126,7 @@ impl CustomGameMesh {
     pub async fn get_user_game(&self, public_id: &str) -> Option<SessionInfo> {
         if let Some(game_id) = self.user_to_game.read().await.get(public_id) {
             if let Some(game) = self.games.read().await.get(game_id) {
-                return Some(Self::session_from_game(&game_id, game));
+                return Some(Self::session_from_game(game_id, game));
             }
         }
         None
@@ -135,7 +135,7 @@ impl CustomGameMesh {
     pub async fn invite_user(&self, inviter: &str, invitee: &str, is_team_a: bool) -> (InviteToCustomGameResponseCode, Option<SessionInfo>) {
         if let Some(game_id) = { self.user_to_game.read().await.get(inviter).cloned() } {
             if let Some(game) = self.games.write().await.get_mut(&game_id) {
-                if game.users.iter().find(|x| x.public_id == invitee).is_some() {
+                if game.users.iter().any(|x| x.public_id == invitee) {
                     let session = Self::session_from_game(&game_id, game);
                     (InviteToCustomGameResponseCode::InviteeHasAlreadyBeenInvited, Some(session))
                 } else {
@@ -200,7 +200,7 @@ impl CustomGameMesh {
                     .find(|mem| mem.public_id == public_id)
                     .unwrap();
                 target.status.store(status.to_u8(), std::sync::atomic::Ordering::Relaxed);
-                let session = Self::session_from_game(&game_id, game);
+                let session = Self::session_from_game(game_id, game);
                 return Some(session);
             }
         }
@@ -219,7 +219,7 @@ impl CustomGameMesh {
                     .unwrap();
                 let team = if is_team_b { 1 } else { 0 };
                 target.team.store(team, std::sync::atomic::Ordering::Relaxed);
-                let session = Self::session_from_game(&game_id, game);
+                let session = Self::session_from_game(game_id, game);
                 return (ChangeTeamResponseCode::Success, Some(session));
             }
         }
@@ -247,13 +247,13 @@ impl CustomGameMesh {
                     }
 
                 }
-                if let Ok(_) = game.config.set_field(field, value) {
+                if game.config.set_field(field, value).is_ok() {
                     log::debug!("Update custom game session {} config {} to {}", game_id, field, value);
-                    let session = Self::session_from_game(&game_id, game);
+                    let session = Self::session_from_game(game_id, game);
                     return (AdjustCustomGameConfigResponseCode::Success, Some(session));
                 }
             }
-            return (AdjustCustomGameConfigResponseCode::AdjustmentRejected, None);
+            (AdjustCustomGameConfigResponseCode::AdjustmentRejected, None)
         } else {
             (AdjustCustomGameConfigResponseCode::NotInSession, None)
         }

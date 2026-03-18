@@ -24,7 +24,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviter {
                 let my_pub_id = user_info.public_id();
                 let avatars = user_info.list_avatar_info(&[my_pub_id.to_owned(), invitee_id.string.clone()]).await?;
                 // TODO resolve public_id of invitee by provided display name
-                let resp_code = if avatars.iter().find(|x| x.public_id == invitee_id.string).is_none() {
+                let resp_code = if !avatars.iter().any(|x| x.public_id == invitee_id.string) {
                     crate::data::custom_games::InviteToCustomGameResponseCode::UserDoesNotExist
                 } else {
                     let (resp_code, session_opt) = self.games.invite_user(my_pub_id, &invitee_id.string, is_team_a).await;
