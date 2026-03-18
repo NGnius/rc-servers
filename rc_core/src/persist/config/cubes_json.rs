@@ -565,4 +565,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                 .collect(),
         }
     }
+
+    fn garage_slot_limit(&self) -> i32 {
+        self.settings.gameplay.garages_limit
+    }
 }

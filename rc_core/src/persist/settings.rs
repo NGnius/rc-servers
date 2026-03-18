@@ -22,7 +22,7 @@ impl super::config::SelfValidator for Settings {
 
 fn default_gameplay_settings() -> super::GameplaySettings {
     super::GameplaySettings {
-        show_tutorial_after_date: "2030-01-01".to_owned(),
+        show_tutorial_after_date: "2077-01-01".to_owned(),
         health_threshold: 0.20,
         microbot_sphere: 0.5,
         misfire_angle: 10.0,
@@ -30,8 +30,9 @@ fn default_gameplay_settings() -> super::GameplaySettings {
         shield_hps: 10_000_000,
         request_review_level: 10_000,
         critical_ratio: 5.0,
-        cross_promo_image: "https://git.ngram.ca/OpenJam/servers/raw/branch/main/assets/robocraft/default.png".to_owned(),
-        cross_promo_link: "https://git.ngram.ca/OpenJam/servers".to_owned(),
+        cross_promo_image: "https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/default.png".to_owned(),
+        cross_promo_link: "https://git.ngram.ca/OpenJam/rc-servers".to_owned(),
+        garages_limit: 100,
     }
 }
 

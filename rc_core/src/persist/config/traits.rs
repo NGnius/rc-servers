@@ -41,6 +41,7 @@ pub trait ConfigProvider<C: Clone> {
     fn shop_entries(&self) -> ShopEntriesResolver;
     fn promo_codes(&self) -> std::collections::HashMap<String, PromoCode>;
     fn vehicle_validation(&self) -> VehicleValidators;
+    fn garage_slot_limit(&self) -> i32;
 }
 
 pub struct DevMessageProvider<C: Clone> {

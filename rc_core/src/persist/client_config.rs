@@ -12,6 +12,7 @@ pub struct GameplaySettings {
     pub critical_ratio: f32,
     pub cross_promo_image: String, // url
     pub cross_promo_link: String, // url
+    pub garages_limit: i32,
 }
 
 impl std::convert::From<GameplaySettings> for crate::data::client_config::GameplaySettings {
