@@ -23,6 +23,7 @@ impl super::SingleplayerUser for UserData {
             auto_heal: oj_rc_database::sea_orm::ActiveValue::Set(false),
             variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game::GameType::Standard),
             is_complete: oj_rc_database::sea_orm::ActiveValue::Set(true),
+            overrides: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
         }).await
         .map_err(|e| {
             log::error!("Failed to create singleplayer game {} for user {}: {}", guid, self.account.id, e);

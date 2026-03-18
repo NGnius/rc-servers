@@ -63,8 +63,21 @@ struct QueueUser {
     user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
 }
 
+struct CustomGameQueue {
+    config: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig,
+    users: Vec<CustomGameQueueUser>,
+}
+
+struct CustomGameQueueUser {
+    public_id: String,
+    team: u8,
+    queue_user: Option<QueueUser>, // if None, the user is not enqueued
+}
+
 pub struct QueueHandler {
     users_in_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<QueueKey, Vec<QueueUser>>>>,
+    users_in_custom_games_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<String, CustomGameQueue>>>,
+    custom_game_for_user: std::sync::Arc<tokio::sync::RwLock<HashMap<String, String>>>,
     users_per_game: usize,
     is_enabled: bool,
     hostname: String,
@@ -84,6 +97,8 @@ impl QueueHandler {
         let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
         Self {
             users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            users_in_custom_games_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            custom_game_for_user: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
             is_enabled: mp_settings.is_enabled,
             hostname: domain.to_owned(),
@@ -220,6 +235,7 @@ impl QueueHandler {
             is_ranked: false,
             is_custom: false,
             is_complete: false,
+            overrides: None,
         };
         let team_picker = user.team_chooser(&game_desc).await;
         /*let team_picker = match key.mode {
@@ -272,7 +288,88 @@ impl QueueHandler {
 
             }
         }
+    }
 
+    async fn enter_custom_match(
+        &self,
+        _session_id: &str,
+        session: &mut CustomGameQueue,
+        user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync),
+    ) {
+        let mode = match session.config.game_mode {
+            oj_rc_core::persist::user::intercom::CustomGameMode::BattleArena => oj_rc_core::data::game_mode::GameMode::BattleArena,
+            oj_rc_core::persist::user::intercom::CustomGameMode::TeamDeathmatch => oj_rc_core::data::game_mode::GameMode::TeamDeathmatch,
+            oj_rc_core::persist::user::intercom::CustomGameMode::Pit => oj_rc_core::data::game_mode::GameMode::Pit,
+            oj_rc_core::persist::user::intercom::CustomGameMode::SuddenDeath => oj_rc_core::data::game_mode::GameMode::SuddenDeath,
+        };
+        let visibility = match session.config.map_visibility {
+            oj_rc_core::persist::user::intercom::CustomGameVisibility::Good => oj_rc_core::data::game_mode::MapVisibility::Good,
+            oj_rc_core::persist::user::intercom::CustomGameVisibility::Poor => oj_rc_core::data::game_mode::MapVisibility::Poor,
+            oj_rc_core::persist::user::intercom::CustomGameVisibility::Bad => oj_rc_core::data::game_mode::MapVisibility::Bad,
+        };
+        let key = QueueKey {
+            map: session.config.map.clone(),
+            mode,
+            visibility,
+            auto_heal: session.config.health_regen,
+        };
+        let guid_str = key.unique_guid();
+        let game_desc = oj_rc_core::persist::user::GameDescriptor {
+            guid: guid_str.clone(),
+            map: session.config.map.clone(),
+            mode,
+            visibility,
+            auto_heal: session.config.health_regen,
+            is_ranked: false,
+            is_custom: true,
+            is_complete: false,
+            overrides: Some(session.config.as_core()),
+        };
+        let player_descs = session.users.iter()
+            .map(|user| {
+                let q_user = user.queue_user.as_ref().unwrap();
+                oj_rc_core::persist::user::PlayerLobbyDescriptor {
+                    user_id: q_user.user_id,
+                    team: user.team as i32,
+                    group: None,
+                    public_id: q_user.player.name.clone(),
+                    display_name: q_user.player.display_name.clone(),
+                }
+            })
+            .collect();
+        match user.start_custom_game(game_desc, player_descs).await {
+            Ok(_) => {
+                let player_datas = session.users.iter()
+                    .map(|x| x.queue_user.as_ref().unwrap().player.clone())
+                    .collect();
+                let enter_battle_ev = crate::events::battle_enter::BattleEnter {
+                    host: self.hostname.clone(),
+                    port: self.hostport,
+                    map: session.config.map.clone(),
+                    mode,
+                    guid: guid_str.clone(),
+                    is_ranked: false,
+                    is_custom: true,
+                    visibility: Some(key.visibility),
+                    auto_heal: key.auto_heal,
+                    player_datas,
+                    network_config: self.network_conf.clone(),
+                };
+                let arc_event = std::sync::Arc::new(enter_battle_ev);
+                for user in session.users.iter_mut() {
+                    let player = user.queue_user.take().unwrap();
+                    tokio::spawn(Self::send_events_to_player(arc_event.clone(), player.emitter.clone()));
+                }
+                log::info!("{} players are entering custom match {}; {}", session.users.len(), guid_str, key.short());
+            },
+            Err(e) => {
+                if let Some(msg) = e.error_msg() {
+                    log::error!("Cannot send enter battle events to players since LobbyUser.start_game(...) failed: {} ({})", msg, e.error_code());
+                } else {
+                    log::error!("Cannot send enter battle events to players since LobbyUser.start_game(...) failed ({})", e.error_code());
+                }
+            }
+        }
     }
 
     async fn send_events_to_player(enter_event: std::sync::Arc<crate::events::battle_enter::BattleEnter>, sender: polariton_server::events::EventEmitter) {
@@ -282,6 +379,118 @@ impl QueueHandler {
             sender.emit(enter_event.as_ref());
         }
     }
+
+    pub async fn join_custom_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
+        if !self.is_enabled {
+            event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
+                text: "Multiplayer is not enabled".to_owned(),
+            });
+            return;
+        }
+        let public_id = user.public_id();
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(public_id) {
+            let mut lock = self.users_in_custom_games_queue.lock().await;
+            let session = lock.get_mut(session_id).unwrap();
+            let lobby_user = user.as_ref().as_ref();
+            match lobby_user.player_data(&self.cpu_counter).await {
+                Ok(mut player_data) => {
+                    let target_queuer = session.users.iter_mut()
+                        .find(|user| user.public_id == public_id)
+                        .unwrap();
+                    player_data.team = target_queuer.team as i32;
+                    let new_player = QueueUser {
+                        emitter: event_emitter,
+                        player: player_data,
+                        user_id: oj_rc_core::persist::user::LobbyUser::user_id(lobby_user),
+                        enqueued_at: chrono::Utc::now(),
+                        user: user.clone(),
+                    };
+                    target_queuer.queue_user = Some(new_player);
+                },
+                Err(e) => {
+                    event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                        code: e.error_code(),
+                        text: e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Unknown queue join error".to_owned()),
+                    });
+                    return;
+                }
+            }
+            let is_all_enqueued = session.users.iter().all(|user| user.queue_user.is_some());
+            if is_all_enqueued {
+                self.enter_custom_match(session_id, session, lobby_user).await;
+            }
+        } else {
+            log::debug!("Rejecting join queue for unknown custom game for user {}", public_id);
+            event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
+                text: "User is not in a custom game".to_owned(),
+            });
+        }
+    }
+
+    pub async fn remove_custom_queue(&self, session_id: &str) -> bool {
+        log::debug!("Disbanding custom game {}", session_id);
+        self.custom_game_for_user.write().await.retain(|_key, val| val != session_id);
+        let mut lock = self.users_in_custom_games_queue.lock().await;
+        lock.remove(session_id).is_some()
+    }
+
+    pub async fn update_custom_queue(&self, session_id: &str, members: impl std::iter::Iterator<Item = (String, u8)>, config: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig) -> bool {
+        let mut lock = self.users_in_custom_games_queue.lock().await;
+        let members: std::collections::HashMap<_, _> = members.collect();
+        let mut user_map_lock = self.custom_game_for_user.write().await;
+        if let Some(session) = lock.get_mut(session_id) {
+            log::debug!("Updating existing custom game {}", session_id);
+            let member_ids: std::collections::HashSet<_> = members.keys().collect();
+            // remove users who are no longer part of the custom game
+            user_map_lock.retain(|key, val| (members.contains_key(key) && val == session_id) || (!members.contains_key(key) && val != session_id));
+            session.users.retain(|user| member_ids.contains(&user.public_id));
+            // update team assignments
+            session.users.iter_mut()
+                .for_each(|user| {
+                    let new_team = *members.get(&user.public_id).unwrap();
+                    user.team = new_team;
+                    if let Some(q_user) = &mut user.queue_user {
+                        q_user.player.team = new_team as i32;
+                    }
+                });
+            // collect users which are still members
+            let existing_ids: std::collections::HashSet<_> = session.users.iter()
+                .map(|mem| mem.public_id.clone())
+                .collect();
+            // add new members
+            for (id, team) in members.iter() {
+                if !existing_ids.contains(id) {
+                    session.users.push(CustomGameQueueUser {
+                        public_id: id.to_owned(),
+                        team: *team,
+                        queue_user: None,
+                    });
+                    user_map_lock.insert(id.to_owned(), session_id.to_owned());
+                }
+            }
+            // update config overrides
+            session.config = config;
+            false
+        } else {
+            log::debug!("Creating new custom game {}", session_id);
+            lock.insert(session_id.to_owned(), CustomGameQueue {
+                config,
+                users: members.iter().map(|(mem_id, team)| {
+                    user_map_lock.insert(mem_id.to_owned(), session_id.to_owned());
+                    CustomGameQueueUser {
+                        public_id: mem_id.to_owned(),
+                        team: *team,
+                        queue_user: None,
+                    }
+                })
+                .collect()
+            });
+            true
+        }
+    }
+
 
     pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
         if !self.is_enabled {
@@ -378,12 +587,23 @@ impl QueueHandler {
     }
 
     pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
+        let public_id = user.public_id();
         let user_id = oj_rc_core::persist::user::LobbyUser::user_id(user.as_ref().as_ref());
-        for (queue_key, queue) in self.users_in_queue.lock().await.iter_mut() {
-            if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
-                queue.remove(i);
-                log::info!("User {} was removed from queue {}", user_id, queue_key.short());
-                break;
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(public_id) {
+            // player is in custom game session
+            let mut lock = self.users_in_custom_games_queue.lock().await;
+            let session = lock.get_mut(session_id).unwrap();
+            let target = session.users.iter_mut().find(|user| user.public_id == public_id).unwrap();
+            target.queue_user = None;
+            log::info!("User {} was removed from custom game {} queue", user_id, session_id);
+        } else {
+            // fallback to regular multiplayer
+            for (queue_key, queue) in self.users_in_queue.lock().await.iter_mut() {
+                if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
+                    queue.remove(i);
+                    log::info!("User {} was removed from queue {}", user_id, queue_key.short());
+                    break;
+                }
             }
         }
     }

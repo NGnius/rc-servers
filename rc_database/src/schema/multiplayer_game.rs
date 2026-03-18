@@ -13,6 +13,7 @@ pub struct Model {
     pub auto_heal: bool,
     pub variant: GameType,
     pub is_complete: bool,
+    pub overrides: String, // JSON-encoded oj_rc_ore::persist::user::lobby::CustomGameConfig
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -116,11 +116,103 @@ impl super::IntercomUser for super::account_json::UserData {
         }
     }
 
+    async fn update_custom_game(&self, msg: IntercomLobbyCustomGameDataMessage) {
+        let data = IntercomLobbyStateMessage::CustomGame(msg);
+        if let Err(e) = self.post_to_intercom(&data, ".oj_lobby", "state").await {
+            log::error!("Failed to send intercom custom game state message: {}", e);
+        }
+    }
+
     async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus) {
         if let Err(e) = self.post_to_intercom(&msg, ".status", server_name).await {
             log::error!("Failed to send intercom status message: {}", e);
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "state")]
+pub enum IntercomLobbyStateMessage {
+    CustomGame(IntercomLobbyCustomGameDataMessage),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IntercomLobbyCustomGameDataMessage {
+    pub session_id: String,
+    pub config: IntercomLobbyCustomGameConfig,
+    pub users: Vec<IntercomLobbyCustomGameUserData>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum CustomGameMode {
+    BattleArena,
+    TeamDeathmatch,
+    Pit,
+    SuddenDeath,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum CustomGameVisibility {
+    Good,
+    Poor,
+    Bad,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IntercomLobbyCustomGameConfig {
+    pub game_mode: CustomGameMode,
+    pub map: String,
+    pub map_visibility: CustomGameVisibility,
+    pub health_regen: bool,
+    pub capture_segment_memory: bool,
+    pub base_shields_go_down: bool,
+    pub damage_mult: i32,
+    pub health_mult: i32,
+    pub power_mult: i32,
+    pub game_time: i32, // minutes
+    pub capture_speed: i32, // seconds
+    pub points_kill_streak: bool,
+    pub points_total_required: i32,
+    pub number_of_kills_to_win: i32,
+    pub respawn_time: i32,
+    pub core_appear_frequency: i32,
+    pub core_health_multiplier: i32,
+    pub core_destroy_time: i32,
+    pub protonium_harvest: i32,
+    pub ceiling_multiplier: i32,
+    pub min_cpu: i32,
+    pub max_cpu: i32,
+}
+
+impl IntercomLobbyCustomGameConfig {
+    pub fn as_core(&self) -> super::GameOverrides {
+        super::GameOverrides {
+            capture_segment_memory: self.capture_segment_memory,
+            base_shields_go_down: self.base_shields_go_down,
+            damage_mult: self.damage_mult,
+            health_mult: self.health_mult,
+            power_mult: self.power_mult,
+            game_time: self.game_time,
+            capture_speed: self.capture_speed,
+            points_kill_streak: self.points_kill_streak,
+            points_total_required: self.points_total_required,
+            number_of_kills_to_win: self.number_of_kills_to_win,
+            respawn_time: self.respawn_time,
+            core_appear_frequency: self.core_appear_frequency,
+            core_health_multiplier: self.core_health_multiplier,
+            core_destroy_time: self.core_destroy_time,
+            protonium_harvest: self.protonium_harvest,
+            ceiling_multiplier: self.ceiling_multiplier,
+            min_cpu: self.min_cpu,
+            max_cpu: self.max_cpu,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IntercomLobbyCustomGameUserData {
+    pub public_id: String,
+    pub team: u8,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

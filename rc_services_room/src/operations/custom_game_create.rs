@@ -22,9 +22,19 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameCreator {
             Err(e) => {
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(e as _));
             },
-            Ok(game_id) => {
+            Ok(session) => {
+                user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                    session_id: session.session_id.clone(),
+                    config: session.config_core,
+                    users: vec![
+                        oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                            public_id: user_info.public_id().to_owned(),
+                            team: 0,
+                        }
+                    ],
+                }).await;
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::SessionCreateResponseCode::SessionCreated as _));
-                params.insert(IDK_PARAM_KEY, Typed::Str(game_id.into()));
+                params.insert(IDK_PARAM_KEY, Typed::Str(session.session_id.into()));
             }
         }
         Ok(params)

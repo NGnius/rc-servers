@@ -13,8 +13,9 @@ pub struct AccountProvider {
     domain: std::sync::Arc<String>,
     cdn: std::sync::Arc<String>,
     auth: std::sync::Arc<String>,
-    intercom: std::sync::Arc<String>,
-    secret: std::sync::Arc<Vec<u8>>,
+    pub(super) intercom: std::sync::Arc<String>,
+    pub(super) intercom_http_client: std::sync::Arc<reqwest::Client>,
+    pub(super) secret: std::sync::Arc<Vec<u8>>,
     db: std::sync::Arc<oj_rc_database::Database>,
 }
 
@@ -38,6 +39,7 @@ impl AccountProvider {
             cdn: std::sync::Arc::new(server_settings.cdn_url),
             auth: std::sync::Arc::new(server_settings.auth_url),
             intercom: std::sync::Arc::new(server_settings.intercom_url),
+            intercom_http_client: std::sync::Arc::new(reqwest::Client::new()),
             secret: std::sync::Arc::new(secret),
             db: std::sync::Arc::new(db),
         })

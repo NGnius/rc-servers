@@ -20,11 +20,22 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameLeaver {
         let (resp_code, session_opt) = self.games.leave_game(user_info.public_id()).await;
         if let Some(session) = session_opt {
             let event = crate::events::CustomGameRefresh {
-                session: session.session_id,
+                session: session.session_id.clone(),
             };
             let session_members = session.users.iter()
                 .map(|mem| &mem.public_id as &str);
             self.mesh.broadcast_event_to(session_members, event).await;
+            user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                session_id: session.session_id,
+                config: session.config_core,
+                users: session.users.iter()
+                    .filter(|user| !user.is_invited)
+                    .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                        public_id: user.public_id.clone(),
+                        team: user.team,
+                    })
+                    .collect()
+            }).await;
         }
         params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(resp_code as _));
         Ok(params)

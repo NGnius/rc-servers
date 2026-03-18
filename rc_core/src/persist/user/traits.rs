@@ -282,6 +282,8 @@ pub trait LobbyUser {
     async fn team_chooser(&self, game: &GameDescriptor) -> super::TeamChooser;
     #[allow(clippy::too_many_arguments)]
     async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn start_custom_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
 }
 
 pub struct FakePlayers {
@@ -306,6 +308,28 @@ pub struct GameDescriptor {
     pub is_ranked: bool,
     pub is_custom: bool,
     pub is_complete: bool,
+    pub overrides: Option<GameOverrides>,
+}
+
+pub struct GameOverrides {
+    pub capture_segment_memory: bool,
+    pub base_shields_go_down: bool,
+    pub damage_mult: i32,
+    pub health_mult: i32,
+    pub power_mult: i32,
+    pub game_time: i32, // minutes
+    pub capture_speed: i32, // seconds
+    pub points_kill_streak: bool,
+    pub points_total_required: i32,
+    pub number_of_kills_to_win: i32,
+    pub respawn_time: i32,
+    pub core_appear_frequency: i32,
+    pub core_health_multiplier: i32,
+    pub core_destroy_time: i32,
+    pub protonium_harvest: i32,
+    pub ceiling_multiplier: i32,
+    pub min_cpu: i32,
+    pub max_cpu: i32,
 }
 
 pub struct PlayerLobbyDescriptor {
@@ -394,6 +418,7 @@ pub trait IntercomUser: CommonUser {
     async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
     async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
     async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);
+    async fn update_custom_game(&self, msg: super::intercom::IntercomLobbyCustomGameDataMessage);
     async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus);
 }
 
@@ -642,4 +667,9 @@ pub trait SingleplayerUser: Send + Sync {
 pub trait FactoryUser {
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, polariton_server::operations::SimpleOpError>;
     async fn rate_vehicle(&self, slot: i32, combat: i32, cosmetic: i32) -> Result<Option<i32>, polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
+pub trait Userless: Send + Sync {
+    async fn lobby_state_listener(&self) -> Result<super::IntercomListener<super::intercom::IntercomLobbyStateMessage>, reqwest_websocket::Error>;
 }

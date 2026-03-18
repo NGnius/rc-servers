@@ -29,11 +29,22 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameMemberKicker {
                 };
                 self.mesh.send_event_to(&user_to_kick.string, kick_event).await;
                 let update_event = crate::events::CustomGameRefresh {
-                    session: session.session_id,
+                    session: session.session_id.clone(),
                 };
                 let members_iter = session.users.iter()
                     .map(|mem| &mem.public_id as &str);
                 self.mesh.broadcast_event_to(members_iter, update_event).await;
+                user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                    session_id: session.session_id,
+                    config: session.config_core,
+                    users: session.users.iter()
+                        .filter(|user| !user.is_invited)
+                        .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                            public_id: user.public_id.clone(),
+                            team: user.team,
+                        })
+                        .collect()
+                }).await;
             }
             params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(resp_code as _));
         }

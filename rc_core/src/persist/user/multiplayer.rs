@@ -134,6 +134,15 @@ impl super::MultiplayerUser for UserData {
                 is_ranked: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
                 is_custom: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
                 is_complete: game.is_complete,
+                overrides: if game.overrides.is_empty() { None } else {
+                    match serde_json::from_str::<super::lobby::CustomGameOverrides>(&game.overrides) {
+                        Ok(x) => Some(x.to_user()),
+                        Err(e) => {
+                            log::warn!("Failed to parse overrides JSON: {}\n{}", e, game.overrides);
+                            None
+                        }
+                    }
+                }
             }))
     }
 
@@ -204,6 +213,15 @@ impl super::MultiplayerUser for UserData {
                 is_ranked: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
                 is_custom: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
                 is_complete: game.is_complete,
+                overrides: if game.overrides.is_empty() { None } else {
+                    match serde_json::from_str::<super::lobby::CustomGameOverrides>(&game.overrides) {
+                        Ok(x) => Some(x.to_user()),
+                        Err(e) => {
+                            log::warn!("Failed to parse overrides JSON: {}\n{}", e, game.overrides);
+                            None
+                        }
+                    }
+                }
             }))
         } else {
             Err(super::MultiplayerError {

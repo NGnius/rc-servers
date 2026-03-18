@@ -2576,6 +2576,7 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
+ "futures",
  "git-version",
  "log",
  "oj_polariton_auth",

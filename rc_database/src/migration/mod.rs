@@ -18,6 +18,7 @@ mod m20260126_000001_create_factory_vehicle_table;
 mod m20260215_000001_create_friend_table;
 mod m20260221_000001_create_clan_table;
 mod m20260221_000002_create_clan_member_table;
+mod m20260317_000001_add_game_overrides;
 
 pub struct Migrator;
 
@@ -43,6 +44,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260215_000001_create_friend_table::Migration),
             Box::new(m20260221_000001_create_clan_table::Migration),
             Box::new(m20260221_000002_create_clan_member_table::Migration),
+            Box::new(m20260317_000001_add_game_overrides::Migration),
         ]
     }
 }

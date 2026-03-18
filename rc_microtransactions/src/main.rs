@@ -24,6 +24,11 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap_fn(|req, srv| {
+                use actix_web::dev::Service;
+                log::trace!("Request {} {}", req.method(), req.path());
+                srv.call(req)
+            })
             .app_data(cli_args2.clone())
             .service(index)
             .service(robocraft::robopay_store)

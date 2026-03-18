@@ -89,6 +89,17 @@ pub enum CheckCanJoinQueueResponseCode {
 
 #[repr(u8)]
 #[derive(Copy, Clone)]
+pub enum ChangeTeamResponseCode {
+    UnknownFail0 = 0,
+    UserIsNotSessionLeader = 1,
+    UnknownFail2 = 2,
+    UnknownFail3 = 3,
+    Success = 4,
+    UnknownFail5 = 5,
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone)]
 pub enum PlayerSessionStatus {
     Unknown = 0,
     Ready = 1,

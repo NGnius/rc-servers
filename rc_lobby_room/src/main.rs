@@ -46,6 +46,11 @@ async fn main() -> std::io::Result<()> {
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));
 
+    crate::events::IntercomHandler::new(
+        init_ctx.users.clone(),
+        init_ctx.queue.clone(),
+    ).run();
+
     let ip_addr: std::net::IpAddr = args.ip.parse().expect("Invalid IP address");
 
     let listener = net::TcpListener::bind(std::net::SocketAddr::new(ip_addr, args.port)).await?;

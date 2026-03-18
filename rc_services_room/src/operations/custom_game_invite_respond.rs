@@ -30,6 +30,18 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
                         .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
                         .map(|mem| &mem.public_id as &str);
                     self.mesh.broadcast_event_to(session_members_iter, event).await;
+                } else {
+                    user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                        session_id: session.session_id.clone(),
+                        config: session.config_core,
+                        users: session.users.iter()
+                            .filter(|user| !user.is_invited)
+                            .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                                public_id: user.public_id.clone(),
+                                team: user.team,
+                            })
+                            .collect()
+                    }).await;
                 }
                 let event = crate::events::CustomGameRefresh {
                     session: session.session_id,
