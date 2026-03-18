@@ -51,6 +51,11 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap_fn(|req, srv| {
+                use actix_web::dev::Service;
+                log::trace!("Request {} {}", req.method(), req.path());
+                srv.call(req)
+            })
             .app_data(cli_args2.clone())
             .app_data(rc_preloaded.clone())
             .app_data(internal_auth.clone())
@@ -66,6 +71,8 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::username::user_password_auth)
             .service(robocraft::intercom::services_ws)
             .service(robocraft::intercom::service_msg)
+            .service(robocraft::intercom::lobby_state_ws)
+            .service(robocraft::intercom::lobby_state_msg)
             .service(robocraft::intercom::status_get)
             .service(robocraft::intercom::status_set)
     })

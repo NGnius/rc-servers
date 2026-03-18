@@ -22,6 +22,11 @@ async fn main() -> std::io::Result<()> {
     let internal_auth = actix_web::web::Data::new(crate::robocraft::IntercomAuth::new(&cli_args.data_robocraft)?);
     HttpServer::new(move || {
         App::new()
+            .wrap_fn(|req, srv| {
+                use actix_web::dev::Service;
+                log::trace!("Request {} {}", req.method(), req.path());
+                srv.call(req)
+            })
             .app_data(cli_args2.clone())
             .app_data(internal_auth.clone())
             .service(index)
