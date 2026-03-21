@@ -10,7 +10,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .modify(oj_rc_core::polariton::RcOpModifier)
         .add(more_auth::MoreLobbyAuth)
         //.add(eac::EacChallengeIgnorer)
-        //.add(polariton_server::operations::Ack::<2, _>::default())
+        .add(polariton_server::operations::Ack::<2, _>::default())
         .add(no_quit::quit_blocker_provider())
         .add(join_queue::join_queue_provider(&init_ctx.queue))
 }

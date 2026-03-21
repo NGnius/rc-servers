@@ -18,13 +18,14 @@ pub use intercom::generate_token as generate_intercom_token;
 
 mod multiplayer;
 mod lobby;
-pub use lobby::TeamChooser;
 mod common;
 mod chat;
 mod social;
 mod singleplayer;
 mod factory;
 mod userless;
+mod team;
+pub use team::{TeamChooser, StandardTeamChooser};
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 

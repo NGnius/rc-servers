@@ -2,25 +2,6 @@ use serde::{Serialize, Deserialize};
 
 use super::account_json::UserData;
 
-pub enum TeamChooser {
-    /// Alternating between team 0 and team 1
-    Alternating,
-    /// All players will be put on the specified team
-    AllOn(u8),
-    /// Each player will be put on their own team (like in Pit mode)
-    OnePer,
-}
-
-impl TeamChooser {
-    pub fn team(&self, index: usize) -> i32 {
-        match self {
-            Self::Alternating => (index % 2) as i32,
-            Self::AllOn(team) => *team as i32,
-            Self::OnePer => index as i32,
-        }
-    }
-}
-
 fn fake_impl_to_db(client_emu: &crate::persist::config::ClientEmulator) -> oj_rc_database::schema::multiplayer_game_player::ClientType {
     match client_emu {
         crate::persist::config::ClientEmulator::Experiment => oj_rc_database::schema::multiplayer_game_player::ClientType::ServerExperimental,
@@ -45,10 +26,10 @@ impl super::LobbyUser for UserData {
         })
     }
 
-    async fn team_chooser(&self, game: &super::GameDescriptor) -> TeamChooser {
+    async fn team_chooser(&self, game: &super::GameDescriptor) -> super::StandardTeamChooser {
         match game.mode {
-            crate::data::game_mode::GameMode::Pit => TeamChooser::OnePer,
-            _ => TeamChooser::Alternating,
+            crate::data::game_mode::GameMode::Pit => super::StandardTeamChooser::OnePer,
+            _ => super::StandardTeamChooser::alternating(),
         }
     }
 
@@ -59,7 +40,7 @@ impl super::LobbyUser for UserData {
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
-        chooser: &TeamChooser,
+        chooser: &dyn super::TeamChooser,
         missing_players: usize,
     ) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
@@ -76,8 +57,8 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let forced_fake_players = self.generate_forced_fake_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
-        let filler_players = self.generate_filler_players_data(guid, &players, factory, cpu_counter, weapon_lister, chooser, missing_players).await?;
+        let forced_fake_players = self.generate_forced_fake_players_data(&game.guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
+        let filler_players = self.generate_filler_players_data(&game.guid, factory, cpu_counter, weapon_lister, chooser, missing_players, players.len() + forced_fake_players.len()).await?;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,
@@ -102,6 +83,17 @@ impl super::LobbyUser for UserData {
         let players_len = players.len();
         let forced_fake_players_len = forced_fake_players.len();
 
+        let mut group_map = std::collections::HashMap::new();
+        let mut group_num = 1;
+        for player in players.iter() {
+            if let Some(group) = &player.group {
+                if !group_map.contains_key(group) {
+                    group_map.insert(group.to_owned(), group_num);
+                    group_num += 1;
+                }
+            }
+        }
+
         let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.into_iter()
             .enumerate()
             .map(|(i, player)| {
@@ -112,7 +104,7 @@ impl super::LobbyUser for UserData {
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
                     team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
-                    group: oj_rc_database::sea_orm::ActiveValue::Set(player.group),
+                    group: oj_rc_database::sea_orm::ActiveValue::Set(player.group.as_ref().and_then(|x| group_map.get(x)).copied()),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
                     public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id),
                     display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name),
@@ -220,7 +212,7 @@ impl super::LobbyUser for UserData {
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
                     team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
-                    group: oj_rc_database::sea_orm::ActiveValue::Set(player.group),
+                    group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
                     public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id),
                     display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name),

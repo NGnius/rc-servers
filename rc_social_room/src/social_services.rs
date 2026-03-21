@@ -92,6 +92,20 @@ impl SocialMesh {
             .map(|x| x.to_owned())
     }
 
+    pub async fn platoon_invite_of_user(&self, public_id: &str) -> Option<String> {
+        if let Some(platoon_id) = self.platoons.platoon_by_user.read().await.get(public_id) {
+            if let Some(platoon) = self.platoons.platoon_by_id.read().await.get(platoon_id) {
+                let myself = platoon.iter()
+                    .find(|mem| mem.public_id == public_id)
+                    .unwrap();
+                if matches!(myself.status, crate::data::platoon::MemberStatus::Invited) {
+                    return Some(platoon_id.to_owned());
+                }
+            }
+        }
+        None
+    }
+
     pub async fn users_of_platoon(&self, platoon_id: &str) -> Vec<PlatoonMemberInfo> {
         self.platoons.platoon_by_id.read().await
             .get(platoon_id)
@@ -150,12 +164,14 @@ impl SocialMesh {
     }
 
     pub async fn remove_user_from_platoon(&self, public_id: &str) -> bool {
-        if let Some(platoon_id) = self.platoons.platoon_by_user.write().await.remove(public_id) {
+        let mut platoon_by_user_lock = self.platoons.platoon_by_user.write().await;
+        if let Some(platoon_id) = platoon_by_user_lock.remove(public_id) {
             let mut platoon_by_id_lock = self.platoons.platoon_by_id.write().await;
             if let Some(platoon) = platoon_by_id_lock.get_mut(&platoon_id) {
                 platoon.retain(|member| member.public_id != public_id);
-                if platoon.is_empty() {
+                if platoon.len() <= 1 {
                     platoon_by_id_lock.remove(&platoon_id);
+                    platoon_by_user_lock.retain(|_pub_id, platoon_id_val| platoon_id_val != &platoon_id);
                 }
                 true
             } else {

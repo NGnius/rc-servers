@@ -12,18 +12,24 @@ impl UserData {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_fake_players_data(
         &self,
-        _guid: i64,
-        real_players: &[super::PlayerLobbyDescriptor],
+        guid_str: &str,
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
-        chooser: &super::TeamChooser,
+        chooser: &dyn super::TeamChooser,
         fake_players: &[crate::persist::config::FakePlayer],
+        total_offset: usize,
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
         let mut fakes = Vec::with_capacity(fake_players.len());
-        let mut fake_i = real_players.len();
-        for fake in fake_players.iter() {
+        for (i, fake) in fake_players.iter().enumerate() {
             let vehicle = self.resolve_vehicle(&fake.vehicle, factory, weapon_lister, cpu_counter).await?;
+            let fake_lobby_desc = super::PlayerLobbyDescriptor {
+                user_id: -1,
+                team: -1,
+                public_id: fake.vehicle.username.clone(),
+                display_name: fake.vehicle.username.clone(),
+                group: None,
+            };
             let out = (
                 crate::data::player_data::PlayerData {
                     name: fake.vehicle.username.clone(),
@@ -33,12 +39,7 @@ impl UserData {
                     robot_name: vehicle.robot_name,
                     robot_map: vehicle.robot_map,
                     group: None,
-                    team: fake.team.map(|t| t as i32)
-                        .unwrap_or_else(|| {
-                            let assigned_team = chooser.team(fake_i);
-                            fake_i += 1;
-                            assigned_team
-                        }),
+                    team: chooser.choose_team(guid_str, total_offset + i, &fake_lobby_desc),
                     has_premium: true,
                     robot_uuid: vehicle.robot_uuid,
                     cpu: vehicle.cpu,
@@ -61,43 +62,44 @@ impl UserData {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_forced_fake_players_data(
         &self,
-        guid: i64,
+        guid_str: &str,
         real_players: &[super::PlayerLobbyDescriptor],
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
-        chooser: &super::TeamChooser,
+        chooser: &dyn super::TeamChooser,
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+        let offset = real_players.len();
         self.generate_fake_players_data(
-            guid,
-            real_players,
+            guid_str,
             factory,
             cpu_counter,
             weapon_lister,
             chooser,
             &self.fake_players,
+            offset,
         ).await
     }
 
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_filler_players_data(
         &self,
-        guid: i64,
-        real_players: &[super::PlayerLobbyDescriptor],
+        guid_str: &str,
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
-        chooser: &super::TeamChooser,
+        chooser: &dyn super::TeamChooser,
         count: usize,
+        total_offset: usize,
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
         self.generate_fake_players_data(
-            guid,
-            real_players,
+            guid_str,
             factory,
             cpu_counter,
             weapon_lister,
             chooser,
             &self.filler_players[0..count],
+            total_offset
         ).await
     }
 }

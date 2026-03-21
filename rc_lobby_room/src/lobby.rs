@@ -1,5 +1,7 @@
 use std::{collections::HashMap, hash::Hash};
 
+use oj_rc_core::persist::user::TeamChooser;
+
 #[derive(Clone, Copy)]
 pub enum GamemodeChangeStrategy {
     Upgrade, // move enqueued players into newer gamemode
@@ -55,6 +57,41 @@ impl QueueKey {
     }
 }
 
+struct Queue {
+    users: Vec<QueueUser>,
+    platoons: HashMap<String, Platoon>,
+}
+
+struct Platoon {
+    total: u8,
+    members: Vec<PlatoonUser>,
+}
+
+/// A QueueUser wrapper for platoon members
+struct PlatoonUser(QueueUser);
+
+impl PlatoonUser {
+    fn from_queue_user(qu: QueueUser) -> Self {
+        Self(qu)
+    }
+
+    fn clone_for_queue(&self) -> QueueUser {
+        QueueUser {
+            emitter: self.0.emitter.clone(),
+            player: self.0.player.clone(),
+            user_id: self.0.user_id,
+            enqueued_at: self.0.enqueued_at,
+            user: self.0.user.clone(),
+        }
+    }
+}
+
+pub struct PlatoonInfo {
+    pub total: u8,
+    pub platoon_id: String,
+    pub is_leader: bool,
+}
+
 struct QueueUser {
     emitter: polariton_server::events::EventEmitter,
     player: oj_rc_core::data::player_data::PlayerData,
@@ -75,7 +112,7 @@ struct CustomGameQueueUser {
 }
 
 pub struct QueueHandler {
-    users_in_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<QueueKey, Vec<QueueUser>>>>,
+    users_in_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<QueueKey, Queue>>>,
     users_in_custom_games_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<String, CustomGameQueue>>>,
     custom_game_for_user: std::sync::Arc<tokio::sync::RwLock<HashMap<String, String>>>,
     users_per_game: usize,
@@ -131,23 +168,24 @@ impl QueueHandler {
         tokio::spawn(async move {
             loop {
                 let now = chrono::Utc::now();
-                let mut to_start: Vec<(QueueKey, Vec<QueueUser>)> = Vec::new();
+                let mut to_start: Vec<(QueueKey, Queue)> = Vec::new();
                 let mut next_deadline: Option<chrono::DateTime<chrono::Utc>> = None;
 
                 {
                     let mut lock = users_in_queue.lock().await;
 
-                    let mut empty_keys: Vec<QueueKey> = Vec::new();
+                    //let mut empty_keys: Vec<QueueKey> = Vec::new();
                     let mut expired_keys: Vec<QueueKey> = Vec::new();
 
-                    for (key, users) in lock.iter() {
-                        if users.is_empty() {
+                    for (key, q_entry) in lock.iter() {
+                        if q_entry.users.is_empty() { continue; }
+                        /*if q_entry.users.is_empty() && q_entry.platoons.is_empty() {
                             empty_keys.push(key.clone());
                             continue;
-                        }
+                        }*/
 
                         // first user is always oldest within a queue
-                        let deadline = users[0].enqueued_at + autostart_after;
+                        let deadline = q_entry.users[0].enqueued_at + autostart_after;
                         if now >= deadline {
                             expired_keys.push(key.clone());
                         } else {
@@ -158,23 +196,23 @@ impl QueueHandler {
                         }
                     }
 
-                    for k in empty_keys {
+                    /*for k in empty_keys {
                         lock.remove(&k);
-                    }
+                    }*/
 
                     for k in expired_keys {
-                        if let Some(players) = lock.remove(&k) {
-                            if !players.is_empty() {
-                                to_start.push((k, players));
+                        if let Some(q_entry) = lock.remove(&k) {
+                            if !q_entry.users.is_empty() {
+                                to_start.push((k, q_entry));
                             }
                         }
                     }
                 }
 
                 // start expired queues outside the lock
-                for (key, players) in to_start {
+                for (key, q_entry) in to_start {
                     // choose the oldest queued user's LobbyUser handle
-                    let starter = match players.first() {
+                    let starter = match q_entry.users.first() {
                         Some(p) => p.user.clone(),
                         None => continue,
                     };
@@ -188,7 +226,7 @@ impl QueueHandler {
                         weapon_guesser.clone(), 
                         users_per_game, 
                         key, 
-                        players, 
+                        q_entry,
                         starter.as_ref().as_ref(),
                     ).await;
                 }
@@ -208,7 +246,7 @@ impl QueueHandler {
         });
     }
 
-    async fn enter_match(&self, key: QueueKey, players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+    async fn enter_match(&self, key: QueueKey, q_entry: Queue, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         Self::enter_match_static(
             self.hostname.clone(),
             self.hostport,
@@ -218,13 +256,13 @@ impl QueueHandler {
             self.weapon_guesser.clone(),
             self.users_per_game,
             key,
-            players,
+            q_entry,
             user,
         ).await
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut players: Vec<QueueUser>, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+    async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut q_entry: Queue, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         let guid_str = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
@@ -242,22 +280,26 @@ impl QueueHandler {
             oj_rc_core::data::game_mode::GameMode::Pit => |i| i as i32, // each player is on a different team
             _ => |i| (i % 2) as i32, // alternate teams
         };*/
-        for (i, player) in players.iter_mut().enumerate() {
-            player.player.team = team_picker.team(i);
+        let mut player_descs = Vec::with_capacity(q_entry.users.len());
+        for (i, player) in q_entry.users.iter_mut().enumerate() {
+            let mut lobby_desc = oj_rc_core::persist::user::PlayerLobbyDescriptor {
+                user_id: player.user_id,
+                team: -1,
+                group: player.player.group.clone(),
+                public_id: player.player.name.clone(),
+                display_name: player.player.display_name.clone(),
+            };
+            let team = team_picker.choose_team(&guid_str, i, &lobby_desc);
+            lobby_desc.team = team;
+            player.player.team = team;
+            player_descs.push(lobby_desc);
         }
-        let player_descs = players.iter().map(|x| oj_rc_core::persist::user::PlayerLobbyDescriptor {
-            user_id: x.user_id,
-            team: x.player.team,
-            group: None, // TODO support platoons
-            public_id: x.player.name.clone(),
-            display_name: x.player.display_name.clone(),
-        }).collect();
 
-        let missing = users_per_game.saturating_sub(players.len());
+        let missing = users_per_game.saturating_sub(q_entry.users.len());
 
         match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, &team_picker, missing).await {
             Ok(fakes) => {
-                let player_datas = players.iter().map(|x| x.player.clone())
+                let player_datas = q_entry.users.iter().map(|x| x.player.clone())
                     .chain(fakes.players.into_iter().map(|(desc, _emu)| desc),)
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
@@ -274,10 +316,10 @@ impl QueueHandler {
                     network_config: network_conf.clone(),
                 };
                 let arc_event = std::sync::Arc::new(enter_battle_ev);
-                for player in players.iter() {
+                for player in q_entry.users.iter() {
                     tokio::spawn(Self::send_events_to_player(arc_event.clone(), player.emitter.clone()));
                 }
-                log::info!("{} players are entering match {}", players.len(), guid_str);
+                log::info!("{} players are entering match {}", q_entry.users.len(), guid_str);
             },
             Err(e) => {
                 if let Some(msg) = e.error_msg() {
@@ -491,8 +533,55 @@ impl QueueHandler {
         }
     }
 
+    fn join_or_create_platoon(&self, new_player: QueueUser, platoon: PlatoonInfo, q_entry: &mut Queue) {
+        let new_player = PlatoonUser::from_queue_user(new_player);
+        log::debug!("Existing platoon count {}", q_entry.platoons.len());
+        if let Some(p_entry) = q_entry.platoons.get_mut(&platoon.platoon_id) {
+            // update
+            log::debug!("Adding user {} to existing platoon {} ({}/{})", new_player.0.user_id, platoon.platoon_id, p_entry.members.len() + 1, p_entry.total);
+            if platoon.is_leader {
+                p_entry.total = platoon.total;
+            }
+            p_entry.members.push(new_player);
+            let wants_usize = p_entry.total as usize;
+            if wants_usize == p_entry.members.len() {
+                log::info!("All members of platoon {} are in queue, actually adding them to queue", platoon.platoon_id);
+                for member in p_entry.members.iter() {
+                    q_entry.users.push(member.clone_for_queue());
+                }
+                q_entry.users.sort_by_key(|u| u.enqueued_at);
+            }
+        } else {
+            // create
+            log::debug!("Adding user {} to new platoon {} (1/{})", new_player.0.user_id, platoon.platoon_id, platoon.total);
+            q_entry.platoons.insert(platoon.platoon_id.clone(), Platoon {
+                total: if platoon.is_leader { platoon.total } else { u8::MAX },
+                members: vec![new_player],
+            });
+        }
+    }
 
-    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
+    fn platoon_leave_queue(&self, user_id: i32, platoon_id: String, q_entry: &mut Queue) {
+        let needs_remove = if let Some(platoon) = q_entry.platoons.get_mut(&platoon_id) {
+            let wants_usize = platoon.total as usize;
+            if wants_usize == platoon.members.len() {
+                // other platoon members are in queue, they also need to be removed
+                let some_group = Some(platoon_id.clone());
+                q_entry.users.retain(|q_user| q_user.player.group != some_group);
+                log::info!("Removed platoon {} from actual queue because user {} left queue", platoon_id, user_id);
+            }
+            platoon.members.retain(|p_mem| p_mem.0.user_id != user_id);
+            platoon.members.is_empty()
+        } else {
+            log::error!("Failed to find platoon {} to remove user {}: the lobby is in a bad state", platoon_id, user_id);
+            false
+        };
+        if needs_remove {
+            q_entry.platoons.remove(&platoon_id);
+        }
+    }
+
+    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter, platoon: Option<PlatoonInfo>) {
         if !self.is_enabled {
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
                 code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
@@ -508,7 +597,10 @@ impl QueueHandler {
         };
         let lobby_user = user.as_ref().as_ref();
         match lobby_user.player_data(&self.cpu_counter).await {
-            Ok(player_data) => {
+            Ok(mut player_data) => {
+                if let Some(platoon) = &platoon {
+                    player_data.group = Some(platoon.platoon_id.clone());
+                }
                 let new_player = QueueUser {
                     emitter: event_emitter,
                     player: player_data,
@@ -516,25 +608,30 @@ impl QueueHandler {
                     enqueued_at: chrono::Utc::now(),
                     user: user.clone(),
                 };
+
                 let mut lock = self.users_in_queue.lock().await;
+                for q_key in lock.keys() {
+                    log::debug!("Existing queue for {} (matches joiner? {})", q_key.short(), q_key.short().to_string() == key.short().to_string());
+                }
                 // handle game event change
-                if !lock.contains_key(&key) && lock.len() == 1 {
+                if !lock.contains_key(&key) && !lock.is_empty() {
                     log::debug!("Game event change detected");
                     match self.change_strategy {
                         GamemodeChangeStrategy::Upgrade => {
-                            let mut new_queue_map = std::collections::HashMap::<QueueKey, Vec<QueueUser>>::with_capacity(lock.len());
+                            let mut new_queue_map = std::collections::HashMap::<QueueKey, Queue>::with_capacity(lock.len());
                             let mut count = 0;
-                            for (_key, mut users) in lock.drain() {
-                                count += users.len();
+                            for (_key, mut q_entry) in lock.drain() {
+                                count += q_entry.users.len();
                                 if let Some(values) = new_queue_map.get_mut(&key) {
-                                    values.append(&mut users);
+                                    values.users.append(&mut q_entry.users);
+                                    values.platoons.extend(q_entry.platoons.into_iter());
                                 } else {
-                                    new_queue_map.insert(key.clone(), users);
+                                    new_queue_map.insert(key.clone(), q_entry);
                                 }
                             }
 
-                            for users in new_queue_map.values_mut() {
-                                users.sort_by_key(|u| u.enqueued_at);
+                            for q_entry in new_queue_map.values_mut() {
+                                q_entry.users.sort_by_key(|u| u.enqueued_at);
                             }
                             *lock = new_queue_map;
                             if count != 0 {
@@ -542,18 +639,31 @@ impl QueueHandler {
                             }
                         },
                         GamemodeChangeStrategy::Notify => {
-                            let mut count = 0;
-                            for (_key, users) in lock.drain() {
-                                count += users.len();
-                                for player in users {
+                            let mut seen = std::collections::HashSet::new();
+                            for (_key, q_entry) in lock.drain() {
+                                for player in q_entry.users {
+                                    if seen.contains(&player.user_id) { continue; }
+                                    log::debug!("Notifying user {} of event expiry", player.user_id);
                                     player.emitter.emit(crate::events::enqueue_error::QueueJoinError {
                                         code: oj_rc_core::data::error_codes::LobbyReasonCode::EventSystemExpired as i16,
                                         text: "Please requeue".to_owned(),
                                     });
+                                    seen.insert(player.user_id);
+                                }
+                                for platoon in q_entry.platoons.into_values() {
+                                    for player in platoon.members {
+                                        if seen.contains(&player.0.user_id) { continue; }
+                                        log::debug!("Notifying user {} of event expiry", player.0.user_id);
+                                        player.0.emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                                            code: oj_rc_core::data::error_codes::LobbyReasonCode::EventSystemExpired as i16,
+                                            text: "Please requeue".to_owned(),
+                                        });
+                                        seen.insert(player.0.user_id);
+                                    }
                                 }
                             }
-                            if count != 0 {
-                                log::info!("Notified {} users in queue of new gamemode {}", count, key.short());
+                            if !seen.is_empty() {
+                                log::info!("Notified {} users in queue of new gamemode {}", seen.len(), key.short());
                             }
                         },
                         GamemodeChangeStrategy::Ignore => {
@@ -561,21 +671,44 @@ impl QueueHandler {
                         }
                     }
                 }
-                let players_len = if let Some(players) = lock.get_mut(&key) {
-                    log::info!("User {} entered queue for existing match {}", new_player.user_id, key.short());
-                    players.push(new_player);
-                    players.len()
+                let players_len = if let Some(q_entry) = lock.get_mut(&key) {
+                    if let Some(platoon) = platoon {
+                        log::info!("User {} platooned {} queue for existing match {}", new_player.user_id, platoon.platoon_id, key.short());
+                        self.join_or_create_platoon(new_player, platoon, q_entry);
+                    } else {
+                        log::info!("User {} entered queue for existing match {}", new_player.user_id, key.short());
+                        q_entry.users.push(new_player);
+                    }
+                    q_entry.users.len()
                 } else {
-                    log::info!("User {} entered queue for new match {}", new_player.user_id, key.short());
-                    lock.insert(key.clone(), vec![new_player]);
-                    1
+                    if let Some(platoon) = platoon {
+                        log::info!("User {} platooned {} queue for new match {}", new_player.user_id, platoon.platoon_id, key.short());
+                        let mut q_entry = Queue {
+                            users: Vec::default(),
+                            platoons: HashMap::default(),
+                        };
+                        self.join_or_create_platoon(new_player, platoon, &mut q_entry);
+                        lock.insert(key.clone(), q_entry);
+                        0
+                    } else {
+                        log::info!("User {} entered queue for new match {}", new_player.user_id, key.short());
+                        lock.insert(key.clone(), Queue {
+                            users: vec![new_player],
+                            platoons: HashMap::default(),
+                        });
+                        1
+                    }
                 };
+                for q_key in lock.keys() {
+                    log::debug!("Now queue for {} (matches joiner? {})", q_key.short(), q_key.short().to_string() == key.short().to_string());
+                }
                 let game_ready = players_len >= self.users_per_game;
                 let players = if game_ready { lock.remove(&key) } else { None };
                 drop(lock);
                 if let Some(players) = players {
                     self.enter_match(key, players, lobby_user).await;
                 }
+                log::debug!("join_queue complete success");
             },
             Err(e) => {
                 event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
@@ -598,12 +731,23 @@ impl QueueHandler {
             log::info!("User {} was removed from custom game {} queue", user_id, session_id);
         } else {
             // fallback to regular multiplayer
-            for (queue_key, queue) in self.users_in_queue.lock().await.iter_mut() {
-                if let Some((i, _)) = queue.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
-                    queue.remove(i);
+            let mut to_remove = Vec::new();
+            let mut q_lock = self.users_in_queue.lock().await;
+            for (queue_key, queue) in q_lock.iter_mut() {
+                if let Some((i, _)) = queue.users.iter().enumerate().find(|(_, user)| user.user_id == user_id) {
+                    let q_user = queue.users.remove(i);
+                    if let Some(platoon_id) = q_user.player.group {
+                        self.platoon_leave_queue(user_id, platoon_id, queue);
+                    }
+                    if queue.users.is_empty() && queue.platoons.is_empty() {
+                        to_remove.push(queue_key.to_owned());
+                    }
                     log::info!("User {} was removed from queue {}", user_id, queue_key.short());
                     break;
                 }
+            }
+            for key in to_remove {
+                q_lock.remove(&key);
             }
         }
     }

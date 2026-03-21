@@ -62,6 +62,15 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                                 current_lobby.auto_heal,
                                                 user_info.clone(),
                                                 events.to_owned(),
+                                                if group_size > 1 {
+                                                    Some(crate::lobby::PlatoonInfo {
+                                                        total: group_size as _,
+                                                        platoon_id: group_id.string,
+                                                        is_leader,
+                                                    })
+                                                } else {
+                                                    None
+                                                }
                                             ).await;
                                         }
                                     } else {
