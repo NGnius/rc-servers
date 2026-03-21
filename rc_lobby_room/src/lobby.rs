@@ -581,6 +581,7 @@ impl QueueHandler {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter, platoon: Option<PlatoonInfo>) {
         if !self.is_enabled {
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {

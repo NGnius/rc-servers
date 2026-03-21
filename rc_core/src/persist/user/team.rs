@@ -91,7 +91,7 @@ impl TeamChooser for TwoTeamPartyAware {
             if let Some(platoon_id) = &player.group {
                 bal_info.platoons.insert(platoon_id.to_owned(), chosen_team);
             }
-            return chosen_team as i32;
+            chosen_team as i32
         } else {
             Self::do_cleanup(&mut lock);
             let init_info = if let Some(platoon) = &player.group {

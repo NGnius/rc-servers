@@ -428,9 +428,12 @@ pub struct IntercomListener<D: serde::de::DeserializeOwned> {
 }
 
 impl <D: serde::de::DeserializeOwned> IntercomListener<D> {
-    pub async fn listen(self) -> impl futures::Stream<Item=Result<D, reqwest_websocket::Error>> + Unpin {
+    pub async fn listen(self) -> impl futures::Stream<Item=Result<D, Box<reqwest_websocket::Error>>> + Unpin {
         use futures::StreamExt;
-        self.websocket.map(|msg| msg.and_then(|msg| msg.json()))
+        self.websocket.map(|msg|
+            msg.map_err(Box::new)
+                .and_then(|msg| msg.json().map_err(Box::new))
+        )
     }
 }
 
