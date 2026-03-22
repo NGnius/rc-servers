@@ -721,7 +721,7 @@ struct BaseTickInfo {
 }
 
 impl BaseTracker {
-    const DOMINATING_MULT: f32 = 4.0;
+    const DOMINATING_MULT: f32 = 8.0;
 
     fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
         let mut bases = std::collections::HashMap::new();
@@ -765,6 +765,7 @@ impl BaseTracker {
                     let one_tick = (crystals.len() as f32)
                     * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                     * ((self.bases.len() as f32) / (capture_points_count as f32));
+                    let one_tick = 0.1;
                     let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick * multiplier;
                     let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
                     let new_float_index = old_float_index + increment;
@@ -820,6 +821,7 @@ impl BaseTracker {
 
                         if new_index == crystals.len() {
                             // team base is charged to 100%
+                            log::debug!("Base {} is fully charged due to tick", base_id);
                             return BaseTickInfo {
                                 win: Some((*base_id, WinMode::BaseFull)),
                             };
@@ -1049,6 +1051,7 @@ pub struct BattleArenaLogic {
     //cube_parser: std::sync::Arc<oj_rc_core::cubes::CubeLocationsParser>,
     crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>,
     config: oj_rc_core::data::battle_arena_config::BattleArenaData,
+    can_drop_shields: bool,
 }
 
 impl BattleArenaLogic {
@@ -1073,6 +1076,7 @@ impl BattleArenaLogic {
             //ba_equalizer: equalizer,
             crystals,
             config: ba_config,
+            can_drop_shields: true,
         }
     }
 
@@ -1236,6 +1240,7 @@ impl BattleArenaLogic {
     async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>, actual_damage_data: impl FnOnce(Vec<rlnl::types::CubeState>) -> crate::matches::RlnlPacket) {
         let base_id = cube_damage.hit_machine_id as u8;
         let mut total_destroyed = 0;
+        #[cfg(debug_assertions)]
         let mut total_damaged = 0;
         let mut actual_cube_damage = Vec::with_capacity(cube_damage.hit_cubes.len());
         let mut destroyed_cubes_positions = Vec::with_capacity(cube_damage.hit_cubes.len());
@@ -1244,7 +1249,8 @@ impl BattleArenaLogic {
                 if let Some(damage) = hit_cube.status.damage {
                     if base.damage_crystal_at_pos(hit_cube.loc, damage, &self.crystals).is_some() {
                         actual_cube_damage.push(hit_cube.to_owned());
-                        total_damaged += 1;
+                        #[cfg(debug_assertions)]
+                        { total_damaged += 1; }
                     } else {
                         log::warn!("Could not damage cube with damage status");
                     }
@@ -1259,6 +1265,7 @@ impl BattleArenaLogic {
                 }
             }
             base.destroy_crystals_update_graph(destroyed_cubes_positions, &self.crystals);
+            #[cfg(debug_assertions)]
             log::debug!("Destroyed {} ({} damaged) base cubes; {}/{} valid, game {}", total_destroyed, total_damaged, actual_cube_damage.len(), cube_damage.hit_cubes.len(), generic.game_guid());
             let actual_damage_data = actual_damage_data(actual_cube_damage);
             generic.broadcast(
@@ -1291,6 +1298,12 @@ impl BattleArenaLogic {
                         &payload,
                         true,
                     ).await;
+
+                    if new_index == self.crystals.len() {
+                        // team base is charged to 100%
+                        log::debug!("Base {} is fully charged due to stealing", team_id);
+                        self.do_win(team_id, WinMode::BaseFull, generic).await;
+                    }
                 }
             } else {
                 log::warn!("Machine {} has no team", cube_damage.shooting_machine_id);
@@ -1312,8 +1325,8 @@ impl BattleArenaLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for BattleArenaLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
-        log::info!("Player {} joined", player.descriptor.player_id);
+    async fn on_player_join(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
+        log::info!("Player {} joined BA game {}", player.descriptor.player_id, generic.game_guid());
         self.player_tracking.track_player(&player.descriptor).await;
         true
     }
@@ -1677,16 +1690,18 @@ impl CustomGameLogic for BattleArenaLogic {
                     true,
                 ).await;
             }
-            for team in tick_info.lost_lasts.iter() {
-                generic.broadcast(
-                    rlnl::event_code::NetworkEvent::SetShieldState,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &rlnl::events::sync::FusionShieldState {
-                        team_id: *team as i8,
-                        full_power: 0,
-                    },
-                    true,
-                ).await;
+            if self.can_drop_shields {
+                for team in tick_info.lost_lasts.iter() {
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::SetShieldState,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::sync::FusionShieldState {
+                            team_id: *team as i8,
+                            full_power: 0,
+                        },
+                        true,
+                    ).await;
+                }
             }
 
             // do base charge tick
