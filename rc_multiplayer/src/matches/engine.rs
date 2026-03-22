@@ -4,6 +4,13 @@ pub struct RlnlPacket {
     pub data: Box<dyn crate::Broadcastable>,
 }
 
+pub struct SuperConfig<'a> {
+    pub descriptor: oj_rc_core::persist::user::GameDescriptor,
+    pub map: oj_rc_core::persist::config::MapConfig,
+    pub game_mode: &'a oj_rc_core::data::game_mode::GameModeConfig,
+    pub players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
+}
+
 /// Functions returning a boolean indicate if the generic engine should also perform the default behaviour
 /// (true = yes, do default behaviour)
 #[async_trait::async_trait]

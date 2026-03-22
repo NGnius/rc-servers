@@ -124,12 +124,19 @@ impl GameMatches {
         let fakes_handler = super::fake::Handler::start(fakes, players.clone()).await;
         match game_info.mode {
             oj_rc_core::data::game_mode::GameMode::SuddenDeath => {
-                let inner = super::modes::EliminationLogic::new(&self.mode_configs.elimination, &map_config, &players);
-                let engine = super::GenericGamemodeEngine::new(
-                    game_info,
-                    map_config,
-                    &self.mode_configs.elimination,
+                let super_conf = super::engine::SuperConfig {
+                    descriptor: game_info,
+                    map: map_config,
+                    game_mode: &self.mode_configs.elimination,
                     players,
+                };
+                let inner = super::modes::EliminationLogic::new(
+                    &self.mode_configs.elimination,
+                    &super_conf.map,
+                    &super_conf.players,
+                );
+                let engine = super::GenericGamemodeEngine::new(
+                    super_conf,
                     inner,
                     fakes_handler,
                     self.mp_settings.clone(),
@@ -159,12 +166,19 @@ impl GameMatches {
                 } else {
                     self.ba_sorted_crystals.read().await.clone()
                 };
-                let inner = super::modes::BattleArenaLogic::new(&self.mode_configs.battle_arena, &map_config, &players, resolved_ba_conf, crystals);
-                let engine = super::GenericGamemodeEngine::new(
-                    game_info,
-                    map_config,
-                    &self.mode_configs.battle_arena,
+                let super_conf = super::engine::SuperConfig {
+                    descriptor: game_info,
+                    map: map_config,
+                    game_mode: &self.mode_configs.battle_arena,
                     players,
+                };
+                let inner = super::modes::BattleArenaLogic::new(
+                    &super_conf,
+                    resolved_ba_conf,
+                    crystals,
+                );
+                let engine = super::GenericGamemodeEngine::new(
+                    super_conf,
                     inner,
                     fakes_handler,
                     self.mp_settings.clone(),
@@ -172,17 +186,20 @@ impl GameMatches {
                 Ok(engine.spawn())
             },
             oj_rc_core::data::game_mode::GameMode::Pit => {
+                let super_conf = super::engine::SuperConfig {
+                    descriptor: game_info,
+                    map: map_config,
+                    game_mode: &self.mode_configs.the_pit,
+                    players,
+                };
                 let inner = super::modes::PitLogic::new(
                     &self.mode_configs.the_pit,
-                    &map_config,
-                    &players,
+                    &super_conf.map,
+                    &super_conf.players,
                     self.pit_settings.clone(),
                 );
                 let engine = super::GenericGamemodeEngine::new(
-                    game_info,
-                    map_config,
-                    &self.mode_configs.the_pit,
-                    players,
+                    super_conf,
                     inner,
                     fakes_handler,
                     self.mp_settings.clone(),
@@ -190,17 +207,20 @@ impl GameMatches {
                 Ok(engine.spawn())
             },
             oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => {
+                let super_conf = super::engine::SuperConfig {
+                    descriptor: game_info,
+                    map: map_config,
+                    game_mode: &self.mode_configs.team_deathmatch,
+                    players,
+                };
                 let inner = super::modes::TeamDeathMatchLogic::new(
                     &self.mode_configs.team_deathmatch,
-                    &map_config,
-                    &players,
+                    &super_conf.map,
+                    &super_conf.players,
                     self.tdm_settings.clone(),
                 );
                 let engine = super::GenericGamemodeEngine::new(
-                    game_info,
-                    map_config,
-                    &self.mode_configs.team_deathmatch,
-                    players,
+                    super_conf,
                     inner,
                     fakes_handler,
                     self.mp_settings.clone(),

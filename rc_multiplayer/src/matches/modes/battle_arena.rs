@@ -765,7 +765,7 @@ impl BaseTracker {
                     let one_tick = (crystals.len() as f32)
                     * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                     * ((self.bases.len() as f32) / (capture_points_count as f32));
-                    let one_tick = 0.1;
+                    //let one_tick = 0.1;
                     let increment = tick_info.delta as f32 * (*owned_points as f32) * one_tick * multiplier;
                     let old_float_index = tracked_base.cube_index.fetch_add(increment, std::sync::atomic::Ordering::SeqCst);
                     let new_float_index = old_float_index + increment;
@@ -1055,7 +1055,7 @@ pub struct BattleArenaLogic {
 }
 
 impl BattleArenaLogic {
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData, crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> Self {
+    pub fn new(super_conf: &crate::matches::engine::SuperConfig, ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData, crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> Self {
         //let min_y = crystals.iter().min_by_key(|x| x.y).unwrap();
         //log::warn!("First crystal is as ({}, {}, {})", min_y.x, min_y.y, min_y.z);
         let base_graph = oj_rc_core::cubes::CubeGraph::with_data(
@@ -1064,19 +1064,21 @@ impl BattleArenaLogic {
             oj_rc_core::cubes::CLASP_ID,
         ).expect("Invalid Battle Arena base cube data");
         Self {
-            respawn_full_heal_duration: config.respawn_full_heal_duration,
-            respawn_heal_duration: config.respawn_heal_duration,
+            respawn_full_heal_duration: super_conf.game_mode.respawn_full_heal_duration,
+            respawn_heal_duration: super_conf.game_mode.respawn_heal_duration,
             timer_task: tokio::sync::Mutex::new(None),
-            player_tracking: PlayerTracker::new(players),
-            capture_tracking: PointTracker::new(map.capture_points.iter().map(|(_, speed)| *speed)),
+            player_tracking: PlayerTracker::new(&super_conf.players),
+            capture_tracking: PointTracker::new(super_conf.map.capture_points.iter().map(|(_, speed)| *speed)),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
-            base_tracking: BaseTracker::new(map.bases.keys(), &crystals, &ba_config, &base_graph),
+            base_tracking: BaseTracker::new(super_conf.map.bases.keys(), &crystals, &ba_config, &base_graph),
             //cube_parser,
             //ba_base: teambase,
             //ba_equalizer: equalizer,
             crystals,
             config: ba_config,
-            can_drop_shields: true,
+            can_drop_shields: super_conf.descriptor.overrides.as_ref()
+                .map(|overrides| overrides.base_shields_go_down)
+                .unwrap_or(true),
         }
     }
 

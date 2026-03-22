@@ -311,10 +311,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     const COUNTDOWN_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
 
     pub fn new(
-        game: oj_rc_core::persist::user::GameDescriptor,
-        map: oj_rc_core::persist::config::MapConfig,
-        config: &oj_rc_core::data::game_mode::GameModeConfig,
-        players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
+        super_conf: crate::matches::engine::SuperConfig,
         custom: L,
         fakes_handler: super::fake::Handler,
         mp_config: std::sync::Arc<oj_rc_core::persist::config::MultiplayerSettings>,
@@ -325,11 +322,11 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             .map(|player| (player.team as u8, FakeUser::new(player.to_owned())))
             .collect();*/
 
-        let descriptors = players.iter()
+        let descriptors = super_conf.players.iter()
             .map(|player| (player.player_id, UserDescriptor::new(player.to_owned())))
             .collect();
 
-        let user_id_map = players.iter()
+        let user_id_map = super_conf.players.iter()
             .filter_map(|player| player.user_id.map(|id| (id, player.player_id)))
             .collect();
         Self {
@@ -338,9 +335,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             user_id_map,
             is_complete: std::sync::atomic::AtomicBool::new(false),
             game_start: std::sync::atomic::AtomicI64::new(i64::MIN),
-            map_config: std::sync::Arc::new(map),
-            game_descriptor: game,
-            game_duration: std::time::Duration::from_secs((config.game_time_minutes as u64) * 60),
+            map_config: std::sync::Arc::new(super_conf.map),
+            game_descriptor: super_conf.descriptor,
+            game_duration: std::time::Duration::from_secs((super_conf.game_mode.game_time_minutes as u64) * 60),
             custom_logic_handler: custom,
             fakes_handler,
             unclaimed: UnclaimedStats::new(),
