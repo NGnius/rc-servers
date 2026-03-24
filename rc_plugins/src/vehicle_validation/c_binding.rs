@@ -1,4 +1,4 @@
-//! The foreign function interface implementation for validation vehicles in different shared objects/libraries.
+//! The foreign function interface implementation for validating vehicles in different shared objects/libraries.
 //use std::ffi::{CString, c_char, CStr};
 
 const VALIDATE_VEHICLE_SYMBOL_NAME: &[u8] = b"oj_rc_validate_vehicle";

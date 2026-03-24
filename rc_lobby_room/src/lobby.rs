@@ -126,10 +126,18 @@ pub struct QueueHandler {
     change_strategy: GamemodeChangeStrategy,
     autostart_after: Option<std::time::Duration>,
     autostart_task_started: std::sync::atomic::AtomicBool,
+    team_choosers: std::sync::Arc<crate::team_selection::InitedTeamChoosers>,
 }
 
 impl QueueHandler {
-    pub fn new(conf: &oj_rc_core::ConfigImpl, game_host: &str, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,) -> Self {
+    pub fn new(
+        conf: &oj_rc_core::ConfigImpl,
+        game_host: &str,
+        factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+        cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+        weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
+        team_choosers: crate::team_selection::InitedTeamChoosers,
+    ) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
         Self {
@@ -147,6 +155,7 @@ impl QueueHandler {
             change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
             autostart_after: mp_settings.lobby_autostart_after,
             autostart_task_started: std::sync::atomic::AtomicBool::new(false),
+            team_choosers: std::sync::Arc::new(team_choosers),
         }
     }
 
@@ -164,6 +173,7 @@ impl QueueHandler {
         let cpu_counter = self.cpu_counter.clone();
         let weapon_guesser = self.weapon_guesser.clone();
         let autostart_after = self.autostart_after.unwrap();
+        let team_choosers = self.team_choosers.clone();
 
         tokio::spawn(async move {
             loop {
@@ -228,6 +238,7 @@ impl QueueHandler {
                         key, 
                         q_entry,
                         starter.as_ref().as_ref(),
+                        team_choosers.as_ref(),
                     ).await;
                 }
 
@@ -258,11 +269,37 @@ impl QueueHandler {
             key,
             q_entry,
             user,
+            &self.team_choosers
         ).await
     }
 
+    fn team_selector(choosers: &crate::team_selection::InitedTeamChoosers, mode: oj_rc_core::data::game_mode::GameMode) -> &'_ oj_rc_core::persist::user::StandardTeamChooser {
+        match mode {
+            oj_rc_core::data::game_mode::GameMode::BattleArena => &choosers.battle_arena,
+            oj_rc_core::data::game_mode::GameMode::SuddenDeath => &choosers.elimination,
+            oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => &choosers.team_deathmatch,
+            oj_rc_core::data::game_mode::GameMode::Pit => &choosers.pit,
+            x => {
+                log::warn!("No team selector available for multiplayer mode {:?}; using elimination", x);
+                &choosers.elimination
+            },
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
-    async fn enter_match_static(hostname: String, hostport: u16, network_conf: crate::data::network::NetworkConfigData, factory: std::sync::Arc<oj_rc_core::factory::Factory>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, users_per_game: usize, key: QueueKey, mut q_entry: Queue, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
+    async fn enter_match_static(
+        hostname: String,
+        hostport: u16,
+        network_conf: crate::data::network::NetworkConfigData,
+        factory: std::sync::Arc<oj_rc_core::factory::Factory>,
+        cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+        weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
+        users_per_game: usize,
+        key: QueueKey,
+        mut q_entry: Queue,
+        user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync),
+        team_choosers: &crate::team_selection::InitedTeamChoosers,
+    ) {
         let guid_str = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
             guid: guid_str.clone(),
@@ -275,11 +312,7 @@ impl QueueHandler {
             is_complete: false,
             overrides: None,
         };
-        let team_picker = user.team_chooser(&game_desc).await;
-        /*let team_picker = match key.mode {
-            oj_rc_core::data::game_mode::GameMode::Pit => |i| i as i32, // each player is on a different team
-            _ => |i| (i % 2) as i32, // alternate teams
-        };*/
+        let team_picker = Self::team_selector(team_choosers, game_desc.mode);
         let mut player_descs = Vec::with_capacity(q_entry.users.len());
         for (i, player) in q_entry.users.iter_mut().enumerate() {
             let mut lobby_desc = oj_rc_core::persist::user::PlayerLobbyDescriptor {
@@ -297,7 +330,7 @@ impl QueueHandler {
 
         let missing = users_per_game.saturating_sub(q_entry.users.len());
 
-        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, &team_picker, missing).await {
+        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, team_picker, missing).await {
             Ok(fakes) => {
                 let player_datas = q_entry.users.iter().map(|x| x.player.clone())
                     .chain(fakes.players.into_iter().map(|(desc, _emu)| desc),)

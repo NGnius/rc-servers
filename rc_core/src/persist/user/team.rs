@@ -9,7 +9,7 @@ pub enum StandardTeamChooser {
     AllOn(u8),
     /// Each player will be put on their own team (like in Pit mode)
     OnePer,
-    //Custom(Box<dyn TeamChooser>),
+    Custom(Box<dyn TeamChooser>),
 }
 
 impl StandardTeamChooser {
@@ -24,7 +24,7 @@ impl TeamChooser for StandardTeamChooser {
             Self::Alternating(t) => t.choose_team(game, index, player),
             Self::AllOn(team) => *team as i32,
             Self::OnePer => index as i32,
-            //Self::Custom(t) => t.choose_team(game, index, player),
+            Self::Custom(t) => t.choose_team(game, index, player),
         }
     }
 }

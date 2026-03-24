@@ -22,15 +22,7 @@ impl super::LobbyUser for UserData {
             } else {
                 polariton_server::operations::SimpleOpError::with_code(crate::data::error_codes::LobbyReasonCode::from_service_error(e.error_code()) as i16)
             }
-
         })
-    }
-
-    async fn team_chooser(&self, game: &super::GameDescriptor) -> super::StandardTeamChooser {
-        match game.mode {
-            crate::data::game_mode::GameMode::Pit => super::StandardTeamChooser::OnePer,
-            _ => super::StandardTeamChooser::alternating(),
-        }
     }
 
     async fn start_game(

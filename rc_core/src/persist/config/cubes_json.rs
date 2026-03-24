@@ -241,7 +241,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     }
 
     fn game_mode_config(&self) -> Typed<C> {
-        let game_mode_data: crate::data::game_mode::GameModeConfigs = self.battle.games.into();
+        let game_mode_data: crate::data::game_mode::GameModeConfigs = self.battle.games.clone().into();
         game_mode_data.as_transmissible()
     }
 
@@ -347,7 +347,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     }
 
     fn gamemodes(&self) -> crate::data::game_mode::GameModeConfigs {
-        self.battle.games.into()
+        self.battle.games.clone().into()
     }
 
     fn singleplayer_details(&self) -> super::SingleplayerConfig {
@@ -568,5 +568,14 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
 
     fn garage_slot_limit(&self) -> i32 {
         self.settings.gameplay.garages_limit
+    }
+
+    fn team_choosers(&self) -> super::TeamChoosers {
+        super::TeamChoosers {
+            battle_arena: self.battle.games.battle_arena.team_chooser.clone(),
+            elimination: self.battle.games.elimination.team_chooser.clone(),
+            pit: self.battle.games.pit.team_chooser.clone(),
+            team_deathmatch: self.battle.games.team_deathmatch.team_chooser.clone(),
+        }
     }
 }

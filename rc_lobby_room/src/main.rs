@@ -6,6 +6,7 @@ pub use lobby::QueueHandler;
 mod data;
 mod operations;
 mod events;
+mod team_selection;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -35,7 +36,12 @@ async fn main() -> std::io::Result<()> {
     let users = std::sync::Arc::new(oj_rc_core::persist::user::UserImpl::load(&args.data, &config).await.expect("Bad user data"));
     let factory = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&config, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config"));
     let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
-    let queue = std::sync::Arc::new(QueueHandler::new(&config, &args.redirect, factory.clone(), parsers.cpu_counter(), parsers.weapon_order()));
+    let team_selector_plugins_path = std::path::PathBuf::from(&args.data).join("plugins/team_select");
+    let team_choosers = crate::team_selection::choosers_from_conf(
+        &<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::team_choosers(&config),
+        team_selector_plugins_path,
+    );
+    let queue = std::sync::Arc::new(QueueHandler::new(&config, &args.redirect, factory.clone(), parsers.cpu_counter(), parsers.weapon_order(), team_choosers));
 
     let init_ctx = InitConfig {
         config,

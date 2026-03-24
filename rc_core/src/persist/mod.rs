@@ -44,6 +44,9 @@ pub use maps::{MapsConfig, MapConfig};
 mod item_shop;
 pub use item_shop::{ItemShopConfig, ItemBundle};
 
+mod team_chooser;
+pub use team_chooser::TeamChooser;
+
 mod vehicle_validator;
 pub use vehicle_validator::VehicleValidator;
 

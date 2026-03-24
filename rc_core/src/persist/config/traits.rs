@@ -42,6 +42,7 @@ pub trait ConfigProvider<C: Clone> {
     fn promo_codes(&self) -> std::collections::HashMap<String, PromoCode>;
     fn vehicle_validation(&self) -> VehicleValidators;
     fn garage_slot_limit(&self) -> i32;
+    fn team_choosers(&self) -> TeamChoosers;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -546,4 +547,11 @@ pub struct VehicleValidators {
     pub custom_game: crate::persist::VehicleValidator,
     pub singleplayer: crate::persist::VehicleValidator,
     pub campaigns: std::collections::HashMap<String, crate::persist::VehicleValidator>,
+}
+
+pub struct TeamChoosers {
+    pub battle_arena: crate::persist::TeamChooser,
+    pub elimination: crate::persist::TeamChooser,
+    pub pit: crate::persist::TeamChooser,
+    pub team_deathmatch: crate::persist::TeamChooser,
 }

@@ -89,12 +89,13 @@ impl std::convert::From<Vote> for crate::data::voting::Vote {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameMode {
     pub respawn_heal_duration: f32,
     pub respawn_full_heal_duration: f32,
     pub kill_limit: i32,
     pub game_time_m: i32,
+    pub team_chooser: super::TeamChooser,
 }
 
 impl std::convert::From<GameMode> for crate::data::game_mode::GameModeConfig {
@@ -108,7 +109,7 @@ impl std::convert::From<GameMode> for crate::data::game_mode::GameModeConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GameModes {
     pub battle_arena: GameMode,
     pub elimination: GameMode,
@@ -337,24 +338,28 @@ fn default_game_modes() -> GameModes {
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
             game_time_m: 20,
+            team_chooser: super::TeamChooser::Alternating,
         },
         elimination: GameMode {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 10,
             game_time_m: 10,
+            team_chooser: super::TeamChooser::Alternating,
         },
         pit: GameMode {
             respawn_heal_duration: 20.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 0,
             game_time_m: 15,
+            team_chooser: super::TeamChooser::OneOnAll,
         },
         team_deathmatch: GameMode {
             respawn_heal_duration: 10.0,
             respawn_full_heal_duration: 0.5,
             kill_limit: 10,
             game_time_m: 10,
+            team_chooser: super::TeamChooser::Alternating,
         },
     }
 }
