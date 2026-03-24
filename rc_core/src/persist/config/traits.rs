@@ -92,6 +92,7 @@ pub struct TypedDevMessage<C> {
 pub struct ServerConfig {
     pub database: String,
     pub auto_signup: bool,
+    pub allow_signup: bool,
     pub queue_mode: QueueChangeMode,
     pub domain: String,
     pub cdn_url: String,

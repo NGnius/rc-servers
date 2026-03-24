@@ -83,6 +83,8 @@ pub struct ServerSettings {
     pub database: String,
     #[serde(default)]
     pub auto_signup: bool,
+    #[serde(default = "default_true")]
+    pub allow_signup: bool,
     #[serde(default)]
     pub queue_mode: QueueMode,
     #[serde(default = "default_domain_root")]
@@ -123,6 +125,7 @@ fn default_server_conf() -> ServerSettings {
     ServerSettings {
         database: default_db_conn(),
         auto_signup: false,
+        allow_signup: true,
         queue_mode: QueueMode::Notify,
         domain: default_domain_root(),
         cdn_url: default_cdn_root_url(),

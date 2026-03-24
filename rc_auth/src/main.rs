@@ -20,8 +20,9 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
     let cli_args = cli::CliArgs::get();
 
+    let conf = oj_rc_core::ConfigImpl::load(&cli_args.assets_robocraft)?;
+
     if cli_args.validate {
-        let conf = oj_rc_core::ConfigImpl::load(cli_args.assets_robocraft)?;
         let res = if conf.self_validate(&cli_args.data_robocraft) {
             log::info!("Config validated successfully (exit success)");
             Ok(())
@@ -30,6 +31,8 @@ async fn main() -> std::io::Result<()> {
         };
         return res;
     }
+
+    let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&conf));
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
     let rc_preloaded = actix_web::web::Data::new(cli_args.clone().preloaded().await);
@@ -61,6 +64,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(internal_auth.clone())
             .app_data(user_registry.clone())
             .app_data(handlebars_ref.clone())
+            .app_data(server_settings.clone())
             .service(index)
             .service(robocraft::registration::form_submit)
             .service(robocraft::registration::form_load)

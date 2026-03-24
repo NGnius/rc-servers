@@ -27,6 +27,7 @@ struct Context {
     error: Option<String>,
     version: String,
     source_url: String,
+    is_registration_allowed: bool,
 }
 
 #[derive(Serialize)]
@@ -60,6 +61,7 @@ fn registration_ok(form: RegisterForm, renderer: &handlebars::Handlebars<'_>) ->
         error: None,
         version: version_string(),
         source_url: env!("CARGO_PKG_REPOSITORY").to_owned(),
+        is_registration_allowed: true,
     }).unwrap();
     Html::new(rendered)
 }
@@ -70,12 +72,27 @@ fn registration_err(form: RegisterForm, error: String , renderer: &handlebars::H
         error: Some(error),
         version: version_string(),
         source_url: env!("CARGO_PKG_REPOSITORY").to_owned(),
+        is_registration_allowed: true,
+    }).unwrap();
+    Html::new(rendered)
+}
+
+fn registration_disabled(form: RegisterForm, renderer: &handlebars::Handlebars<'_>) -> Html {
+    let rendered = renderer.render(FORM_NAME, &Context {
+        form,
+        error: Some("Registration not allowed".to_owned()),
+        version: version_string(),
+        source_url: env!("CARGO_PKG_REPOSITORY").to_owned(),
+        is_registration_allowed: false,
     }).unwrap();
     Html::new(rendered)
 }
 
 #[post("/register")]
-pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>, handlebars_ref: Data<handlebars::Handlebars<'_>>) -> Result<Html, actix_web::error::Error> {
+pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>, handlebars_ref: Data<handlebars::Handlebars<'_>>, server_conf: Data<oj_rc_core::persist::config::ServerConfig>) -> Result<Html, actix_web::error::Error> {
+    if !server_conf.allow_signup {
+        return Ok(registration_disabled(form.into_inner(), &handlebars_ref));
+    }
     // password confirmation validation
     if form.password != form.password_c {
         return Ok(registration_err(form.into_inner(), "Passwords do not match".to_owned(), &handlebars_ref));
@@ -180,14 +197,24 @@ pub async fn form_submit(form: Form<RegisterForm>, config: Data<super::RcConfig>
 }
 
 #[get("/register")]
-pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>) -> Html {
-    registration_ok(RegisterForm {
-        display_name: "".to_owned(),
-        password: "".to_owned(),
-        password_c: "".to_owned(),
-        email: None,
-        steam_id: None,
-    }, &handlebars_ref)
+pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, server_conf: Data<oj_rc_core::persist::config::ServerConfig>) -> Html {
+    if server_conf.allow_signup {
+        registration_ok(RegisterForm {
+            display_name: "".to_owned(),
+            password: "".to_owned(),
+            password_c: "".to_owned(),
+            email: None,
+            steam_id: None,
+        }, &handlebars_ref)
+    } else {
+        registration_disabled(RegisterForm {
+            display_name: "".to_owned(),
+            password: "".to_owned(),
+            password_c: "".to_owned(),
+            email: None,
+            steam_id: None,
+        }, &handlebars_ref)
+    }
 }
 
 async fn favicon_impl(config: Data<super::RcConfig>) -> impl Responder {
