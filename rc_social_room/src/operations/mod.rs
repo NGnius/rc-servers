@@ -54,7 +54,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy,
         .add(polariton_server::operations::Ack::<52, _>::default()) // validate pending season rewards (this just always needs to be ack-ed)
         .add(season_rewards::season_rewards_provider())
         .add(previous_battle_rewards::pending_battle_rewards_provider())
-        .add(platoon_data::platoon_provider())
+        .add(platoon_data::platoon_provider(init_ctx))
         .add(polariton_server::operations::Ack::<6, _>::default()) // AvatarUpdatedRequest, sent on services_room avatar_set success (just needs to be ack-ed; no params)
         .add(calculate_mmr::mmr_provider())
         .add(polariton_server::operations::Ack::<25, _>::default()) // save social settings, sent on escape menu settings save (should probably be saved someday...)
