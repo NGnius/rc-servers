@@ -36,10 +36,10 @@ libfj = { version = "0.10" }
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4.5", features = [ "derive" ] }
-polariton = { version = "0.6", path = "../polariton", features = [ "tokio-async" ] }
-polariton_server = { version = "0.6", path = "../polariton/server", features = [ "tokio-async" ] }
-#polariton = { version = "0.6", features = [ "tokio-async" ] }
-#polariton_server = { version = "0.6", features = [ "tokio-async" ] }
+#polariton = { version = "0.6", path = "../polariton", features = [ "tokio-async" ] }
+#polariton_server = { version = "0.6", path = "../polariton/server", features = [ "tokio-async" ] }
+polariton = { version = "0.6", features = [ "tokio-async" ] }
+polariton_server = { version = "0.6", features = [ "tokio-async" ] }
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
 async-trait = "0.1"
