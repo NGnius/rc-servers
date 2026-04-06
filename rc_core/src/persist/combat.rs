@@ -348,8 +348,8 @@ fn default_game_modes() -> GameModes {
             team_chooser: super::TeamChooser::Alternating,
         },
         pit: GameMode {
-            respawn_heal_duration: 20.0,
-            respawn_full_heal_duration: 0.5,
+            respawn_heal_duration: 15.0,
+            respawn_full_heal_duration: 2.0,
             kill_limit: 0,
             game_time_m: 15,
             team_chooser: super::TeamChooser::OneOnAll,
