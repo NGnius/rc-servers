@@ -710,7 +710,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     if let Err(e) = conn.user.save_player_connected_status(self.game_guid(), false).await {
                         log::error!("Failed to mark player {} (user {}) as disconnected in game {}: {}", player_id, user_id, self.game_guid(), e);
                     }
-                    if !is_unregister {
+                    if !is_unregister || conn.connection.connection.is_connected() {
                         conn.connection.connection.goodbye(&conn.connection.sender).await;
                     }
                     return has_active_connections;
