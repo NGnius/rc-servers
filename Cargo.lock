@@ -2433,7 +2433,7 @@ checksum = "059c95245738cdc7b40078cdd51a23200252a4c0a0a6dd005136152b3f467a4a"
 
 [[package]]
 name = "oj_cdn"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "actix-files",
  "actix-web",
@@ -2448,7 +2448,7 @@ dependencies = [
 
 [[package]]
 name = "oj_polariton_auth"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "log",
  "num",
@@ -2460,7 +2460,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_auth"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "actix-files",
  "actix-web",
@@ -2482,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_chat"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "clap",
  "env_logger",
@@ -2495,7 +2495,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_chat_room"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2518,7 +2518,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_core"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2547,7 +2547,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_database"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "itertools",
@@ -2560,7 +2560,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_factory"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "base64",
@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_factory_web"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "actix-files",
  "actix-web",
@@ -2594,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_lobby"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "clap",
  "env_logger",
@@ -2607,7 +2607,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_lobby_room"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2628,7 +2628,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_microtransactions"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "actix-web",
  "clap",
@@ -2642,7 +2642,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_multiplayer"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "atomic_float",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_plugins"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "libloading",
  "log",
@@ -2673,7 +2673,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_services"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "clap",
  "env_logger",
@@ -2686,7 +2686,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_services_room"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2712,7 +2712,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_singleplayer"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "clap",
  "env_logger",
@@ -2725,7 +2725,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_singleplayer_room"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2743,7 +2743,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_social"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "clap",
  "env_logger",
@@ -2756,7 +2756,7 @@ dependencies = [
 
 [[package]]
 name = "oj_rc_social_room"
-version = "1.2.0"
+version = "1.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3350,7 +3350,7 @@ dependencies = [
 
 [[package]]
 name = "rc-servers"
-version = "1.2.0"
+version = "1.2.2"
 
 [[package]]
 name = "rdrand"
