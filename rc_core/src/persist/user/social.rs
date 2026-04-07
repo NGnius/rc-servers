@@ -542,11 +542,49 @@ impl super::SocialUser for UserData {
         if let Some((joined_clan, member)) = joined_clan_opt {
             let is_leader = matches!(member.rank, oj_rc_database::schema::clan_member::ClanMemberRank::Leader);
             if is_leader {
-                log::warn!("User {} tried to leave clan {} that they lead", self.account.id, joined_clan.id);
-                return Err(polariton_server::operations::SimpleOpError::with_message(
-                    crate::data::error_codes::SocialErrorCode::NotClanLeader as i16,
-                    "Failed to leave clan: you are the leader".to_string(),
-                ));
+                let clan_members = self.db.clan_members_by_clan_id(joined_clan.id).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve clan {} members for {}: {}", joined_clan.id, self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::SocialErrorCode::DatabaseError as i16,
+                            format!("Failed to retrieve clan members: {}", e),
+                        )
+                    })?;
+                let other_member_opt = clan_members.iter()
+                    .find(|mem| mem.0.rank == oj_rc_database::schema::clan_member::ClanMemberRank::Officer)
+                    .or_else(|| clan_members.iter().find(|mem| mem.1.id != self.account.id));
+                if let Some(other_member) = other_member_opt {
+                    log::info!("User {} trying to leave clan {} that they lead, promoting user {} to leader", self.account.id, joined_clan.id, other_member.1.id);
+                    let new_other_member = oj_rc_database::schema::clan_member::ActiveModel {
+                        id: oj_rc_database::sea_orm::ActiveValue::Set(other_member.0.id),
+                        rank: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::clan_member::ClanMemberRank::Leader),
+                        ..Default::default()
+                    };
+                    self.db.update_clan_member(new_other_member).await
+                        .map_err(|e| {
+                            log::error!("Failed to promote clan {} member {} to leader for user {}: {}", joined_clan.id, other_member.1.id, self.account.id, e);
+                            polariton_server::operations::SimpleOpError::with_message(
+                                crate::data::error_codes::SocialErrorCode::DatabaseError as i16,
+                                format!("Failed to retrieve update clan member for user: {}", e),
+                            )
+                        })?;
+                } else {
+                    log::info!("User {} trying to leave clan {} that they lead, abandoning clan", self.account.id, joined_clan.id);
+                    self.db.update_clan(oj_rc_database::schema::clan::ActiveModel {
+                        id: oj_rc_database::sea_orm::ActiveValue::Set(joined_clan.id),
+                        creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        name: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        description: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::clan::ClanType::Abandoned),
+                    }).await
+                        .map_err(|e| {
+                            log::error!("Failed to abandon clan {} for user {}: {}", joined_clan.id, self.account.id, e);
+                            polariton_server::operations::SimpleOpError::with_message(
+                                crate::data::error_codes::SocialErrorCode::DatabaseError as i16,
+                                format!("Failed to retrieve abandon clan for user: {}", e),
+                            )
+                        })?;
+                }
             }
             let new_model = oj_rc_database::schema::clan_member::ActiveModel {
                 id: oj_rc_database::sea_orm::ActiveValue::Set(member.id),
