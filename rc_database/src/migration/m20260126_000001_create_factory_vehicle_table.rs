@@ -53,8 +53,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CombatRating).double().not_null())
                     .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CosmeticRating).double().not_null())
                     .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CubeAmounts).string().not_null())
-                    .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CubeData).binary().not_null())
-                    .col(ColumnDef::new(crate::schema::factory::vehicle::Column::ColourData).binary().not_null())
+                    .col(ColumnDef::new(crate::schema::factory::vehicle::Column::CubeData).blob().not_null())
+                    .col(ColumnDef::new(crate::schema::factory::vehicle::Column::ColourData).blob().not_null())
                     .to_owned(),
             )
             .await
