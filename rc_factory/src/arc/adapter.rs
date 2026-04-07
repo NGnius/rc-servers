@@ -89,7 +89,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     name: meta.name,
                     description: meta.description,
                     thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
-                    added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
+                    added_by: if self.spoof_users && meta.added_date.as_str() < "2025-01-23" { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
                     expiry_date: if self.ignore_expiry { chrono::Utc::now() + chrono::Duration::weeks(2) } else {  crate::traits::parse_rc_date(&meta.expiry_date).unwrap_or_default() },
@@ -159,6 +159,18 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                 }
             }
         }
+
+        if query.buyable { 
+            query_builder = query_builder.filter(
+                sea_orm::sea_query::Condition::any()
+                    .add(super::entities::robot_metadata::Column::AddedDate.lt("2025-01-23"))
+                    .add(super::entities::robot_metadata::Column::Buyable.eq(1))
+            );
+        }   
+        if query.featured_only {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Featured.eq(1));
+        }
+        
         // movement filters not supported
         // weapon filters not supported
         if query.minimum_cpu > 0 {
@@ -195,7 +207,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
                     name: meta.name,
                     description: meta.description,
                     thumbnail: self.thumbnail_url(meta.thumbnail, meta.id),
-                    added_by: if self.spoof_users { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
+                    added_by: if self.spoof_users && meta.added_date.as_str() < "2025-01-23" { hex::encode(meta.added_by.as_bytes()) } else { meta.added_by },
                     added_by_display_name: meta.added_by_display_name,
                     added_date: crate::traits::parse_rc_date(&meta.added_date).unwrap_or_default(),
                     expiry_date: if self.ignore_expiry { chrono::Utc::now() + chrono::Duration::weeks(2) } else {  crate::traits::parse_rc_date(&meta.expiry_date).unwrap_or_default() },
