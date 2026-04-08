@@ -1,0 +1,237 @@
+x-shared-debug: &shared-debug
+  volumes:
+    - ../rlnl:/rlnl
+    - ../LiteRustLib:/LiteRustLib
+    - ../polariton:/polariton
+    - ../libfj:/libfj
+    - ../oj_core:/oj_core
+    - .:/app
+    - cargo:/usr/local/cargo/registry
+    - target:/app/target
+  build:
+    context: .
+    dockerfile: Dockerfile
+  network_mode: "host"
+
+x-shared-release: &shared-release
+  volumes:
+    - ../rlnl:/rlnl
+    - ../LiteRustLib:/LiteRustLib
+    - ../polariton:/polariton
+    - ../libfj:/libfj
+    - ../oj_core:/oj_core
+    - .:/app
+    - cargo:/usr/local/cargo/registry
+    - target:/app/target
+  build:
+    context: .
+    dockerfile: Dockerfile
+  command: cargo run --release -- --ip "0.0.0.0"
+  network_mode: "host"
+  environment: 
+    RUST_LOG: "info"
+
+# only for debug
+x-internal-services: &internal-services
+  environment: 
+    RUST_BACKTRACE: "1"
+    RUST_LOG: "debug"
+  command: cargo run -- -1
+
+# only for debug
+x-web-services: &web-services
+  environment:
+    RUST_LOG: "debug"
+  command: cargo run
+
+services:
+  rc_services_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_services
+    profiles: ["debug"]
+
+  rc_services_room_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_services_room
+    profiles: ["debug"]
+
+  rc_social_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_social
+    profiles: ["debug"]
+
+  rc_social_room_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_social_room
+    profiles: ["debug"]
+
+  rc_chat_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_chat
+    profiles: ["debug"]
+
+  rc_chat_room_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_chat_room
+    profiles: ["debug"]
+
+  rc_singleplayer_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_singleplayer
+    profiles: ["debug"]
+
+  rc_singleplayer_room_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_singleplayer_room
+    profiles: ["debug"]
+
+  rc_lobby_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_lobby
+    profiles: ["debug"]
+
+  rc_lobby_room_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_lobby_room
+    profiles: ["debug"]
+
+  rc_multiplayer_debug:
+    <<:
+      - *shared-debug
+      - *internal-services
+    working_dir: /app/rc_multiplayer
+    command: cargo run
+    profiles: ["debug"]
+
+  rc_factory_web_debug:
+    <<: 
+      - *shared-debug
+      - *web-services
+    working_dir: /app/rc_factory_web
+    profiles: ["debug"]
+
+  rc_auth_debug:
+    <<: 
+      - *shared-debug
+      - *web-services
+    working_dir: /app/rc_auth
+    profiles: ["debug"]
+
+  rc_microtransactions_debug:
+    <<: 
+      - *shared-debug
+      - *web-services
+    working_dir: /app/rc_microtransactions
+    profiles: ["debug"]
+
+  cdn_debug:
+    <<: 
+      - *shared-debug
+      - *web-services
+    working_dir: /app/cdn
+    profiles: ["debug"]
+
+  rc_services_release:
+    <<: *shared-release
+    working_dir: /app/rc_services
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4533"
+    profiles: ["release"]
+
+  rc_services_room_release:
+    <<: *shared-release
+    working_dir: /app/rc_services_room
+    profiles: ["release"]
+
+  rc_social_release:
+    <<: *shared-release
+    working_dir: /app/rc_social
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4535"
+    profiles: ["release"]
+
+  rc_social_room_release:
+    <<: *shared-release
+    working_dir: /app/rc_social_room
+    profiles: ["release"]
+
+  rc_chat_release:
+    <<: *shared-release
+    working_dir: /app/rc_chat
+    command: cargo run  --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4537"
+    profiles: ["release"]
+
+  rc_chat_room_release:
+    <<: *shared-release
+    working_dir: /app/rc_chat_room
+    profiles: ["release"]
+
+  rc_singleplayer_release:
+    <<: *shared-release
+    working_dir: /app/rc_singleplayer
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4539"
+    profiles: ["release"]
+
+  rc_singleplayer_room_release:
+    <<: *shared-release
+    working_dir: /app/rc_singleplayer_room
+    profiles: ["release"]
+
+  rc_lobby_release:
+    <<: *shared-release
+    working_dir: /app/rc_lobby
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4541"
+    profiles: ["release"]
+
+  rc_lobby_room_release:
+    <<: *shared-release
+    working_dir: /app/rc_lobby_room
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4542"
+    profiles: ["release"]
+
+  rc_multiplayer_release:
+    <<: *shared-release
+    working_dir: /app/rc_multiplayer
+    profiles: ["release"]
+
+  rc_factory_web_release:
+    <<: *shared-release
+    working_dir: /app/rc_factory_web
+    profiles: ["release"]
+
+  rc_auth_release:
+    <<: *shared-release
+    working_dir: /app/rc_auth
+    profiles: ["release"]
+  
+  rc_microtransactions_release:
+    <<: *shared-release
+    working_dir: /app/rc_microtransactions
+    profiles: ["release"]
+
+  cdn_release:
+    <<: *shared-release
+    working_dir: /app/cdn
+    profiles: ["release"]
+
+volumes:
+  cargo:
+  target:

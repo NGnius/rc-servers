@@ -1,0 +1,91 @@
+x-shared-release: &shared-release
+  volumes:
+    - .:/app
+    - cargo:/usr/local/cargo/registry
+    - target:/app/target
+  build:
+    context: .
+    dockerfile: Dockerfile
+  network_mode: "host"
+  environment: 
+    RUST_LOG: "info"
+
+services:
+  rc_services:
+    <<: *shared-release
+    working_dir: /app/rc_services
+    command: ./oj_rc_services --ip "0.0.0.0" --redirect "domain_or_ip_address:4533"
+
+  rc_services_room:
+    <<: *shared-release
+    working_dir: /app/rc_services_room
+    command: ./oj_rc_services_room --ip "0.0.0.0"
+
+  rc_social:
+    <<: *shared-release
+    working_dir: /app/rc_social
+    command: ./oj_rc_social --ip "0.0.0.0" --redirect "domain_or_ip_address:4535"
+
+  rc_social_room:
+    <<: *shared-release
+    working_dir: /app/rc_social_room
+    command: ./oj_rc_social_room --ip "0.0.0.0"
+
+  rc_chat:
+    <<: *shared-release
+    working_dir: /app/rc_chat
+    command: ./oj_rc_chat --ip "0.0.0.0" --redirect "domain_or_ip_address:4537"
+
+  rc_chat_room:
+    <<: *shared-release
+    working_dir: /app/rc_chat_room
+    command: ./oj_rc_chat_room --ip "0.0.0.0"
+
+  rc_singleplayer:
+    <<: *shared-release
+    working_dir: /app/rc_singleplayer
+    command: ./oj_rc_singleplayer --ip "0.0.0.0" --redirect "domain_or_ip_address:4539"
+
+  rc_singleplayer_room:
+    <<: *shared-release
+    working_dir: /app/rc_singleplayer_room
+    command: ./oj_rc_singleplayer_room --ip "0.0.0.0"
+
+  rc_lobby:
+    <<: *shared-release
+    working_dir: /app/rc_lobby
+    command: ./oj_rc_lobby --ip "0.0.0.0" --redirect "domain_or_ip_address:4541"
+
+  rc_lobby_room:
+    <<: *shared-release
+    working_dir: /app/rc_lobby_room
+    command: ./oj_rc_lobby_room --ip "0.0.0.0" --redirect "domain_or_ip_address:4542"
+
+  rc_multiplayer:
+    <<: *shared-release
+    working_dir: /app/rc_multiplayer
+    command: ./oj_rc_multiplayer --ip "0.0.0.0"
+
+  rc_factory_web:
+    <<: *shared-release
+    working_dir: /app/rc_factory_web
+    command: ./oj_rc_factory_web --ip "0.0.0.0"
+
+  rc_auth:
+    <<: *shared-release
+    working_dir: /app/rc_auth
+    command: ./oj_rc_auth --ip "0.0.0.0"
+  
+  rc_microtransactions:
+    <<: *shared-release
+    working_dir: /app/rc_microtransactions
+    command: ./oj_rc_microtransactions --ip "0.0.0.0"
+
+  cdn:
+    <<: *shared-release
+    working_dir: /app/cdn
+    command: ./oj_cdn --ip "0.0.0.0"
+
+volumes:
+  cargo:
+  target:
