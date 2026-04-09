@@ -529,8 +529,9 @@ pub(super) fn default_tdm_conf() -> TeamDeathMatchConfig {
 }
 
 pub(super) fn default_validator() -> super::VehicleValidator {
-    super::VehicleValidator::Cpu {
+    /*super::VehicleValidator::Cpu {
         min: 100,
         max: 2_000,
-    }
+    }*/
+    super::VehicleValidator::None
 }
