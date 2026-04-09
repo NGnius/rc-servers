@@ -154,7 +154,7 @@ services:
   rc_services_release:
     <<: *shared-release
     working_dir: /app/rc_services
-    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4533"
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4533"
     profiles: ["release"]
 
   rc_services_room_release:
@@ -165,7 +165,7 @@ services:
   rc_social_release:
     <<: *shared-release
     working_dir: /app/rc_social
-    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4535"
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4535"
     profiles: ["release"]
 
   rc_social_room_release:
@@ -176,7 +176,7 @@ services:
   rc_chat_release:
     <<: *shared-release
     working_dir: /app/rc_chat
-    command: cargo run  --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4537"
+    command: cargo run  --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4537"
     profiles: ["release"]
 
   rc_chat_room_release:
@@ -187,7 +187,7 @@ services:
   rc_singleplayer_release:
     <<: *shared-release
     working_dir: /app/rc_singleplayer
-    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4539"
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4539"
     profiles: ["release"]
 
   rc_singleplayer_room_release:
@@ -198,13 +198,13 @@ services:
   rc_lobby_release:
     <<: *shared-release
     working_dir: /app/rc_lobby
-    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4541"
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4541"
     profiles: ["release"]
 
   rc_lobby_room_release:
     <<: *shared-release
     working_dir: /app/rc_lobby_room
-    command: cargo run --release -- --ip "0.0.0.0" --redirect "domain_or_ip_address:4542"
+    command: cargo run --release -- --ip "0.0.0.0" --redirect "${REDIRECT:-127.0.0.1}:4542"
     profiles: ["release"]
 
   rc_multiplayer_release:

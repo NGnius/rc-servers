@@ -50,6 +50,8 @@ PROJECT_ASSETS_TO_INCLUDE = [
     "utils/cube_gen.py",
     "LICENSE",
     "README.md",
+    "Dockerfile",
+    "docker-compose.release.yml"
 ]
 
 BLANK_FOLDERS_TO_CREATE = [
@@ -90,7 +92,10 @@ def main(build_root: str, outfile: str):
         add_folder_to_zip(archive, folder)
     print("Adding", len(PROJECT_ASSETS_TO_INCLUDE), "extra assets")
     for asset in PROJECT_ASSETS_TO_INCLUDE:
-        archive.write(asset)
+        if asset == "docker-compose.release.yml":
+            archive.write(asset, arcname="docker-compose.yml")
+        else:
+            archive.write(asset)
     # handle project setup niceties
     print("Creating", len(BLANK_FOLDERS_TO_CREATE), "blank folders")
     for folder in BLANK_FOLDERS_TO_CREATE:
