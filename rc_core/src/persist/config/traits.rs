@@ -21,6 +21,7 @@ pub trait ConfigProvider<C: Clone> {
     fn server_config(&self) -> ServerConfig;
     fn garage_upgrades(&self) -> GarageUpgrades;
     async fn factory(&self, builtin_factory_provider: &(dyn (Fn() -> oj_rc_database::FactoryDatabase) + Sync)) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;
+    fn factory_config(&self) -> FactoryConfig;
     fn cubes(&self) -> &'_ indexmap::IndexMap<String, crate::persist::Cube>;
     fn chat_system_config(&self) -> ChatSystemConfig;
     fn gamemode_events(&self) -> GameEventSequence;
@@ -141,6 +142,10 @@ impl GarageUpgrades {
             }))
         ].into())
     }
+}
+
+pub struct FactoryConfig {
+    pub upload_limit: i32,
 }
 
 #[derive(Clone, Debug)]

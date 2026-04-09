@@ -14537,6 +14537,8 @@
     },
     "shop": {},
     "settings": {
+        "server": {
+        },
         "banners": [
             {
                 "message": "No jam was harmed in the reverse-engineering of this game",

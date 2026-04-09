@@ -179,7 +179,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(player_rank::rank_static_provider())
         .add(ab_test_group::test_group_provider())
         .add(league_limits::league_battle_parameters_provider())
-        .add(crf_limits::robot_shop_submission_infos_provider())
+        .add(crf_limits::robot_shop_submission_infos_provider(&init_ctx.cubes))
         .add(robot_mastery_settings::robot_mastery_settings_provider())
         .add(player_started_purchase::started_purchase_provider())
         .add(custom_games_team::team_setup_provider())

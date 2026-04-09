@@ -4,6 +4,8 @@ use serde::{Serialize, Deserialize};
 pub struct FactoryConfig {
     #[serde(default = "default_variant")]
     pub adapter: AdapterSettings,
+    #[serde(default = "default_upload_limit")]
+    pub upload_limit: i32,
 }
 
 impl super::config::SelfValidator for FactoryConfig {
@@ -16,6 +18,10 @@ impl super::config::SelfValidator for FactoryConfig {
 
 fn default_variant() -> AdapterSettings {
     AdapterSettings::BuiltIn
+}
+
+fn default_upload_limit() -> i32 {
+    4096
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

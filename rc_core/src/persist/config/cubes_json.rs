@@ -318,6 +318,12 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         crate::factory::Factory::from_config(&self.factory, &<Self as super::ConfigProvider<()>>::server_config(self), builtin_factory_provider).await
     }
 
+    fn factory_config(&self) -> super::FactoryConfig {
+        super::FactoryConfig {
+            upload_limit: self.factory.upload_limit,
+        }
+    }
+
     fn cubes(&self) -> &'_ indexmap::IndexMap<String, crate::persist::Cube> {
         &self.cubes
     }
