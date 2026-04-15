@@ -16,6 +16,7 @@ pub trait ConfigProvider<C: Clone> {
     fn campaign_details(&self) -> super::CompleteCampaignProvider;
     fn campaigns(&self) -> super::CampaignResolver;
     fn client_config(&self) -> Typed<C>;
+    fn platform(&self) -> PlatformConfig;
     fn login_messages(&self) -> DevMessageProvider<C>;
     fn public_channels(&self) -> Typed<C>;
     fn server_config(&self) -> ServerConfig;
@@ -560,4 +561,14 @@ pub struct TeamChoosers {
     pub elimination: crate::persist::TeamChooser,
     pub pit: crate::persist::TeamChooser,
     pub team_deathmatch: crate::persist::TeamChooser,
+}
+
+pub struct PlatformConfig {
+    pub enable_buy_premium: bool,
+    pub enable_shop: bool,
+    pub enable_robopass: bool,
+    pub enable_select_language: bool,
+    pub enable_voice: bool,
+    pub enable_analytics: bool,
+    pub enable_standard_units: bool,
 }

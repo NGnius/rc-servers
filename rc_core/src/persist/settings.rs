@@ -33,6 +33,7 @@ fn default_gameplay_settings() -> super::GameplaySettings {
         cross_promo_image: "https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/default.png".to_owned(),
         cross_promo_link: "https://git.ngram.ca/OpenJam/rc-servers".to_owned(),
         garages_limit: 100,
+        platform: super::client_config::default_platform_conf(),
     }
 }
 

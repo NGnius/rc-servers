@@ -24,7 +24,7 @@ mod singleplayer;
 pub use singleplayer::{SingleplayerConfig, Campaign, CampaignDifficulty, CampaignCompletion, CampaignType, Wave, WaveRobot};
 
 mod client_config;
-pub use client_config::GameplaySettings;
+pub use client_config::{GameplaySettings, PlatformSettings};
 
 mod settings;
 pub use settings::{Settings, QueueMode};

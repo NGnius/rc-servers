@@ -277,6 +277,19 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         })
     }
 
+    fn platform(&self) -> super::PlatformConfig {
+        super::PlatformConfig {
+            enable_buy_premium: self.settings.gameplay.platform.can_buy_premium,
+            enable_shop: self.settings.gameplay.platform.can_shop,
+            enable_robopass: self.settings.gameplay.platform.can_pass,
+            enable_select_language: self.settings.gameplay.platform.can_select_language,
+            enable_voice: self.settings.gameplay.platform.can_voice,
+            enable_analytics: self.settings.gameplay.platform.can_analytics,
+            enable_standard_units: self.settings.gameplay.platform.can_si,
+        }
+
+    }
+
     fn login_messages(&self) -> super::DevMessageProvider<C> {
         super::DevMessageProvider::new(self.settings.banners.iter().map(|msg| (msg.message.clone(), msg.duration as i32)).collect())
     }

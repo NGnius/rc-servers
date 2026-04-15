@@ -9,12 +9,14 @@ pub(super) fn platform_config_provider<C: Send + 'static>(conf: &oj_rc_core::Con
     SimpleOpImpl::new(PlatformConfigProvider {
         chat_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::chat_system_config(conf),
         links: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(conf),
+        platform_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::platform(conf),
     })
 }
 
 pub(super) struct PlatformConfigProvider {
     chat_config: oj_rc_core::persist::config::ChatSystemConfig,
     links: oj_rc_core::persist::config::LinksConfig,
+    platform_config: oj_rc_core::persist::config::PlatformConfig,
 }
 
 #[async_trait::async_trait]
@@ -35,15 +37,15 @@ impl <C: Send + 'static> SimpleOperation<C> for PlatformConfigProvider {
             key_ty: TypePrefix::Any, // obj
             val_ty: TypePrefix::Any, // obj
             items: vec![
-                (Typed::Str("BuyPremiumAvailable".into()), Typed::Bool(false)),
-                (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(true)),
-                (Typed::Str("RoboPassButtonAvailable".into()), Typed::Bool(false)),
-                (Typed::Str("LanguageSelectionAvailable".into()), Typed::Bool(true)),
+                (Typed::Str("BuyPremiumAvailable".into()), Typed::Bool(self.platform_config.enable_buy_premium)),
+                (Typed::Str("MainShopButtonAvailable".into()), Typed::Bool(self.platform_config.enable_shop)),
+                (Typed::Str("RoboPassButtonAvailable".into()), Typed::Bool(self.platform_config.enable_robopass)),
+                (Typed::Str("LanguageSelectionAvailable".into()), Typed::Bool(self.platform_config.enable_select_language)),
                 (Typed::Str("AutoJoinPublicChatRoom".into()), Typed::Str(client_selected_channel.into())),
                 (Typed::Str("CanCreateChatRooms".into()), Typed::Bool(self.chat_config.can_create_channels)),
-                (Typed::Str("CurseVoiceEnabled".into()), Typed::Bool(false)),
-                (Typed::Str("DeltaDNAEnabled".into()), Typed::Bool(false)),
-                (Typed::Str("UseDecimalSystem".into()), Typed::Bool(true)),
+                (Typed::Str("CurseVoiceEnabled".into()), Typed::Bool(self.platform_config.enable_voice)),
+                (Typed::Str("DeltaDNAEnabled".into()), Typed::Bool(self.platform_config.enable_analytics)),
+                (Typed::Str("UseDecimalSystem".into()), Typed::Bool(self.platform_config.enable_standard_units)),
                 (Typed::Str("FeedbackURL".into()), Typed::Str(self.links.feedback_url.clone().into())),
                 (Typed::Str("SupportURL".into()), Typed::Str(self.links.support_url.clone().into())),
                 (Typed::Str("WikiURL".into()), Typed::Str(self.links.wiki_url.clone().into())),

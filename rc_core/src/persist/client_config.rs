@@ -13,6 +13,8 @@ pub struct GameplaySettings {
     pub cross_promo_image: String, // url
     pub cross_promo_link: String, // url
     pub garages_limit: i32,
+    #[serde(default = "default_platform_conf", flatten)]
+    pub platform: PlatformSettings,
 }
 
 impl std::convert::From<GameplaySettings> for crate::data::client_config::GameplaySettings {
@@ -29,5 +31,39 @@ impl std::convert::From<GameplaySettings> for crate::data::client_config::Gamepl
             cross_promo_image: val.cross_promo_image,
             cross_promo_link: val.cross_promo_link,
         }
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PlatformSettings {
+    #[serde(default)]
+    pub can_buy_premium: bool,
+    #[serde(default = "default_true")]
+    pub can_shop: bool,
+    #[serde(default)]
+    pub can_pass: bool,
+    #[serde(default = "default_true")]
+    pub can_select_language: bool,
+    #[serde(default)]
+    pub can_voice: bool,
+    #[serde(default)]
+    pub can_analytics: bool,
+    #[serde(default = "default_true")]
+    pub can_si: bool,
+}
+
+pub(super) fn default_platform_conf() -> PlatformSettings {
+    PlatformSettings {
+        can_buy_premium: false,
+        can_shop: true,
+        can_pass: false,
+        can_select_language: true,
+        can_voice: false,
+        can_analytics: false,
+        can_si: true,
     }
 }
