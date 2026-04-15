@@ -133,11 +133,14 @@ impl CustomGameMesh {
     }
 
     pub async fn invite_user(&self, inviter: &str, invitee: &str, is_team_a: bool) -> (InviteToCustomGameResponseCode, Option<SessionInfo>) {
+        let invitee_already_in_game = { self.user_to_game.read().await.get(invitee).is_some() };
         if let Some(game_id) = { self.user_to_game.read().await.get(inviter).cloned() } {
             if let Some(game) = self.games.write().await.get_mut(&game_id) {
                 if game.users.iter().any(|x| x.public_id == invitee) {
                     let session = Self::session_from_game(&game_id, game);
                     (InviteToCustomGameResponseCode::InviteeHasAlreadyBeenInvited, Some(session))
+                } else if invitee_already_in_game {
+                    (InviteToCustomGameResponseCode::InviteeIsInAnotherCustomGame, None)
                 } else {
                     let invitee_handle = UserHandle {
                         public_id: invitee.to_owned(),
