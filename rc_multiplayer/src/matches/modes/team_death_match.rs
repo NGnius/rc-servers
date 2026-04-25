@@ -22,26 +22,32 @@ impl ScoreTracker {
     }
 
     fn on_destruction(&self, killer: u8, victim: u8) {
-        if let Some(killer_team) = self.teams.get(&killer) {
-            if killer == victim {
-                if !self.self_destruct_is_kill { return; }
-                let other_teams: Vec<u8> = self.scores.keys().copied().filter(|x| x != killer_team).collect();
-                let team_to_award = if other_teams.is_empty() {
-                    log::warn!("Only one team in team death match, cannot award self-destruct point to other team");
-                    return;
-                } else if other_teams.len() == 1 {
-                    other_teams[0]
-                } else {
-                    use rand::Rng;
-                    let index = rand::rng().random_range(0..other_teams.len());
-                    other_teams[index]
-                };
-                self.scores[&team_to_award].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                log::debug!("Team {} awarded 1 point", team_to_award);
-            } else {
+        if killer == victim {
+            self.on_self_destruct(killer);
+        } else {
+            if let Some(killer_team) = self.teams.get(&killer) {
                 self.scores[killer_team].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                log::debug!("Team {} awarded 1 point", killer_team);
+                log::debug!("Team {} awarded 1 point for player {} killed by player {}", killer_team, victim, killer);
             }
+        }
+    }
+
+    fn on_self_destruct(&self, player: u8) {
+        if !self.self_destruct_is_kill { return; }
+        if let Some(player_team) = self.teams.get(&player) {
+            let other_teams: Vec<u8> = self.scores.keys().copied().filter(|x| x != player_team).collect();
+            let team_to_award = if other_teams.is_empty() {
+                log::warn!("Only one team in team death match, cannot award self-destruct point to other team");
+                return;
+            } else if other_teams.len() == 1 {
+                other_teams[0]
+            } else {
+                use rand::Rng;
+                let index = rand::rng().random_range(0..other_teams.len());
+                other_teams[index]
+            };
+            self.scores[&team_to_award].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            log::debug!("Team {} awarded 1 point for self-destruct", team_to_award);
         }
     }
 
@@ -339,17 +345,20 @@ impl CustomGameLogic for TeamDeathMatchLogic {
 
     async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
         self.do_respawn_tasks(generic, victim).await;
-        self.score_tracking.on_destruction(killer, victim);
+        if killer == victim {
+            self.score_tracking.on_self_destruct(killer);
+        }
         true
     }
 
     async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
         self.do_respawn_tasks(generic, user).await;
-        self.score_tracking.on_destruction(user, user);
+        self.score_tracking.on_self_destruct(user);
         true
     }
 
-    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+        self.score_tracking.on_destruction(killer, victim);
         true
     }
 

@@ -1111,8 +1111,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         shootee: u8,
         shooter: u8,
     ) {
-        if self.custom_logic_handler.on_kill_bonus(self, shooter, shootee).await {
-            if self.unclaimed.debounce_kill(KillAttribution { killer: shooter, victim: shootee }).await {
+        let debounce_result = self.unclaimed.debounce_kill(KillAttribution { killer: shooter, victim: shootee }).await;
+        if debounce_result {
+            if self.custom_logic_handler.on_kill_bonus(self, shooter, shootee).await {
                 if let Some(to_reward) = self.users.read().await.get(&shooter) {
                     let to_reward_desc = self.user_descriptor(shooter).unwrap();
                     to_reward_desc.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
