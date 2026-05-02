@@ -26,6 +26,7 @@ members = [
     "rc_factory", "rc_factory_web",
     "rc_multiplayer",
     "rc_plugins",
+    "rc_society",
 ]
 
 [workspace.dependencies]

@@ -120,7 +120,7 @@ impl GameMessage {
     pub fn user_id(&self) -> i32 {
         match self {
             Self::NewConnection { user, .. } => {
-                user.user_id()
+                user.account_id()
             }
             Self::EndConnection { user_id, .. } => *user_id,
             Self::RequestLeave { user_id, .. } => *user_id,

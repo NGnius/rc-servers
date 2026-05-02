@@ -23,7 +23,7 @@ impl crate::handlers::RlnlEventCodeHandler for HealAssistBonus {
         if let Some(user_info) = user.user().await {
             //log::info!("Heal assist for player {}", data.healing_player_id);
             super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::HealAssistBonus {
-                user_id: user_info.user_id(),
+                user_id: user_info.account_id(),
                 healer: data.healing_player_id,
                 healee: data.healed_player_id,
             }).await);

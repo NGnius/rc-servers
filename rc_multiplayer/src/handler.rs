@@ -79,7 +79,7 @@ impl literustlib_server::EventHandler for LnlEventHandler {
     async fn on_disconnect(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData) {
         self.disconnect_handler.handle(peer, user).await;
         if let Some(user_info) = user.user().await {
-            log::info!("Disconnect from user {} ({})", user_info.user_id(), peer.id());
+            log::info!("Disconnect from user {} ({})", user_info.account_id(), peer.id());
         } else {
             log::debug!("Disconnect from connection {}", peer.id());
         }

@@ -22,7 +22,7 @@ impl crate::handlers::RlnlEventCodeHandler for SpotEnemy {
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
             super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::SpotVehicle {
-                user_id: user_info.user_id(),
+                user_id: user_info.account_id(),
                 remote_player: data.player_id,
             }).await);
         }

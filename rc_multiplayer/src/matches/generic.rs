@@ -370,7 +370,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) async fn rebroadcast<T: byteserde::ser_heap::ByteSerializeHeap + ?Sized>(&self, user_id: i32, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &T, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
-            if user_id == conn.user.user_id() { continue; }
+            if user_id == conn.user.account_id() { continue; }
             if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
@@ -388,7 +388,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     pub(super) async fn rebroadcast_dataless(&self, user_id: i32, code: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, in_game: bool) {
         for (player_id, conn) in self.users.read().await.iter() {
-            if user_id == conn.user.user_id() { continue; }
+            if user_id == conn.user.account_id() { continue; }
             if conn.aliases.contains(player_id) { continue; }
             if in_game {
                 let mode = ConnectionMode::from_u8(self.user_descriptor(*player_id).unwrap().state.mode.load(std::sync::atomic::Ordering::Relaxed));
@@ -586,7 +586,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         } else {
             //tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             //let id = users.len() as u8;
-            let user_id = user.user_id();
+            let user_id = user.account_id();
             let player_info_opt = self.descriptors.values().find(|p| p.descriptor.user_id == Some(user_id));
             if player_info_opt.is_none() {
                 log::warn!("User {} tried to connect to match {} which they are not in", user_id, self.game_guid());
@@ -617,7 +617,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     literustlib::packet::Property::ReliableOrdered,
                     &new_user.connection.connection
                 ).await);
-                log::debug!("User {} is validated to play game {}", new_user.user.user_id(), game_guid);
+                log::debug!("User {} is validated to play game {}", new_user.user.account_id(), game_guid);
                 let new_user = std::sync::Arc::new(new_user);
                 if let Err(e) = new_user.user.save_player_connected_status(self.game_guid(), true).await {
                     log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
@@ -757,7 +757,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         };
         for (player_id, conn) in self.users.read().await.iter() {
             let user_desc = self.user_descriptor(*player_id).unwrap();
-            if user_id == conn.user.user_id() {
+            if user_id == conn.user.account_id() {
                 let progress_percent = ((progress * 100.0).ceil() as u8).clamp(0, 100);
                 log::debug!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
                 user_desc.state.progress.store(progress_percent, std::sync::atomic::Ordering::Relaxed);
@@ -894,7 +894,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         for (player_id, user) in self.users.read().await.iter() {
             let user_desc = self.user_descriptor(*player_id).unwrap();
             if user.aliases.contains(player_id) { continue; }
-            if user.user.user_id() == user_id  {
+            if user.user.account_id() == user_id  {
                 if !matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Loading | ConnectionMode::Disconnected) {
                     log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
                     continue;
@@ -1362,7 +1362,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
 
     fn spawn_send_loading_events(&self, user: &UserConnection, player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, client_ais: Vec<u8>) {
         let connection = user.connection.clone();
-        let user_id = user.user.user_id();
+        let user_id = user.user.account_id();
         tokio::spawn(Self::send_loading_events_wrapper(connection, player_id, user_id, players, client_ais));
     }
 

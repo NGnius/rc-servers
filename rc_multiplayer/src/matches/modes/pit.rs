@@ -411,7 +411,7 @@ impl CustomGameLogic for PitLogic {
                 }
             }
             if single_client.is_some() {
-                let user_id = read_lock.values().next().unwrap().user.user_id();
+                let user_id = read_lock.values().next().unwrap().user.account_id();
                 let player_id = generic.user_key_by_user_id(user_id).unwrap();
                 let user_info = generic.user_descriptor(player_id).unwrap();
                 WinTracker::do_win(generic, self, user_info.descriptor.team as u8).await;

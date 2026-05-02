@@ -29,7 +29,7 @@ impl <const EVENT: i16, const PROPERTY: u8, InOut: byteserde::des_slice::ByteDes
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
             crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::CustomLogicRlnl {
-                user_id: user_info.user_id(),
+                user_id: user_info.account_id(),
                 event: self.event,
                 property: self.property,
                 data: Box::new(data),

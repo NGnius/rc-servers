@@ -106,18 +106,6 @@ impl UserData {
 
 #[async_trait::async_trait]
 impl super::MultiplayerUser for UserData {
-    fn user_id(&self) -> i32 {
-        self.account.id
-    }
-
-    fn user_name(&self) -> &'_ str {
-        &self.account.public_id
-    }
-
-    fn display_name(&self) -> &'_ str {
-        &self.account.display_name
-    }
-
     async fn current_game(&self) -> Result<Option<super::GameDescriptor>, super::MultiplayerError> {
         Ok(self.db.game_by_user_id_and_completion(self.account.id, false).await
             .map_err(|e| {

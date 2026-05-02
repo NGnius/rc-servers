@@ -24,7 +24,7 @@ impl crate::handlers::RlnlEventCodeHandler for WeaponSelect {
             if let Some(category) = oj_rc_core::data::weapon_list::ItemCategory::from_smaller(data.item_category as _) {
                 if let Some(tier) = oj_rc_core::data::cube_list::ItemTier::from_u32(data.item_size as _) {
                     super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::WeaponSelect {
-                        user_id: user_info.user_id(),
+                        user_id: user_info.account_id(),
                         machine_id: data.machine_id,
                         category,
                         size: tier,

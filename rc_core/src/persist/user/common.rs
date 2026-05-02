@@ -14,6 +14,14 @@ impl super::CommonUser for UserData {
         &self.account.public_id
     }
 
+    fn display_name(&self) -> &'_ str {
+        &self.account.display_name
+    }
+
+    fn creation(&self) -> i64 {
+        self.account.creation_time
+    }
+
     fn is_mod(&self) -> bool {
         self.perms.moderator
     }

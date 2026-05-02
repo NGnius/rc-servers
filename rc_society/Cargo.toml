@@ -1,0 +1,28 @@
+[package]
+name = "oj_rc_society"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+readme.workspace = true
+
+[dependencies]
+actix-web = { workspace = true, features = [ "secure-cookies" ] }
+actix-session = { version = "0.11", features = [ "cookie-session" ], default-features = false }
+actix-identity = "0.9"
+cookie = "0.16"
+actix-files.workspace = true
+actix-ws = "0.3"
+log.workspace = true
+env_logger.workspace = true
+tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
+#futures.workspace = true
+clap.workspace = true
+handlebars = { version = "6", features = ["dir_source"] }
+oj_rc_core = { version = "*", path = "../rc_core" }
+libfj.workspace = true
+git-version.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true

@@ -63,6 +63,8 @@ pub trait UserProvider<C> {
     async fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
 
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
+
+    async fn web_authenticate(&self, token: String) -> Result<Box<dyn WebUser>, AuthError>;
 }
 
 #[async_trait::async_trait]
@@ -70,6 +72,7 @@ pub trait UserAuthenticator {
     async fn login(&self, info: UserAuthInfo) -> Result<UserLoginInfo, AuthError>;
     async fn user_exists(&self, user: UserId) -> Result<bool, String>;
     async fn register(&self, info: RegistrationInfo) -> Result<i32, String>;
+    async fn verify(&self, token: String) -> Result<crate::auth::Token, AuthError>;
 }
 
 #[async_trait::async_trait]
@@ -385,9 +388,6 @@ pub enum MultiplayerErrorCode {
 
 #[async_trait::async_trait]
 pub trait MultiplayerUser: IntercomUser + CommonUser {
-    fn user_id(&self) -> i32;
-    fn user_name(&self) -> &'_ str;
-    fn display_name(&self) -> &'_ str;
     async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
@@ -455,6 +455,9 @@ pub trait CommonUser: Send + Sync {
     fn account_id(&self) -> i32;
     async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
     fn public_id(&self) -> &'_ str;
+    fn display_name(&self) -> &'_ str;
+    /// Seconds since Unix epoch
+    fn creation(&self) -> i64;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
@@ -669,6 +672,11 @@ pub trait SingleplayerUser: Send + Sync {
 pub trait FactoryUser {
     async fn prepare_factory_upload(&self, vehicle: VehicleUploadData) -> Result<oj_rc_factory::VehicleUploadInfo, polariton_server::operations::SimpleOpError>;
     async fn rate_vehicle(&self, slot: i32, combat: i32, cosmetic: i32) -> Result<Option<i32>, polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
+pub trait WebUser: CommonUser {
+
 }
 
 #[async_trait::async_trait]
