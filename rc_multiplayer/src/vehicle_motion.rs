@@ -24,7 +24,7 @@ impl crate::RobotMotionHandler for VehicleMotionHandler {
             match rlnl::machine_motion::MachineMotion::byte_deserialize(&mut des) {
                 Ok(motion_data) => {
                     crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::Motion {
-                        user_id: user_info.user_id(),
+                        user_id: user_info.account_id(),
                         motion: motion_data,
                     }).await);
                 },

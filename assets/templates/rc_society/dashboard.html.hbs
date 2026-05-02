@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Dashboard - Openjam</title>
+  <meta name="title" content="Dashboard - Openjam" />
+  <meta name="description" content="User dashboard for third-party Robocraft servers" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="og:title" content="Dashboard - Openjam" />
+  <meta property="og:description" content="Create an account for third-party Robocraft servers" />
+  <meta property="og:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary" />
+  <meta property="twitter:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="twitter:title" content="Dashboard - Openjam" />
+  <meta property="twitter:description" content="Create an account for third-party Robocraft servers" />
+  <meta property="twitter:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>
+    body {
+      background-color: lightgrey;
+      padding: 0;
+      margin: 0;
+    }
+    .form-stripe {
+      position: relative;
+      min-width: 300px;
+      max-width: 90%;
+      height: auto;
+      min-height: 100%;
+      margin: 0 auto;
+      background-color: grey;
+      padding: 0 0 25px 0;
+      box-shadow: 0px 0px 50px 5px grey;
+    }
+    .form-header-right {
+      position: relative;
+      width: 25%;
+      text-align: right;
+      margin: 0 0 0 auto;
+      box-sizing: border-box;
+      padding: 0 25px;
+    }
+    .form-banner {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: dimgrey;
+      color: black;
+      padding: 25px;
+    }
+    .form-padded {
+      padding: 0 25px;
+    }
+    h1, h2, h3, h4, h5 {
+      text-align: center;
+    }
+    a { text-decoration-line: none; }
+    a:link { color: darkgrey; }
+    a:hover { color: white; }
+    a:visited { color: lightgrey; }
+    a:active { color: white; }
+    form {
+      padding-top: 25px;
+      padding-left: 25px;
+      padding-right: 25px;
+      padding-bottom: 250px;
+    }
+    .form-error {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: orange;
+    }
+    .form-error-message {
+      padding: 25px;
+      margin: 0 auto;
+      width: 95%;
+    }
+    .form-text-block {
+      width: 80%;
+      margin: 0 auto;
+    }
+    .access-grid {
+      width: 80%;
+      display: grid;
+      margin: 0 auto;
+      padding: 5px;
+      grid-template-columns: auto auto auto auto;
+      gap: 5px;
+    }
+    .access-box {
+      background-color: dimgrey;
+      color: black;
+      padding: 5px 0;
+      text-align: center;
+    }
+    .access-box-title {
+      padding: 5px;
+      margin: 0 auto;
+    }
+    .access-box-banner {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: black;
+      color: lightgrey;
+      padding: 5px;
+    }
+    .box-details {
+      text-align: left;
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 2px;
+      padding: 5px;
+    }
+    .box-details-key {
+      padding: 0 5px;
+      background-color: black;
+      color: lightgrey;
+      text-align: left;
+    }
+    .box-details-value {
+      padding: 0 5px;
+      background-color: lightgrey;
+      color: black;
+      text-align: left;
+    }
+    footer {
+      position: relative;
+      width: 100%
+      margin: 0 auto;
+      background-color: black;
+    }
+    .footer {
+      width: 95%;
+      color: lightgrey;
+      box-sizing: border-box;
+      padding: 25px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      Welcome {{form.display_name}}! |
+      <a href="/">Home</a>
+    </div>
+    <h1 class="form-banner">{{form.display_name}} Dashboard</h1>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+
+    <div class="access-grid">
+      <div class="access-box">
+        <h4 class="access-box-title">Details</h4>
+        <div class="box-details">
+          <div class="box-details-key">Name</div>
+          <div class="box-details-value">{{form.display_name}}</div>
+          <div class="box-details-key">Public ID</div>
+          <div class="box-details-value">{{form.public_id}}</div>
+          <div class="box-details-key">Database ID</div>
+          <div class="box-details-value">{{form.debug.user_id}}</div>
+          <div class="box-details-key">Last Seen</div> <!-- TODO -->
+          <div class="box-details-value"><time datetime="{{form.debug.creation_time_iso}}">{{form.debug.creation_time_iso}}</time></div>
+          <div class="box-details-key">Creation</div>
+          <div class="box-details-value"><time datetime="{{form.debug.creation_time_iso}}">{{form.debug.creation_time_iso}}</time></div>
+        </div>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Permissions</h4>
+        <div class="box-details">
+          <div class="box-details-key">Moderator</div>
+          <div class="box-details-value">{{form.perms.mod}}</div>
+          <div class="box-details-key">Administrator</div>
+          <div class="box-details-value">{{form.perms.admin}}</div>
+          <div class="box-details-key">Developer</div>
+          <div class="box-details-value">{{form.perms.dev}}</div>
+          <div class="box-details-key">Royal</div>
+          <div class="box-details-value">{{form.perms.royal}}</div>
+          <div class="box-details-key">Banned</div>
+          <div class="box-details-value">{{form.perms.banned}}</div>
+        </div>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Garages</h4>
+        <div class="box-details">
+          <div class="box-details-key">Total</div> <!-- TODO -->
+          <div class="box-details-value">{{form.debug.user_id}}/{{form.debug.user_id}}</div>
+        </div>
+        <a href="#"> <!-- TODO -->
+          <div class="access-box-banner">
+            View My Garages
+          </div>
+        </a>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Factory</h4>
+        <div class="box-details">
+          <div class="box-details-key">Total</div> <!-- TODO -->
+          <div class="box-details-value">{{form.debug.user_id}}/{{form.debug.user_id}}</div>
+        </div>
+        <a href="#"> <!-- TODO -->
+          <div class="access-box-banner">
+            View My Uploads
+          </div>
+        </a>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Account</h4>
+        <a href="#"> <!-- TODO -->
+          <div class="access-box-banner">
+            Manage My Account
+          </div>
+        </a>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Sanctions</h4>
+        <div class="box-details">
+          <div class="box-details-key">Total</div> <!-- TODO -->
+          <div class="box-details-value">{{form.debug.user_id}}</div>
+        </div>
+        <a href="#"> <!-- TODO -->
+          <div class="access-box-banner">
+            View My Sanctions
+          </div>
+        </a>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Social</h4>
+        <div class="box-details">
+          <div class="box-details-key">Clan</div> <!-- TODO -->
+          <div class="box-details-value">{{form.display_name}}</div>
+          <div class="box-details-key">Friends</div> <!-- TODO -->
+          <div class="box-details-value">{{form.debug.user_id}}</div>
+        </div>
+      </div>
+      <div class="access-box">
+        <h4 class="access-box-title">Federation</h4>
+        <div class="box-details">
+          <div class="box-details-key">Enabled</div> <!-- TODO -->
+          <div class="box-details-value">{{form.perms.royal}}</div>
+        </div>
+        <a href="#"> <!-- TODO -->
+          <div class="access-box-banner">
+            Manage My Federation
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

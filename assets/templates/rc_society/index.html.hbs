@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Home - Openjam</title>
+  <meta name="title" content="Home - Openjam" />
+  <meta name="description" content="OpenJam third-party Robocraft servers federation" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="og:title" content="Home - Openjam" />
+  <meta property="og:description" content="OpenJam third-party Robocraft servers federation" />
+  <meta property="og:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary" />
+  <meta property="twitter:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="twitter:title" content="Home - Openjam" />
+  <meta property="twitter:description" content="OpenJam third-party Robocraft servers federation" />
+  <meta property="twitter:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>
+    body {
+      background-color: lightgrey;
+      padding: 0;
+      margin: 0;
+    }
+    .form-stripe {
+      position: relative;
+      min-width: 300px;
+      max-width: 90%;
+      height: auto;
+      min-height: 100%;
+      margin: 0 auto;
+      background-color: grey;
+      padding: 0 0 25px 0;
+      box-shadow: 0px 0px 50px 5px grey;
+    }
+    .form-header-right {
+      position: relative;
+      width: 25%;
+      text-align: right;
+      margin: 0 0 0 auto;
+      box-sizing: border-box;
+      padding: 0 25px;
+    }
+    .form-banner {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: dimgrey;
+      color: black;
+      padding: 25px;
+    }
+    .form-padded {
+      padding: 0 25px;
+    }
+    h1, h2, h3, h4, h5 {
+      text-align: center;
+    }
+    a { text-decoration-line: none; }
+    a:link { color: darkgrey; }
+    a:hover { color: white; }
+    a:visited { color: lightgrey; }
+    a:active { color: white; }
+    form {
+      padding-top: 25px;
+      padding-left: 25px;
+      padding-right: 25px;
+      padding-bottom: 250px;
+    }
+    .form-error {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: orange;
+    }
+    .form-error-message {
+      padding: 25px;
+      margin: 0 auto;
+      width: 95%;
+    }
+    .form-text-block {
+      width: 80%;
+      margin: 0 auto;
+    }
+    .access-grid {
+      width: 80%;
+      display: grid;
+      margin: 0 auto;
+      padding: 5px;
+      grid-template-columns: auto auto auto auto;
+      gap: 5px;
+    }
+    .access-box {
+      background-color: dimgrey;
+      color: black;
+      padding: 5px;
+      text-align: center;
+    }
+    .access-box-title {
+      padding: 5px;
+      margin: 0 auto;
+    }
+    .access-box-banner {
+      position: relative;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background-color: black;
+      color: lightgrey;
+      padding: 5px;
+    }
+    .box-details {
+      text-align: left;
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 2px;
+      padding: 5px;
+    }
+    .box-details-key {
+      padding: 0 5px;
+      background-color: black;
+      color: lightgrey;
+      text-align: left;
+    }
+    .box-details-value {
+      padding: 0 5px;
+      background-color: lightgrey;
+      color: black;
+      text-align: left;
+    }
+    footer {
+      position: relative;
+      width: 100%
+      margin: 0 auto;
+      background-color: black;
+    }
+    .footer {
+      width: 95%;
+      color: lightgrey;
+      box-sizing: border-box;
+      padding: 25px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      {{#if form.is_logged_in}}
+        Welcome {{form.display_name}}! |
+        <a href="/dashboard">Dashboard</a>
+      {{else}}
+        <a href="/login">Login</a>
+      {{/if}}
+    </div>
+    <h1 class="form-banner">Welcome to <a href="https://git.ngram.ca/OpenJam">OpenJam</a> servers</h1>
+    <h3 class="form-padded">FOSSifying proprietary games since 2025</h3>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+
+    <div class="form-text-block">
+      <p>
+      This service allows you to manage your account settings, import and export your garage bays, view the server config, and will eventually (not yet) federate with other OpenJam rc-servers instances.
+      You can view other known instances <a href="/federation">here</a>.
+      This service is intended to have stable public APIs for expanding existing functionality.
+      If you do not want any of this functionality in your instance, simply do not run this service with your instance.
+      </p>
+      <p>
+      Interested in running your own server instance? Check out the <a href="https://git.ngram.ca/OpenJam/rc-servers/wiki/Server-Quickstart">quickstart guide</a> in the wiki.
+      </p>
+    </div>
+
+    <div class="access-grid">
+      <div class="access-box">
+        <h4 class="access-box-title">Server Details</h4>
+        <div class="box-details">
+          <div class="box-details-key">Domain</div>
+          <div class="box-details-value">{{form.server.domain}}</div>
+          <div class="box-details-key">CDN</div>
+          <div class="box-details-value">{{form.server.cdn}}</div>
+          <div class="box-details-key">Auth</div>
+          <div class="box-details-value">{{form.server.auth}}</div>
+          <div class="box-details-key">Client Version</div>
+          <div class="box-details-value">>={{form.server.min_version}}</div>
+          <div class="box-details-key">Server Version</div>
+          <div class="box-details-value">{{form.server.server_version}}</div>
+          <div class="box-details-key">Start Time</div>
+          <div class="box-details-value"><time datetime="{{form.server.start_time_iso}}">{{form.server.start_time_iso}}</time></div>
+        </div>
+      </div>
+      <div class="access-box">
+        Grid item 2
+      </div>
+      <div class="access-box">
+        Grid item 3
+      </div>
+      <div class="access-box">
+        Grid item 4
+      </div>
+      <div class="access-box">
+        Grid item 5
+      </div>
+      <div class="access-box">
+        Grid item 6
+      </div>
+      <div class="access-box">
+        Grid item 7
+      </div>
+      <div class="access-box">
+        Grid item 8
+      </div>
+    </div>
+
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

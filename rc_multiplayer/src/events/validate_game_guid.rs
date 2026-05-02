@@ -64,7 +64,7 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                     }
                 },
                 Ok(None) => {
-                    log::warn!("Cannot validate game guid for user {} with no ongoing game [disconnecting...]", user_info.user_id());
+                    log::warn!("Cannot validate game guid for user {} with no ongoing game [disconnecting...]", user_info.account_id());
                     super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: rlnl::types::GameServerErrorCodes::StrErrIncorrectGameGuid,
@@ -76,7 +76,7 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                     peer.disconnect();
                 },
                 Err(e) => {
-                    log::error!("Failed to get current game for user {}: {} [disconnecting...]", user_info.user_id(), e.message);
+                    log::error!("Failed to get current game for user {}: {} [disconnecting...]", user_info.account_id(), e.message);
                     super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: core_to_rlnl_mp_error_code(e.code),

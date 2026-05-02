@@ -260,7 +260,7 @@ impl GameMatches {
             }
         };
         self.matches.insert(game_guid.clone(), tx.clone());
-        self.routing.insert(user.user_id(), game_guid.clone());
+        self.routing.insert(user.account_id(), game_guid.clone());
         if !self.is_crystal_regen_running.swap(true, std::sync::atomic::Ordering::SeqCst) {
             tokio::task::spawn(Self::regenerate_crystal_order_task(
                 self.ba_sorted_crystals.clone(),
@@ -304,7 +304,7 @@ impl GameMatches {
                                 self.do_game_cleanup(&game_guid);
                                 self.create_new_game(user.clone(), game_guid, connection, response, sender).await;
                             } else {
-                                self.routing.insert(user.user_id(), game_guid.clone());
+                                self.routing.insert(user.account_id(), game_guid.clone());
                                 if tx.send(super::GameMessage::NewConnection { user: user.clone(), game_guid, connection, response, sender }).await.is_err() {
                                     log::error!("Failed to send NewConnection game message to existing match");
                                 }

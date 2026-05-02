@@ -81,16 +81,12 @@ impl AccountProvider {
             db: self.db.clone(),
         })
     }*/
-}
 
-#[async_trait::async_trait]
-impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
-    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
-        //let new_root = self.root.join(&token.uuid);
+    async fn auth_internal(&self, token: &str) -> Result<UserData, super::AuthError> {
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
-        let token_data = jsonwebtoken::decode::<crate::auth::Token>(&token.token, &secret, &validation).map_err(|e| super::AuthError {
+        let token_data = jsonwebtoken::decode::<crate::auth::Token>(&token, &secret, &validation).map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
         })?;
@@ -119,8 +115,7 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
         };
         #[cfg(debug_assertions)]
         log::info!("Authenticated user {} with flags {:?}", display_name, token_data.claims.client_details.flags.as_slice());
-        //let account_info = AccountInfo::load(&new_root).map_err(|e| e.to_string())?;
-        Ok(Box::new(UserData {
+        Ok(UserData {
             account: user_info,
             perms: user_perms,
             cubes: self.cubes.clone(),
@@ -133,7 +128,14 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
             http_client: std::sync::Arc::new(reqwest::Client::new()),
             db: self.db.clone(),
             secret: self.secret.clone(),
-        }))
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
+    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
+        Ok(Box::new(self.auth_internal(&token.token).await?))
     }
 
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
@@ -173,6 +175,10 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
             db: self.db.clone(),
             secret: self.secret.clone(),
         }))
+    }
+
+    async fn web_authenticate(&self, token: String) -> Result<Box<dyn super::WebUser>, super::AuthError> {
+        Ok(Box::new(self.auth_internal(&token).await?))
     }
 }
 
@@ -348,6 +354,18 @@ impl super::UserAuthenticator for AccountProvider {
 
     async fn register(&self, info: super::RegistrationInfo) -> Result<i32, String> {
         super::register_new_user(&info, &self.db).await.map_err(|e| e.to_string())
+    }
+
+    async fn verify(&self, token: String) -> Result<crate::auth::Token, super::AuthError> {
+        let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
+        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+        validation.set_required_spec_claims::<&str>(&[]);
+        jsonwebtoken::decode::<crate::auth::Token>(&token, &secret, &validation)
+            .map_err(|e| super::AuthError {
+                message: e.to_string(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            })
+            .map(|decoded| decoded.claims)
     }
 }
 
