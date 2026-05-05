@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 use byteserde::ser_heap::ByteSerializeHeap;
 
 pub struct ExperimentalPlayer {

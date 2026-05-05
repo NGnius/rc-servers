@@ -43,7 +43,7 @@ async-trait = "0.1"
 futures = "0.3"
 chrono = "0.4"
 git-version = "0.3"
-rand = { version = "0.9", features = [ "thread_rng" ] }
+rand = { version = "0.10", features = [ "thread_rng" ] }
 num-quaternion = "1.0"
 hex = "0.4"
 base64 = "0.22"

@@ -10,7 +10,7 @@ readme.workspace = true
 [dependencies]
 actix-web.workspace = true
 actix-files.workspace = true
-actix-ws = "0.3"
+actix-ws = "0.4"
 log.workspace = true
 env_logger.workspace = true
 tokio = { version = "1.43", features = [ "rt-multi-thread" ] }

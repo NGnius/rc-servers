@@ -246,7 +246,7 @@ impl CubeLocationsParser {
                                     // prioritize finding all target connections first
                                     Some((cube_face_i, face_available_i))
                                 } else if iteration < deterministic_after_iters || (face_available_i >= connected_to_connections.connections.len() && sorted.len() < connected_to_connections.connections.len()) {
-                                    use rand::Rng;
+                                    use rand::RngExt;
                                     let random_face = random.random_range(0..calc_conns.len());
                                     if cube_face_i >= random_face {
                                         Some((cube_face_i, face_available_i))

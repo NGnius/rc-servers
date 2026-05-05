@@ -1,5 +1,5 @@
 use num::BigInt;
-use rand::Rng;
+use rand::RngExt;
 use simple_rijndael::impls::RijndaelCbc;
 use simple_rijndael::paddings::Pkcs7Padding;
 

@@ -1,8 +1,8 @@
-//use serde::{Serialize, Deserialize};
+use reqwest_websocket::Upgrade;
 
 impl super::AccountProvider {
     async fn listen_on_websocket<D: serde::de::DeserializeOwned>(&self, server_name: &str) -> Result<super::IntercomListener<D>, reqwest_websocket::Error> {
-        use reqwest_websocket::RequestBuilderExt;
+        //use reqwest_websocket::RequestBuilderExt;
         let token =  super::generate_intercom_token(format!("state/{}", server_name).as_bytes(), &self.secret);
         let auth_header_val = format!("Internal {}", token);
         let url = format!("{}/intercom/userless/{}", self.intercom, server_name);

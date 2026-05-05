@@ -42,7 +42,7 @@ impl ScoreTracker {
             } else if other_teams.len() == 1 {
                 other_teams[0]
             } else {
-                use rand::Rng;
+                use rand::RngExt;
                 let index = rand::rng().random_range(0..other_teams.len());
                 other_teams[index]
             };

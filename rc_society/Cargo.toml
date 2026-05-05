@@ -11,9 +11,9 @@ readme.workspace = true
 actix-web = { workspace = true, features = [ "secure-cookies" ] }
 actix-session = { version = "0.11", features = [ "cookie-session" ], default-features = false }
 actix-identity = "0.9"
-cookie = "0.16"
+cookie = "0.18"
 actix-files.workspace = true
-actix-ws = "0.3"
+#actix-ws = "0.3"
 log.workspace = true
 env_logger.workspace = true
 tokio = { version = "1.43", features = [ "rt-multi-thread" ] }

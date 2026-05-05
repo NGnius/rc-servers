@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 impl super::account_json::UserData {
     async fn listen_on_websocket<D: serde::de::DeserializeOwned>(&self, server_name: &str) -> Result<super::IntercomListener<D>, reqwest_websocket::Error> {
-        use reqwest_websocket::RequestBuilderExt;
+        use reqwest_websocket::Upgrade;
         let token =  generate_token(format!("{}/{}", server_name, self.account.public_id).as_bytes(), &self.secret);
         let auth_header_val = format!("Internal {}", token);
         let url = format!("{}/intercom/{}/{}", self.intercom, server_name, self.account.public_id);
