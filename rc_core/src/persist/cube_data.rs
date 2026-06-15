@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 
 use polariton::operation::Typed;
 
-use super::{WeaponData, WeaponUpgradeInfo, TechTreeData, MovementData};
+use super::{WeaponData, WeaponUpgradeInfo, TechTreeData, MovementData, CubeConversionData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Cube {
@@ -14,6 +14,7 @@ pub struct Cube {
     pub weapon_upgrade: Option<WeaponUpgradeInfo>,
     pub movement: Option<MovementData>,
     pub tree: Option<TechTreeData>,
+    pub conversion: Option<CubeConversionData>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

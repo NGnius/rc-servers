@@ -2,6 +2,7 @@ pub mod dashboard;
 pub mod login;
 pub mod favicon;
 pub mod index;
+pub mod garage;
 
 use serde::Serialize;
 use actix_web::{web::{Html, Redirect}, Responder};
@@ -51,19 +52,25 @@ async fn try_auth_user(user_opt: Option<actix_identity::Identity>, auth: &oj_rc_
     if let Some(user) = user_opt {
         let user_id = user.id()?;
         match <oj_rc_core::UserImpl as oj_rc_core::UserProvider<()>>::web_authenticate(auth, user_id.clone()).await {
-            Ok(user) => Ok(LoginReturn::Success(user)),
+            Ok(user) => {
+                //log::debug!("Web auth success");
+                Ok(LoginReturn::Success(user))
+            },
             Err(e) => {
                 log::warn!("Failed to login with token {}: {} ({:?})", user_id, e.message, e.code);
                 Ok(LoginReturn::AuthFail(
                     Redirect::to("/login")
+                        .temporary()
                         .respond_to(req)
                         .map_into_boxed_body()
                 ))
             }
         }
     } else {
+        log::debug!("No user identity, redirecting to login page");
         Ok(LoginReturn::AuthFail(
             Redirect::to("/login")
+                .temporary()
                 .respond_to(req)
                 .map_into_boxed_body()
         ))

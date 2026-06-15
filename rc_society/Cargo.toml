@@ -11,6 +11,7 @@ readme.workspace = true
 actix-web = { workspace = true, features = [ "secure-cookies" ] }
 actix-session = { version = "0.11", features = [ "cookie-session" ], default-features = false }
 actix-identity = "0.9"
+actix-multipart = "0.7"
 cookie = "0.18"
 actix-files.workspace = true
 #actix-ws = "0.3"
@@ -21,8 +22,11 @@ tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
 clap.workspace = true
 handlebars = { version = "6", features = ["dir_source"] }
 oj_rc_core = { version = "*", path = "../rc_core" }
+oj_rc_plugins = { version = "*", path = "../rc_plugins" }
+oj_convert.workspace = true
 libfj.workspace = true
 git-version.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+base64.workspace = true
 chrono.workspace = true

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Garages - Openjam</title>
+  <meta name="title" content="Garage{{#if form.garage}} #{{form.garage.slot}}{{/if}} Import - Openjam" />
+  <meta name="description" content="User garage import for third-party Robocraft servers" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="og:title" content="Garage Import - Openjam" />
+  <meta property="og:description" content="Import a vehicle into your garage for third-party Robocraft servers" />
+  <meta property="og:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary" />
+  <meta property="twitter:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="twitter:title" content="Garage Import - Openjam" />
+  <meta property="twitter:description" content="Import a vehicle into your garages for third-party Robocraft servers" />
+  <meta property="twitter:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  {{> stylesheet}}
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      Welcome {{form.display_name}}! |
+      <a href="/">Home</a>
+    </div>
+    <h1 class="form-banner">{{form.display_name}} Garage {{#if form.garage}}#{{form.garage.slot}}{{/if}} Import</h1>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+    {{#if form.success}}
+      <div class="form-success">
+        <p class="form-success-message">{{form.success}}</p>
+      </div>
+    {{/if}}
+
+    <form method="post" enctype="multipart/form-data" action="/garages/import">
+      <div class="access-list">
+        {{#if form.garage}}
+          <input type="hidden" id="garage_id" name="garage_id" value="{{form.garage.garage_id}}"/>
+        {{else}}
+          <input type="hidden" id="garage_id" name="garage_id" value="-1"/>
+        {{/if}}
+        <div class="access-row-box">
+          <label>Import with</label>
+          <select id="plugin" name="plugin" required>
+            {{#each form.importers}}
+              <option value="{{this}}" {{#if (eq ../form.selected_importer this)}}selected{{/if}}>{{this}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="access-row-box">
+          <input type="file" id="files" name="files" required {{#if form.garage}} {{else}}multiple{{/if}} />
+        </div>
+        <div class="access-row-box">
+          <input type="submit" value="{{#if form.garage}}Override garage slot {{form.garage.slot}}{{else}}Import{{/if}}" />
+        </div>
+      </div>
+    </form>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

@@ -658,7 +658,7 @@ impl QueueHandler {
                                 count += q_entry.users.len();
                                 if let Some(values) = new_queue_map.get_mut(&key) {
                                     values.users.append(&mut q_entry.users);
-                                    values.platoons.extend(q_entry.platoons.into_iter());
+                                    values.platoons.extend(q_entry.platoons);
                                 } else {
                                     new_queue_map.insert(key.clone(), q_entry);
                                 }

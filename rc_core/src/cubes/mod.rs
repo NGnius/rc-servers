@@ -1,4 +1,5 @@
 mod parser;
+pub use parser::{Colour, Cube};
 
 mod weapon_list;
 pub use weapon_list::WeaponListParser;
@@ -21,6 +22,9 @@ pub use rotations::CUBE_ROTATIONS;
 mod graph;
 pub use graph::{CubeGraph, CellPoint};
 
+mod conversion;
+pub use conversion::CubeConversionParser;
+
 pub const CRYSTAL_ID: u32 = 3950293873;
 pub const CLASP_ID: u32 = 606866102;
 
@@ -31,6 +35,7 @@ pub struct CubeParsers {
     cpu_counter: std::sync::Arc<CpuListParser>,
     locations: std::sync::Arc<CubeLocationsParser>,
     offset: std::sync::Arc<OffsetParser>,
+    converter: std::sync::Arc<CubeConversionParser>,
 }
 
 impl CubeParsers {
@@ -41,6 +46,7 @@ impl CubeParsers {
             cpu_counter: std::sync::Arc::new(CpuListParser::with_cubes(cubes.values())),
             locations: std::sync::Arc::new(CubeLocationsParser::with_cubes(cubes.values())),
             offset: std::sync::Arc::new(OffsetParser::with_cubes(cubes.values())),
+            converter: std::sync::Arc::new(CubeConversionParser::with_cubes(cubes.values())),
         }
     }
 
@@ -58,5 +64,9 @@ impl CubeParsers {
 
     pub fn offset(&self) -> std::sync::Arc<OffsetParser> {
         self.offset.clone()
+    }
+
+    pub fn converter(&self) -> std::sync::Arc<CubeConversionParser> {
+        self.converter.clone()
     }
 }

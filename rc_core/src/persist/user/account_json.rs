@@ -396,7 +396,7 @@ impl UserData {
         Ok(())
     }
 
-    async fn all_vehicles(&self) -> Result<Vec<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
+    pub(super) async fn all_vehicles(&self) -> Result<Vec<oj_rc_database::schema::garage::Model>, oj_rc_database::sea_orm::DbErr> {
         self.db.garages_by_user_id(self.account.id).await
     }
 
@@ -1123,7 +1123,7 @@ impl <C: Clone + Send> super::User<C> for UserData {
             let total_cost: u32 = self.garage_upgrades.increments.iter()
                 .map(|x| if x.cpu > minimum_upgrade_to_cpu { 0 } else { x.cost })
                 .sum();
-            log::info!("Bay CPU upgrade costs {}", total_cost);
+            log::debug!("Bay CPU upgrade costs {}", total_cost);
             self.currency_sub_checked(super::CurrencyType::Free, total_cost as u64).await.map_err(|e| {
                 log::error!("Failed to debit user for cpu upgrade during fresh clone to slot {} for user_id {}: {}", slot, self.account.id, e);
                 DATABASE_ERR

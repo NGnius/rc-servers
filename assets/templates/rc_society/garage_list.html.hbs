@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Garages - Openjam</title>
+  <meta name="title" content="Garages - Openjam" />
+  <meta name="description" content="User garages for third-party Robocraft servers" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="og:title" content="Garages - Openjam" />
+  <meta property="og:description" content="View your garages for third-party Robocraft servers" />
+  <meta property="og:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary" />
+  <meta property="twitter:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="twitter:title" content="Garages - Openjam" />
+  <meta property="twitter:description" content="View your garages for third-party Robocraft servers" />
+  <meta property="twitter:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  {{> stylesheet}}
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      Welcome {{form.display_name}}! |
+      <a href="/">Home</a>
+    </div>
+    <h1 class="form-banner">{{form.display_name}} Garages</h1>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+
+    <div class="access-list">
+      <div class="access-row-box">
+        <div class="access-grid">
+            <div class="access-box">
+                <a href="/garages/import">
+                    <div class="access-box-banner">
+                        Import
+                    </div>
+                </a>
+            </div>
+            <div class="access-box">
+                <a href="/garages/export">
+                    <div class="access-box-banner">
+                        Export
+                    </div>
+                </a>
+            </div>
+            <div class="access-box">
+                <a href="/garages/selected">
+                    <div class="access-box-banner">
+                        Currently Selected
+                    </div>
+                </a>
+            </div>
+            <div class="access-box">
+                <a href="http://127.0.0.1:8012">
+                    <div class="access-box-banner">
+                        Factory
+                    </div>
+                </a>
+            </div>
+        </div>
+      </div>
+      {{#each form.garages}}
+      <div class="access-row-box">
+        <!--<h4 class="access-box-title">{{this.name}}</h4>-->
+        <div class="box-details">
+          <div class="box-details-key">Name</div>
+          <div class="box-details-value">{{this.name}}</div>
+          <div class="box-details-key">CPU</div>
+          <div class="box-details-value">{{this.cpu}}/{{this.max_cpu}}</div>
+          <div class="box-details-key">Slot</div>
+          <div class="box-details-value">{{this.slot}}</div>
+          <div class="box-details-key">Database ID</div>
+          <div class="box-details-value">{{this.garage_id}}</div>
+          <div class="box-details-key">Creation</div>
+          <div class="box-details-value"><time datetime="{{this.creation_time_iso}}">{{this.creation_time_iso}}</time></div>
+        </div>
+        <a href="/garages/{{this.garage_id}}/info">
+          <div class="access-box-banner">
+            View Details
+          </div>
+        </a>
+      </div>
+      {{/each}}
+    </div>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

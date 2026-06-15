@@ -50,6 +50,9 @@ pub use team_chooser::TeamChooser;
 mod vehicle_validator;
 pub use vehicle_validator::VehicleValidator;
 
+pub(crate) mod conversion;
+pub use conversion::{CubeConversionData, FromConversionData, ToConversionData};
+
  const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

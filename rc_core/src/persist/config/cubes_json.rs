@@ -28,15 +28,26 @@ impl CubeConfig {
     pub fn load(root: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         let file = std::fs::File::open(root.as_ref().join(CUBE_CONFIG_FILENAME))?;
         let buffered = std::io::BufReader::new(file);
-        let result = serde_json::from_reader(buffered)?;
-        #[cfg(debug_assertions)]
-        {
-            let filename = root.as_ref().join(format!("{}.expanded.json", CUBE_CONFIG_FILENAME.trim_end_matches(".json")));
-            let file = std::fs::File::create(filename)?;
-            let buffered = std::io::BufWriter::new(file);
-            serde_json::to_writer_pretty(buffered, &result)?;
+        let result = serde_json::from_reader::<_, Self>(buffered)?;
+        let result = result.expand_with_context();
+        let expanded_filename = root.as_ref().join(format!("{}.expanded.json", CUBE_CONFIG_FILENAME.trim_end_matches(".json")));
+        match std::fs::File::create(&expanded_filename) {
+            Ok(file) => {
+                let buffered = std::io::BufWriter::new(file);
+                serde_json::to_writer_pretty(buffered, &result)?;
+            },
+            Err(e) => {
+                log::info!("Skipping creating {}: {}", expanded_filename.display(), e);
+            }
         }
         Ok(result)
+    }
+
+    /// Populate more of the config for parts of it which need more context for choosing default values
+    fn expand_with_context(mut self) -> Self {
+        // TODO
+        self.cubes.values_mut().for_each(crate::persist::conversion::expand_conversion_data);
+        self
     }
 
     /// Performs configuration checks

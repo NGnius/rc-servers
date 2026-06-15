@@ -1,4 +1,4 @@
-use actix_web::{get, web::Data, Responder, HttpRequest};
+use actix_web::{get, post, web::Data, Responder, HttpRequest};
 use actix_identity::Identity;
 use serde::{Serialize, Deserialize};
 
@@ -29,12 +29,12 @@ struct PermissionData {
     banned: bool,
 }
 
-#[get("/dashboard")]
-pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     match super::try_auth_user(user_opt, auth.as_ref(), &req).await? {
         super::LoginReturn::AuthFail(resp) => Ok(resp),
         super::LoginReturn::Success(user) => {
             // TODO
+            log::debug!("Rendering user's dashboard");
             let creation_time = user.creation();
             let creation_time_chrono = chrono::DateTime::<chrono::Utc>::from_timestamp_secs(creation_time).unwrap_or_default();
             Ok(super::render_ok(
@@ -62,4 +62,14 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
             )
         }
     }
+}
+
+#[get("/dashboard")]
+pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+    dashboard_impl(handlebars_ref, auth, user_opt, req).await
+}
+
+#[post("/dashboard")]
+pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+    dashboard_impl(handlebars_ref, auth, user_opt, req).await
 }

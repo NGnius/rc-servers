@@ -676,7 +676,19 @@ pub trait FactoryUser {
 
 #[async_trait::async_trait]
 pub trait WebUser: CommonUser {
+    async fn garages(&self) -> Result<Vec<GarageWebInfo>, Box<dyn std::error::Error>>;
+    async fn garage_by_id(&self, id: i32) -> Result<Option<VehicleData>, Box<dyn std::error::Error>>;
+    async fn save_garage(&self, vehicle: crate::persist::user::VehicleData, garage_id: Option<i32>, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>>;
+    async fn garage_id_selected(&self) -> Result<Option<i32>, Box<dyn std::error::Error>>;
+}
 
+pub struct GarageWebInfo {
+    pub id: i32,
+    pub slot: i32,
+    pub total_robot_cpu: i32,
+    pub bay_cpu: i32,
+    pub name: String,
+    pub creation_time: i64,
 }
 
 #[async_trait::async_trait]

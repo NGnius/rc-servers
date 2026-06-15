@@ -129,7 +129,7 @@ impl Database {
     }
 
     pub async fn insert_user_aux(&self, entities: Vec<crate::schema::user_aux::ActiveModel>) -> Result<(), sea_orm::DbErr> {
-        crate::schema::user_aux::Entity::insert_many(entities.into_iter()).exec(self.orm.as_ref()).await?;
+        crate::schema::user_aux::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
         Ok(())
     }
 
@@ -217,6 +217,13 @@ impl Database {
             .await
     }
 
+    pub async fn garage_count_by_user_id(&self, user_id: i32) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::UserId.eq(user_id))
+            .count(self.orm.as_ref())
+            .await
+    }
+
     pub async fn garage_max_slot_by_user_id(&self, user_id: i32) -> Result<i32, sea_orm::DbErr> {
         let result = crate::schema::garage::Entity::find()
             .select_only()
@@ -265,8 +272,20 @@ impl Database {
             .await
     }
 
+    pub async fn slot_of_garage_by_id_and_user_id(&self, garage_id: i32, user_id: i32) -> Result<Option<i32>, sea_orm::DbErr> {
+        let opt = crate::schema::garage::Entity::find()
+            .select_only()
+            .column_as(crate::schema::garage::Column::Slot, "column")
+            .filter(crate::schema::garage::Column::Id.eq(garage_id))
+            .filter(crate::schema::garage::Column::UserId.eq(user_id))
+            .into_model::<crate::schema::common_query::SingleColumn<i32>>()
+            .one(self.orm.as_ref())
+            .await?;
+        Ok(opt.map(|x| *x))
+    }
+
     pub async fn insert_garages(&self, entities: Vec<crate::schema::garage::ActiveModel>) -> Result<(), sea_orm::DbErr> {
-        crate::schema::garage::Entity::insert_many(entities.into_iter()).exec(self.orm.as_ref()).await?;
+        crate::schema::garage::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
         Ok(())
     }
 
@@ -515,7 +534,7 @@ impl Database {
     }
 
     pub async fn insert_players(&self, entities: Vec<crate::schema::multiplayer_game_player::ActiveModel>) -> Result<(), sea_orm::DbErr> {
-        crate::schema::multiplayer_game_player::Entity::insert_many(entities.into_iter()).exec(self.orm.as_ref()).await?;
+        crate::schema::multiplayer_game_player::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
         Ok(())
     }
 

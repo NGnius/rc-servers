@@ -27,6 +27,14 @@ async fn main() -> std::io::Result<()> {
 
     let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&config));
 
+    let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
+
+    let vehicle_importers = crate::api::garage::plugins::ImportPlugins::standard(&cli_args.assets_robocraft, &parsers);
+    log::info!("Loaded {} vehicle import/export plugins", vehicle_importers.plugin_names().count());
+    let importers_ref = actix_web::web::Data::new(vehicle_importers);
+
+    let parsers_ref = actix_web::web::Data::new(parsers);
+
     let users = oj_rc_core::UserImpl::load(&cli_args.data_robocraft, &config).await.expect("Bad user data");
     let auth_ref = actix_web::web::Data::new(Box::new(users));
 
@@ -65,12 +73,22 @@ async fn main() -> std::io::Result<()> {
             .app_data(handlebars_ref.clone())
             .app_data(server_settings.clone())
             .app_data(auth_ref.clone())
+            .app_data(importers_ref.clone())
+            .app_data(parsers_ref.clone())
             .service(version_info)
             .service(web::login::form_submit)
             .service(web::login::form_load)
             .service(web::favicon::favicon_standard)
             .service(web::dashboard::get)
+            .service(web::dashboard::post) // for login redirect
             .service(web::index::get)
+            .service(web::garage::list::get)
+            .service(web::garage::info::get)
+            .service(web::garage::export::get)
+            .service(web::garage::import::get_existing)
+            .service(web::garage::import::get_new)
+            .service(web::garage::import::post)
+            .service(web::garage::selected::get)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()
