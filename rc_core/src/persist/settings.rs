@@ -96,6 +96,8 @@ pub struct ServerSettings {
     pub auth_url: String,
     #[serde(default = "default_intercom_root_url")]
     pub intercom_url: String,
+    #[serde(default = "default_factory_url")]
+    pub factory_url: String,
     #[serde(default = "default_feedback_url")]
     pub feedback_url: String,
     #[serde(default = "default_support_url")]
@@ -132,6 +134,7 @@ fn default_server_conf() -> ServerSettings {
         cdn_url: default_cdn_root_url(),
         auth_url: default_auth_root_url(),
         intercom_url: default_intercom_root_url(),
+        factory_url: default_factory_url(),
         feedback_url: default_feedback_url(),
         support_url: default_support_url(),
         wiki_url: default_wiki_url(),
@@ -155,6 +158,10 @@ fn default_auth_root_url() -> String {
 
 fn default_intercom_root_url() -> String {
     "ws://127.0.0.1:8001".to_owned()
+}
+
+fn default_factory_url() -> String {
+    "http://127.0.0.1:8012".to_owned()
 }
 
 fn default_feedback_url() -> String {

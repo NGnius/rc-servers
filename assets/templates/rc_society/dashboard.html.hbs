@@ -72,8 +72,20 @@
       <div class="access-box">
         <h4 class="access-box-title">Garages</h4>
         <div class="box-details">
-          <div class="box-details-key">Total</div> <!-- TODO -->
-          <div class="box-details-value">{{form.debug.user_id}}/{{form.debug.user_id}}</div>
+          <div class="box-details-key">Total</div>
+          <div class="box-details-value">{{form.garage.total}}</div>
+          <div class="box-details-key">Regulars</div>
+          <div class="box-details-value">{{form.garage.regular_total}}</div>
+          <div class="box-details-key">Megabots</div>
+          <div class="box-details-value">{{form.garage.mega_total}}</div>
+          <div class="box-details-key">Empty</div>
+          <div class="box-details-value">{{form.garage.empty_total}}</div>
+          <div class="box-details-key">Selected Slot</div>
+          <div class="box-details-value">#{{form.garage.selected_slot}}</div>
+          {{#if form.garage.bytes_total }}
+          <div class="box-details-key">Storage</div>
+          <div class="box-details-value">{{form.garage.bytes_total}}B</div>
+          {{/if}}
         </div>
         <a href="/garages/list">
           <div class="access-box-banner">
@@ -84,10 +96,12 @@
       <div class="access-box">
         <h4 class="access-box-title">Factory</h4>
         <div class="box-details">
-          <div class="box-details-key">Total</div> <!-- TODO -->
-          <div class="box-details-value">{{form.debug.user_id}}/{{form.debug.user_id}}</div>
+          <div class="box-details-key">Factory Garages</div>
+          <div class="box-details-value">{{form.factory.garages_from_factory}}</div>
+          <div class="box-details-key">Uploads</div>
+          <div class="box-details-value">{{form.factory.uploads_total}}</div>
         </div>
-        <a href="#"> <!-- TODO -->
+        <a href="{{form.debug.factory}}">
           <div class="access-box-banner">
             View My Uploads
           </div>
@@ -95,6 +109,32 @@
       </div>
       <div class="access-box">
         <h4 class="access-box-title">Account</h4>
+        <div class="box-details">
+          {{#if form.account.is_custom_avatar}}
+          <div class="box-details-key">Avatar</div>
+          <div class="box-details-value">
+            <a href="{{form.debug.cdn}}/customavatar/Live/{{form.public_id}}" download="user_{{form.display_name}}.jpg" target="_blank" type="media/jpeg" referrerpolicy="no-referrer">
+              <img src="{{form.debug.cdn}}/customavatar/Live/{{form.public_id}}" alt="Custom avatar picture for {{form.display_name}}" style="margin-top: 5px;"/>
+            </a>
+          </div>
+          {{else}}
+          <div class="box-details-key">Avatar</div>
+          <div class="box-details-value">{{form.account.avatar_id}}</div>
+          {{/if}}
+          <div class="box-details-key">Rank</div>
+          <div class="box-details-value">{{form.account.rank}}</div>
+          <div class="box-details-key">Currency</div>
+          <div class="box-details-value">
+            Robits: {{form.account.currencies.robits}}<br/>
+            GC: {{form.account.currencies.gc}}<br/>
+            TP: {{form.account.currencies.tp}}<br/>
+            XP: {{form.account.currencies.xp}}<br/>
+          </div>
+          <div class="box-details-key">Games</div>
+          <div class="box-details-value">{{form.account.games}}</div>
+          <div class="box-details-key">Premium Until</div>
+          <div class="box-details-value"><time datetime="{{form.account.premium_until_iso}}">{{form.account.premium_until_iso}}</time></div>
+        </div>
         <a href="#"> <!-- TODO -->
           <div class="access-box-banner">
             Manage My Account
@@ -104,8 +144,20 @@
       <div class="access-box">
         <h4 class="access-box-title">Sanctions</h4>
         <div class="box-details">
-          <div class="box-details-key">Total</div> <!-- TODO -->
-          <div class="box-details-value">{{form.debug.user_id}}</div>
+          <div class="box-details-key">Total</div>
+          <div class="box-details-value">{{form.sanction.total}}</div>
+          {{#if (ne form.sanction.pending 0)}}
+          <div class="box-details-key">Pending</div>
+          <div class="box-details-value">{{form.sanction.pending}}</div>
+          {{/if}}
+          <div class="box-details-key">Warnings</div>
+          <div class="box-details-value">{{form.sanction.warns}}</div>
+          <div class="box-details-key">Mutes</div>
+          <div class="box-details-value">{{form.sanction.mutes}}</div>
+          {{#if form.sanction.muted_until_iso}}
+          <div class="box-details-key">Muted Until</div>
+          <div class="box-details-value"><time datetime="{{form.sanction.muted_until_iso}}">{{form.sanction.muted_until_iso}}</time></div>
+          {{/if}}
         </div>
         <a href="#"> <!-- TODO -->
           <div class="access-box-banner">
@@ -116,17 +168,40 @@
       <div class="access-box">
         <h4 class="access-box-title">Social</h4>
         <div class="box-details">
-          <div class="box-details-key">Clan</div> <!-- TODO -->
-          <div class="box-details-value">{{form.display_name}}</div>
-          <div class="box-details-key">Friends</div> <!-- TODO -->
-          <div class="box-details-value">{{form.debug.user_id}}</div>
+          {{#if form.social.clan}}
+          <div class="box-details-key">Clan</div>
+          <div class="box-details-value">
+            <span style="display: inline-block; text-align: center; width: 100%;">{{form.social.clan.name}}</span>
+            <a href="{{form.debug.cdn}}/clanavatar/Live/{{form.social.clan.name}}" download="clan_{{form.social.clan.name}}.jpg" target="_blank" type="media/jpeg" referrerpolicy="no-referrer">
+              <img src="{{form.debug.cdn}}/clanavatar/Live/{{form.social.clan.name}}" alt="Clan avatar picture for {{form.social.clan.name}}" style="margin-top: 5px;"/>
+            </a>
+            <span style="display: inline-block; font-size: 10px; text-align: center; margin: 5px auto; width: 100%;">{{form.social.clan.ty}}</span>
+            <span>{{form.social.clan.description}}</span>
+          </div>
+          {{else}}
+          <div class="box-details-key">Clan</div>
+          <div class="box-details-value">[no clan]</div>
+          {{/if}}
+          <div class="box-details-key">Friends</div>
+          <div class="box-details-value">
+            {{form.social.friends}}
+            {{#if (ne form.social.friends form.social.friends_of)}}
+            = {{form.social.friends_of}}[!]
+            {{/if}}
+          </div>
+          <div class="box-details-key">Chats</div>
+          <div class="box-details-value">
+            {{#each form.social.chats}}
+            {{this}}<br/>
+            {{/each}}
+          </div>
         </div>
       </div>
       <div class="access-box">
         <h4 class="access-box-title">Federation</h4>
         <div class="box-details">
-          <div class="box-details-key">Enabled</div> <!-- TODO -->
-          <div class="box-details-value">{{form.perms.royal}}</div>
+          <div class="box-details-key">TODO</div> <!-- TODO -->
+          <div class="box-details-value">TODO</div>
         </div>
         <a href="#"> <!-- TODO -->
           <div class="access-box-banner">

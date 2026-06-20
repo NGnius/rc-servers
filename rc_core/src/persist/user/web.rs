@@ -106,4 +106,100 @@ impl super::WebUser for super::account_json::UserData {
         Ok(self.db.garage_selected(self.account.id).await?
             .map(|x| x.id))
     }
+
+    async fn garage_stats(&self) -> Result<super::GarageWebStats, Box<dyn std::error::Error>> {
+        let vehicle_count = self.db.garage_count_by_user_id(self.account.id).await?;
+        let regular_count = self.db.garage_count_by_user_id_between(self.account.id, 2_000, 1).await?;
+        let mega_count = self.db.garage_count_by_user_id_between(self.account.id, u32::MAX as u64, 2_000).await?;
+        let empty_count = self.db.garage_count_by_user_id_between(self.account.id, 0, 0).await?;
+        let factory_count = self.db.garage_count_by_user_id_factory(self.account.id).await?;
+        let storage_size = self.db.garage_storage_by_user_id(self.account.id).await?;
+        let selected_garage_slot = self.db.garage_selected(self.account.id).await?.map(|g| g.slot).unwrap_or_default();
+        Ok(super::GarageWebStats {
+            vehicle_total: vehicle_count,
+            regular_vehicle_total: regular_count,
+            mega_vehicle_total: mega_count,
+            empty_vehicle_total: empty_count,
+            factory_vehicle_total: factory_count,
+            storage_bytes_total: storage_size,
+            selected_garage: selected_garage_slot,
+        })
+    }
+
+    async fn account_stats(&self) -> Result<super::AccountWebStats, Box<dyn std::error::Error>> {
+        let user_aux_data = self.db.user_aux_by_user_id(self.account.id).await?;
+        let mut currency_map = std::collections::HashMap::with_capacity(8);
+        let mut avatar_id = None;
+        let mut premium_until = 0;
+        let mut user_rank = 0;
+        for row in user_aux_data.iter() {
+            match row.descriptor {
+                oj_rc_database::schema::user_aux::Descriptor::UserXP => {
+                    currency_map.insert(super::CurrencyType::Experience, row.data.parse().unwrap_or_default());
+                },
+                oj_rc_database::schema::user_aux::Descriptor::TechPoints => {
+                    currency_map.insert(super::CurrencyType::TechPoints, row.data.parse().unwrap_or_default());
+                },
+                oj_rc_database::schema::user_aux::Descriptor::UserFreeCurrency => {
+                    currency_map.insert(super::CurrencyType::Free, row.data.parse().unwrap_or_default());
+                },
+                oj_rc_database::schema::user_aux::Descriptor::UserPaidCurrency => {
+                    currency_map.insert(super::CurrencyType::Paid, row.data.parse().unwrap_or_default());
+                },
+                oj_rc_database::schema::user_aux::Descriptor::AvatarId => {
+                    avatar_id = row.data.parse::<i32>().ok();
+                },
+                oj_rc_database::schema::user_aux::Descriptor::PremiumExpiry => {
+                    premium_until = row.data.parse().unwrap_or_default();
+                },
+                oj_rc_database::schema::user_aux::Descriptor::UserRank => {
+                    user_rank = row.data.parse().unwrap_or_default();
+                },
+                _ => {},
+            }
+        }
+        let game_count = self.db.count_games_by_user_id(self.account.id).await?;
+        Ok(super::AccountWebStats {
+            currencies: currency_map,
+            games_played: game_count,
+            avatar_id,
+            premium_until,
+            rank: user_rank,
+        })
+    }
+
+    async fn sanction_stats(&self) -> Result<super::SanctionWebStats, Box<dyn std::error::Error>> {
+        let all_count = self.db.count_sanctions_by_user_id(self.account.id).await?;
+        let pending_count = self.db.count_sanctions_by_user_id_and_ack(self.account.id, false).await?;
+        let warn_count = self.db.count_sanctions_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::sanction::Descriptor::Warn).await?;
+        let mute_count = self.db.count_sanctions_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::sanction::Descriptor::Mute).await?;
+        let first_active_mute = self.db.sanction_by_user_id_and_descriptor_and_active(self.account.id, oj_rc_database::schema::sanction::Descriptor::Mute).await?;
+        Ok(super::SanctionWebStats {
+            total: all_count,
+            pending_total: pending_count,
+            warn_total: warn_count,
+            mute_total: mute_count,
+            muted_until: first_active_mute.map(|s| s.creation_time + s.duration.unwrap_or_default()),
+        })
+    }
+
+    async fn social_stats(&self) -> Result<super::SocialWebStats, Box<dyn std::error::Error>> {
+        let clan_opt = self.db.clan_by_user_id(self.account.id).await?
+            .map(|(clan, _myself)| super::ClanData {
+                name: clan.name,
+                description: clan.description,
+                ty: super::ClanType::db_to_core(&clan.variant),
+                size: 0,
+            });
+        let friends_count = self.db.count_friends_by_user_id(self.account.id, oj_rc_database::schema::friend::FriendStatus::Accepted).await?;
+        let friends_of_count = self.db.count_friends_target_by_user_id(self.account.id, oj_rc_database::schema::friend::FriendStatus::Accepted).await?;
+        let subbed_chats_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::SubscribedChannels).await?;
+        let chat_list: Vec<String> = subbed_chats_aux.and_then(|aux| serde_json::from_str(&aux.data).ok()).unwrap_or_default();
+        Ok(super::SocialWebStats {
+            clan: clan_opt,
+            friends_total: friends_count,
+            friends_of_total: friends_of_count,
+            chats: chat_list,
+        })
+    }
 }

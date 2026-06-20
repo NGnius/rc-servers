@@ -26,6 +26,7 @@ async fn main() -> std::io::Result<()> {
     let config = oj_rc_core::ConfigImpl::load(&cli_args.assets_robocraft)?;
 
     let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&config));
+    let server_links = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(&config));
 
     let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
 
@@ -36,6 +37,8 @@ async fn main() -> std::io::Result<()> {
     let parsers_ref = actix_web::web::Data::new(parsers);
 
     let users = oj_rc_core::UserImpl::load(&cli_args.data_robocraft, &config).await.expect("Bad user data");
+    let factory = <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&config, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config");
+    let factory_ref = actix_web::web::Data::new(factory);
     let auth_ref = actix_web::web::Data::new(Box::new(users));
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
@@ -72,9 +75,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(loadeds_args.clone())
             .app_data(handlebars_ref.clone())
             .app_data(server_settings.clone())
+            .app_data(server_links.clone())
             .app_data(auth_ref.clone())
             .app_data(importers_ref.clone())
             .app_data(parsers_ref.clone())
+            .app_data(factory_ref.clone())
             .service(version_info)
             .service(web::login::form_submit)
             .service(web::login::form_load)

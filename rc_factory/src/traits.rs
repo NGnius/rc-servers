@@ -2,6 +2,11 @@
 pub trait VehicleFactoryAdapter: Send + Sync + 'static {
     async fn vehicle(&self, id: i32) -> Result<Option<(VehicleInfo, VehicleQueryInfo)>, Box<dyn std::error::Error>>;
     async fn list(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<VehicleQueryInfo>, Box<dyn std::error::Error>>;
+    // used by society web dashboard
+    async fn count(&self, query: libfj::robocraft::ListQuery) -> Result<usize, Box<dyn std::error::Error>> {
+        Ok(self.list(query).await?.len())
+    }
+
     async fn upload(&self, vehicle: VehicleUploadInfo) -> Result<VehicleThumbnailInfo, Box<dyn std::error::Error>>;
     async fn rate_vehicle(&self, id: i32, combat: i32, cosmetic: i32) -> Result<(), Box<dyn std::error::Error>>;
     /// Just update any purchase trackers

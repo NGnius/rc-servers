@@ -33,7 +33,7 @@ impl FactoryDatabase {
             .and_then(|(vehicle, user_opt)| user_opt.map(|user| (vehicle, user))))
     }
 
-    async fn list_query(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<(crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo)>, sea_orm::DbErr> {
+    fn build_list_query(&self, query: &libfj::robocraft::ListQuery) -> sea_orm::Selector<sea_orm::SelectTwoModel<crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo>> {
         let mut query_builder = crate::schema::factory::vehicle::Entity::find()
             .filter(crate::schema::factory::vehicle::Column::RemovedDate.is_null())
             .filter(crate::schema::factory::vehicle::Column::BanDate.is_null())
@@ -91,7 +91,7 @@ impl FactoryDatabase {
             query_builder = query_builder.filter(crate::schema::factory::vehicle::Column::Cpu.lte(query.maximum_cpu as u32));
         }
 
-        let query_builder = query_builder
+        query_builder
             .find_also_related(crate::schema::user::Entity)
             .select_only()
             // WARNING: jank sea_orm query generation (fix)
@@ -115,13 +115,21 @@ impl FactoryDatabase {
             .column_as(crate::schema::factory::vehicle::Column::CubeAmounts, "A_cube_amounts")
             .column_as(crate::schema::user::Column::PublicId, "B_public_id")
             .column_as(crate::schema::user::Column::DisplayName, "B_display_name")
-            .into_model::<crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo>();
-            //.into_partial_model::<crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo>();
+            .into_model::<crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo>()
+    }
+
+    async fn list_query(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<(crate::schema::factory::vehicle_query::VehicleInfo, crate::schema::factory::vehicle_query::VehicleOwnerInfo)>, sea_orm::DbErr> {
+        let query_builder = self.build_list_query(&query);
         let pagination = query_builder.paginate(self.orm.as_ref(), query.page_size as u64);
         Ok(pagination.fetch_page((query.page - 1) as u64).await?
             .into_iter()
             .filter_map(|(vehicle, user_opt)| user_opt.map(|user| (vehicle, user)))
             .collect())
+    }
+
+    async fn count_list_query(&self, query: libfj::robocraft::ListQuery) -> Result<u64, sea_orm::DbErr> {
+        let query_builder = self.build_list_query(&query);
+        query_builder.count(self.orm.as_ref()).await
     }
 
     fn thumbnail_url(&self, id: i32) -> String {
@@ -205,6 +213,11 @@ impl VehicleFactoryAdapter for FactoryDatabase {
             cosmetic_rating: vehicle.cosmetic_rating,
             cube_amounts: serde_json::from_str(&vehicle.cube_amounts).unwrap_or_default(),
         }).collect())
+    }
+
+    async fn count(&self, query: libfj::robocraft::ListQuery) -> Result<usize, Box<dyn std::error::Error>> {
+        let count = self.count_list_query(query).await?;
+        Ok(count as usize)
     }
 
     async fn upload(&self, vehicle: VehicleUploadInfo) -> Result<VehicleThumbnailInfo, Box<dyn std::error::Error>> {

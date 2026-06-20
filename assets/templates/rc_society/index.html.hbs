@@ -61,9 +61,11 @@
           <div class="box-details-key">Domain</div>
           <div class="box-details-value">{{form.server.domain}}</div>
           <div class="box-details-key">CDN</div>
-          <div class="box-details-value">{{form.server.cdn}}</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.server.cdn}}">{{form.server.cdn}}</a></div>
           <div class="box-details-key">Auth</div>
-          <div class="box-details-value">{{form.server.auth}}</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.server.auth}}">{{form.server.auth}}</a></div>
+          <div class="box-details-key">Factory</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.server.factory}}">{{form.server.factory}}</a></div>
           <div class="box-details-key">Client Version</div>
           <div class="box-details-value">>={{form.server.min_version}}</div>
           <div class="box-details-key">Server Version</div>
@@ -73,9 +75,17 @@
         </div>
       </div>
       <div class="access-box">
-        Grid item 2
+        <h4 class="access-box-title">Server Links</h4>
+        <div class="box-details">
+          <div class="box-details-key">Feedback</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.links.feedback}}">{{form.links.feedback}}</a></div>
+          <div class="box-details-key">Support</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.links.support}}">{{form.links.support}}</a></div>
+          <div class="box-details-key">Wiki</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{form.links.wiki}}">{{form.links.wiki}}</a></div>
+        </div>
       </div>
-      <div class="access-box">
+      <!--<div class="access-box">
         Grid item 3
       </div>
       <div class="access-box">
@@ -92,7 +102,7 @@
       </div>
       <div class="access-box">
         Grid item 8
-      </div>
+      </div>-->
     </div>
 
 

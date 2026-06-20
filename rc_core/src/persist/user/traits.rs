@@ -468,7 +468,7 @@ pub trait CommonUser: Send + Sync {
     async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum CurrencyType {
     Free,
     Paid,
@@ -680,6 +680,10 @@ pub trait WebUser: CommonUser {
     async fn garage_by_id(&self, id: i32) -> Result<Option<VehicleData>, Box<dyn std::error::Error>>;
     async fn save_garage(&self, vehicle: crate::persist::user::VehicleData, garage_id: Option<i32>, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>>;
     async fn garage_id_selected(&self) -> Result<Option<i32>, Box<dyn std::error::Error>>;
+    async fn garage_stats(&self) -> Result<GarageWebStats, Box<dyn std::error::Error>>;
+    async fn account_stats(&self) -> Result<AccountWebStats, Box<dyn std::error::Error>>;
+    async fn sanction_stats(&self) -> Result<SanctionWebStats, Box<dyn std::error::Error>>;
+    async fn social_stats(&self) -> Result<SocialWebStats, Box<dyn std::error::Error>>;
 }
 
 pub struct GarageWebInfo {
@@ -689,6 +693,41 @@ pub struct GarageWebInfo {
     pub bay_cpu: i32,
     pub name: String,
     pub creation_time: i64,
+}
+
+pub struct GarageWebStats {
+    pub vehicle_total: u64,
+    pub regular_vehicle_total: u64,
+    pub mega_vehicle_total: u64,
+    pub empty_vehicle_total: u64,
+    pub factory_vehicle_total: u64,
+    pub storage_bytes_total: Option<u64>,
+    pub selected_garage: i32,
+}
+
+pub struct AccountWebStats {
+    pub currencies: std::collections::HashMap<CurrencyType, u64>,
+    pub games_played: u64,
+    pub avatar_id: Option<i32>,
+    pub premium_until: i64,
+    pub rank: u32,
+}
+
+pub struct SanctionWebStats {
+    pub total: u64,
+    pub pending_total: u64,
+    pub warn_total: u64,
+    pub mute_total: u64,
+    pub muted_until: Option<i64>,
+}
+
+pub struct SocialWebStats {
+    pub clan: Option<ClanData>,
+    /// Friend source is user
+    pub friends_total: u64,
+    /// Friend target is user
+    pub friends_of_total: u64,
+    pub chats: Vec<String>,
 }
 
 #[async_trait::async_trait]

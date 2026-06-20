@@ -66,6 +66,79 @@ impl ArcAdapter {
 
         serde_json::to_string(&str_map).unwrap_or_else(|_| "{}".to_string())
     }
+
+    fn listquery_to_db(&self, query: &libfj::robocraft::ListQuery) -> sea_orm::Select<super::entities::robot_metadata::Entity> {
+        let mut query_builder = super::entities::robot_metadata::Entity::find();
+        match query.order {
+            libfj::robocraft::FactoryOrderType::Suggested => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::RentCount); },
+            libfj::robocraft::FactoryOrderType::CombatRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CombatRating); },
+            libfj::robocraft::FactoryOrderType::CosmeticRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CosmeticRating); },
+            libfj::robocraft::FactoryOrderType::Added => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::AddedDate); },
+            libfj::robocraft::FactoryOrderType::CPU => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::Cpu); },
+            libfj::robocraft::FactoryOrderType::MostBought => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::BuyCount); },
+        }
+        if !query.text_filter.is_empty() {
+            let query_text = format!("%{}%", query.text_filter.replace('%', ""));
+            if query.player_filter {
+                query_builder = query_builder.filter(
+                    sea_orm::sea_query::Condition::any()
+                        .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                        .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
+                );
+            } else {
+                match query.text_search_field {
+                    libfj::robocraft::FactoryTextSearchField::All => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::Description.like(query_text))
+                        );
+                    },
+                    libfj::robocraft::FactoryTextSearchField::Name => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
+                        );
+                    },
+                    libfj::robocraft::FactoryTextSearchField::Player => {
+                        query_builder = query_builder.filter(
+                            sea_orm::sea_query::Condition::any()
+                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
+                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
+                        );
+                    },
+                }
+            }
+        }
+
+        if query.buyable {
+            query_builder = query_builder.filter(
+                sea_orm::sea_query::Condition::any()
+                    .add(super::entities::robot_metadata::Column::AddedDate.lt("2025-01-23"))
+                    .add(super::entities::robot_metadata::Column::Buyable.eq(1))
+            );
+        }
+        if query.featured_only {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Featured.eq(1));
+        }
+
+        // movement filters not supported
+        // weapon filters not supported
+        if query.minimum_cpu > 0 {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.gte(query.minimum_cpu as u32));
+        }
+        if query.maximum_cpu < usize::MAX {
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.lte(query.maximum_cpu as u32));
+        }
+        if !self.ignore_expiry {
+            let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
+            log::debug!("Expiry must exceed `{}`", now_str);
+            query_builder = query_builder.filter(super::entities::robot_metadata::Column::ExpiryDate.gte(now_str))
+        }
+        query_builder
+    }
 }
 
 #[async_trait::async_trait]
@@ -115,76 +188,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
 
     async fn list(&self, query: libfj::robocraft::ListQuery) -> Result<Vec<crate::VehicleQueryInfo>, Box<dyn std::error::Error>> {
         log::debug!("Search vehicles with query {:?}", query);
-        let mut query_builder = super::entities::robot_metadata::Entity::find();
-        match query.order {
-            libfj::robocraft::FactoryOrderType::Suggested => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::RentCount); },
-            libfj::robocraft::FactoryOrderType::CombatRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CombatRating); },
-            libfj::robocraft::FactoryOrderType::CosmeticRating => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::CosmeticRating); },
-            libfj::robocraft::FactoryOrderType::Added => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::AddedDate); },
-            libfj::robocraft::FactoryOrderType::CPU => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::Cpu); },
-            libfj::robocraft::FactoryOrderType::MostBought => { query_builder = query_builder.order_by_desc(super::entities::robot_metadata::Column::BuyCount); },
-        }
-        if !query.text_filter.is_empty() {
-            let query_text = format!("%{}%", query.text_filter.replace('%', ""));
-            if query.player_filter {
-                query_builder = query_builder.filter(
-                    sea_orm::sea_query::Condition::any()
-                        .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                        .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
-                );
-            } else {
-                match query.text_search_field {
-                    libfj::robocraft::FactoryTextSearchField::All => {
-                        query_builder = query_builder.filter(
-                            sea_orm::sea_query::Condition::any()
-                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text.clone()))
-                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
-                                .add(super::entities::robot_metadata::Column::Description.like(query_text))
-                        );
-                    },
-                    libfj::robocraft::FactoryTextSearchField::Name => {
-                        query_builder = query_builder.filter(
-                            sea_orm::sea_query::Condition::any()
-                                .add(super::entities::robot_metadata::Column::Name.like(query_text.clone()))
-                        );
-                    },
-                    libfj::robocraft::FactoryTextSearchField::Player => {
-                        query_builder = query_builder.filter(
-                            sea_orm::sea_query::Condition::any()
-                                .add(super::entities::robot_metadata::Column::AddedBy.like(query_text.clone()))
-                                .add(super::entities::robot_metadata::Column::AddedByDisplayName.like(query_text))
-                        );
-                    },
-                }
-            }
-        }
-
-        if query.buyable { 
-            query_builder = query_builder.filter(
-                sea_orm::sea_query::Condition::any()
-                    .add(super::entities::robot_metadata::Column::AddedDate.lt("2025-01-23"))
-                    .add(super::entities::robot_metadata::Column::Buyable.eq(1))
-            );
-        }   
-        if query.featured_only {
-            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Featured.eq(1));
-        }
-        
-        // movement filters not supported
-        // weapon filters not supported
-        if query.minimum_cpu > 0 {
-            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.gte(query.minimum_cpu as u32));
-        }
-        if query.maximum_cpu < usize::MAX {
-            query_builder = query_builder.filter(super::entities::robot_metadata::Column::Cpu.lte(query.maximum_cpu as u32));
-        }
-        if !self.ignore_expiry {
-            let now_str = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true).trim_end_matches('Z').to_owned();
-            log::debug!("Expiry must exceed `{}`", now_str);
-            query_builder = query_builder.filter(super::entities::robot_metadata::Column::ExpiryDate.gte(now_str))
-        }
-        let query_params = query_builder;
+        let query_params = self.listquery_to_db(&query);
 
         // FIXME add support for query.prepend_featured_bot
         let metadata_pages = query_params.paginate(&self.orm, query.page_size as u64);
@@ -228,6 +232,14 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         }
         log::debug!("Search vehicles returned {} results", infos.len());
         Ok(infos)
+    }
+
+    async fn count(&self, query: libfj::robocraft::ListQuery) -> Result<usize, Box<dyn std::error::Error>> {
+        log::debug!("Count vehicles with query {:?}", query);
+        let query_params = self.listquery_to_db(&query);
+        query_params.count(&self.orm).await
+            .map(|len| len  as usize)
+            .map_err(|e| Box::new(e) as _)
     }
 
     async fn upload(&self, vehicle: crate::VehicleUploadInfo) -> Result<crate::VehicleThumbnailInfo, Box<dyn std::error::Error>> {

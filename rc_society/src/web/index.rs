@@ -9,6 +9,7 @@ struct RenderData {
     is_logged_in: bool,
     display_name: Option<String>,
     server: ServerDetails,
+    links: LinkDetails,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -16,6 +17,7 @@ struct ServerDetails {
     domain: String,
     cdn: String,
     auth: String,
+    factory: String,
     min_version: i32,
     server_version: String,
     start_time_iso: String,
@@ -32,6 +34,7 @@ fn server_details(conf: &oj_rc_core::persist::config::ServerConfig) -> ServerDet
         domain: conf.domain.clone(),
         cdn: conf.cdn_url.clone(),
         auth: conf.auth_url.clone(),
+        factory: conf.factory_url.clone(),
         min_version: conf.minimum_version,
         server_version,
         start_time_unix,
@@ -39,9 +42,25 @@ fn server_details(conf: &oj_rc_core::persist::config::ServerConfig) -> ServerDet
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct LinkDetails {
+    feedback: String,
+    support: String,
+    wiki: String,
+}
+
+fn links_details(links: &oj_rc_core::persist::config::LinksConfig) -> LinkDetails {
+    LinkDetails {
+        feedback: links.feedback_url.clone(),
+        support: links.support_url.clone(),
+        wiki: links.wiki_url.clone(),
+    }
+}
+
 #[get("/")]
-pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, server_config: Data<oj_rc_core::persist::config::ServerConfig>,  user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, server_config: Data<oj_rc_core::persist::config::ServerConfig>,  server_links: Data<oj_rc_core::persist::config::LinksConfig>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     let server_info = server_details(server_config.as_ref());
+    let links_info = links_details(server_links.as_ref());
     if let Some(user) = user_opt {
         match super::try_auth_user(Some(user), auth.as_ref(), &req).await? {
             super::LoginReturn::AuthFail(resp) => Ok(resp),
@@ -51,6 +70,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                         is_logged_in: true,
                         display_name: Some(user.display_name().to_owned()),
                         server: server_info,
+                        links: links_info,
                     },
                     handlebars_ref.as_ref(),
                     FORM_NAME,
@@ -66,6 +86,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                 is_logged_in: false,
                 display_name: None,
                 server: server_info,
+                links: links_info,
             },
             handlebars_ref.as_ref(),
             FORM_NAME,

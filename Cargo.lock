@@ -3326,6 +3326,7 @@ dependencies = [
  "log",
  "oj_convert",
  "oj_rc_core",
+ "oj_rc_factory",
  "oj_rc_plugins",
  "serde",
  "serde_json",

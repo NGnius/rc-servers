@@ -1,5 +1,5 @@
 use sea_orm_migration::MigratorTrait;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait, sea_query::ExprTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait, sea_query::ExprTrait, sqlx::types::chrono};
 
 pub struct Database {
     orm: std::sync::Arc<sea_orm::DatabaseConnection>,
@@ -224,6 +224,32 @@ impl Database {
             .await
     }
 
+    pub async fn garage_count_by_user_id_between(&self, user_id: i32, max_cpu: u64, min_cpu: u64) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::UserId.eq(user_id))
+            .filter(crate::schema::garage::Column::TotalRobotCpu.lte(max_cpu))
+            .filter(crate::schema::garage::Column::TotalRobotCpu.gte(min_cpu))
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn garage_count_by_user_id_factory(&self, user_id: i32) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::UserId.eq(user_id))
+            .filter(crate::schema::garage::Column::CrfId.is_not_null())
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn garage_storage_by_user_id(&self, _user_id: i32) -> Result<Option<u64>, sea_orm::DbErr> {
+        let size = match self.orm.as_ref() {
+            // TODO implement support in other databases
+            //sea_orm::DatabaseConnection::SqlxPostgresPoolConnection(_) => None,
+            _ => None,
+        };
+        Ok(size)
+    }
+
     pub async fn garage_max_slot_by_user_id(&self, user_id: i32) -> Result<i32, sea_orm::DbErr> {
         let result = crate::schema::garage::Entity::find()
             .select_only()
@@ -373,12 +399,51 @@ impl Database {
             .await
     }
 
+    pub async fn count_sanctions_by_user_id(&self, user_id: i32) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            //.order_by_asc(crate::schema::sanction::Column::CreationTime)
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn count_sanctions_by_user_id_and_ack(&self, user_id: i32, is_acked: bool) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            .filter(crate::schema::sanction::Column::Acknowledged.eq(is_acked))
+            //.order_by_asc(crate::schema::sanction::Column::CreationTime)
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn count_sanctions_by_user_id_and_descriptor(&self, user_id: i32, desc: crate::schema::sanction::Descriptor) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            .filter(crate::schema::sanction::Column::Descriptor.eq(desc))
+            //.order_by_asc(crate::schema::sanction::Column::CreationTime)
+            .count(self.orm.as_ref())
+            .await
+    }
+
     pub async fn sanctions_by_user_id(&self, user_id: i32) -> Result<Vec<crate::schema::sanction::Model>, sea_orm::DbErr> {
         crate::schema::sanction::Entity::find()
             .filter(crate::schema::sanction::Column::UserId.eq(user_id))
             .filter(crate::schema::sanction::Column::Acknowledged.is_null())
             .order_by_asc(crate::schema::sanction::Column::CreationTime)
             .all(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn sanction_by_user_id_and_descriptor_and_active(&self, user_id: i32, desc: crate::schema::sanction::Descriptor) -> Result<Option<crate::schema::sanction::Model>, sea_orm::DbErr> {
+        let now = chrono::Utc::now().timestamp();
+        let expiry_expr = sea_orm::sea_query::Expr::col(crate::schema::sanction::Column::CreationTime).add(sea_orm::sea_query::Expr::col(crate::schema::sanction::Column::Duration));
+        crate::schema::sanction::Entity::find()
+            .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+            .filter(crate::schema::sanction::Column::Descriptor.eq(desc))
+            .filter(crate::schema::sanction::Column::Duration.is_not_null())
+            .filter(expiry_expr.clone().gte(now))
+            .order_by_asc(crate::schema::sanction::Column::CreationTime)
+            .one(self.orm.as_ref())
             .await
     }
 
@@ -397,6 +462,13 @@ impl Database {
             .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
             .order_by_desc(crate::schema::multiplayer_game::Column::CreationTime)
             .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn count_games_by_user_id(&self, user_id: i32) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_player::Entity::find()
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            .count(self.orm.as_ref())
             .await
     }
 
@@ -606,6 +678,24 @@ impl Database {
             .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
             .filter(crate::schema::multiplayer_game_score::Column::IsClaimed.eq(is_claimed))
             .order_by_asc(crate::schema::multiplayer_game_player::Column::CreationTime)
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn count_friends_by_user_id(&self, user_id: i32, status_in: crate::schema::friend::FriendStatus) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::friend::Entity::find()
+            .filter(crate::schema::friend::Column::FriendSource.eq(user_id))
+            .filter(crate::schema::friend::Column::State.eq(status_in))
+            //.order_by_asc(crate::schema::friend::Column::CreationTime)
+            .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn count_friends_target_by_user_id(&self, user_id: i32, status_in: crate::schema::friend::FriendStatus) -> Result<u64, sea_orm::DbErr> {
+        crate::schema::friend::Entity::find()
+            .filter(crate::schema::friend::Column::FriendTarget.eq(user_id))
+            .filter(crate::schema::friend::Column::State.eq(status_in))
+            //.order_by_asc(crate::schema::friend::Column::CreationTime)
             .count(self.orm.as_ref())
             .await
     }

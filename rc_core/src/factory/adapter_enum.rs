@@ -28,6 +28,16 @@ impl oj_rc_factory::VehicleFactoryAdapter for Factory {
         }
     }
 
+    async fn count(&self, query: libfj::robocraft::ListQuery) -> Result<usize, Box<dyn std::error::Error>> {
+        match self {
+            Self::Arc(x) => x.count(query).await,
+            Self::Primary(x) => x.count(query).await,
+            Self::Web(x) => x.count(query).await,
+            Self::Custom(x) => x.count(query).await,
+            Self::None => Ok(0),
+        }
+    }
+
     async fn upload(&self, vehicle: oj_rc_factory::VehicleUploadInfo) -> Result<oj_rc_factory::VehicleThumbnailInfo, Box<dyn std::error::Error>> {
         match self {
             Self::Arc(x) => x.upload(vehicle).await,
