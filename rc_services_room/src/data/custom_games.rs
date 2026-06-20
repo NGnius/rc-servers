@@ -202,7 +202,7 @@ impl CustomGameInvite {
             (polariton::operation::Typed::Str("SenderDisplayName".into()), polariton::operation::Typed::Str(self.inviter_display_name.clone().into())),
             (polariton::operation::Typed::Str("SessionGUID".into()), polariton::operation::Typed::Str(self.session.clone().into())),
             (polariton::operation::Typed::Str("UseCustomAvatar".into()), polariton::operation::Typed::Bool(self.avatar_id.is_none())),
-            (polariton::operation::Typed::Str("AvatarID".into()), polariton::operation::Typed::Int(self.avatar_id.unwrap_or(0))),
+            (polariton::operation::Typed::Str("AvatarId".into()), polariton::operation::Typed::Int(self.avatar_id.unwrap_or(0))),
             (polariton::operation::Typed::Str("IsInvitedToTeamB".into()), polariton::operation::Typed::Bool(self.invited_to_team_b)),
         ].into())
     }
