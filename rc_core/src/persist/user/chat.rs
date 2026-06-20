@@ -216,4 +216,40 @@ impl super::ChatUser for UserData {
             ))
         }
     }
+
+    async fn clear_factory_flag(&self) -> Result<bool, polariton_server::operations::SimpleOpError> {
+        let selected_garage_opt = self.db.garage_selected(self.account.id).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve selected garage for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
+                    format!("Failed to retrieve selected garage: {}", e),
+                )
+            })?;
+        match selected_garage_opt {
+            Some(selected_garage) => {
+                self.db.update_garage(oj_rc_database::schema::garage::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::Set(selected_garage.id),
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                    crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                    ..Default::default()
+                }).await
+                    .map_err(|e| {
+                        log::error!("Failed to clear garage {} factory flag for user {}: {}", selected_garage.id, self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
+                            format!("Failed to clear garage {} factory flag: {}", selected_garage.id, e),
+                        )
+                    })?;
+                Ok(selected_garage.crf_id.is_some())
+            },
+            None => {
+                log::error!("Failed to find selected garage for user {}", self.account.id);
+                return Err(polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
+                    format!("Failed to find selected garage"),
+                ));
+            }
+        }
+    }
 }

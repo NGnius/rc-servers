@@ -325,6 +325,7 @@ impl Intercom {
 
 enum System {
     Permissions,
+    ClearGarageFactoryFlag,
 }
 
 enum SystemPermission {
@@ -383,6 +384,7 @@ impl System {
     fn from_persist(sys: oj_rc_core::persist::SystemChatOperation) -> Self {
         match sys {
             oj_rc_core::persist::SystemChatOperation::Permissions => Self::Permissions,
+            oj_rc_core::persist::SystemChatOperation::ClearGarageFactoryFlag => Self::ClearGarageFactoryFlag,
         }
     }
 
@@ -410,6 +412,24 @@ impl System {
                     format!("Granted {} to {} (they should re-log)", perm.display(), &params[2])
                 }
             },
+            Self::ClearGarageFactoryFlag => {
+                match ctx.user.clear_factory_flag().await {
+                    Err(e) => {
+                        if let Some(msg) = e.error_msg() {
+                            format!("Failed to clear flag: {}", msg)
+                        } else {
+                            format!("Failed to clear flag (code {})", e.error_code())
+                        }
+                    },
+                    Ok(is_changed) => {
+                        if is_changed {
+                            "Cleared flag from selected garage".to_owned()
+                        } else {
+                            "Cleared flag from selected garage (but it already was?)".to_owned()
+                        }
+                    }
+                }
+            }
         }
 
     }
@@ -417,6 +437,7 @@ impl System {
     fn do_help(&self) -> String {
         match self {
             Self::Permissions => "Grant permissions to an account".to_owned(),
+            Self::ClearGarageFactoryFlag => "Clear crf_id on currently-selected garage".to_owned(),
         }
     }
 }

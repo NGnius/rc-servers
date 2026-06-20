@@ -240,6 +240,7 @@ pub trait ChatUser: CommonUser + IntercomUser {
     async fn set_sanction(&self, sanction: SetSanction) -> Result<(), i16>;
     async fn get_total_registered_users(&self) -> Result<u64, polariton_server::operations::SimpleOpError>;
     async fn set_permission(&self, username: String, permission: UserRole, value: bool) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn clear_factory_flag(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct SetSanction {

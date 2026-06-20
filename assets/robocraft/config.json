@@ -14520,6 +14520,15 @@
                 "permission": "Developer"
             },
             {
+                "regex": "\\?nofactory",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "System",
+                    "system": "ClearGarageFactoryFlag"
+                },
+                "permission": "Administrator"
+            },
+            {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",
