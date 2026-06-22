@@ -99,6 +99,8 @@ pub struct ServerSettings {
     pub allow_signup: bool,
     #[serde(default)]
     pub queue_mode: QueueMode,
+    #[serde(default = "default_true")]
+    pub allow_parties: bool,
     #[serde(default = "default_domain_root")]
     pub domain: String,
     #[serde(default = "default_cdn_root_url")]
@@ -151,6 +153,7 @@ fn default_server_conf() -> ServerSettings {
         auto_signup: false,
         allow_signup: true,
         queue_mode: QueueMode::Notify,
+        allow_parties: true,
         domain: default_domain_root(),
         cdn_url: default_cdn_root_url(),
         auth_url: default_auth_root_url(),

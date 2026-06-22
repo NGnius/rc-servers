@@ -97,6 +97,7 @@ pub struct ServerConfig {
     pub auto_signup: bool,
     pub allow_signup: bool,
     pub queue_mode: QueueChangeMode,
+    pub allow_parties: bool,
     pub domain: String,
     pub cdn_url: String,
     pub auth_url: String,

@@ -319,6 +319,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             auto_signup: self.settings.server.auto_signup,
             allow_signup: self.settings.server.allow_signup,
             queue_mode: super::QueueChangeMode::from_persist(self.settings.server.queue_mode.clone()),
+            allow_parties: self.settings.server.allow_parties,
             domain: self.settings.server.domain.to_owned(),
             cdn_url: self.settings.server.cdn_url.trim_end_matches('/').to_owned(),
             auth_url: self.settings.server.auth_url.trim_end_matches('/').to_owned(),

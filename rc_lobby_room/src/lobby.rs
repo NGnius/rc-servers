@@ -117,6 +117,7 @@ pub struct QueueHandler {
     custom_game_for_user: std::sync::Arc<tokio::sync::RwLock<HashMap<String, String>>>,
     users_per_game: usize,
     is_enabled: bool,
+    is_parties_enabled: bool,
     hostname: String,
     hostport: u16,
     network_conf: crate::data::network::NetworkConfigData,
@@ -140,19 +141,21 @@ impl QueueHandler {
     ) -> Self {
         let (domain, port_str) = game_host.split_once(':').expect("Invalid redirect address (must be domain:port)");
         let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
+        let server_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf);
         Self {
             users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             users_in_custom_games_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             custom_game_for_user: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
             is_enabled: mp_settings.is_enabled,
+            is_parties_enabled: server_conf.allow_parties,
             hostname: domain.to_owned(),
             hostport: port_str.parse().expect("Invalid redirect port"),
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
             factory,
             cpu_counter,
             weapon_guesser,
-            change_strategy: GamemodeChangeStrategy::from_core(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).queue_mode),
+            change_strategy: GamemodeChangeStrategy::from_core(server_conf.queue_mode),
             autostart_after: mp_settings.lobby_autostart_after,
             autostart_task_started: std::sync::atomic::AtomicBool::new(false),
             team_choosers: std::sync::Arc::new(team_choosers),
@@ -622,6 +625,15 @@ impl QueueHandler {
                 text: "Multiplayer is not enabled".to_owned(),
             });
             return;
+        }
+        if let Some(platoon_info) = &platoon {
+            if platoon_info.total != 1 && !self.is_parties_enabled {
+                event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
+                    code: oj_rc_core::data::error_codes::LobbyReasonCode::PartyNotAllowed as i16,
+                    text: "Platoons are not enabled".to_owned(),
+                });
+                return;
+            }
         }
 
         self.ensure_autostart_task_running();
