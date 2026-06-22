@@ -216,7 +216,35 @@ impl PointTracker {
             }
             // update counter
             let old_count = point.on_point.read().await[&player_team_u8].fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            if point_team == player_team {
+            if point_team == -1 {
+                // at start of game, no team has captured this point yet
+                //let current_enemies = point.enemies_on_point(player_team_u8).await;
+                if let Some(new_attackers) = point.stealers_team().await {
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
+                            id: point_i,
+                            defending_team: -1,
+                            attacking_team: new_attackers as i8,
+                        },
+                        true,
+                    ).await;
+                } else {
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
+                            id: point_i,
+                            defending_team: -1,
+                            attacking_team: player_team,
+                        },
+                        true,
+                    ).await;
+                }
+            } else if point_team == player_team {
                 let old_friendlies = old_count;
                 let current_enemies = point.enemies_on_point(player_team_u8).await;
                 if current_enemies != 0 && old_friendlies == 0 {
@@ -265,23 +293,37 @@ impl PointTracker {
             } else {
                 let old_enemies = old_count;
                 if old_enemies == 0 {
+                    let current_friendlies = point.owners_on_point().await;
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
-                            notification: rlnl::types::CapturePointNotificationType::CaptureLocked,
+                            notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
                             id: point_i,
                             defending_team: point_team,
                             attacking_team,
                         },
                         true,
                     ).await;
+                    if current_friendlies != 0 {
+                        generic.broadcast(
+                            rlnl::event_code::NetworkEvent::CapturePointNotification,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &rlnl::events::ingame::CapturePointNotification {
+                                notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
+                                id: point_i,
+                                defending_team: point_team,
+                                attacking_team,
+                            },
+                            true,
+                        ).await;
+                    }
                 }
             }
         }
     }
 
-    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: u8, _player_id: u8, player_team: i8, max_progress: f32) {
+    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: u8, _player_id: u8, player_team: i8) {
         if player_team < 0 {
             return;
         }
@@ -362,21 +404,20 @@ impl PointTracker {
                             },
                             true,
                         ).await;
-                        let progress_now = point.capture.load(std::sync::atomic::Ordering::SeqCst).floor();
-                        point.capture.store(progress_now, std::sync::atomic::Ordering::SeqCst);
-                        let data = rlnl::events::ingame::TeamBaseState {
-                            base_team_or_mining_point_index: point_i,
-                            current_progress: rlnl::types::ByteFloat::from(progress_now),
-                            max_progress: rlnl::types::ByteFloat::from(max_progress),
-                        };
-                        generic.broadcast(
-                            rlnl::event_code::NetworkEvent::CapturePointProgress,
-                            literustlib::packet::Property::ReliableOrdered,
-                            &data,
-                            true
-                        ).await;
                     } else {
+                        // no more attackers and point is probably still unclaimed by either team
                         log::info!("Player {} left point {}, not attacking nor defending!??", _player_id, point_i);
+                        generic.broadcast(
+                            rlnl::event_code::NetworkEvent::CapturePointNotification,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &rlnl::events::ingame::CapturePointNotification {
+                                notification: rlnl::types::CapturePointNotificationType::CaptureStoppedNoAttackers,
+                                id: point_i,
+                                defending_team: point_team,
+                                attacking_team: player_team,
+                            },
+                            true,
+                        ).await;
                     }
                 }
             }
@@ -402,66 +443,97 @@ impl PointTracker {
         }
         for (i, cap_point) in self.points.iter().enumerate() {
             let point_owner = cap_point.team.load(std::sync::atomic::Ordering::SeqCst);
+            let to_add = (delta as f32) * (Self::TICK_MS as f32) * cap_point.percent_per_second * max_progress / (100.0 * 1000.0);
             let friendlies = cap_point.owners_on_point().await;
             let enemies = cap_point.stealers_on_point().await;
-            if friendlies != 0 { continue; }
-            if enemies == 0 { continue; }
-            let stealing_team = cap_point.stealers_team().await;
-            if stealing_team.is_none() { continue; }
-            let stealing_team = stealing_team.unwrap();
-            //log::info!("Team {} is capturing point {} (# of players: {})", stealing_team, i, enemies);
-            let to_add = (delta as f32) * (Self::TICK_MS as f32) * cap_point.percent_per_second * max_progress / (100.0 * 1000.0);
-            let pre_add = cap_point.capture.fetch_add(to_add, std::sync::atomic::Ordering::SeqCst);
-            let post_add = pre_add + to_add;
-            if post_add >= max_progress {
-                let new_team = stealing_team as i8;
-                log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
-                cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
-                cap_point.team.store(new_team, std::sync::atomic::Ordering::SeqCst);
-                cap_point.attackers.store(-1, std::sync::atomic::Ordering::SeqCst);
-                self.last_capture_team.store(stealing_team, std::sync::atomic::Ordering::Relaxed);
-                self.last_capture_time.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::Relaxed);
-                if owned_points.get(&(new_team as u8)).copied().unwrap_or(0) == 0 {
-                    captured_firsts.insert(new_team as u8);
+            let mut is_cap_amount_changed = false;
+            if enemies == 0 {
+                let current_cap = cap_point.capture.load(std::sync::atomic::Ordering::SeqCst);
+                let current_cap_floor = current_cap.floor();
+                if (current_cap - to_add) >= current_cap_floor {
+                    cap_point.capture.fetch_sub(to_add, std::sync::atomic::Ordering::SeqCst);
+                    is_cap_amount_changed = true;
+                } else if current_cap > current_cap_floor {
+                    cap_point.capture.store(current_cap_floor, std::sync::atomic::Ordering::SeqCst);
+                    is_cap_amount_changed = true;
                 }
-                if point_owner >= 0 && *owned_points.get(&(point_owner as u8)).unwrap() == 1 {
-                    lost_lasts.insert(point_owner as u8);
+            } else {
+                if friendlies != 0 { continue; }
+                let stealing_team = cap_point.stealers_team().await;
+                if stealing_team.is_none() { continue; }
+                let stealing_team = stealing_team.unwrap();
+                //log::info!("Team {} is capturing point {} (# of players: {})", stealing_team, i, enemies);
+                let to_add = to_add * (enemies as f32).sqrt(); // TODO is this reasonable scaling?
+                let pre_add = cap_point.capture.fetch_add(to_add, std::sync::atomic::Ordering::SeqCst);
+                is_cap_amount_changed = true;
+                let post_add = pre_add + to_add;
+                if post_add.floor() > pre_add.floor() {
+                    // a new segment has been captured
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::SegmentCompleted,
+                            id: i as u8,
+                            defending_team: point_owner,
+                            attacking_team: stealing_team as i8,
+                        },
+                        true,
+                    ).await;
                 }
-                // in case 2+ points are captured in the same tick
-                if let Some(new_team_owned_points) = owned_points.get_mut(&(new_team as u8)) {
-                    *new_team_owned_points += 1;
-                } else {
-                    owned_points.insert(new_team as u8, 1);
-                }
-                if point_owner >= 0 {
-                    if let Some(old_owner_owned_points) = owned_points.get_mut(&(point_owner as u8)) {
-                        *old_owner_owned_points -= 1;
+                if post_add >= max_progress {
+                    let new_team = stealing_team as i8;
+                    log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
+                    cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
+                    cap_point.team.store(new_team, std::sync::atomic::Ordering::SeqCst);
+                    cap_point.attackers.store(-1, std::sync::atomic::Ordering::SeqCst);
+                    self.last_capture_team.store(stealing_team, std::sync::atomic::Ordering::Relaxed);
+                    self.last_capture_time.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::Relaxed);
+                    if owned_points.get(&(new_team as u8)).copied().unwrap_or(0) == 0 {
+                        captured_firsts.insert(new_team as u8);
                     }
+                    if point_owner >= 0 && *owned_points.get(&(point_owner as u8)).unwrap() == 1 {
+                        lost_lasts.insert(point_owner as u8);
+                    }
+                    // in case 2+ points are captured in the same tick
+                    if let Some(new_team_owned_points) = owned_points.get_mut(&(new_team as u8)) {
+                        *new_team_owned_points += 1;
+                    } else {
+                        owned_points.insert(new_team as u8, 1);
+                    }
+                    if point_owner >= 0 {
+                        if let Some(old_owner_owned_points) = owned_points.get_mut(&(point_owner as u8)) {
+                            *old_owner_owned_points -= 1;
+                        }
+                    }
+                    generic.broadcast(
+                        rlnl::event_code::NetworkEvent::CapturePointNotification,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &rlnl::events::ingame::CapturePointNotification {
+                            notification: rlnl::types::CapturePointNotificationType::CaptureCompleted,
+                            id: i as u8,
+                            defending_team: point_owner,
+                            attacking_team: new_team,
+                        },
+                        true,
+                    ).await;
                 }
+            }
+
+            if is_cap_amount_changed {
+                let progress_now = cap_point.capture.load(std::sync::atomic::Ordering::SeqCst);
+                let data = rlnl::events::ingame::TeamBaseState {
+                    base_team_or_mining_point_index: i as u8,
+                    current_progress: rlnl::types::ByteFloat::from(progress_now),
+                    max_progress: rlnl::types::ByteFloat::from(max_progress),
+                };
                 generic.broadcast(
-                    rlnl::event_code::NetworkEvent::CapturePointNotification,
+                    rlnl::event_code::NetworkEvent::CapturePointProgress,
                     literustlib::packet::Property::ReliableOrdered,
-                    &rlnl::events::ingame::CapturePointNotification {
-                        notification: rlnl::types::CapturePointNotificationType::CaptureCompleted,
-                        id: i as u8,
-                        defending_team: point_owner,
-                        attacking_team: new_team,
-                    },
-                    true,
+                    &data,
+                    true
                 ).await;
             }
-            let progress_now = cap_point.capture.load(std::sync::atomic::Ordering::SeqCst);
-            let data = rlnl::events::ingame::TeamBaseState {
-                base_team_or_mining_point_index: i as u8,
-                current_progress: rlnl::types::ByteFloat::from(progress_now),
-                max_progress: rlnl::types::ByteFloat::from(max_progress),
-            };
-            generic.broadcast(
-                rlnl::event_code::NetworkEvent::CapturePointProgress,
-                literustlib::packet::Property::ReliableOrdered,
-                &data,
-                true
-            ).await;
         }
         let last_capture_team = self.last_capture_team.load(std::sync::atomic::Ordering::Relaxed);
         let dominating = if last_capture_team != u8::MAX && self.points.iter().all(|p| p.team.load(std::sync::atomic::Ordering::SeqCst) == (last_capture_team as i8)) {
@@ -1180,7 +1252,7 @@ impl BattleArenaLogic {
         if let Some(player_team) = self.player_tracking.team(player_id).await {
             let was_in_point = self.player_tracking.swap_is_in_point(player_id, None);
             if let Some(was_in_point) = was_in_point {
-                self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team as i8, self.config.num_segments as f32).await;
+                self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team as i8).await;
             }
         }
     }
@@ -1673,7 +1745,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     self.capture_tracking.on_enter(generic, now_in_point, motion.player_id, player_team as i8).await;
                 }
                 if let Some(was_in_point) = was_in_point {
-                    self.capture_tracking.on_exit(generic, was_in_point, motion.player_id, player_team as i8, self.config.num_segments as f32).await;
+                    self.capture_tracking.on_exit(generic, was_in_point, motion.player_id, player_team as i8).await;
                 }
             }
         } else {
