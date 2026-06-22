@@ -51,6 +51,7 @@ impl UserData {
                     death_effect: vehicle.death_effect,
                     player_rank: 1,
                     weapon_rank: vehicle.weapon_rank,
+                    clan_name: None,
                 },
                 fake.implementation
             );

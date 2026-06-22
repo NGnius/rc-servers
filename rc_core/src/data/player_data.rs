@@ -21,6 +21,7 @@ pub struct PlayerData {
     pub death_effect: String,
     pub player_rank: i32,
     pub weapon_rank: std::collections::HashMap<i32, i32>,
+    pub clan_name: Option<String>,
 }
 
 impl PlayerData {
@@ -61,7 +62,7 @@ impl PlayerData {
             val_ty: polariton::serdes::TypePrefix::Int,
             items: self.weapon_rank.clone().into_iter().map(|(k, v)| (Typed::Int(k), Typed::Int(v))).collect(),
         });
-        Typed::HashMap(vec![
+        let mut entries = vec![
             (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
             (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
             (Typed::Str("robotName".into()), Typed::Str(self.robot_name.clone().into())),
@@ -83,11 +84,13 @@ impl PlayerData {
             (Typed::Str("playerRank".into()), Typed::Int(self.player_rank)),
             (Typed::Str("weaponRanks".into()), weapon_ranks),
             (Typed::Str("isAI".into()), Typed::Bool(self.is_ai)),
-            // only required if clanName exists
-            /*(Typed::Str("clanName".into()), Typed::Str(todo!())),
-            (Typed::Str("clanUseCustomAvatar".into()), Typed::Bool(todo!())),
-            (Typed::Str("clanDefaultAvatarID".into()), Typed::Int(todo!())),*/
-        ].into())
+        ];
+        if let Some(clan_name) = &self.clan_name {
+            entries.push((Typed::Str("clanName".into()), Typed::Str(clan_name.into())));
+            entries.push((Typed::Str("clanUseCustomAvatar".into()), Typed::Bool(true)));
+            entries.push((Typed::Str("clanDefaultAvatarID".into()), Typed::Int(0)));
+        }
+        Typed::HashMap(entries.into())
     }
 }
 

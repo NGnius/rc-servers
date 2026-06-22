@@ -472,6 +472,10 @@ impl UserData {
         } else {
             current_slot.total_robot_cpu
         };
+        let clan_opt = self.db.clan_by_user_id(self.account.id).await.map_err(|e| {
+            log::error!("Failed to retrieve clan for user_id {} (user_player_data): {}", self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(DATABASE_ERR, format!("Could not retrieve clan: {}", e))
+        })?;
 
         Ok(crate::data::player_data::PlayerData {
             name: user_uuid,
@@ -493,6 +497,7 @@ impl UserData {
             death_effect: current_slot.death_animation_id,
             player_rank: 1, // FIXME
             weapon_rank: weapon_ranks,
+            clan_name: clan_opt.map(|(clan, _member)| clan.name),
         })
     }
 
@@ -682,6 +687,7 @@ impl UserData {
                 death_effect: enemy_vehicle.death_effect,
                 player_rank: 1,
                 weapon_rank: weapon_ranks,
+                clan_name: None,
             };
             next_id += 1;
             players.push(enemy);
