@@ -16,6 +16,15 @@ impl super::config::SelfValidator for FactoryConfig {
     }
 }
 
+impl super::config::RedactedClone for FactoryConfig {
+    fn redacted_clone(&self) -> Self {
+        Self {
+            adapter: self.adapter.redacted_clone(),
+            upload_limit: self.upload_limit,
+        }
+    }
+}
+
 fn default_variant() -> AdapterSettings {
     AdapterSettings::BuiltIn
 }
@@ -34,6 +43,22 @@ pub enum AdapterSettings {
     #[serde(alias = "online")]
     Web(WebFactorySettings),
     None,
+}
+
+impl super::config::RedactedClone for AdapterSettings {
+    fn redacted_clone(&self) -> Self {
+        match self {
+            Self::Arc(arc) => {
+                Self::Arc(ArcFactorySettings {
+                    uri: "[REDACTED]".to_owned(),
+                    show_expired: arc.show_expired,
+                    override_cdn: arc.override_cdn,
+                    spoof_username: arc.spoof_username,
+                })
+            },
+            x => x.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -20,6 +20,17 @@ impl super::config::SelfValidator for Settings {
     }
 }
 
+impl super::config::RedactedClone for Settings {
+    fn redacted_clone(&self) -> Self {
+        Self {
+            gameplay: self.gameplay.clone(),
+            banners: self.banners.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            server: self.server.redacted_clone(),
+        }
+    }
+}
+
 fn default_gameplay_settings() -> super::GameplaySettings {
     super::GameplaySettings {
         show_tutorial_after_date: "2077-01-01".to_owned(),
@@ -110,6 +121,16 @@ pub struct ServerSettings {
     pub dos_protection: bool,
     #[serde(default)]
     pub maintenance_message: Option<String>,
+}
+
+impl super::config::RedactedClone for ServerSettings {
+    fn redacted_clone(&self) -> Self {
+        let mut redacted = self.clone();
+        redacted.database = "[REDACTED]".to_owned();
+        redacted.intercom_url = "[REDACTED]".to_owned();
+        redacted.dos_protection = true;
+        redacted
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

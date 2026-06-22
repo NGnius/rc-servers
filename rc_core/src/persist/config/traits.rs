@@ -45,6 +45,7 @@ pub trait ConfigProvider<C: Clone> {
     fn vehicle_validation(&self) -> VehicleValidators;
     fn garage_slot_limit(&self) -> i32;
     fn team_choosers(&self) -> TeamChoosers;
+    fn redacted_json(&self) -> String;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -572,4 +573,8 @@ pub struct PlatformConfig {
     pub enable_voice: bool,
     pub enable_analytics: bool,
     pub enable_standard_units: bool,
+}
+
+pub trait RedactedClone {
+    fn redacted_clone(&self) -> Self;
 }

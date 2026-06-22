@@ -24,6 +24,7 @@ async fn main() -> std::io::Result<()> {
     let cli_args = cli::CliArgs::get();
 
     let config = oj_rc_core::ConfigImpl::load(&cli_args.assets_robocraft)?;
+    api::init(&config);
 
     let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&config));
     let server_links = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(&config));
@@ -94,6 +95,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::garage::import::get_new)
             .service(web::garage::import::post)
             .service(web::garage::selected::get)
+            .service(api::config::get)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()

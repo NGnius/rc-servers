@@ -610,4 +610,19 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             team_deathmatch: self.battle.games.team_deathmatch.team_chooser.clone(),
         }
     }
+
+    fn redacted_json(&self) -> String {
+        use super::RedactedClone;
+        let redacted_self = Self {
+            cubes: self.cubes.clone(),
+            movement: self.movement.clone(),
+            lerp_value: self.lerp_value,
+            battle: self.battle.clone(),
+            chat: self.chat.clone(),
+            factory: self.factory.redacted_clone(),
+            shop: self.shop.clone(),
+            settings: self.settings.redacted_clone(),
+        };
+        serde_json::to_string(&redacted_self).expect("Failed to re-serialize config.json")
+    }
 }
