@@ -10,6 +10,7 @@ const FORM_NAME: &str = "garage_list";
 struct RenderData {
     display_name: String,
     public_id: String,
+    factory: String,
     garages: Vec<GarageData>,
 }
 
@@ -25,7 +26,7 @@ struct GarageData {
 }
 
 #[get("/garages/list")]
-pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, server_config: Data<oj_rc_core::persist::config::ServerConfig>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     match try_auth_user(user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
@@ -36,6 +37,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                         RenderData {
                             display_name: user.display_name().to_owned(),
                             public_id: user.public_id().to_owned(),
+                            factory: server_config.factory_url.clone(),
                             garages: garage_infos.into_iter()
                                 .map(|g| GarageData {
                                     garage_id: g.id,
@@ -58,6 +60,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                         RenderData {
                             display_name: user.display_name().to_owned(),
                             public_id: user.public_id().to_owned(),
+                            factory: server_config.factory_url.clone(),
                             garages: Vec::new(),
                         },
                         e.to_string(),
