@@ -247,7 +247,7 @@ impl super::ChatUser for UserData {
                 log::error!("Failed to find selected garage for user {}", self.account.id);
                 return Err(polariton_server::operations::SimpleOpError::with_message(
                     crate::data::error_codes::ChatErrorCodes::UnexpectedError as i16,
-                    format!("Failed to find selected garage"),
+                    "Failed to find selected garage".to_owned(),
                 ));
             }
         }
