@@ -44,4 +44,5 @@ pub enum Descriptor {
     SubscribedChannels, // Vec<String>, JSON
     AvatarId, // u32, u32::MAX means custom avatar
     RedeemedPromoCodes, // Vec<String>, JSON
+    Federation, // oj_rc_Core::persist::user::Federation, JSON
 }

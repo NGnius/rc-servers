@@ -53,6 +53,10 @@ pub use vehicle_validator::VehicleValidator;
 pub(crate) mod conversion;
 pub use conversion::{CubeConversionData, FromConversionData, ToConversionData};
 
+mod federation;
+pub use federation::FederationConfig;
+pub(crate) use federation::default_federation;
+
  const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

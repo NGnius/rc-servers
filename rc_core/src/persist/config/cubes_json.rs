@@ -8,7 +8,7 @@ use polariton::serdes::TypePrefix;
 
 use crate::persist::config::SelfValidator;
 
-use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig, ItemShopConfig};
+use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig, ItemShopConfig, FederationConfig};
 
 const CUBE_CONFIG_FILENAME: &str = "config.json";
 
@@ -22,6 +22,8 @@ pub struct CubeConfig {
     factory: FactoryConfig,
     shop: ItemShopConfig,
     settings: Settings,
+    #[serde(default = "super::super::default_federation")]
+    federation: FederationConfig,
 }
 
 impl CubeConfig {
@@ -623,7 +625,15 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             factory: self.factory.redacted_clone(),
             shop: self.shop.clone(),
             settings: self.settings.redacted_clone(),
+            federation: self.federation.clone(),
         };
         serde_json::to_string(&redacted_self).expect("Failed to re-serialize config.json")
+    }
+
+    fn federation(&self) -> Option<super::Federation> {
+        self.federation.enabled.then(|| super::Federation {
+            aliases: self.federation.aliases.clone(),
+            defederated: self.federation.defederated.clone(),
+        })
     }
 }

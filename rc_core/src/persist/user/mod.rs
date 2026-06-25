@@ -28,6 +28,9 @@ mod team;
 pub use team::{TeamChooser, StandardTeamChooser};
 mod web;
 
+mod federation;
+pub use federation::Federation;
+
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";
 
 pub const USERS_DIR: &str = "accounts";

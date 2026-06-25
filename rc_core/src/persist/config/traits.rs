@@ -46,6 +46,8 @@ pub trait ConfigProvider<C: Clone> {
     fn garage_slot_limit(&self) -> i32;
     fn team_choosers(&self) -> TeamChoosers;
     fn redacted_json(&self) -> String;
+    /// None when federation is not enabled
+    fn federation(&self) -> Option<Federation>;
 }
 
 pub struct DevMessageProvider<C: Clone> {
@@ -578,4 +580,9 @@ pub struct PlatformConfig {
 
 pub trait RedactedClone {
     fn redacted_clone(&self) -> Self;
+}
+
+pub struct Federation {
+    pub aliases: std::collections::HashMap<String, String>,
+    pub defederated: Vec<String>,
 }

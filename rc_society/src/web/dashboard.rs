@@ -15,6 +15,7 @@ struct RenderData {
     account: AccountData,
     sanction: SanctionData,
     social: SocialData,
+    fediverse: FederationData,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -87,6 +88,12 @@ struct SocialData {
     chats: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct FederationData {
+    enabled: bool,
+    defederated: Vec<String>,
+}
+
 pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, factory: Data<oj_rc_core::factory::Factory>, server_config: Data<oj_rc_core::persist::config::ServerConfig>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     match super::try_auth_user(user_opt, auth.as_ref(), &req).await? {
         super::LoginReturn::AuthFail(resp) => Ok(resp),
@@ -111,6 +118,10 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
                 Ok(x) => x,
                 Err(e) => return Ok(fallback_render(e, user.as_ref(), handlebars_ref.as_ref(), &req)),
             };
+            let fedi_stats = match build_fedi_data(user.as_ref()).await {
+                Ok(x) => x,
+                Err(e) => return Ok(fallback_render(e, user.as_ref(), handlebars_ref.as_ref(), &req)),
+            };
             Ok(super::render_ok(
                 RenderData {
                     display_name: user.display_name().to_owned(),
@@ -128,6 +139,7 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
                     account: account_stats,
                     sanction: sanction_stats,
                     social: social_stats,
+                    fediverse: fedi_stats,
                 },
                 handlebars_ref.as_ref(),
                 FORM_NAME,
@@ -193,7 +205,11 @@ fn fallback_render(error: Box<dyn std::error::Error>, user: &dyn oj_rc_core::per
                 clan: None,
                 friends: 0,
                 friends_of: 0,
-                chats: Vec::default()
+                chats: Vec::default(),
+            },
+            fediverse: FederationData {
+                enabled: false,
+                defederated: Vec::default(),
             }
         },
         format!("Dashboard loading failed: {}", error),
@@ -301,6 +317,14 @@ async fn build_social_data(user: &dyn oj_rc_core::persist::user::WebUser) -> Res
         friends: stats.friends_total,
         friends_of: stats.friends_of_total,
         chats: stats.chats,
+    })
+}
+
+async fn build_fedi_data(user: &dyn oj_rc_core::persist::user::WebUser) -> Result<FederationData, Box<dyn std::error::Error>> {
+    let info = user.fedi_get().await;
+    Ok(FederationData {
+        enabled: info.enabled,
+       defederated: info.defederated,
     })
 }
 

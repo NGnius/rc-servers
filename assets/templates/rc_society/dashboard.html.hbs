@@ -200,10 +200,18 @@
       <div class="access-box">
         <h4 class="access-box-title">Federation</h4>
         <div class="box-details">
-          <div class="box-details-key">TODO</div> <!-- TODO -->
-          <div class="box-details-value">TODO</div>
+          <div class="box-details-key">Enabled</div>
+          <div class="box-details-value">{{form.fediverse.enabled}}</div>
+          <div class="box-details-key">Blocked</div>
+          <div class="box-details-value">
+            {{#each form.fediverse.defederated}}
+              <span>{{this}}</span><br/>
+            {{else}}
+              <span>[None]</span>
+            {{/each}}
+          </div>
         </div>
-        <a href="#"> <!-- TODO -->
+        <a href="/federation/list"> <!-- TODO -->
           <div class="access-box-banner">
             Manage My Federation
           </div>

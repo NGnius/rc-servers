@@ -50,7 +50,7 @@
         {{else}}
           <input type="hidden" id="garage_id" name="garage_id" value="-1"/>
         {{/if}}
-        <div class="access-row-box">
+        <div class="access-row-box access-row-box-input">
           <label>Import with</label>
           <select id="plugin" name="plugin" required>
             {{#each form.importers}}
@@ -58,11 +58,11 @@
             {{/each}}
           </select>
         </div>
-        <div class="access-row-box">
-          <input type="file" id="files" name="files" required {{#if form.garage}} {{else}}multiple{{/if}} />
+        <div class="access-row-box access-row-box-input">
+          <input class="form-input-box" type="file" id="files" name="files" required {{#if form.garage}} {{else}}multiple{{/if}} />
         </div>
-        <div class="access-row-box">
-          <input type="submit" value="{{#if form.garage}}Override garage slot {{form.garage.slot}}{{else}}Import{{/if}}" />
+        <div class="access-row-box form-submit access-row-box-input">
+          <input class="form-submit-button" style="width:50%;" type="submit" value="{{#if form.garage}}Override garage slot {{form.garage.slot}}{{else}}Import{{/if}}" />
         </div>
       </div>
     </form>

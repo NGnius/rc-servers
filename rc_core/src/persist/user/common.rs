@@ -65,5 +65,69 @@ impl super::CommonUser for UserData {
         ))
     }
 
+    async fn fedi_get(&self) -> super::Federation {
+        match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await {
+            Ok(Some(fed)) => {
+                match serde_json::from_str(&fed.data) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        log::error!("Failed to deserialize user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                        super::Federation::default()
+                    }
+                }
+            },
+            Ok(None) => {
+                // DB upgrade path; return default and also insert it into database
+                let default_fedi = super::Federation::default();
+                let data_str = serde_json::to_string_pretty(&default_fedi).expect("Failed to serialize user_aux Federation data (fedi_get)");
+                let model = oj_rc_database::schema::user_aux::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp()),
+                    descriptor: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::Federation),
+                    data: oj_rc_database::sea_orm::ActiveValue::Set(data_str),
+                };
+                if let Err(e) = self.db.insert_user_aux(vec![model]).await {
+                    log::error!("Failed to insert user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                }
+                default_fedi
+            },
+            Err(e) => {
+                log::error!("Failed to retrieve user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                super::Federation::default()
+            }
+        }
+    }
 
+    async fn fedi_set(&self, fedi: super::Federation) -> bool {
+        let data_str = serde_json::to_string_pretty(&fedi).expect("Failed to serialize user_aux Federation data (fedi_set)");
+        let model = oj_rc_database::schema::user_aux::ActiveModel {
+            id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            descriptor: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            data: oj_rc_database::sea_orm::ActiveValue::Set(data_str),
+        };
+        match self.db.update_user_aux_by_user_id_and_descriptor(model.clone(), self.account.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await {
+            Ok(Some(_fed)) => true,
+            Ok(None) => {
+                // DB upgrade path; insert it into database instead
+                let mut model = model;
+                model.user_id = oj_rc_database::sea_orm::ActiveValue::Set(self.account.id);
+                model.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp());
+                model.descriptor = oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::Federation);
+                match self.db.insert_user_aux(vec![model]).await {
+                    Ok(_) => true,
+                    Err(e) => {
+                        log::error!("Failed to insert user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                        false
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to update user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                false
+            }
+        }
+    }
 }

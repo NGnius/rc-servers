@@ -28,6 +28,7 @@ async fn main() -> std::io::Result<()> {
 
     let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&config));
     let server_links = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(&config));
+    let server_fed = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::federation(&config));
 
     let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
 
@@ -77,6 +78,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(handlebars_ref.clone())
             .app_data(server_settings.clone())
             .app_data(server_links.clone())
+            .app_data(server_fed.clone())
             .app_data(auth_ref.clone())
             .app_data(importers_ref.clone())
             .app_data(parsers_ref.clone())
@@ -95,6 +97,12 @@ async fn main() -> std::io::Result<()> {
             .service(web::garage::import::get_new)
             .service(web::garage::import::post)
             .service(web::garage::selected::get)
+            .service(web::user_federation::get)
+            .service(web::user_federation::post)
+            .service(web::user_federation::post_remove)
+            .service(web::user_federation::post_add)
+            .service(web::user_federation::post_off)
+            .service(web::user_federation::post_on)
             .service(api::config::get)
     })
     .bind((cli_args.ip, cli_args.port))?

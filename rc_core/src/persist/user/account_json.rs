@@ -17,6 +17,8 @@ pub struct AccountProvider {
     pub(super) intercom_http_client: std::sync::Arc<reqwest::Client>,
     pub(super) secret: std::sync::Arc<Vec<u8>>,
     db: std::sync::Arc<oj_rc_database::Database>,
+    #[allow(dead_code)]
+    federation: Option<crate::persist::config::Federation>,
 }
 
 impl AccountProvider {
@@ -29,6 +31,7 @@ impl AccountProvider {
         log::debug!("Connecting to user database URI: {}", database_uri);
         let db = oj_rc_database::Database::init(&database_uri).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
+        let federation_conf = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::federation(conf);
         Ok(Self {
             cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
             garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
@@ -42,6 +45,7 @@ impl AccountProvider {
             intercom_http_client: std::sync::Arc::new(reqwest::Client::new()),
             secret: std::sync::Arc::new(secret),
             db: std::sync::Arc::new(db),
+            federation: federation_conf,
         })
     }
 

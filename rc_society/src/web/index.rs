@@ -10,6 +10,7 @@ struct RenderData {
     display_name: Option<String>,
     server: ServerDetails,
     links: LinkDetails,
+    fediverse: FederationDetails,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -57,10 +58,31 @@ fn links_details(links: &oj_rc_core::persist::config::LinksConfig) -> LinkDetail
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct FederationDetails {
+    enabled: bool,
+    alias: std::collections::HashMap<String, String>,
+    defederated: Vec<String>,
+}
+
+fn fedi_details(fedi: &Option<oj_rc_core::persist::config::Federation>) -> FederationDetails {
+    fedi.as_ref().map(|f| FederationDetails {
+        enabled: true,
+        alias: f.aliases.clone(),
+        defederated: f.defederated.clone(),
+    })
+    .unwrap_or_else(|| FederationDetails {
+        enabled: false,
+        alias: Default::default(),
+        defederated: Default::default(),
+    })
+}
+
 #[get("/")]
-pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, server_config: Data<oj_rc_core::persist::config::ServerConfig>,  server_links: Data<oj_rc_core::persist::config::LinksConfig>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, server_config: Data<oj_rc_core::persist::config::ServerConfig>,  server_links: Data<oj_rc_core::persist::config::LinksConfig>, server_fedi: Data<Option<oj_rc_core::persist::config::Federation>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     let server_info = server_details(server_config.as_ref());
     let links_info = links_details(server_links.as_ref());
+    let federation_info = fedi_details(server_fedi.as_ref());
     if let Some(user) = user_opt {
         match super::try_auth_user(Some(user), auth.as_ref(), &req).await? {
             super::LoginReturn::AuthFail(resp) => Ok(resp),
@@ -71,6 +93,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                         display_name: Some(user.display_name().to_owned()),
                         server: server_info,
                         links: links_info,
+                        fediverse: federation_info,
                     },
                     handlebars_ref.as_ref(),
                     FORM_NAME,
@@ -87,6 +110,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                 display_name: None,
                 server: server_info,
                 links: links_info,
+                fediverse: federation_info,
             },
             handlebars_ref.as_ref(),
             FORM_NAME,

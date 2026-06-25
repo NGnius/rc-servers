@@ -85,10 +85,30 @@
           <div class="box-details-value"><a class="box-details-link" href="{{form.links.wiki}}">{{form.links.wiki}}</a></div>
         </div>
       </div>
-      <!--<div class="access-box">
-        Grid item 3
-      </div>
       <div class="access-box">
+        <h4 class="access-box-title">Federation</h4>
+        <div class="box-details">
+          <div class="box-details-key">Enabled</div>
+          <div class="box-details-value">{{form.fediverse.enabled}}</div>
+          <div class="box-details-key">Aliases</div>
+          <div class="box-details-value">
+            {{#each form.fediverse.alias}}
+              <span>{{@key}} -> {{this}}</span><br/>
+            {{else}}
+              <span>[None]</span>
+            {{/each}}
+          </div>
+          <div class="box-details-key">Blocked</div>
+          <div class="box-details-value">
+            {{#each form.fediverse.defederated}}
+              <span>{{this}}</span><br/>
+            {{else}}
+              <span>[None]</span>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+      <!--<div class="access-box">
         Grid item 4
       </div>
       <div class="access-box">

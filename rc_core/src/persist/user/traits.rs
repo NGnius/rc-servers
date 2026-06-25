@@ -467,6 +467,8 @@ pub trait CommonUser: Send + Sync {
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
     async fn db_counters(&self) -> Vec<(&'static str, i64)>;
     async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
+    async fn fedi_get(&self) -> super::Federation;
+    async fn fedi_set(&self, fedi: super::Federation) -> bool;
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]

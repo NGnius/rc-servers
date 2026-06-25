@@ -36,6 +36,34 @@ body {
 .form-padded {
     padding: 0 25px;
 }
+input:required:invalid.form-input-box {
+    border-color: red;
+}
+input:required:invalid.form-input-box::after {
+    content: "*required";
+    color: red;
+    font-size: 12px;
+}
+input {
+    width: 100%;
+    border: thin solid white;
+    background-color: lightgrey;
+}
+input[type=submit] {
+    cursor: pointer;
+}
+.form-submit {
+    margin: 0 auto;
+}
+.form-submit-button {
+    background-color: black;
+    color: lightgrey;
+}
+.input-required-hint::after {
+    color: red;
+    /*content: "*required";*/
+    font-size: 12px;
+}
 h1, h2, h3, h4, h5 {
     text-align: center;
 }
@@ -54,6 +82,10 @@ form {
     padding-left: 25px;
     padding-right: 25px;
     padding-bottom: 250px;
+}
+.inline-form {
+    padding: 0;
+    display: contents;
 }
 .form-error {
     position: relative;
@@ -112,6 +144,9 @@ form {
     text-align: center;
     width: 100%;
 }
+.access-row-box-input {
+    padding: 5px;
+}
 .access-box-title {
     padding: 5px;
     margin: 0 auto;
@@ -143,6 +178,13 @@ form {
     background-color: lightgrey;
     color: black;
     text-align: left;
+}
+.box-details-input {
+    padding: 0;
+    margin: auto 0;
+}
+.box-details-input-text {
+    padding-right: 6px;
 }
 .export-plugin {
     color: white;
