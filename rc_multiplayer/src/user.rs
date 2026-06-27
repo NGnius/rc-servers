@@ -28,8 +28,8 @@ impl User {
                     }
                 }
             },
-            UserState::Authenticated(_) => {
-                log::warn!("User already authenticated, ignoring");
+            UserState::Authenticated(info) => {
+                log::warn!("User {} already authenticated, ignoring", info.user.account_id());
                 true
             }
         }

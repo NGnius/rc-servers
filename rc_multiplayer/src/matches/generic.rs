@@ -599,43 +599,72 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             }
             let player_info = player_info_opt.unwrap();
             let id = player_info.descriptor.player_id;
-            let aliases = self.fakes_handler.get_client_ais().await.into_iter().find(|(key, _val)| *key == id).map(|(_key, val)| val).unwrap_or_default();
-            log::info!("AIs running on new player {}: {:?}", id, aliases);
-            let new_user = UserConnection {
-                user,
-                connection: UserSender {
-                    connection,
-                    sender,
-                },
-                aliases,
-            };
-            if self.custom_logic_handler.on_player_join(self, &new_user, player_info).await {
-                //self.spawn_send_loading_events(&new_user, id, self.players_info.clone());
+            let is_already_connected = self.users.read().await.contains_key(&id);
+            if is_already_connected {
+                log::warn!("Player {} (user {}) is trying to connect again to game {}, they're probably in a bad state (short-circuiting approval)", id, player_info.descriptor.public_id, game_guid);
+                let mut users = self.users.write().await;
+                let old_user = users.remove(&id).unwrap();
+                let new_user = UserConnection {
+                    user,
+                    connection: UserSender {
+                        connection,
+                        sender,
+                    },
+                    aliases: old_user.aliases.clone(),
+                };
+                let new_user = std::sync::Arc::new(new_user);
+                for fake_id in new_user.aliases.iter() {
+                    users.insert(*fake_id, new_user.clone());
+                }
                 crate::events::log_lnl_send_failure(new_user.connection.rlnl().send_data(
                     &rlnl::events::ingame::PlayerId { player: id },
                     rlnl::event_code::NetworkEvent::GameGuidValidated,
                     literustlib::packet::Property::ReliableOrdered,
                     &new_user.connection.connection
                 ).await);
-                log::debug!("User {} is validated to play game {}", new_user.user.account_id(), game_guid);
-                let new_user = std::sync::Arc::new(new_user);
-                if let Err(e) = new_user.user.save_player_connected_status(self.game_guid(), true).await {
-                    log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
-                }
-                let mut users = self.users.write().await;
-                let was_empty = users.is_empty();
-                users.insert(id, new_user.clone());
-                for fake_id in new_user.aliases.iter() {
-                    if let Some(player_desc) = self.user_descriptor(*fake_id) {
-                        if self.custom_logic_handler.on_player_join(self, &new_user, player_desc).await {
-                            users.insert(*fake_id, new_user.clone());
-                        }
-                    } else {
-                        log::warn!("Non-existent fake player id {} was encountered while connecting, ignoring", *fake_id);
+            } else {
+                let aliases = self.fakes_handler.get_client_ais().await.into_iter().find(|(key, _val)| *key == id).map(|(_key, val)| val).unwrap_or_default();
+                log::info!("AIs running on new player {} in game {}: {:?}", id, game_guid, aliases);
+                let new_user = UserConnection {
+                    user,
+                    connection: UserSender {
+                        connection,
+                        sender,
+                    },
+                    aliases,
+                };
+                if self.custom_logic_handler.on_player_join(self, &new_user, player_info).await {
+                    //self.spawn_send_loading_events(&new_user, id, self.players_info.clone());
+                    crate::events::log_lnl_send_failure(new_user.connection.rlnl().send_data(
+                        &rlnl::events::ingame::PlayerId { player: id },
+                        rlnl::event_code::NetworkEvent::GameGuidValidated,
+                        literustlib::packet::Property::ReliableOrdered,
+                        &new_user.connection.connection
+                    ).await);
+                    log::debug!("User {} is validated to play game {}", new_user.user.account_id(), game_guid);
+                    let new_user = std::sync::Arc::new(new_user);
+                    if let Err(e) = new_user.user.save_player_connected_status(self.game_guid(), true).await {
+                        log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
                     }
-                }
-                if was_empty {
-                    self.start_loading_sync_timeouter().await;
+                    let mut users = self.users.write().await;
+                    let was_empty = users.is_empty();
+                    users.insert(id, new_user.clone());
+                    for fake_id in new_user.aliases.iter() {
+                        if let Some(player_desc) = self.user_descriptor(*fake_id) {
+                            if self.custom_logic_handler.on_player_join(self, &new_user, player_desc).await {
+                                users.insert(*fake_id, new_user.clone());
+                            }else {
+                                log::info!("Fake player {} (for player {}) rejected by custom on_player_join logic in game {}", fake_id, id, game_guid);
+                            }
+                        } else {
+                            log::warn!("Non-existent fake player id {} (for player {}) was encountered while connecting to game {}, ignoring", *fake_id, id, game_guid);
+                        }
+                    }
+                    if was_empty {
+                        self.start_loading_sync_timeouter().await;
+                    }
+                } else {
+                    log::info!("Player {} rejected by custom on_player_join logic in game {}", id, game_guid);
                 }
             }
             response.send(None).unwrap_or_default();
