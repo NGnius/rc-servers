@@ -1101,7 +1101,6 @@ impl <C: Clone + Send> super::User<C> for UserData {
                 to_update.name = oj_rc_database::sea_orm::ActiveValue::Set(new_name);
                 to_update.crf_id = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.crf_id);
                 to_update.movement_categories = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.movement_categories);
-                to_update.thumbnail_version = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.thumbnail_version);
                 to_update.total_robot_cpu = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_cpu);
                 to_update.total_cosmetic_cpu = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_cosmetic_cpu);
                 to_update.total_robot_ranking = oj_rc_database::sea_orm::ActiveValue::Set(slot_to_copy.total_robot_ranking);
