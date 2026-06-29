@@ -1,4 +1,5 @@
 use super::account_json::UserData;
+use rand::seq::SliceRandom;
 
 fn db_to_impl(client_emu: &oj_rc_database::schema::multiplayer_game_player::ClientType) -> Option<crate::persist::config::ClientEmulator> {
     match client_emu {
@@ -71,13 +72,15 @@ impl UserData {
         chooser: &dyn super::TeamChooser,
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
         let offset = real_players.len();
+        let mut fakes = (*self.fake_players).clone();
+        fakes.shuffle(&mut rand::rng());
         self.generate_fake_players_data(
             guid_str,
             factory,
             cpu_counter,
             weapon_lister,
             chooser,
-            &self.fake_players,
+            &fakes,
             offset,
         ).await
     }
@@ -93,13 +96,15 @@ impl UserData {
         count: usize,
         total_offset: usize,
     ) -> Result<Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>, polariton_server::operations::SimpleOpError> {
+        let mut fillers = (*self.filler_players).clone();
+        fillers.shuffle(&mut rand::rng());
         self.generate_fake_players_data(
             guid_str,
             factory,
             cpu_counter,
             weapon_lister,
             chooser,
-            &self.filler_players[0..count],
+            &fillers[0..count],
             total_offset
         ).await
     }
