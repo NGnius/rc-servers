@@ -6,6 +6,12 @@ pub struct Id {
 }
 
 #[derive(FromQueryResult)]
+pub struct IdAndThumbnailVersion {
+    pub id: i32,
+    pub thumbnail_version: i32,
+}
+
+#[derive(FromQueryResult)]
 pub struct SingleColumn<T: sea_orm::TryGetable> {
     pub column: T,
 }

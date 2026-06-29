@@ -359,13 +359,17 @@ impl Database {
         let id_opt = crate::schema::garage::Entity::find()
             .select_only()
             .column(crate::schema::garage::Column::Id)
+            .column(crate::schema::garage::Column::ThumbnailVersion)
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
             .filter(crate::schema::garage::Column::Slot.eq(slot))
-            .into_model::<crate::schema::common_query::Id>()
+            .into_model::<crate::schema::common_query::IdAndThumbnailVersion>()
             .one(self.orm.as_ref())
             .await?;
         if let Some(id) = id_opt {
             entity.id = sea_orm::ActiveValue::Set(id.id);
+            if entity.robot_data.is_set() || entity.colour_data.is_set() {
+                entity.thumbnail_version = sea_orm::ActiveValue::Set(id.thumbnail_version.wrapping_add(1));
+            }
             Ok(Some(crate::schema::garage::Entity::update(entity)
                 .exec(self.orm.as_ref())
                 .await?))
