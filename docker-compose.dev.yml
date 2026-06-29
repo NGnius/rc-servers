@@ -144,6 +144,13 @@ services:
     working_dir: /app/rc_microtransactions
     profiles: ["debug"]
 
+  rc_society_debug:
+    <<: 
+      - *shared-debug
+      - *web-services
+    working_dir: /app/rc_society
+    profiles: ["debug"]
+
   cdn_debug:
     <<: 
       - *shared-debug
@@ -225,6 +232,11 @@ services:
   rc_microtransactions_release:
     <<: *shared-release
     working_dir: /app/rc_microtransactions
+    profiles: ["release"]
+
+  rc_society:
+    <<: *shared-release
+    working_dir: /app/rc_society
     profiles: ["release"]
 
   cdn_release:

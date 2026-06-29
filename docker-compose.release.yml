@@ -81,6 +81,11 @@ services:
     working_dir: /app/rc_microtransactions
     command: ./oj_rc_microtransactions --ip "0.0.0.0"
 
+  rc_society:
+    <<: *shared-release
+    working_dir: /app/rc_society
+    command: ./oj_rc_society --ip "0.0.0.0"
+
   cdn:
     <<: *shared-release
     working_dir: /app/cdn
