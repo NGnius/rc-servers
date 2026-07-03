@@ -167,7 +167,7 @@ impl CubeConversionParser {
                     classic_to_modern.insert(from.id(), mapping);
                 }
                 #[cfg(not(debug_assertions))]
-                if !classic_to_modern.contains_key(&from.id) {
+                if !classic_to_modern.contains_key(&from.id()) {
                     classic_to_modern.insert(from.id(), mapping);
                 }
             }
