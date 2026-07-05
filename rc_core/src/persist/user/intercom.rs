@@ -3,9 +3,10 @@ use serde::{Serialize, Deserialize};
 impl super::account_json::UserData {
     async fn listen_on_websocket<D: serde::de::DeserializeOwned>(&self, server_name: &str) -> Result<super::IntercomListener<D>, reqwest_websocket::Error> {
         use reqwest_websocket::Upgrade;
-        let token =  generate_token(format!("{}/{}", server_name, self.account.public_id).as_bytes(), &self.secret);
+        let url_encoded_pub_id = urlencoding::encode(&self.account.public_id);
+        let token =  generate_token(format!("{}/{}", server_name, url_encoded_pub_id).as_bytes(), &self.secret);
         let auth_header_val = format!("Internal {}", token);
-        let url = format!("{}/intercom/{}/{}", self.intercom, server_name, self.account.public_id);
+        let url = format!("{}/intercom/{}/{}", self.intercom, server_name, url_encoded_pub_id);
         log::debug!("Listening on websocket {}", url);
         let websocket = self.http_client.get(url)
             .header("Authorization", auth_header_val)
@@ -21,7 +22,7 @@ impl super::account_json::UserData {
     }
 
     async fn post_to_intercom<D: serde::Serialize>(&self, data: &D, server_name: &str, operation: &str) -> Result<(), reqwest::Error> {
-        let path = format!("{}/{}/{}", server_name, self.account.public_id, operation);
+        let path = format!("{}/{}/{}", server_name, urlencoding::encode(&self.account.public_id), operation);
         let token =  generate_token(path.as_bytes(), &self.secret);
         let auth_header_val = format!("Internal {}", token);
         let url = format!("{}/intercom/{}", self.auth, path);
@@ -55,9 +56,10 @@ impl super::account_json::UserData {
 impl super::IntercomUser for super::account_json::UserData {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError> {
         // seems to always be jpg
-        let token =  generate_token(self.account.public_id.as_bytes(), &self.secret);
+        let url_encoded_pub_id = urlencoding::encode(&self.account.public_id);
+        let token =  generate_token(url_encoded_pub_id.as_bytes(), &self.secret);
         let auth_header_val = format!("Internal {}", token);
-        let url = format!("{}/customavatar/Live/{}", self.cdn, self.account.public_id);
+        let url = format!("{}/customavatar/Live/{}", self.cdn, url_encoded_pub_id);
         if let Err(e) = self.http_client.post(url)
             .header("Authorization", auth_header_val)
             .body(image)

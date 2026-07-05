@@ -11,6 +11,7 @@ pub struct Model {
     pub password: String,
     pub email: String,
     pub steam_id: Option<String>, // u64
+    pub federation_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -29,6 +30,12 @@ pub enum Relation {
     FactoryUploads,
     #[sea_orm(has_many = "super::friend::Entity")]
     Friends, // this will probably join the wrong column (i.e. in the wrong direction)
+    #[sea_orm(
+        belongs_to = "super::federation::Entity",
+        from = "Column::FederationId",
+        to = "super::federation::Column::Id"
+    )]
+    Federation,
 }
 
 impl Related<super::permissions::Entity> for Entity {
@@ -70,6 +77,12 @@ impl Related<super::factory::vehicle::Entity> for Entity {
 impl Related<super::friend::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Friends.def()
+    }
+}
+
+impl Related<super::federation::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Federation.def()
     }
 }
 

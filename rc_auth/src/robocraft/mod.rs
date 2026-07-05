@@ -3,6 +3,7 @@ pub mod registration;
 pub mod steam;
 pub mod username;
 pub mod intercom;
+pub mod displayname;
 
 pub struct RcConfig {
     //pub data: std::path::PathBuf,

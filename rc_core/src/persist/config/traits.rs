@@ -105,6 +105,7 @@ pub struct ServerConfig {
     pub auth_url: String,
     pub intercom_url: String,
     pub factory_url: String,
+    pub society_url: String,
     pub minimum_version: i32,
     pub dos_protect: bool,
     pub maintenance_message: Option<String>,

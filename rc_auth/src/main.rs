@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 mod cli;
 mod robocraft;
+mod oauth;
 
 use actix_web::{App, HttpServer, Responder};
 
@@ -73,12 +74,18 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::email::email_password_auth)
             .service(robocraft::steam::steam_auth)
             .service(robocraft::username::user_password_auth)
+            .service(robocraft::displayname::display_password_auth)
             .service(robocraft::intercom::services_ws)
             .service(robocraft::intercom::service_msg)
             .service(robocraft::intercom::lobby_state_ws)
             .service(robocraft::intercom::lobby_state_msg)
             .service(robocraft::intercom::status_get)
             .service(robocraft::intercom::status_set)
+            .service(oauth::openid_config::get_openid_configuration)
+            .service(oauth::jwks::get_oauth_jwks)
+            .service(oauth::auth::post_oauth_auth)
+            .service(oauth::auth::get_oauth_auth)
+            .service(oauth::token::post_oauth_token)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()

@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::{UnlockedParts, UnlockOverride};
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserAuthInfo, UserLoginInfo, UserAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, IntercomListener, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats};
+pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, UserAuthInfo, FederatedAuthInfo, UserLoginInfo, UserAuthenticator, FederatedAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, IntercomListener, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats};
 
 pub mod intercom;
 pub use intercom::generate_token as generate_intercom_token;
@@ -28,7 +28,7 @@ mod team;
 pub use team::{TeamChooser, StandardTeamChooser};
 mod web;
 
-mod federation;
+pub mod federation;
 pub use federation::Federation;
 
 pub const TOKEN_SECRET_FILENAME: &str = "token_secret.key";

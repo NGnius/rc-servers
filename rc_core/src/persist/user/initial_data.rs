@@ -39,6 +39,14 @@ pub async fn register_new_user(info: &super::RegistrationInfo, db: &oj_rc_databa
     Ok(user_data.id)
 }
 
+pub async fn register_new_federated_user(info: &super::FederatedAuthInfo, fedi_id: i32, qualified_name: &str, db: &oj_rc_database::Database) -> Result<i32, oj_rc_database::sea_orm::DbErr> {
+    let user_data = db.insert_user(default_fedi_user_data(info, fedi_id, qualified_name)).await?;
+    db.insert_perms(default_user_perms(user_data.id)).await?;
+    db.insert_user_aux(default_user_aux_data(user_data.id)).await?;
+    db.insert_garages(default_garage_slots(user_data.id)).await?;
+    Ok(user_data.id)
+}
+
 fn default_user_data(info: &super::RegistrationInfo) -> oj_rc_database::schema::user::ActiveModel {
     let password = {
         use argon2::password_hash::PasswordHasher;
@@ -61,6 +69,32 @@ fn default_user_data(info: &super::RegistrationInfo) -> oj_rc_database::schema::
         password: oj_rc_database::sea_orm::ActiveValue::Set(password),
         email: oj_rc_database::sea_orm::ActiveValue::Set(info.email.clone().unwrap_or_else(|| "".to_owned())),
         steam_id: oj_rc_database::sea_orm::ActiveValue::Set(steam_id),
+        federation_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+    }
+}
+
+fn default_fedi_user_data(info: &super::FederatedAuthInfo, fedi_id: i32, qualified_name: &str) -> oj_rc_database::schema::user::ActiveModel {
+    let password = {
+        use argon2::password_hash::PasswordHasher;
+        let argon2_algo = argon2::Argon2::default();
+        let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+        match argon2_algo.hash_password(info.password.as_bytes(), &salt) {
+            Err(e) => {
+                log::error!("Failed to hash password for user {}: {}", info.display_name, e);
+                "".to_owned()
+            },
+            Ok(password) => password.to_string(),
+        }
+    };
+    oj_rc_database::schema::user::ActiveModel {
+        id: Default::default(),
+        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(current_unix_time()),
+        public_id: oj_rc_database::sea_orm::ActiveValue::Set(qualified_name.to_owned()),
+        display_name: oj_rc_database::sea_orm::ActiveValue::Set(qualified_name.to_owned()),
+        password: oj_rc_database::sea_orm::ActiveValue::Set(password),
+        email: oj_rc_database::sea_orm::ActiveValue::Set(format!("{}@{}", info.display_name, info.domain)),
+        steam_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+        federation_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(fedi_id)),
     }
 }
 

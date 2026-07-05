@@ -19,6 +19,8 @@ mod m20260215_000001_create_friend_table;
 mod m20260221_000001_create_clan_table;
 mod m20260221_000002_create_clan_member_table;
 mod m20260317_000001_add_game_overrides;
+mod m20260705_000001_create_federation_table;
+mod m20260705_000002_add_user_federation;
 
 pub struct Migrator;
 
@@ -45,6 +47,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260221_000001_create_clan_table::Migration),
             Box::new(m20260221_000002_create_clan_member_table::Migration),
             Box::new(m20260317_000001_add_game_overrides::Migration),
+            Box::new(m20260705_000001_create_federation_table::Migration),
+            Box::new(m20260705_000002_add_user_federation::Migration),
         ]
     }
 }

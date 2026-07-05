@@ -17,6 +17,8 @@ tokio = { version = "1.43", features = [ "rt-multi-thread" ] }
 futures.workspace = true
 clap.workspace = true
 oj_rc_core = { version = "*", path = "../rc_core" }
+openidconnect.workspace = true
+urlencoding.workspace = true
 libfj.workspace = true
 git-version.workspace = true
 serde.workspace = true
