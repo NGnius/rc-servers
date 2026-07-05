@@ -22,7 +22,7 @@ pub enum UserAuthInfo {
     Email {
         email: String,
         password: String,
-    }
+    },
 }
 
 impl UserAuthInfo {
@@ -33,6 +33,12 @@ impl UserAuthInfo {
             Self::Email { email, .. } => format!("email:{}", email),
         }
     }
+}
+
+pub struct FederatedAuthInfo {
+    pub display_name: String,
+    pub password: String,
+    pub domain: String,
 }
 
 pub enum UserId {
@@ -68,11 +74,18 @@ pub trait UserProvider<C> {
 }
 
 #[async_trait::async_trait]
-pub trait UserAuthenticator {
+pub trait UserAuthenticator: FederatedAuthenticator {
     async fn login(&self, info: UserAuthInfo) -> Result<UserLoginInfo, AuthError>;
     async fn user_exists(&self, user: UserId) -> Result<bool, String>;
     async fn register(&self, info: RegistrationInfo) -> Result<i32, String>;
     async fn verify(&self, token: String) -> Result<crate::auth::Token, AuthError>;
+}
+
+#[async_trait::async_trait]
+pub trait FederatedAuthenticator {
+    async fn local_login(&self, info: FederatedAuthInfo) -> Result<UserLoginInfo, AuthError>;
+    async fn remote_auth(&self, info: &super::federation::FederatedAuthenticationPayload, challenge: &str) -> Result<String, AuthError>;
+    async fn remote_token(&self, access_token: &str, verifier: &str) -> Result<UserLoginInfo, AuthError>;
 }
 
 #[async_trait::async_trait]

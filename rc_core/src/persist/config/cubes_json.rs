@@ -327,6 +327,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             auth_url: self.settings.server.auth_url.trim_end_matches('/').to_owned(),
             intercom_url: self.settings.server.intercom_url.trim_end_matches('/').to_owned(),
             factory_url: self.settings.server.factory_url.trim_end_matches('/').to_owned(),
+            society_url: self.settings.server.society_url.trim_end_matches('/').to_owned(),
             minimum_version: self.settings.server.min_version as i32,
             dos_protect: self.settings.server.dos_protection,
             maintenance_message: self.settings.server.maintenance_message.clone(),

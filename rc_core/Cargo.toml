@@ -27,10 +27,14 @@ indexmap = { version = "2.0", features = ["serde"] }
 libfj.workspace = true
 jsonwebtoken = { version = "10", features = [ "rust_crypto" ] }
 argon2 = { version = "0.5", features = [ "std" ] }
+# federated auth
+openidconnect.workspace = true
+ring = "0.17"
+urlencoding.workspace = true
 
 # intercom
 sha2 = "0.11"
-reqwest = { version = "0.13", default-features = false, features = [ "rustls", "charset", "json" ] }
+reqwest = { version = "0.13", default-features = false, features = [ "rustls", "charset", "json", "form" ] }
 reqwest-websocket = { version = "0.6", default-features = false, features = [ "json" ] }
 oj_serdes.workspace = true
 

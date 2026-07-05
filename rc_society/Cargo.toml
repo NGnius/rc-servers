@@ -25,6 +25,7 @@ oj_rc_core = { version = "*", path = "../rc_core" }
 oj_rc_plugins = { version = "*", path = "../rc_plugins" }
 oj_rc_factory = { version = "*", path = "../rc_factory" }
 oj_convert.workspace = true
+oj_serdes.workspace = true
 libfj.workspace = true
 git-version.workspace = true
 serde.workspace = true

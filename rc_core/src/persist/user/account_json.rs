@@ -10,15 +10,14 @@ pub struct AccountProvider {
     fake_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     filler_players: std::sync::Arc<Vec<crate::persist::config::FakePlayer>>,
     auto_signups: bool,
-    domain: std::sync::Arc<String>,
+    pub(super) domain: std::sync::Arc<String>,
     cdn: std::sync::Arc<String>,
-    auth: std::sync::Arc<String>,
+    pub(super) auth: std::sync::Arc<String>,
     pub(super) intercom: std::sync::Arc<String>,
     pub(super) intercom_http_client: std::sync::Arc<reqwest::Client>,
     pub(super) secret: std::sync::Arc<Vec<u8>>,
-    db: std::sync::Arc<oj_rc_database::Database>,
-    #[allow(dead_code)]
-    federation: Option<crate::persist::config::Federation>,
+    pub(super) db: std::sync::Arc<oj_rc_database::Database>,
+    pub(super) federation: Option<crate::persist::config::Federation>,
 }
 
 impl AccountProvider {
@@ -42,7 +41,12 @@ impl AccountProvider {
             cdn: std::sync::Arc::new(server_settings.cdn_url),
             auth: std::sync::Arc::new(server_settings.auth_url),
             intercom: std::sync::Arc::new(server_settings.intercom_url),
-            intercom_http_client: std::sync::Arc::new(reqwest::Client::new()),
+            intercom_http_client: std::sync::Arc::new(
+                reqwest::ClientBuilder::new()
+                    .redirect(reqwest::redirect::Policy::none())
+                    .build()
+                    .expect("HTTP client did not init")
+            ),
             secret: std::sync::Arc::new(secret),
             db: std::sync::Arc::new(db),
             federation: federation_conf,
@@ -90,6 +94,7 @@ impl AccountProvider {
         let secret = jsonwebtoken::DecodingKey::from_secret(&self.secret);
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
         validation.set_required_spec_claims::<&str>(&[]);
+        validation.aud = Some(vec![ self.domain.to_string() ].into_iter().collect());
         let token_data = jsonwebtoken::decode::<crate::auth::Token>(&token, &secret, &validation).map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
@@ -134,62 +139,10 @@ impl AccountProvider {
             secret: self.secret.clone(),
         })
     }
-}
 
-#[async_trait::async_trait]
-impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
-    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
-        Ok(Box::new(self.auth_internal(&token.token).await?))
-    }
-
-    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
-        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| super::AuthError {
-            message: e.to_string(),
-            code: crate::data::error_codes::AuthErrorCode::Unknown,
-        })? {
-            user_info
-        } else {
-            return Err(super::AuthError {
-                message: "User not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
-        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
-            message: e.to_string(),
-            code: crate::data::error_codes::AuthErrorCode::Unknown,
-        })? {
-            user_perms
-        } else {
-            return Err(super::AuthError {
-                message: "User permissions not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
-        Ok(Box::new(UserData {
-            account: user_info,
-            perms: user_perms,
-            cubes: self.cubes.clone(),
-            garage_upgrades: self.garage_upgrades.clone(),
-            fake_players: self.fake_players.clone(),
-            filler_players: self.filler_players.clone(),
-            cdn: self.cdn.clone(),
-            auth: self.auth.clone(),
-            intercom: self.intercom.clone(),
-            http_client: std::sync::Arc::new(reqwest::Client::new()),
-            db: self.db.clone(),
-            secret: self.secret.clone(),
-        }))
-    }
-
-    async fn web_authenticate(&self, token: String) -> Result<Box<dyn super::WebUser>, super::AuthError> {
-        Ok(Box::new(self.auth_internal(&token).await?))
-    }
-}
-
-#[async_trait::async_trait]
-impl super::UserAuthenticator for AccountProvider {
-    async fn login(&self, info: super::UserAuthInfo) -> Result<super::UserLoginInfo, super::AuthError> {
+    pub(super) async fn login_internal(&self, info: super::UserAuthInfo, audience: Option<String>) -> Result<super::UserLoginInfo, super::AuthError> {
         //let new_root = self.root.join(&info.payload.public_id);
+        let is_fedi = audience.is_some();
         let is_new_user;
         let user_opt = match &info {
             super::UserAuthInfo::Steam { id } => self.db.user_by_steam_id(*id).await,
@@ -204,7 +157,7 @@ impl super::UserAuthenticator for AccountProvider {
             user_info
         } else {
             is_new_user = true;
-            if self.auto_signups {
+            if self.auto_signups && !is_fedi {
                 log::info!("New user {}", info.display_id());
                 let auto_name = match &info {
                     super::UserAuthInfo::Steam { id } => id.to_string(),
@@ -306,22 +259,31 @@ impl super::UserAuthenticator for AccountProvider {
             super::UserAuthInfo::Username { .. } => crate::auth::LoginMethod::Username,
         };
 
+        let pub_id = if is_fedi { format!("{}#{}", user_info.public_id, self.domain) } else { user_info.public_id.clone() };
         let client_details = libfj::robocraft::TokenPayload {
-            public_id: user_info.public_id.clone(),
-            display_name: user_info.display_name.clone(),
-            robocraft_name: user_info.display_name,
+            public_id: pub_id.clone(),
+            display_name: if is_fedi { format!("{}#{}", user_info.display_name, self.domain) } else { user_info.display_name.clone() },
+            robocraft_name: if is_fedi { format!("{}#{}", user_info.public_id, self.domain) } else { user_info.public_id.clone() },
             email_address: user_info.email,
             email_verified: true,
             flags: vec![
-                "federated=false".to_owned(),
+                if is_fedi { "federated=true".to_owned() } else { "federated=false".to_owned() },
             ],
         };
+        let now = chrono::Utc::now().timestamp();
         let payload = crate::auth::Token {
             client_details,
-            federate: false,
-            auth_time: chrono::Utc::now().timestamp(),
-            qualified_name: format!("{}@{}", user_info.public_id, self.domain),
-            login_method,
+            federate: is_fedi,
+            auth_time: now,
+            qualified_name: format!("{}#{}", user_info.public_id, self.domain),
+            source_domain: self.domain.to_string(),
+            login_method: if is_fedi { crate::auth::LoginMethod::OAuth } else { login_method },
+            iss: self.auth.to_string(),
+            exp: now + 86400, // 1 day
+            iat: now,
+            sub: pub_id.clone(),
+            aud: audience.unwrap_or_else(|| self.domain.to_string()),
+            fedi_token: None,
         };
         #[cfg(debug_assertions)]
         log::debug!("Token payload\n{}", serde_json::to_string_pretty(&payload).unwrap());
@@ -340,6 +302,63 @@ impl super::UserAuthenticator for AccountProvider {
             },
             is_new: is_new_user,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
+    async fn authenticate(&self, token: super::UserToken) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
+        Ok(Box::new(self.auth_internal(&token.token).await?))
+    }
+
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::User<C> + Send + Sync>, super::AuthError> {
+        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
+            user_info
+        } else {
+            return Err(super::AuthError {
+                message: "User not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
+        };
+        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })? {
+            user_perms
+        } else {
+            return Err(super::AuthError {
+                message: "User permissions not found".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
+        };
+        Ok(Box::new(UserData {
+            account: user_info,
+            perms: user_perms,
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            fake_players: self.fake_players.clone(),
+            filler_players: self.filler_players.clone(),
+            cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: std::sync::Arc::new(reqwest::Client::new()),
+            db: self.db.clone(),
+            secret: self.secret.clone(),
+        }))
+    }
+
+    async fn web_authenticate(&self, token: String) -> Result<Box<dyn super::WebUser>, super::AuthError> {
+        Ok(Box::new(self.auth_internal(&token).await?))
+    }
+}
+
+#[async_trait::async_trait]
+impl super::UserAuthenticator for AccountProvider {
+    async fn login(&self, info: super::UserAuthInfo) -> Result<super::UserLoginInfo, super::AuthError> {
+        self.login_internal(info, None).await
     }
 
     async fn user_exists(&self, user: super::UserId) -> Result<bool, String> {

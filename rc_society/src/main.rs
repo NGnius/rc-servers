@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::user_federation::post_off)
             .service(web::user_federation::post_on)
             .service(api::config::get)
+            .service(api::urls::get)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()

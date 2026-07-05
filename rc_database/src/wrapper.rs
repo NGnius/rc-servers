@@ -39,6 +39,17 @@ impl Database {
             .await
     }
 
+    pub async fn user_by_display_name_and_federation(&self, public_id: String, federation_id: i32) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find()
+            .filter(sea_orm::sea_query::Expr::expr(
+                sea_orm::sea_query::Func::lower(crate::schema::user::Column::DisplayName.into_expr())
+                ).eq(public_id.to_lowercase())
+            )
+            .filter(crate::schema::user::Column::FederationId.eq(Some(federation_id)))
+            .one(self.orm.as_ref())
+            .await
+    }
+
     pub async fn user_by_public_id(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
             .filter(crate::schema::user::Column::PublicId.eq(public_id))
@@ -916,6 +927,31 @@ impl Database {
             .filter(crate::schema::clan_member::Column::ClanId.eq(clan_id))
             .filter(crate::schema::clan_member::Column::Status.eq(crate::schema::clan_member::ClanMemberStatus::Confirmed))
             .count(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn federation_by_id(&self, id: i32) -> Result<Option<crate::schema::federation::Model>, sea_orm::DbErr> {
+        crate::schema::federation::Entity::find_by_id(id)
+            .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn federation_by_domain(&self, domain: &str) -> Result<Option<crate::schema::federation::Model>, sea_orm::DbErr> {
+        crate::schema::federation::Entity::find()
+            .filter(crate::schema::federation::Column::Id.eq(domain))
+            .one(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn insert_federation(&self, entity: crate::schema::federation::ActiveModel) -> Result<crate::schema::federation::Model, sea_orm::DbErr> {
+        #[cfg(debug_assertions)]
+        assert!(matches!(entity.id, sea_orm::ActiveValue::NotSet));
+        entity.insert(self.orm.as_ref()).await
+    }
+
+    pub async fn update_federation(&self, entity: crate::schema::federation::ActiveModel) -> Result<crate::schema::federation::Model, sea_orm::DbErr> {
+        crate::schema::federation::Entity::update(entity)
+            .exec(self.orm.as_ref())
             .await
     }
 
