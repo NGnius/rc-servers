@@ -4,7 +4,7 @@ use actix_web::{rt, web::{Payload, Data, Path, Json}, Error, HttpRequest, HttpRe
 
 #[get("/intercom/.oj_services/{name}")]
 pub async fn services_ws(req: HttpRequest, stream: Payload, auth: Data<super::IntercomAuth>, reg: Data<super::Users>, name: Path<String>) -> Result<HttpResponse, Error> {
-    auth.validate(&req, &format!(".oj_services/{}", urlencoding::encode(&*name)))?;
+    auth.validate(&req, &format!(".oj_services/{}", urlencoding::encode(&name)))?;
     let (res, mut session, _stream) = actix_ws::handle(&req, stream)?;
 
     /*let mut stream = stream

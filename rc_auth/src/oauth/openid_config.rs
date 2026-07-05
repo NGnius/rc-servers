@@ -1,9 +1,9 @@
 use actix_web::{get, web::{Data, Json}};
 use oj_rc_core::persist::user::federation::DiscoveryMetadata;
 
-const OAUTH_AUTH_URL: &'static str = "authenticate/oauth2/auth";
-const OAUTH_JWKS_URL: &'static str = "authenticate/oauth2/jwks";
-const OAUTH_TOKEN_URL: &'static str = "authenticate/oauth2/token";
+const OAUTH_AUTH_URL: &str = "authenticate/oauth2/auth";
+const OAUTH_JWKS_URL: &str = "authenticate/oauth2/jwks";
+const OAUTH_TOKEN_URL: &str = "authenticate/oauth2/token";
 
 #[get("/.well-known/openid-configuration")]
 pub async fn get_openid_configuration(server_config: Data<oj_rc_core::persist::config::ServerConfig>) -> Json<DiscoveryMetadata> {

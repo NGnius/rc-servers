@@ -1,8 +1,8 @@
 use openidconnect::{OAuth2TokenResponse, TokenResponse};
 use serde::{Serialize, Deserialize};
 
-const SOCIETY_URLS_API_ENDPOINT: &'static str = "api/v1/services.json";
-const ACCESS_CODE_AAD: &'static [u8] = b"oj-access-code";
+const SOCIETY_URLS_API_ENDPOINT: &str = "api/v1/services.json";
+const ACCESS_CODE_AAD: &[u8] = b"oj-access-code";
 
 pub type DiscoveryMetadata = openidconnect::core::CoreProviderMetadata;
 pub type TokenResponsePayload = openidconnect::core::CoreTokenResponse;
@@ -72,7 +72,7 @@ impl ring::aead::NonceSequence for NonceProvider {
             let hash = sha2::Sha512::new()
                 .chain_update(self.issuer.as_bytes())
                 .chain_update(self.secret.as_slice())
-                .chain_update(&self.generated_time.to_ne_bytes())
+                .chain_update(self.generated_time.to_ne_bytes())
                 .finalize();
             let mut nonce = Vec::from(hash.as_slice());
             nonce.truncate(12);
@@ -103,7 +103,7 @@ impl super::AccountProvider {
     async fn local_login_impl(&self, auth_info: super::FederatedAuthInfo, federation: &Option<crate::persist::config::Federation>) -> Result<super::UserLoginInfo, super::AuthError> {
         if auth_info.display_name.is_empty() {
             return Err(super::AuthError {
-                message: format!("Refusing federation login with empty username"),
+                message: "Refusing federation login with empty username".to_string(),
                 code: crate::data::error_codes::AuthErrorCode::InvalidDisplayName,
             });
         }
@@ -324,7 +324,7 @@ impl super::AccountProvider {
             Ok(super::UserLoginInfo {
                 response: libfj::robocraft::AuthenticationResponseInfo {
                     token: local_token,
-                    refresh_token: refresh_token,
+                    refresh_token,
                     refresh_token_expiry: "0".to_string(), // TODO (seems like this isn't actually considered by the client)
                 },
                 is_new: false,
@@ -399,20 +399,20 @@ impl super::AccountProvider {
     async fn remote_auth_impl(&self, auth_info: &FederatedAuthenticationPayload, challenge: &str, federation: &Option<crate::persist::config::Federation>) -> Result<String, super::AuthError> {
         if auth_info.display_name.is_empty() {
             return Err(super::AuthError {
-                message: format!("Refusing federation login with empty username"),
+                message: "Refusing federation login with empty username".to_string(),
                 code: crate::data::error_codes::AuthErrorCode::InvalidDisplayName,
             });
         }
         if let Some(fedi_conf) = federation {
             if auth_info.domain_source.is_empty() {
                 return Err(super::AuthError {
-                    message: format!("Refusing federation login with empty domain_source"),
+                    message: "Refusing federation login with empty domain_source".to_string(),
                     code: crate::data::error_codes::AuthErrorCode::InvalidDisplayName,
                 });
             }
             if auth_info.domain_target != *self.domain {
                 return Err(super::AuthError {
-                    message: format!("Refusing federation login with not my domain_target"),
+                    message: "Refusing federation login with not my domain_target".to_string(),
                     code: crate::data::error_codes::AuthErrorCode::InvalidDisplayName,
                 });
             }
@@ -428,12 +428,12 @@ impl super::AccountProvider {
             };
             let login_info = self.login_internal(user_info, Some(auth_info.domain_source.clone())).await?;
             Ok(Self::generate_access_code(
-                &*self.auth,
+                &self.auth,
                 challenge,
                 &auth_info.display_name,
                 &login_info.response.token,
                 &login_info.response.refresh_token,
-                &*self.secret,
+                &self.secret,
                 self.nonce_provider(),
             ))
         } else {
@@ -476,9 +476,7 @@ impl super::AccountProvider {
                 }
             }
             if temp_key.len() < 32 {
-                for _ in temp_key.len()..32 {
-                    temp_key.push(0);
-                }
+                temp_key.extend(std::iter::repeat_n(0, 32 - temp_key.len()));
             }
             temp_key
         } else if secret.len() > 32 {
@@ -542,7 +540,7 @@ impl super::AccountProvider {
             .map_err(|e| {
                 log::error!("Failed to decrypt secure code: {}", e);
             })?;
-        let secure_data: SecuredCodes = serde_json::from_slice(&plaintext)
+        let secure_data: SecuredCodes = serde_json::from_slice(plaintext)
             .map_err(|e| {
                 log::error!("Failed to decode JSON secure code: {}", e);
             })?;
