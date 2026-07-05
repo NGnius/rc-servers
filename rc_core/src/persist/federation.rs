@@ -30,9 +30,9 @@ fn default_aliases() -> std::collections::HashMap<String, String> {
 fn default_defederated() -> Vec<String> {
     vec![
         "robocraftgame.com".to_owned(),
-        #[cfg(debug_assertions)]
+        #[cfg(not(debug_assertions))]
         { "127.0.0.1:8002".to_owned() },
-        #[cfg(debug_assertions)]
+        #[cfg(not(debug_assertions))]
         { "127.0.0.1".to_owned() },
     ]
 }

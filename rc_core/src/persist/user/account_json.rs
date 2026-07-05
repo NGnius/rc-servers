@@ -263,7 +263,7 @@ impl AccountProvider {
         let client_details = libfj::robocraft::TokenPayload {
             public_id: pub_id.clone(),
             display_name: if is_fedi { format!("{}#{}", user_info.display_name, self.domain) } else { user_info.display_name.clone() },
-            robocraft_name: if is_fedi { format!("{}#{}", user_info.public_id, self.domain) } else { user_info.public_id.clone() },
+            robocraft_name: pub_id.clone(),
             email_address: user_info.email,
             email_verified: true,
             flags: vec![

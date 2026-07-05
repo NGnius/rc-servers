@@ -131,7 +131,7 @@ impl super::AccountProvider {
                 || target_domain == "0:0:0:0:0:0:0:1"
                 || target_domain.starts_with("127.0.0.")
                 || target_domain.starts_with("localhost:");
-            // TODO contact other domain
+            // contact other domain to get oauth (auth) and root server
             let social_urls_api = if is_localhost {
                 format!("http://{}/{}", target_domain, SOCIETY_URLS_API_ENDPOINT)
             } else {
@@ -236,7 +236,6 @@ impl super::AccountProvider {
                     code: crate::data::error_codes::AuthErrorCode::BadCredentials,
                 });
             };
-            //let auth_redirected_url = auth_resp.url();
             log::debug!("OAuth auth response URL: {}", auth_redirected_url);
             let mut query_map: std::collections::HashMap<_, _>  = auth_redirected_url.query_pairs().collect();
             let auth_code = if let Some(auth_code) = query_map.remove("code") {

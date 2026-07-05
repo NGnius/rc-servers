@@ -57,7 +57,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap_fn(|req, srv| {
                 use actix_web::dev::Service;
-                log::debug!("Request {} {}", req.method(), req.path());
+                log::trace!("Request {} {}", req.method(), req.path());
                 srv.call(req)
             })
             .app_data(cli_args2.clone())
@@ -74,7 +74,7 @@ async fn main() -> std::io::Result<()> {
             .service(robocraft::email::email_password_auth)
             .service(robocraft::steam::steam_auth)
             .service(robocraft::username::user_password_auth)
-            .service(robocraft::displayname::displaye_password_auth)
+            .service(robocraft::displayname::display_password_auth)
             .service(robocraft::intercom::services_ws)
             .service(robocraft::intercom::service_msg)
             .service(robocraft::intercom::lobby_state_ws)

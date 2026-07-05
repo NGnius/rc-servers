@@ -2,7 +2,7 @@ use oj_rc_core::persist::user::FederatedAuthenticator;
 use actix_web::{post, web::{Data, Json}};
 
 #[post("/authenticate/displayname/game")]
-pub async fn displaye_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: Data<super::RcConfig>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, super::ErrorTy> {
+pub async fn display_password_auth(body: Json<libfj::robocraft::EmailUserAuthenticationPayload>, config: Data<super::RcConfig>) -> Result<Json<libfj::robocraft::AuthenticationResponseInfo>, super::ErrorTy> {
     if body.display_name.is_none() {
         return Err(super::ErrorTy::from_err(oj_rc_core::persist::user::AuthError {
             message: "Missing display_name".to_owned(),

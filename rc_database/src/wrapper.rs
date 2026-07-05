@@ -938,7 +938,7 @@ impl Database {
 
     pub async fn federation_by_domain(&self, domain: &str) -> Result<Option<crate::schema::federation::Model>, sea_orm::DbErr> {
         crate::schema::federation::Entity::find()
-            .filter(crate::schema::federation::Column::Id.eq(domain))
+            .filter(crate::schema::federation::Column::Domain.eq(domain))
             .one(self.orm.as_ref())
             .await
     }
