@@ -301,6 +301,7 @@ impl AccountProvider {
                 refresh_token_expiry: "0".to_string(), // TODO (seems like this isn't actually considered by the client)
             },
             is_new: is_new_user,
+            id: user_info.id,
         })
     }
 }

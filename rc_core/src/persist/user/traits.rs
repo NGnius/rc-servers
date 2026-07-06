@@ -50,6 +50,7 @@ pub enum UserId {
 pub struct UserLoginInfo {
     pub response: libfj::robocraft::AuthenticationResponseInfo,
     pub is_new: bool,
+    pub id: i32,
 }
 
 pub struct RegistrationInfo {

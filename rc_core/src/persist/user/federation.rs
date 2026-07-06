@@ -315,7 +315,7 @@ impl super::AccountProvider {
             #[cfg(debug_assertions)]
             log::debug!("User {} authenticated to {} with access token {}", auth_info.display_name, target_domain, remote_token);
             // create/update federated user entry in DB
-            self.update_local_database(&auth_info, &urls).await.map_err(|e| super::AuthError {
+            let user_id = self.update_local_database(&auth_info, &urls).await.map_err(|e| super::AuthError {
                 message: format!("Failed to update DB entries for {}: {}", auth_info.display_name, e),
                 code: crate::data::error_codes::AuthErrorCode::Unknown,
             })?;
@@ -328,6 +328,7 @@ impl super::AccountProvider {
                     refresh_token_expiry: "0".to_string(), // TODO (seems like this isn't actually considered by the client)
                 },
                 is_new: false,
+                id: user_id,
             })
         } else {
             Err(super::AuthError {
@@ -362,7 +363,7 @@ impl super::AccountProvider {
         Ok(token)
     }
 
-    async fn update_local_database(&self, auth_info: &super::FederatedAuthInfo, services_info: &oj_serdes::society::ServiceDomains) -> Result<(), oj_rc_database::sea_orm::DbErr> {
+    async fn update_local_database(&self, auth_info: &super::FederatedAuthInfo, services_info: &oj_serdes::society::ServiceDomains) -> Result<i32, oj_rc_database::sea_orm::DbErr> {
         use oj_rc_database::sea_orm::IntoActiveModel;
         let now = chrono::Utc::now().timestamp();
         let fedi_id = if let Some(existing_fedi) = self.db.federation_by_domain(&services_info.root).await? {
@@ -387,13 +388,15 @@ impl super::AccountProvider {
             self.db.insert_federation(new_entity).await?.id
         };
         let qualified_name = format!("{}#{}", auth_info.display_name, services_info.root);
-        if let Some(existing_user) = self.db.user_by_display_name_and_federation(qualified_name.clone(), fedi_id).await? {
+        let user_id = if let Some(existing_user) = self.db.user_by_display_name_and_federation(qualified_name.clone(), fedi_id).await? {
             log::info!("Using existing federated user with id {} for {} from {}", existing_user.id, auth_info.display_name, auth_info.domain);
+            existing_user.id
         } else {
             let new_id = super::initial_data::register_new_federated_user(auth_info, fedi_id, &qualified_name, self.db.as_ref()).await?;
             log::info!("Created federated user with id {} for {} from {}", new_id, auth_info.display_name, auth_info.domain);
-        }
-        Ok(())
+            new_id
+        };
+        Ok(user_id)
     }
 
     async fn remote_auth_impl(&self, auth_info: &FederatedAuthenticationPayload, challenge: &str, federation: &Option<crate::persist::config::Federation>) -> Result<String, super::AuthError> {
@@ -418,7 +421,7 @@ impl super::AccountProvider {
             }
             if self.is_defederated_from(&auth_info.domain_source, fedi_conf) {
                 return Err(super::AuthError {
-                    message: format!("Refusing federation with {} for logging in {}", auth_info.domain_source, auth_info.display_name),
+                    message: format!("Refusing federation with {} for logging in {} (server defed)", auth_info.domain_source, auth_info.display_name),
                     code: crate::data::error_codes::AuthErrorCode::PasswordInvalidated,
                 });
             }
@@ -427,6 +430,28 @@ impl super::AccountProvider {
                 password: auth_info.password.clone(),
             };
             let login_info = self.login_internal(user_info, Some(auth_info.domain_source.clone())).await?;
+            let user_fedi_aux = self.db.user_aux_by_user_id_and_descriptor(login_info.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await
+                .map_err(|e| super::AuthError {
+                    message: format!("Failed to retrieve federation config for logging in {}: {}", auth_info.display_name, e),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                })?;
+            if let Some(user_fedi_aux) = user_fedi_aux {
+                let settings: super::Federation = serde_json::from_str(&user_fedi_aux.data)
+                    .map_err(|e| super::AuthError {
+                        message: format!("Failed to deserialize user_aux federation for logging in {}: {}", auth_info.display_name, e),
+                        code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                    })?;
+                let faked_server_config = crate::persist::config::Federation {
+                    aliases: Default::default(),
+                    defederated: settings.defederated,
+                };
+                if !settings.enabled || self.is_defederated_from(&auth_info.domain_source, &faked_server_config) {
+                    return Err(super::AuthError {
+                        message: format!("Refusing federation with {} for logging in {} (user defed)", auth_info.domain_source, auth_info.display_name),
+                        code: crate::data::error_codes::AuthErrorCode::PasswordInvalidated,
+                    });
+                }
+            } // default is to allow for user settings (NOT server config)
             Ok(Self::generate_access_code(
                 &self.auth,
                 challenge,
@@ -463,6 +488,7 @@ impl super::AccountProvider {
                 refresh_token_expiry: "0".to_owned(), // TODO
             },
             is_new: false,
+            id: -1, // unused
         })
     }
 
