@@ -118,7 +118,8 @@ pub struct QueueHandler {
     users_per_game: usize,
     is_enabled: bool,
     is_parties_enabled: bool,
-    host_addr: std::net::SocketAddr,
+    hostname: std::sync::Arc<String>,
+    hostport: u16,
     network_conf: crate::data::network::NetworkConfigData,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
@@ -138,7 +139,15 @@ impl QueueHandler {
         weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
         team_choosers: crate::team_selection::InitedTeamChoosers,
     ) -> Self {
-        let addr: std::net::SocketAddr = game_host.parse().expect("Invalid redirect address (must be domain:port)");
+        let (name, port) = if let Ok(socket_addr) = game_host.parse::<std::net::SocketAddr>() {
+            log::debug!("Parsed game host redirect as raw IP address and port");
+            (socket_addr.ip().to_string(), socket_addr.port())
+        } else if let Some((name, port)) = game_host.rsplit_once(':') {
+            log::debug!("Parsed game host redirect as domain and port");
+            (name.to_owned(), port.parse().expect("Invalid redirect port"))
+        } else {
+            panic!("Invalid multiplayer redirect host address");
+        };
         let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
         let server_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf);
         Self {
@@ -148,7 +157,8 @@ impl QueueHandler {
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
             is_enabled: mp_settings.is_enabled,
             is_parties_enabled: server_conf.allow_parties,
-            host_addr: addr,
+            hostname: std::sync::Arc::new(name),
+            hostport: port,
             network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
             factory,
             cpu_counter,
@@ -167,7 +177,8 @@ impl QueueHandler {
 
         let users_in_queue = self.users_in_queue.clone();
         let users_per_game = self.users_per_game;
-        let host_addr = self.host_addr.clone();
+        let hostname = self.hostname.clone();
+        let hostport = self.hostport;
         let network_conf = self.network_conf.clone();
         let factory = self.factory.clone();
         let cpu_counter = self.cpu_counter.clone();
@@ -228,7 +239,8 @@ impl QueueHandler {
                     };
 
                     QueueHandler::enter_match_static(
-                        host_addr,
+                        hostname.clone(),
+                        hostport,
                         network_conf.clone(), 
                         factory.clone(), 
                         cpu_counter.clone(), 
@@ -258,7 +270,8 @@ impl QueueHandler {
 
     async fn enter_match(&self, key: QueueKey, q_entry: Queue, user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync)) {
         Self::enter_match_static(
-            self.host_addr.clone(),
+            self.hostname.clone(),
+            self.hostport,
             self.network_conf.clone(),
             self.factory.clone(),
             self.cpu_counter.clone(),
@@ -286,7 +299,8 @@ impl QueueHandler {
 
     #[allow(clippy::too_many_arguments)]
     async fn enter_match_static(
-        host: std::net::SocketAddr,
+        hostname: std::sync::Arc<String>,
+        hostport: u16,
         network_conf: crate::data::network::NetworkConfigData,
         factory: std::sync::Arc<oj_rc_core::factory::Factory>,
         cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
@@ -333,8 +347,8 @@ impl QueueHandler {
                     .chain(fakes.players.into_iter().map(|(desc, _emu)| desc),)
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
-                    host: host.ip().to_string(),
-                    port: host.port(),
+                    host: hostname.to_string(),
+                    port: hostport,
                     map: key.map.clone(),
                     mode: key.mode,
                     guid: guid_str.clone(),
@@ -415,8 +429,8 @@ impl QueueHandler {
                     .map(|x| x.queue_user.as_ref().unwrap().player.clone())
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
-                    host: self.host_addr.ip().to_string(),
-                    port: self.host_addr.port(),
+                    host: self.hostname.to_string(),
+                    port: self.hostport,
                     map: session.config.map.clone(),
                     mode,
                     guid: guid_str.clone(),
