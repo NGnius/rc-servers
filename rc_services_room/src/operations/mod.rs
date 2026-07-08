@@ -122,7 +122,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
-        .modify(oj_rc_core::polariton::RcOpModifier)
+        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.cubes))
         .add(eac::EacChallengeIgnorer)
         .add(more_auth::more_auth_provider(&init_ctx.user_mesh))
         .add(versioner::version_teller(&init_ctx.cubes))

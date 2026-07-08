@@ -10,6 +10,10 @@ pub struct Settings {
     pub garage_upgrades: Vec<GarageSlotUpgrade>,
     #[serde(default = "default_server_conf")]
     pub server: ServerSettings,
+    #[serde(default = "default_pun_conf", alias = "photon")]
+    pub polariton: PolaritonSettings,
+    #[serde(default = "default_lnl_conf", alias = "lnl")]
+    pub lrl: LiteRustLibSettings,
 }
 
 impl super::config::SelfValidator for Settings {
@@ -27,6 +31,8 @@ impl super::config::RedactedClone for Settings {
             banners: self.banners.clone(),
             garage_upgrades: self.garage_upgrades.clone(),
             server: self.server.redacted_clone(),
+            polariton: self.polariton.clone(),
+            lrl: self.lrl.clone(),
         }
     }
 }
@@ -213,4 +219,30 @@ fn default_game_version() -> u32 {
 
 fn default_true() -> bool {
     true
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PolaritonSettings {
+    #[serde(default = "default_true")]
+    pub force_encrypt_responses: bool,
+    #[serde(default = "default_true")]
+    pub add_unique_response_param: bool,
+}
+
+fn default_pun_conf() -> PolaritonSettings {
+    PolaritonSettings {
+        force_encrypt_responses: true,
+        add_unique_response_param: true,
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LiteRustLibSettings {
+
+}
+
+fn default_lnl_conf() -> LiteRustLibSettings {
+    LiteRustLibSettings {
+
+    }
 }

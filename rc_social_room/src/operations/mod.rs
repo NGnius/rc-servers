@@ -42,7 +42,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy, crate::data::custom::CustomType> {
     OperationsHandler::<crate::UserTy, crate::data::custom::CustomType>::new()
-        .modify(oj_rc_core::polariton::RcOpModifier)
+        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.config))
         .add(more_auth::more_lobby_auth(init_ctx))
         .add(friend_list::friends_provider(init_ctx)) // TODO friend object parsing Token: 0x0200169C RID: 5788
         .add(settings::settings_provider()) // TODO save settings persistently

@@ -14,7 +14,7 @@ use polariton_server::operations::OperationsHandler;
 
 pub fn handler(chat_system: crate::state::chat::ChatImpl, conf: &oj_rc_core::persist::config::ConfigImpl) -> OperationsHandler<crate::UserTy> {
     OperationsHandler::new()
-        .modify(oj_rc_core::polariton::RcOpModifier)
+        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(conf))
         .add(more_auth::MoreLobbyAuth::new())
         .add(chat_ignores::ignores_provider())
         .add(pending_sanctions::pending_sanctions_checker())

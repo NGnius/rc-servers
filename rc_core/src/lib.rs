@@ -9,6 +9,7 @@ pub use persist::user::{UserImpl, UserProvider, UserAuthenticator};
 pub use persist::config::{ConfigImpl, ConfigProvider};
 
 pub mod polariton;
+pub use polariton::OpModImpl;
 
 pub mod factory;
 

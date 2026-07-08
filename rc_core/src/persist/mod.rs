@@ -28,6 +28,7 @@ pub use client_config::{GameplaySettings, PlatformSettings};
 
 mod settings;
 pub use settings::{Settings, QueueMode};
+pub(crate) use settings::PolaritonSettings;
 
 mod chat;
 pub use chat::{ChatConfig, ChatCommand, ChatOperation, BuiltInChatOperation, IntercomChatOperation, ChatPermission, SystemChatOperation};

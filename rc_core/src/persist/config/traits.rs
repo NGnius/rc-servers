@@ -48,6 +48,7 @@ pub trait ConfigProvider<C: Clone> {
     fn redacted_json(&self) -> String;
     /// None when federation is not enabled
     fn federation(&self) -> Option<Federation>;
+    fn polariton_operation_modifier(&self) -> crate::OpModImpl;
 }
 
 pub struct DevMessageProvider<C: Clone> {

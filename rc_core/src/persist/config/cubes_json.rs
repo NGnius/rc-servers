@@ -637,4 +637,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             defederated: self.federation.defederated.clone(),
         })
     }
+
+    fn polariton_operation_modifier(&self) -> crate::OpModImpl {
+        crate::OpModImpl::new(self.settings.polariton.clone())
+    }
 }
