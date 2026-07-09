@@ -9,7 +9,7 @@ const PAID_CURRENCY_COST_PARAM_KEY: u8 = 6; // in; int
 const FACTORY_ID_PARAM_KEY: u8 = 94; // in; int
 
 
-async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: &std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, cpu_counter: &std::sync::Arc<oj_rc_core::cubes::CpuListParser>,) -> Result<ParameterTable, i16> {
+async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: &std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, cpu_counter: &std::sync::Arc<oj_rc_core::cubes::CpuListParser>, converter: &std::sync::Arc<oj_rc_core::cubes::CubeConversionParser>) -> Result<ParameterTable, i16> {
     let mut params = params.to_dict();
     let user_info = user.user()?;
     let slot = if let Some(Typed::Int(slot)) = params.remove(&SLOT_PARAM_KEY) {
@@ -32,15 +32,23 @@ async fn do_handling(params: ParameterTable<()>, user: &crate::UserTy, factory: 
                     oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
                 })?;
                 if let Some((vehicle_to_copy, vehicle_meta)) = vehicle {
+                    // upgrade vehicle to modern cubes
+                    let modernised_vehicle = converter.upgrade_to_modern(
+                        &mut std::io::Cursor::new(vehicle_to_copy.cube_data),
+                        &mut std::io::Cursor::new(vehicle_to_copy.colour_data),
+                    ).map_err(|e| {
+                        log::error!("Failed to convert vehicle {} (for copy-construct) from factory: {}", factory_id, e);
+                        oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16
+                    })?;
                     // parse cube data for weapon order
-                    let mut cursor = std::io::Cursor::new(&vehicle_to_copy.cube_data);
+                    let mut cursor = std::io::Cursor::new(&modernised_vehicle.cube_data);
                     let weapons = weapon_order.guess_weapons(&mut cursor);
                     // save to database
                     let to_save = oj_rc_core::persist::user::VehicleData {
                         name: Some(vehicle_meta.name),
                         slot,
-                        robot_data: vehicle_to_copy.cube_data,
-                        colour_data: vehicle_to_copy.colour_data,
+                        robot_data: modernised_vehicle.cube_data,
+                        colour_data: modernised_vehicle.colour_data,
                         weapon_order: weapons,
                         crf_id: Some(factory_id),
                         was_rated: Some(false),
@@ -68,6 +76,7 @@ pub struct CrfItemPurchaseProvider {
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
+    converter: std::sync::Arc<oj_rc_core::cubes::CubeConversionParser>,
 }
 
 #[async_trait::async_trait]
@@ -75,7 +84,7 @@ impl polariton_server::operations::Operation<()> for CrfItemPurchaseProvider {
     type User = crate::UserTy;
 
     async fn handle_async(&self, params: ParameterTable<()>, user: &Self::User) -> OperationResponse<()> {
-        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_handling(params, user, &self.factory, &self.weapon_order, &self.cpu_counter).await)
+        polariton_server::operations::result_to_op_resp::<CODE, ()>(do_handling(params, user, &self.factory, &self.weapon_order, &self.cpu_counter, &self.converter).await)
     }
 }
 
@@ -86,10 +95,11 @@ impl polariton_server::operations::OperationCode for CrfItemPurchaseProvider {
 }
 
 
-pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> CrfItemPurchaseProvider {
+pub(super) fn crf_copy_to_bay_provider(factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_order: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>, cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>, converter: std::sync::Arc<oj_rc_core::cubes::CubeConversionParser>) -> CrfItemPurchaseProvider {
     CrfItemPurchaseProvider {
         factory: factory.to_owned(),
         weapon_order,
-        cpu_counter
+        cpu_counter,
+        converter,
     }
 }
