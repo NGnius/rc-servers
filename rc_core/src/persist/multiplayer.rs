@@ -22,6 +22,10 @@ pub struct MultiplayerConfig {
     pub team_death_match: TeamDeathMatchConfig,
     #[serde(default = "default_validator")]
     pub vehicle_validator: super::VehicleValidator,
+    #[serde(default)]
+    pub minimum_level: u16,
+    #[serde(default = "default_minimum_cpu")]
+    pub minimum_cpu: u16,
 }
 
 impl super::config::SelfValidator for MultiplayerConfig {
@@ -128,6 +132,10 @@ pub(super) fn default_match_autostart_after_s() -> Option<u64> {
 
 pub(super) fn default_continue_loading_after_s() -> Option<u64> {
     Some(30)
+}
+
+pub(super) fn default_minimum_cpu() -> u16 {
+    100
 }
 
 pub(super) fn default_net_conf() -> NetworkConf {

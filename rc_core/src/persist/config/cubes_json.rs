@@ -453,6 +453,8 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             is_enabled: self.battle.multiplayer.enabled,
             lobby_autostart_after: self.battle.multiplayer.autostart_after_s.map(std::time::Duration::from_secs),
             loading_autostart_after: self.battle.multiplayer.continue_loading_after_s.map(std::time::Duration::from_secs),
+            min_level: self.battle.multiplayer.minimum_level as i32,
+            min_cpu: self.battle.multiplayer.minimum_cpu as i32,
         }
     }
 

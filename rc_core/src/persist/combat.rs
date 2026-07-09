@@ -637,6 +637,8 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         pit_config: super::multiplayer::default_pit_conf(),
         team_death_match: super::multiplayer::default_tdm_conf(),
         vehicle_validator: super::multiplayer::default_validator(),
+        minimum_level: 0,
+        minimum_cpu: super::multiplayer::default_minimum_cpu(),
     }
 }
 

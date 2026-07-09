@@ -553,6 +553,8 @@ pub struct MultiplayerSettings {
     pub is_enabled: bool,
     pub lobby_autostart_after: Option<std::time::Duration>,
     pub loading_autostart_after: Option<std::time::Duration>,
+    pub min_level: i32,
+    pub min_cpu: i32,
 }
 
 pub struct VehicleValidators {
