@@ -4,6 +4,7 @@ pub mod favicon;
 pub mod index;
 pub mod garage;
 pub mod user_federation;
+pub mod logout;
 
 use serde::Serialize;
 use actix_web::{web::{Html, Redirect}, Responder};

@@ -86,6 +86,7 @@ async fn main() -> std::io::Result<()> {
             .service(version_info)
             .service(web::login::form_submit)
             .service(web::login::form_load)
+            .service(web::logout::get)
             .service(web::favicon::favicon_standard)
             .service(web::dashboard::get)
             .service(web::dashboard::post) // for login redirect

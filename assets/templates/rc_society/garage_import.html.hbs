@@ -29,7 +29,9 @@
   <div class="form-stripe">
     <div class="form-header-right">
       Welcome {{form.display_name}}! |
-      <a href="/">Home</a>
+      <a href="/">Home</a> |
+      <a href="/dashboard">Dashboard</a> |
+      <a href="/logout">Sign Out</a>
     </div>
     <h1 class="form-banner">{{form.display_name}} Garage {{#if form.garage}}#{{form.garage.slot}}{{/if}} Import</h1>
     {{#if error}}

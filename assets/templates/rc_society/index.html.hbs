@@ -29,7 +29,8 @@
     <div class="form-header-right">
       {{#if form.is_logged_in}}
         Welcome {{form.display_name}}! |
-        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard">Dashboard</a> |
+        <a href="/logout">Sign Out</a>
       {{else}}
         <a href="/login">Login</a>
       {{/if}}
