@@ -258,4 +258,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(custom_game_player_state::game_player_status_update_provider(init_ctx))
         .add(custom_game_can_join_queue::game_can_queue_provider(init_ctx))
         .add(custom_game_team::game_team_change_provider(init_ctx))
+        .add(owned_cosmetics::save_selected_cosmetics_provider())
 }

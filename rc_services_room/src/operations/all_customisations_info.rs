@@ -209,7 +209,7 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
         params.insert(OWNED_SKINS_KEY, Typed::StrArr(all_skins().into_iter().map(|x| x.id.into()).collect::<Vec<_>>().into()));
         params.insert(OWNED_SPAWNS_KEY, Typed::StrArr(all_spawns().into_iter().map(|x| x.id.into()).collect::<Vec<_>>().into()));
         params.insert(OWNED_DEATHS_KEY, Typed::StrArr(all_deaths().into_iter().map(|x| x.id.into()).collect::<Vec<_>>().into()));
-        params.insert(OWNED_EMOTES_KEY, Typed::StrArr(vec![].into()));
+        params.insert(OWNED_EMOTES_KEY, Typed::StrArr(vec![].into())); // this isn't used??? (see owned_cosmetics)
         Ok(params.into())
     })
 }

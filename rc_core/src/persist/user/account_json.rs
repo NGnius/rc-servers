@@ -1604,6 +1604,63 @@ impl <C: Clone + Send> super::User<C> for UserData {
             Ok(true)
         }
     }
+
+    async fn get_emotes(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError> {
+        let user_aux_opt = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::EmotigramWheel).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve EmotigramWheel for user_id {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    "Failed to update EmotigramWheel".to_owned(),
+                )
+            })?;
+        if let Some(data) = user_aux_opt {
+            let val: Vec<String> = serde_json::from_str(&data.data)
+                .map_err(|e| {
+                    log::error!("Failed to deserialize EmotigramWheel for user_id {}: {}", self.account.id, e);
+                    polariton_server::operations::SimpleOpError::with_message(
+                        crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                        "Failed to deserialize EmotigramWheel".to_owned(),
+                    )
+                })?;
+            Ok(val)
+        } else {
+            // database entry not created yet
+            Ok(Vec::default())
+        }
+    }
+
+    async fn set_emotes(&self, emotes: &[String]) -> Result<(), polariton_server::operations::SimpleOpError> {
+        let json_str = serde_json::to_string_pretty(emotes).expect("Bad emotes");
+        //log::debug!("Settings emotes to {}", json_str);
+        let to_update = oj_rc_database::schema::user_aux::ActiveModel {
+            data: oj_rc_database::sea_orm::ActiveValue::Set(json_str),
+            ..Default::default()
+        };
+        let is_update_missed = self.db.update_user_aux_by_user_id_and_descriptor(to_update.clone(), self.account.id, oj_rc_database::schema::user_aux::Descriptor::EmotigramWheel).await
+            .map_err(|e| {
+                log::error!("Failed to update EmotigramWheel for user_id {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                    "Failed to update EmotigramWheel".to_owned(),
+                )
+            })?.is_none();
+        if is_update_missed { // needs to be created
+            let mut to_insert = to_update;
+            to_insert.user_id = oj_rc_database::sea_orm::ActiveValue::Set(self.account.id);
+            to_insert.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp());
+            to_insert.descriptor = oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::EmotigramWheel);
+            self.db.insert_user_aux(vec![to_insert]).await
+                .map_err(|e| {
+                    log::error!("Failed to insert EmotigramWheel for user_id {}: {}", self.account.id, e);
+                    polariton_server::operations::SimpleOpError::with_message(
+                        crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                        "Failed to insert EmotigramWheel".to_owned(),
+                    )
+                })?;
+        }
+        Ok(())
+    }
 }
 
 struct GameEventSetterImpl {

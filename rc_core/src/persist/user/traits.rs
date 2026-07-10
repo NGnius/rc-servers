@@ -117,6 +117,8 @@ pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + Multipla
     async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<PurchaseResult, polariton_server::operations::SimpleOpError>;
     async fn currency_debit(&self, ty: CurrencyType, to_sub: u64) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn mark_code_redeemed(&self, code: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn get_emotes(&self) -> Result<Vec<String>, polariton_server::operations::SimpleOpError>;
+    async fn set_emotes(&self, emotes: &[String]) -> Result<(), polariton_server::operations::SimpleOpError>;
 }
 
 #[async_trait::async_trait]
