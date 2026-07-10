@@ -622,6 +622,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     literustlib::packet::Property::ReliableOrdered,
                     &new_user.connection.connection
                 ).await);
+                users.insert(id, new_user);
             } else {
                 let aliases = self.fakes_handler.get_client_ais().await.into_iter().find(|(key, _val)| *key == id).map(|(_key, val)| val).unwrap_or_default();
                 log::info!("AIs running on new player {} in game {}: {:?}", id, game_guid, aliases);
