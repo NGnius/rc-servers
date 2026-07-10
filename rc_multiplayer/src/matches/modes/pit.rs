@@ -160,6 +160,7 @@ pub struct PitLogic {
     settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
     initial_spawns: Vec<(u8, oj_rc_core::persist::config::Point)>, // (player_id, spawn_point)
+    map_center: oj_rc_core::persist::config::Point,
 }
 
 impl PitLogic {
@@ -172,6 +173,7 @@ impl PitLogic {
             timer_task: tokio::sync::Mutex::new(None),
             settings: pit_settings,
             initial_spawns: Self::generate_first_spawns(map, players),
+            map_center: super::calculate_center(map.pit_spawns.iter()),
         }
     }
 
@@ -338,7 +340,7 @@ impl PitLogic {
             data: Box::new(rlnl::events::sync::SpawnPoint {
                 pos: rlnl::types::PosQuatPair {
                     pos: rlnl::types::CompressedVec3::from((spawn_point.x, spawn_point.y, spawn_point.z)),
-                    rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                    rot: super::looking_at_point(spawn_point, &self.map_center),
                 },
                 owner: *player_id,
             })
@@ -370,6 +372,7 @@ impl PitLogic {
                 respawn_timestamp,
                 connections,
                 spawn_point,
+                Some(self.map_center.clone()),
                 player_id,
                 player_desc.machine.is_alive.clone(),
             ));

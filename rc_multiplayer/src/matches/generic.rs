@@ -1450,6 +1450,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     }
 
     async fn send_sync_events(connection: UserSender, _player_id: u8, players: Vec<std::sync::Arc<oj_rc_core::persist::user::PlayerDescriptor>>, extra_packets: Vec<super::RlnlPacket>, map: std::sync::Arc<oj_rc_core::persist::config::MapConfig>) -> std::io::Result<()> {
+        let map_center = super::modes::calculate_center(map.spawns.values().flat_map(|x| x.iter()));
         let num_players = players.len() as u8;
         let sender = connection.rlnl();
         sender.send_empty(
@@ -1518,7 +1519,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 &rlnl::events::sync::SpawnPoint {
                                     pos: rlnl::types::PosQuatPair {
                                         pos: rlnl::types::CompressedVec3::from((spawn.x, spawn.y, spawn.z)),
-                                        rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                                        rot: super::modes::looking_at_point(spawn, &map_center),
                                     },
                                     owner: player.player_id,
                                 },

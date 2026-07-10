@@ -212,10 +212,11 @@ pub struct TeamDeathMatchLogic {
     score_tracking: ScoreTracker,
     player_tracking: PlayerTracker,
     surrender_tracking: super::trackers::SurrenderGameTracker,
+    map_center: oj_rc_core::persist::config::Point,
 }
 
 impl TeamDeathMatchLogic {
-    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, _map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>) -> Self {
+    pub fn new(config: &oj_rc_core::data::game_mode::GameModeConfig, map: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor], tdm_settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>) -> Self {
         let self_destruct_is_kill = tdm_settings.self_destruct_is_kill;
         TeamDeathMatchLogic {
             respawn_heal_duration: config.respawn_heal_duration,
@@ -226,6 +227,7 @@ impl TeamDeathMatchLogic {
             score_tracking: ScoreTracker::new(players, self_destruct_is_kill),
             player_tracking: PlayerTracker::new(players),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
+            map_center: super::calculate_center(map.spawns.values().flat_map(|x| x.iter())),
         }
     }
 
@@ -309,6 +311,7 @@ impl TeamDeathMatchLogic {
                     respawn_timestamp,
                     connections,
                     spawn_point,
+                    Some(self.map_center.clone()),
                     player_id,
                     player_desc.machine.is_alive.clone(),
                 ));

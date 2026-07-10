@@ -1124,6 +1124,7 @@ pub struct BattleArenaLogic {
     crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>,
     config: oj_rc_core::data::battle_arena_config::BattleArenaData,
     can_drop_shields: bool,
+    map_center: oj_rc_core::persist::config::Point,
 }
 
 impl BattleArenaLogic {
@@ -1151,6 +1152,7 @@ impl BattleArenaLogic {
             can_drop_shields: super_conf.descriptor.overrides.as_ref()
                 .map(|overrides| overrides.base_shields_go_down)
                 .unwrap_or(true),
+            map_center: super::calculate_center(super_conf.map.spawns.values().flat_map(|x| x.iter())),
         }
     }
 
@@ -1300,6 +1302,7 @@ impl BattleArenaLogic {
                     respawn_timestamp,
                     connections,
                     spawn_point,
+                    Some(self.map_center.clone()),
                     player_id,
                     player_desc.machine.is_alive.clone(),
                 ));
@@ -1458,12 +1461,34 @@ impl CustomGameLogic for BattleArenaLogic {
                     property: literustlib::packet::Property::ReliableOrdered,
                     data: Box::new(rlnl::events::sync::GetTeamBase {
                         base_1: rlnl::types::PosQuatPair {
-                            pos: generic.map_config.bases.get(&0).map(|(s, _)| (s.center.x, s.center.y, s.center.z)).unwrap_or((0.0, 0.0, 0.0)).into(),
-                            rot: (0.0, 0.0, 0.0, 0.0).into(),
+                            pos: generic.map_config.bases.get(&0)
+                                .map(|(s, _)| (s.center.x, s.center.y, s.center.z))
+                                .unwrap_or((0.0, 0.0, 0.0)).into(),
+                            rot: generic.map_config.bases.get(&0)
+                                .map(|(s, _)| {
+                                    let loc = oj_rc_core::persist::config::Point {
+                                        x: s.center.x,
+                                        y: s.center.y,
+                                        z: s.center.z,
+                                    };
+                                    super::looking_at_point(&loc, &self.map_center)
+                                })
+                                .unwrap_or((0.0, 0.0, 0.0, 0.0).into()),
                         },
                         base_2: rlnl::types::PosQuatPair {
-                            pos: generic.map_config.bases.get(&1).map(|(s, _)| (s.center.x, s.center.y, s.center.z)).unwrap_or((0.0, 0.0, 0.0)).into(),
-                            rot: (0.0, 0.0, 0.0, 0.0).into(),
+                            pos: generic.map_config.bases.get(&1)
+                                .map(|(s, _)| (s.center.x, s.center.y, s.center.z))
+                                .unwrap_or((0.0, 0.0, 0.0)).into(),
+                            rot: generic.map_config.bases.get(&1)
+                                .map(|(s, _)| {
+                                    let loc = oj_rc_core::persist::config::Point {
+                                        x: s.center.x,
+                                        y: s.center.y,
+                                        z: s.center.z,
+                                    };
+                                    super::looking_at_point(&loc, &self.map_center)
+                                })
+                                .unwrap_or((0.0, 0.0, 0.0, 0.0).into()),
                         },
                         protonium_cube_health: self.config.protonium_health as i32,
                     }),
