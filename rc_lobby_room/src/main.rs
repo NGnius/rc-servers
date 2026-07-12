@@ -7,6 +7,7 @@ mod data;
 mod operations;
 mod events;
 mod team_selection;
+mod queue_time_tracker;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;

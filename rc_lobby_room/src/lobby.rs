@@ -128,6 +128,7 @@ pub struct QueueHandler {
     autostart_after: Option<std::time::Duration>,
     autostart_task_started: std::sync::atomic::AtomicBool,
     team_choosers: std::sync::Arc<crate::team_selection::InitedTeamChoosers>,
+    wait_times: std::sync::Arc<super::queue_time_tracker::QueueTimeTracker>,
 }
 
 impl QueueHandler {
@@ -167,6 +168,7 @@ impl QueueHandler {
             autostart_after: mp_settings.lobby_autostart_after,
             autostart_task_started: std::sync::atomic::AtomicBool::new(false),
             team_choosers: std::sync::Arc::new(team_choosers),
+            wait_times: std::sync::Arc::new(super::queue_time_tracker::QueueTimeTracker::new()),
         }
     }
 
@@ -185,6 +187,7 @@ impl QueueHandler {
         let weapon_guesser = self.weapon_guesser.clone();
         let autostart_after = self.autostart_after.unwrap();
         let team_choosers = self.team_choosers.clone();
+        let wait_times = self.wait_times.clone();
 
         tokio::spawn(async move {
             loop {
@@ -250,6 +253,7 @@ impl QueueHandler {
                         q_entry,
                         starter.as_ref().as_ref(),
                         team_choosers.as_ref(),
+                        wait_times.as_ref(),
                     ).await;
                 }
 
@@ -280,7 +284,8 @@ impl QueueHandler {
             key,
             q_entry,
             user,
-            &self.team_choosers
+            &self.team_choosers,
+            &self.wait_times,
         ).await
     }
 
@@ -310,6 +315,7 @@ impl QueueHandler {
         mut q_entry: Queue,
         user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync),
         team_choosers: &crate::team_selection::InitedTeamChoosers,
+        wait_times: &crate::queue_time_tracker::QueueTimeTracker,
     ) {
         let guid_str = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
@@ -339,12 +345,14 @@ impl QueueHandler {
             player_descs.push(lobby_desc);
         }
 
+        wait_times.update_time_match_starting_now(q_entry.users.iter().map(|x| x.enqueued_at.clone()));
+
         let missing = users_per_game.saturating_sub(q_entry.users.len());
 
         match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, team_picker, missing).await {
             Ok(fakes) => {
                 let player_datas = q_entry.users.iter().map(|x| x.player.clone())
-                    .chain(fakes.players.into_iter().map(|(desc, _emu)| desc),)
+                    .chain(fakes.players.into_iter().map(|(desc, _emu)| desc))
                     .collect();
                 let enter_battle_ev = crate::events::battle_enter::BattleEnter {
                     host: hostname.to_string(),
@@ -804,5 +812,9 @@ impl QueueHandler {
                 q_lock.remove(&key);
             }
         }
+    }
+
+    pub fn wait_time_s(&self) -> i32 {
+        self.wait_times.get_average()
     }
 }

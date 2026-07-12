@@ -37,7 +37,7 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                 },
                                 oj_rc_core::data::lobby::LobbyType::CustomGame => {
                                     log::debug!("Joining platoon {} to custom game lobby", group_id.string);
-                                    params.insert(ESTIMATED_QUEUE_TIME_PARAM_KEY, Typed::Int(42));
+                                    params.insert(ESTIMATED_QUEUE_TIME_PARAM_KEY, Typed::Int(self.queue_handler.wait_time_s()));
                                     params.insert(PERSONAL_RANKING_PARAM_KEY, Typed::Double(42.0));
                                     let events = user.event_sender();
                                     let user_info = user.user()?;
@@ -50,7 +50,7 @@ impl <C: Send + 'static> SimpleOperation<C> for QueueJoinProvider {
                                     // regular multiplayer
                                     if let Some(Typed::Str(event_to_join)) = params.remove(&EVENT_TO_JOIN_PARAM_KEY) {
                                         log::debug!("Joining platoon {} to multiplayer lobby with event {}", group_id.string, event_to_join.string);
-                                        params.insert(ESTIMATED_QUEUE_TIME_PARAM_KEY, Typed::Int(42));
+                                        params.insert(ESTIMATED_QUEUE_TIME_PARAM_KEY, Typed::Int(self.queue_handler.wait_time_s()));
                                         params.insert(PERSONAL_RANKING_PARAM_KEY, Typed::Double(42.0));
                                         let events = user.event_sender();
                                         let user_info = user.user()?;
