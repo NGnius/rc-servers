@@ -31,6 +31,15 @@ impl ChatSystemConfig {
             chat_system,
             user,
         };
+        if text.to_lowercase().contains("meow") {
+            user.show_dev_message(
+                oj_rc_core::persist::user::intercom::IntercomDevMessage {
+                    message: "MEOW".to_string(),
+                    duration: 5,
+                },
+                vec![user.public_id().to_owned()],
+            ).await;
+        }
         for cmd in self.commands.iter() {
             if let Some(result) = cmd.perform_if_match(text, ctx).await {
                 return result;

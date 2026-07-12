@@ -33,6 +33,11 @@ impl IntercomHandler {
                     if let Some(_user) = user.upgrade() {
                         match msg {
                             IntercomWebServiceUserMessage::DevMessage(msg) => {
+                                let clear_event = super::DevMessage {
+                                    message: " ".to_owned(),
+                                    duration: 1,
+                                };
+                                emitter.emit(clear_event);
                                 let event = super::DevMessage {
                                     message: msg.message,
                                     duration: msg.duration as i32,
