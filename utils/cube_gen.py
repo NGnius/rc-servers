@@ -195,6 +195,7 @@ LOGIN_MESSAGES = [
     "Stop Killing Games",
     "Also check out RC15",
     "Alara, you wanna open this jar of jam for me?",
+    "The nerfings will continue until morale improves",
 ]
 
 def guess_category(name: str, sprite: str) -> str:
