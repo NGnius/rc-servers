@@ -345,7 +345,7 @@ impl QueueHandler {
             player_descs.push(lobby_desc);
         }
 
-        wait_times.update_time_match_starting_now(q_entry.users.iter().map(|x| x.enqueued_at.clone()));
+        wait_times.update_time_match_starting_now(q_entry.users.iter().map(|x| x.enqueued_at));
 
         let missing = users_per_game.saturating_sub(q_entry.users.len());
 
