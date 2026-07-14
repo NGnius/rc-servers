@@ -22,6 +22,10 @@ pub struct CliArgs {
     /// Verify configuration and then exit
     #[arg(long)]
     pub validate: bool,
+
+    /// Rate limit incoming federated auth requests
+    #[arg(long)]
+    pub chill: bool,
 }
 
 impl CliArgs {

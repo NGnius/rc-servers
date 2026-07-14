@@ -9,15 +9,18 @@ pub struct RcConfig {
     //pub data: std::path::PathBuf,
     pub account_provider: oj_rc_core::UserImpl,
     pub assets: std::path::PathBuf,
+    pub rate_limit_fediverse: bool,
 }
 
 impl RcConfig {
     pub async fn from_args(args: &crate::cli::CliArgs) -> Self {
         let conf = oj_rc_core::persist::config::ConfigImpl::load(&args.assets_robocraft).expect("Bad config data");
+        log::info!("Fediverse auth --chill enabled? {}", args.chill);
         Self {
             account_provider: oj_rc_core::UserImpl::load(&args.data_robocraft, &conf).await.expect("Invalid Robocraft user data"),
             //data: args.data_robocraft.clone().into(),
             assets: args.assets_robocraft.clone().into(),
+            rate_limit_fediverse: args.chill,
         }
     }
 }
