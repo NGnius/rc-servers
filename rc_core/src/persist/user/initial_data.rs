@@ -92,7 +92,7 @@ fn default_fedi_user_data(info: &super::FederatedAuthInfo, fedi_id: i32, qualifi
         public_id: oj_rc_database::sea_orm::ActiveValue::Set(qualified_name.to_owned()),
         display_name: oj_rc_database::sea_orm::ActiveValue::Set(qualified_name.to_owned()),
         password: oj_rc_database::sea_orm::ActiveValue::Set(password),
-        email: oj_rc_database::sea_orm::ActiveValue::Set(format!("{}@{}", info.display_name, info.domain)),
+        email: oj_rc_database::sea_orm::ActiveValue::Set("".to_owned()),
         steam_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
         federation_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(fedi_id)),
     }

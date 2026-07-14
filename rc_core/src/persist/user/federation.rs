@@ -344,7 +344,11 @@ impl super::AccountProvider {
                 message: e.to_string(),
                 code: crate::data::error_codes::AuthErrorCode::BadCredentials,
             })?;
+        let mut rc_token = remote_token_data.claims.client_details;
+        rc_token.email_address = format!("{}@{}", rc_token.robocraft_name, self.auth);
+        rc_token.email_verified = true;
         let local_token_data = crate::auth::Token {
+            client_details: rc_token,
             iss: self.auth.to_string(),
             fedi_token: Some(remote_token.to_owned()),
             ..remote_token_data.claims
