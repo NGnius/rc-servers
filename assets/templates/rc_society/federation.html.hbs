@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Federation - Openjam</title>
+  <meta name="title" content="Federation - Openjam" />
+  <meta name="description" content="View federation of this third-party Robocraft servers" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="og:title" content="Federation - Openjam" />
+  <meta property="og:description" content="View federation of this third-party Robocraft servers" />
+  <meta property="og:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary" />
+  <meta property="twitter:url" content="https://git.ngram.ca/OpenJam/rc-servers" />
+  <meta property="twitter:title" content="Federation - Openjam" />
+  <meta property="twitter:description" content="View federation of this third-party Robocraft servers" />
+  <meta property="twitter:image" content="https://git.ngram.ca/OpenJam/rc-servers/raw/branch/main/assets/robocraft/favicon.jpg" />
+
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  {{> stylesheet}}
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      Welcome {{form.display_name}}! |
+      <a href="/">Home</a> |
+      <a href="/dashboard">Dashboard</a> |
+      <a href="/logout">Sign Out</a>
+    </div>
+    <h1 class="form-banner">Federation Details</h1>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+
+    <div class="access-list">
+      {{#each form.instances}}
+      <div class="access-row-box">
+        <h4 class="access-box-title">{{this.domain}}</h4>
+        <div class="box-details">
+          <div class="box-details-key">Database ID</div>
+          <div class="box-details-value">{{this.id}}</div>
+          <div class="box-details-key">Auth Server</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{this.auth}}">{{this.auth}}</a></div>
+          <div class="box-details-key">Society Server</div>
+          <div class="box-details-value"><a class="box-details-link" href="{{this.society}}">{{this.society}}</a></div>
+          <div class="box-details-key">First Seen</div>
+          <div class="box-details-value"><time datetime="{{this.first_used_iso}}">{{this.first_used_iso}}</time></div>
+          <div class="box-details-key">Last Seen</div>
+          <div class="box-details-value"><time datetime="{{this.first_used_iso}}">{{this.first_used_iso}}</time></div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

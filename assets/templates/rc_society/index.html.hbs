@@ -46,7 +46,7 @@
     <div class="form-text-block">
       <p>
       This service allows you to manage your account settings, import and export your garage bays, view the server config, and will eventually (not yet) federate with other OpenJam rc-servers instances.
-      You can view other known instances <a href="/federation">here</a>.
+      {{#if form.is_logged_in}}You can view other known instances <a href="/federation">here</a>.{{/if}}
       This service is intended to have stable public APIs for expanding existing functionality.
       If you do not want any of this functionality in your instance, simply do not run this service with your instance.
       </p>

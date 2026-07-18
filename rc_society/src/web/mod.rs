@@ -5,6 +5,7 @@ pub mod index;
 pub mod garage;
 pub mod user_federation;
 pub mod logout;
+pub mod federation;
 
 use serde::Serialize;
 use actix_web::{web::{Html, Redirect}, Responder};

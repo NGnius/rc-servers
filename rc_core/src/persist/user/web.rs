@@ -202,4 +202,20 @@ impl super::WebUser for super::account_json::UserData {
             chats: chat_list,
         })
     }
+
+    async fn fedi_info(&self) -> Result<super::FederationWebData, Box<dyn std::error::Error>> {
+        let servers = self.db.federations_all().await?;
+        Ok(super::FederationWebData {
+            federations: servers.into_iter()
+                .map(|server| super::FederationWebDetails {
+                    id: server.id,
+                    domain: server.domain,
+                    auth: server.auth,
+                    society: server.society,
+                    last_used: server.last_used_time,
+                    first_used: server.creation_time,
+                })
+                .collect()
+        })
+    }
 }

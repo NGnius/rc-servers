@@ -98,7 +98,6 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
     match super::try_auth_user(user_opt, auth.as_ref(), &req).await? {
         super::LoginReturn::AuthFail(resp) => Ok(resp),
         super::LoginReturn::Success(user) => {
-            // TODO
             log::debug!("Rendering user's dashboard");
             let creation_time = user.creation();
             let creation_time_chrono = chrono::DateTime::<chrono::Utc>::from_timestamp_secs(creation_time).unwrap_or_default();

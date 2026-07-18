@@ -703,6 +703,7 @@ pub trait WebUser: CommonUser {
     async fn account_stats(&self) -> Result<AccountWebStats, Box<dyn std::error::Error>>;
     async fn sanction_stats(&self) -> Result<SanctionWebStats, Box<dyn std::error::Error>>;
     async fn social_stats(&self) -> Result<SocialWebStats, Box<dyn std::error::Error>>;
+    async fn fedi_info(&self) -> Result<FederationWebData, Box<dyn std::error::Error>>;
 }
 
 pub struct GarageWebInfo {
@@ -747,6 +748,19 @@ pub struct SocialWebStats {
     /// Friend target is user
     pub friends_of_total: u64,
     pub chats: Vec<String>,
+}
+
+pub struct FederationWebData {
+    pub federations: Vec<FederationWebDetails>,
+}
+
+pub struct FederationWebDetails {
+    pub id: i32,
+    pub domain: String,
+    pub auth: String,
+    pub society: String,
+    pub last_used: i64,
+    pub first_used: i64,
 }
 
 #[async_trait::async_trait]

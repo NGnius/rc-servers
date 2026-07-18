@@ -943,6 +943,13 @@ impl Database {
             .await
     }
 
+    pub async fn federations_all(&self) -> Result<Vec<crate::schema::federation::Model>, sea_orm::DbErr> {
+        crate::schema::federation::Entity::find()
+            .order_by_asc(crate::schema::federation::Column::Id)
+            .all(self.orm.as_ref())
+            .await
+    }
+
     pub async fn insert_federation(&self, entity: crate::schema::federation::ActiveModel) -> Result<crate::schema::federation::Model, sea_orm::DbErr> {
         #[cfg(debug_assertions)]
         assert!(matches!(entity.id, sea_orm::ActiveValue::NotSet));

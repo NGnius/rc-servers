@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::user_federation::post_add)
             .service(web::user_federation::post_off)
             .service(web::user_federation::post_on)
+            .service(web::federation::get)
             .service(api::config::get)
             .service(api::urls::get)
     })
