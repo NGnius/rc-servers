@@ -151,6 +151,9 @@ impl QueueHandler {
         };
         let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
         let server_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf);
+        if !mp_settings.is_enabled {
+            log::info!("Multiplayer is disabled, disallowing others from joining any lobby");
+        }
         Self {
             users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             users_in_custom_games_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
