@@ -283,6 +283,7 @@ impl Database {
                 }
                 #[cfg(not(debug_assertions))]
                 {
+                    let _ = user_id;
                     None
                 }
             },

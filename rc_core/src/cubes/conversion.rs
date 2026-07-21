@@ -41,6 +41,7 @@ impl ModernMapping {
         }
     }
 
+    #[allow(dead_code)]
     fn pretty(&self) -> String {
         match self {
             Self::Always(id, colour) => format!("ID:{}|colour#{}", id, colour),
