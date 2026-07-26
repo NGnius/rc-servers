@@ -256,13 +256,6 @@ impl Database {
         let size = match self.orm.as_ref() {
             // TODO implement support in other databases
             sea_orm::DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-
-                #[cfg(debug_assertions)]
-                {
-                    /*let query = sea_orm::sea_query::raw_query!(
-                        PostgresQueryBuilder,
-                        r#"select sum(pg_column_size(g.*)) from garages g where g.user_id = $user_id;"#
-                    );*/
                     struct PgColumnSize;
                     impl sea_orm::sea_query::Iden for PgColumnSize {
                         fn unquoted(&self, s: &mut dyn std::fmt::Write) {
@@ -280,12 +273,6 @@ impl Database {
                         .one(self.orm.as_ref())
                         .await?;
                     result.map(|x| x.column)
-                }
-                #[cfg(not(debug_assertions))]
-                {
-                    let _ = user_id;
-                    None
-                }
             },
             _ => None,
         };
