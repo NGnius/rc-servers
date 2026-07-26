@@ -235,11 +235,11 @@ impl Database {
             .await
     }
 
-    pub async fn garage_count_by_user_id_between(&self, user_id: i32, max_cpu: u64, min_cpu: u64) -> Result<u64, sea_orm::DbErr> {
+    pub async fn garage_count_by_user_id_between(&self, user_id: i32, max_cpu: u32, min_cpu: u32) -> Result<u64, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
-            .filter(crate::schema::garage::Column::TotalRobotCpu.lte(max_cpu))
-            .filter(crate::schema::garage::Column::TotalRobotCpu.gte(min_cpu))
+            .filter(crate::schema::garage::Column::TotalRobotCpu.lte(max_cpu as i32))
+            .filter(crate::schema::garage::Column::TotalRobotCpu.gte(min_cpu as i32))
             .count(self.orm.as_ref())
             .await
     }
@@ -252,7 +252,7 @@ impl Database {
             .await
     }
 
-    pub async fn garage_storage_by_user_id(&self, user_id: i32) -> Result<Option<u64>, sea_orm::DbErr> {
+    pub async fn garage_storage_by_user_id(&self, user_id: i32) -> Result<Option<i32>, sea_orm::DbErr> {
         let size = match self.orm.as_ref() {
             // TODO implement support in other databases
             sea_orm::DatabaseConnection::SqlxPostgresPoolConnection(_) => {
@@ -276,7 +276,7 @@ impl Database {
                                 .arg(sea_orm::sea_query::Expr::col((crate::schema::garage::Entity, sea_orm::sea_query::Asterisk)))
                         , "column")
                         .filter(crate::schema::garage::Column::UserId.eq(user_id))
-                        .into_model::<crate::schema::common_query::SingleColumn<u64>>()
+                        .into_model::<crate::schema::common_query::SingleColumn<i32>>()
                         .one(self.orm.as_ref())
                         .await?;
                     result.map(|x| x.column)
@@ -456,7 +456,7 @@ impl Database {
     pub async fn count_sanctions_by_user_id_and_ack(&self, user_id: i32, is_acked: bool) -> Result<u64, sea_orm::DbErr> {
         crate::schema::sanction::Entity::find()
             .filter(crate::schema::sanction::Column::UserId.eq(user_id))
-            .filter(crate::schema::sanction::Column::Acknowledged.eq(is_acked))
+            .filter(if is_acked { crate::schema::sanction::Column::Acknowledged.is_not_null() } else { crate::schema::sanction::Column::Acknowledged.is_null() })
             //.order_by_asc(crate::schema::sanction::Column::CreationTime)
             .count(self.orm.as_ref())
             .await

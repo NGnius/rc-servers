@@ -110,7 +110,7 @@ impl super::WebUser for super::account_json::UserData {
     async fn garage_stats(&self) -> Result<super::GarageWebStats, Box<dyn std::error::Error>> {
         let vehicle_count = self.db.garage_count_by_user_id(self.account.id).await?;
         let regular_count = self.db.garage_count_by_user_id_between(self.account.id, 2_000, 1).await?;
-        let mega_count = self.db.garage_count_by_user_id_between(self.account.id, u32::MAX as u64, 2_000).await?;
+        let mega_count = self.db.garage_count_by_user_id_between(self.account.id, u32::MAX, 2_000).await?;
         let empty_count = self.db.garage_count_by_user_id_between(self.account.id, 0, 0).await?;
         let factory_count = self.db.garage_count_by_user_id_factory(self.account.id).await?;
         let storage_size = self.db.garage_storage_by_user_id(self.account.id).await?;
@@ -121,7 +121,7 @@ impl super::WebUser for super::account_json::UserData {
             mega_vehicle_total: mega_count,
             empty_vehicle_total: empty_count,
             factory_vehicle_total: factory_count,
-            storage_bytes_total: storage_size,
+            storage_bytes_total: storage_size.map(|size| size.try_into().unwrap_or(0)),
             selected_garage: selected_garage_slot,
         })
     }
