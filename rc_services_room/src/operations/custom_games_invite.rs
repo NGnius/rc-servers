@@ -10,6 +10,7 @@ const INVITE_PARAM_KEY: u8 = 189; // hashtable (refer to C# CheckIfHasBeenInvite
 
 pub(super) struct CustomGamePendingInvites {
     games: std::sync::Arc<crate::custom_game_tracker::CustomGameMesh>,
+    keylock_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
 }
 
 #[async_trait::async_trait]
@@ -20,14 +21,33 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
     async fn handle(&self, mut params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let user_info = user.user()?;
         let my_pub_id = user_info.public_id();
-        if let Some(session) = self.games.get_user_game(my_pub_id).await {
+        let mut is_workaround = false;
+        let session = if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
+            log::debug!("User {} is in keylock workaround mode ({})", my_pub_id, session.session_id);
+            is_workaround = true;
+            Some(session)
+        } else if let Some(session) = self.games.get_user_game(my_pub_id).await {
+            Some(session)
+        } else {
+            None
+        };
+        if let Some(session) = session {
             let myself = session.users.iter().find(|u| u.public_id == my_pub_id).unwrap();
             if myself.is_invited {
                 log::debug!("User {} has checked and is invited to custom game {}", my_pub_id, session.session_id);
                 params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(CustomGameInviteCode::PendingInvite as _));
                 // build invite data
                 let leader = session.users.first().unwrap();
-                let leader_avatar = user_info.list_avatar_info(std::slice::from_ref(&leader.public_id)).await?;
+                let leader_avatar = if is_workaround {
+                    vec![oj_rc_core::persist::user::SocialInfo {
+                        public_id: leader.public_id.clone(),
+                        display_name: leader.public_id.clone(),
+                        avatar_id: Some(6),
+                    }]
+                } else {
+                    user_info.list_avatar_info(std::slice::from_ref(&leader.public_id)).await?
+                };
+
                 let resp = CustomGameInvite {
                     inviter_public_id: leader_avatar[0].public_id.clone(),
                     inviter_display_name: leader_avatar[0].display_name.clone(),
@@ -51,6 +71,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
 pub(super) fn pending_invite_provider<C: Send + 'static>(init_ctx: &crate::InitConfig) -> SimpleOpImpl<C, crate::UserTy, CustomGamePendingInvites> {
     SimpleOpImpl::new(CustomGamePendingInvites {
         games: init_ctx.custom_games.clone(),
+        keylock_workaround: init_ctx.workarounds.edit_mode_input_lockup(),
     })
 }
 

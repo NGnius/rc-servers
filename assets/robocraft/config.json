@@ -14529,6 +14529,15 @@
                 "permission": "Administrator"
             },
             {
+                "regex": "\\?klf",
+                "op": {
+                    "type": "BuiltIn",
+                    "built_in": "Intercom",
+                    "intercom": "KeybindLockFix"
+                },
+                "permission": "Player"
+            },
+            {
                 "regex": "\\?help",
                 "op": {
                     "type": "BuiltIn",

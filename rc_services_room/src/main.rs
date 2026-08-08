@@ -7,6 +7,7 @@ mod operations;
 mod vehicle_validators;
 mod custom_game_tracker;
 mod user_service;
+mod workarounds;
 
 use oj_polariton_auth::Handshake;
 use tokio::net;
@@ -29,6 +30,7 @@ pub struct InitConfig {
     pub vehicle_validators: vehicle_validators::InitedVehicleValidators,
     pub custom_games: std::sync::Arc<custom_game_tracker::CustomGameMesh>,
     pub user_mesh: std::sync::Arc<user_service::UserMesh>,
+    pub workarounds: workarounds::Workarounds,
 }
 
 #[tokio::main]
@@ -55,6 +57,7 @@ async fn main() -> std::io::Result<()> {
         vehicle_validators,
         custom_games: std::sync::Arc::new(custom_game_tracker::CustomGameMesh::new()),
         user_mesh: std::sync::Arc::new(user_service::UserMesh::new()),
+        workarounds: workarounds::Workarounds::new(),
     });
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));

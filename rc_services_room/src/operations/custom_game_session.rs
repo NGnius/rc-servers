@@ -8,6 +8,7 @@ const RESPONSE_DATA_PARAM_KEY: u8 = 169; // hashtable; out
 
 pub(super) struct CustomGameRetriever {
     games: std::sync::Arc<crate::custom_game_tracker::CustomGameMesh>,
+    keylock_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
 }
 
 #[async_trait::async_trait]
@@ -18,7 +19,15 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
     async fn handle(&self, mut params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let user_info = user.user()?;
         let my_pub_id = user_info.public_id();
-        let game_opt = self.games.get_user_game(my_pub_id).await;
+        let mut is_workaround = false;
+        let game_opt = if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
+            is_workaround = true;
+            Some(session)
+        } else if let Some(session) = self.games.get_user_game(my_pub_id).await {
+            Some(session)
+        } else {
+            None
+        };
         if let Some(game) = game_opt {
             log::debug!("User {} retrieved their custom game session {} info", my_pub_id, game.session_id);
             params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::SessionRetrieveResponse::SessionRetrieved as _));
@@ -26,8 +35,17 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
                 .map(|member| member.public_id.clone())
                 .collect();
             let avatars = user_info.list_avatar_info(&pub_ids).await?;
-            let avatar_map: std::collections::HashMap<_, _> = avatars.into_iter()
+            let mut avatar_map: std::collections::HashMap<_, _> = avatars.into_iter()
                 .map(|avatar| (avatar.public_id.clone(), avatar)).collect();
+            if is_workaround {
+                let leader = game.users.first().unwrap();
+                avatar_map.insert(leader.public_id.clone(), oj_rc_core::persist::user::SocialInfo {
+                    public_id: leader.public_id.clone(),
+                    display_name: leader.public_id.clone(),
+                    avatar_id: Some(6),
+                });
+            }
+            let avatar_map = avatar_map;
             let resp = crate::data::custom_games::Session {
                 leader: game.users.first().map(|leader| leader.public_id.clone()).unwrap_or_default(),
                 session: game.session_id,
@@ -63,9 +81,13 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
     }
 }
 
-pub(super) fn custom_session_provider<C: Send + 'static>(games: &std::sync::Arc<crate::custom_game_tracker::CustomGameMesh>) -> SimpleOpImpl<C, crate::UserTy, CustomGameRetriever> {
+pub(super) fn custom_session_provider<C: Send + 'static>(
+    games: &std::sync::Arc<crate::custom_game_tracker::CustomGameMesh>,
+    keylock_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
+) -> SimpleOpImpl<C, crate::UserTy, CustomGameRetriever> {
     SimpleOpImpl::new(CustomGameRetriever {
         games: games.to_owned(),
+        keylock_workaround,
     })
 }
 

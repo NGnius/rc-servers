@@ -132,6 +132,7 @@ pub enum IntercomChatOperation {
     DevMessage,
     DevBroadcast,
     Maintenance,
+    KeybindLockFix, // https://git.ngram.ca/OpenJam/rc-servers/issues/127
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

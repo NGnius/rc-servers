@@ -118,6 +118,18 @@ impl super::IntercomUser for super::account_json::UserData {
         }
     }
 
+    async fn trigger_workaround(&self, msg: IntercomWorkaroundMessage, to: Vec<String>) {
+        let send_to_everyone = to.is_empty();
+        let data = IntercomWebServiceMessage {
+            public_ids: to,
+            data: IntercomWebServiceUserMessage::Workaround(msg),
+            everyone: send_to_everyone,
+        };
+        if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
+            log::error!("Failed to send intercom workaround message: {}", e);
+        }
+    }
+
     async fn update_custom_game(&self, msg: IntercomLobbyCustomGameDataMessage) {
         let data = IntercomLobbyStateMessage::CustomGame(msg);
         if let Err(e) = self.post_to_intercom(&data, ".oj_lobby", "state").await {
@@ -229,6 +241,7 @@ pub struct IntercomWebServiceMessage {
 pub enum IntercomWebServiceUserMessage {
     DevMessage(IntercomDevMessage),
     Maintenance(IntercomMaintenanceMessage),
+    Workaround(IntercomWorkaroundMessage),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -240,6 +253,14 @@ pub struct IntercomDevMessage {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IntercomMaintenanceMessage {
     pub message: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "workaround")]
+pub enum IntercomWorkaroundMessage {
+    /// Trigger fix for getting stuck in build mode due to a bad/slow connection
+    /// more info: https://git.ngram.ca/OpenJam/rc-servers/issues/127
+    KeybindLockout { },
 }
 
 pub fn generate_token(salt: &[u8], key: &[u8]) -> String {

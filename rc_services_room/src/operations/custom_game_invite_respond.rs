@@ -9,6 +9,7 @@ const RESPONSE_CODE_PARAM_KEY: u8 = 168; // int enum; out
 pub(super) struct CustomGameInviteResponder {
     games: std::sync::Arc<crate::custom_game_tracker::CustomGameMesh>,
     mesh: std::sync::Arc<crate::user_service::UserMesh>,
+    keylock_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
 }
 
 #[async_trait::async_trait]
@@ -20,38 +21,59 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
         if let Some(Typed::Bool(is_accept)) = params.remove(&ACCEPT_PARAM_KEY) {
             let user_info = user.user()?;
             let my_pub_id = user_info.public_id();
-            let (resp_code, session_opt) = self.games.update_invite_user(my_pub_id, is_accept).await;
-            if let Some(session) = session_opt {
-                if !is_accept {
-                    let event = crate::events::CustomGameInviteDecline {
-                        public_id: my_pub_id.to_owned(),
+            if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
+                if is_accept {
+                    self.keylock_workaround.accept_invite(user_info.account_id()).await;
+                    let keylock_workaround = self.keylock_workaround.clone();
+                    let account_id = user_info.account_id();
+                    let my_owned_pub_id = my_pub_id.to_owned();
+                    let mesh = self.mesh.clone();
+                    tokio::task::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(5_000)).await;
+                        keylock_workaround.remove_user(account_id).await;
+                        mesh.send_event_to(&my_owned_pub_id, crate::events::CustomGameKick {
+                            session: session.session_id,
+                            was_invited: false,
+                        }).await;
+                    });
+                } else {
+                    self.keylock_workaround.remove_user(user_info.account_id()).await;
+                }
+                params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::InviteReplyCustomGameResponseCode::Success as _));
+            } else {
+                let (resp_code, session_opt) = self.games.update_invite_user(my_pub_id, is_accept).await;
+                if let Some(session) = session_opt {
+                    if !is_accept {
+                        let event = crate::events::CustomGameInviteDecline {
+                            public_id: my_pub_id.to_owned(),
+                        };
+                        let session_members_iter = session.users.iter()
+                            .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
+                            .map(|mem| &mem.public_id as &str);
+                        self.mesh.broadcast_event_to(session_members_iter, event).await;
+                    } else {
+                        user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                            session_id: session.session_id.clone(),
+                            config: session.config_core,
+                            users: session.users.iter()
+                                .filter(|user| !user.is_invited)
+                                .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                                    public_id: user.public_id.clone(),
+                                    team: user.team,
+                                })
+                                .collect()
+                        }).await;
+                    }
+                    let event = crate::events::CustomGameRefresh {
+                        session: session.session_id,
                     };
-                    let session_members_iter = session.users.iter()
+                    let other_session_members_iter = session.users.iter()
                         .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
                         .map(|mem| &mem.public_id as &str);
-                    self.mesh.broadcast_event_to(session_members_iter, event).await;
-                } else {
-                    user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                        session_id: session.session_id.clone(),
-                        config: session.config_core,
-                        users: session.users.iter()
-                            .filter(|user| !user.is_invited)
-                            .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
-                                public_id: user.public_id.clone(),
-                                team: user.team,
-                            })
-                            .collect()
-                    }).await;
+                    self.mesh.broadcast_event_to(other_session_members_iter, event).await;
                 }
-                let event = crate::events::CustomGameRefresh {
-                    session: session.session_id,
-                };
-                let other_session_members_iter = session.users.iter()
-                    .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
-                    .map(|mem| &mem.public_id as &str);
-                self.mesh.broadcast_event_to(other_session_members_iter, event).await;
-            }
-            params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(resp_code as _));
+                params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(resp_code as _));
+            };
         }
         Ok(params)
     }
@@ -61,5 +83,6 @@ pub(super) fn game_invite_respond_provider<C: Send + 'static>(init_ctx: &crate::
     SimpleOpImpl::new(CustomGameInviteResponder {
         games: init_ctx.custom_games.clone(),
         mesh: init_ctx.user_mesh.clone(),
+        keylock_workaround: init_ctx.workarounds.edit_mode_input_lockup(),
     })
 }

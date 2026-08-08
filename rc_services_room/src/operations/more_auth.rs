@@ -3,11 +3,13 @@ use polariton_server::operations::{Operation, OperationCode};
 
 pub struct MoreLobbyAuth {
     mesh: std::sync::Arc<crate::user_service::UserMesh>,
+    keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
 }
 
-pub fn more_auth_provider(mesh: &std::sync::Arc<crate::user_service::UserMesh>) -> MoreLobbyAuth {
+pub fn more_auth_provider(mesh: &std::sync::Arc<crate::user_service::UserMesh>, keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>) -> MoreLobbyAuth {
     MoreLobbyAuth {
-        mesh: mesh.to_owned()
+        mesh: mesh.to_owned(),
+        keybind_workaround,
     }
 }
 
@@ -43,7 +45,12 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                             crate::update_status(user_info.as_ref().as_ref()).await;
                             let mut resp_params = std::collections::HashMap::with_capacity(1);
                             resp_params.insert(Self::AUTH_PAYLOAD_KEY, polariton::operation::Typed::Byte(0));
-                            crate::events::IntercomHandler::new(listener, &user_info, user.event_sender()).run();
+                            crate::events::IntercomHandler::new(
+                                listener,
+                                &user_info,
+                                user.event_sender(),
+                                &self.keybind_workaround,
+                            ).run();
                             return polariton::operation::OperationResponse {
                                 code: Self::op_code(),
                                 return_code: 0,

@@ -307,6 +307,14 @@ struct GameConfig {
     max_cpu: i32,
 }
 
+pub fn game_config_default_map() -> std::collections::HashMap<String, String> {
+    GameConfig::default().as_map()
+}
+
+pub fn game_config_default_core() -> oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig {
+    GameConfig::default().as_core()
+}
+
 impl core::default::Default for GameConfig {
     fn default() -> Self {
         Self {

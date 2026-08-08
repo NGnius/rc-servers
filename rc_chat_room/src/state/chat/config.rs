@@ -269,6 +269,7 @@ enum Intercom {
     DevMessage,
     DevBroadcast,
     Maintenance,
+    KeybindLockFix, // https://git.ngram.ca/OpenJam/rc-servers/issues/127
 }
 
 impl Intercom {
@@ -277,6 +278,7 @@ impl Intercom {
             oj_rc_core::persist::IntercomChatOperation::DevMessage => Self::DevMessage,
             oj_rc_core::persist::IntercomChatOperation::DevBroadcast => Self::DevBroadcast,
             oj_rc_core::persist::IntercomChatOperation::Maintenance => Self::Maintenance,
+            oj_rc_core::persist::IntercomChatOperation::KeybindLockFix => Self::KeybindLockFix,
         }
     }
 
@@ -317,7 +319,13 @@ impl Intercom {
                 } else {
                     "Missing maintenance message, did not send".to_owned()
                 }
-
+            }
+            Self::KeybindLockFix => {
+                ctx.user.trigger_workaround(
+                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::KeybindLockout {  },
+                    vec![ctx.user.public_id().to_owned()]
+                ).await;
+                "Triggered key lockout workaround".to_owned()
             }
         }
 
@@ -328,6 +336,7 @@ impl Intercom {
             Self::DevMessage => "Show dev message to yourself".to_owned(),
             Self::DevBroadcast => "Show dev message to everyone".to_owned(),
             Self::Maintenance => "Broadcast maintenance mode to everyone".to_owned(),
+            Self::KeybindLockFix => "Trigger a custom game invite to fix the broken client UI; more info https://git.ngram.ca/OpenJam/rc-servers/issues/127".to_owned(),
         }
     }
 }
