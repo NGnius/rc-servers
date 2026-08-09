@@ -14,10 +14,7 @@ impl super::AccountProvider {
             .await?
             .into_websocket()
             .await?;
-        Ok(super::IntercomListener {
-            websocket,
-            _d: Default::default(),
-        })
+        Ok(super::IntercomListener::new(websocket))
     }
 }
 

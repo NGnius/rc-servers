@@ -431,27 +431,12 @@ pub struct PlayerScore {
 pub trait IntercomUser: CommonUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn save_factory_thumbnail(&self, factory_id: i32, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
-    async fn webservice_listener(&self) -> Result<IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
+    async fn webservice_listener(&self) -> Result<super::IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
     async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
     async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);
     async fn trigger_workaround(&self, msg: super::intercom::IntercomWorkaroundMessage, to: Vec<String>);
     async fn update_custom_game(&self, msg: super::intercom::IntercomLobbyCustomGameDataMessage);
     async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus);
-}
-
-pub struct IntercomListener<D: serde::de::DeserializeOwned> {
-    pub(super) websocket: reqwest_websocket::WebSocket,
-    pub(super) _d: std::marker::PhantomData<D>,
-}
-
-impl <D: serde::de::DeserializeOwned> IntercomListener<D> {
-    pub async fn listen(self) -> impl futures::Stream<Item=Result<D, Box<reqwest_websocket::Error>>> + Unpin {
-        use futures::StreamExt;
-        self.websocket.map(|msg|
-            msg.map_err(Box::new)
-                .and_then(|msg| msg.json().map_err(Box::new))
-        )
-    }
 }
 
 pub struct ResolvedVehicle {

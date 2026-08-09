@@ -1,7 +1,121 @@
 use serde::{Serialize, Deserialize};
 
+pub struct IntercomListener<D> {
+    websocket: reqwest_websocket::WebSocket,
+    _d: std::marker::PhantomData<D>,
+}
+
+impl <D> IntercomListener<D> {
+    pub(super) fn new(websocket: reqwest_websocket::WebSocket) -> Self {
+        Self {
+            websocket,
+            _d: Default::default(),
+        }
+    }
+
+    /*pub async fn close(self, reason: &str) {
+        if let Err(e) = self.websocket.close(reqwest_websocket::CloseCode::Normal, Some(reason)).await {
+            log::error!("Failed to close intercom websocket with reason {}: {}", reason, e);
+        }
+    }*/
+}
+
+impl <D: serde::de::DeserializeOwned + 'static> IntercomListener<D> {
+    pub async fn listen(self) -> impl futures::Stream<Item=Result<D, reqwest_websocket::Error>> + Unpin {
+        use futures::StreamExt;
+        //self.websocket.map(|msg_res| msg_res.and_then(|msg| msg.json()))
+        let (sink, stream) = self.websocket.split();
+        let sink = std::sync::Arc::new(tokio::sync::Mutex::new(sink));
+        stream.filter_map(move |msg_res| {
+            let sink = sink.clone();
+            Box::pin(async move {
+                let res = match msg_res.ok() {
+                    None => None,
+                    /*reqwest_websocket::Message::Text(s) => {
+                        (serde_json::from_str(&s).map_err(reqwest_websocket::Error::Json), None)
+                    },*/
+                    Some(reqwest_websocket::Message::Ping(p)) => {
+                        use futures::SinkExt;
+                        log::debug!("Received {}B intercom websocket ping: {}", p.len(), String::from_utf8_lossy(&p));
+                        let mut sink_lock = sink.lock().await;
+                        if let Err(e) = sink_lock.send(reqwest_websocket::Message::Pong(p)).await {
+                            log::warn!("Failed to send intercom websocket pong: {}", e);
+                        }
+                        None
+                    },
+                    Some(reqwest_websocket::Message::Pong(p)) => {
+                        log::debug!("Received {}B intercom websocket pong: {}", p.len(), String::from_utf8_lossy(&p));
+                        None
+                    },
+                    Some(msg) => Some(msg.json())
+                };
+                res
+            }
+        )})
+    }
+}
+
+impl <D: serde::ser::Serialize> IntercomListener<D> {
+    pub async fn send(self) -> impl futures::Sink<D> {
+        use futures::SinkExt;
+        self.websocket.with::<D, _, _, reqwest_websocket::Error>(|d| {
+            async move {
+                serde_json::to_string(&d)
+                    .map_err(reqwest_websocket::Error::Json)
+                    .map(reqwest_websocket::Message::Text)
+            }
+        })
+    }
+}
+
+impl <D: serde::ser::Serialize + serde::de::DeserializeOwned + 'static> IntercomListener<D> {
+    pub async fn split(self) -> (impl futures::Sink<D>, impl futures::Stream<Item=Result<D, reqwest_websocket::Error>> + Unpin) {
+        use futures::SinkExt;
+        use futures::StreamExt;
+        let (sink, stream) = self.websocket.split();
+        let sink = std::sync::Arc::new(tokio::sync::Mutex::new(sink));
+        let sink_impl_instance = sink.clone();
+        let sink_impl = futures::sink::unfold(sink_impl_instance, |sink_instance, d| async move {
+            let msg = serde_json::to_string(&d)
+                    .map_err(reqwest_websocket::Error::Json)
+                    .map(reqwest_websocket::Message::Text)?;
+            let mut lock = sink_instance.lock().await;
+            lock.send(msg).await?;
+            drop(lock);
+            Ok::<_, reqwest_websocket::Error>(sink_instance)
+        });
+        let stream_impl = stream.filter_map(move |msg_res| {
+            let sink = sink.clone();
+            Box::pin(async move {
+                let res = match msg_res.ok() {
+                    None => None,
+                    /*reqwest_websocket::Message::Text(s) => {
+                        (serde_json::from_str(&s).map_err(reqwest_websocket::Error::Json), None)
+                    },*/
+                    Some(reqwest_websocket::Message::Ping(p)) => {
+                        use futures::SinkExt;
+                        log::debug!("Received {}B intercom websocket ping: {}", p.len(), String::from_utf8_lossy(&p));
+                        let mut sink_lock = sink.lock().await;
+                        if let Err(e) = sink_lock.send(reqwest_websocket::Message::Pong(p)).await {
+                            log::warn!("Failed to send intercom websocket pong: {}", e);
+                        }
+                        None
+                    },
+                    Some(reqwest_websocket::Message::Pong(p)) => {
+                        log::debug!("Received {}B intercom websocket pong: {}", p.len(), String::from_utf8_lossy(&p));
+                        None
+                    },
+                    Some(msg) => Some(msg.json())
+                };
+                res
+            }
+        )});
+        (sink_impl, stream_impl)
+    }
+}
+
 impl super::account_json::UserData {
-    async fn listen_on_websocket<D: serde::de::DeserializeOwned>(&self, server_name: &str) -> Result<super::IntercomListener<D>, reqwest_websocket::Error> {
+    async fn listen_on_websocket<D: serde::de::DeserializeOwned>(&self, server_name: &str) -> Result<IntercomListener<D>, reqwest_websocket::Error> {
         use reqwest_websocket::Upgrade;
         let url_encoded_pub_id = urlencoding::encode(&self.account.public_id);
         let token =  generate_token(format!("{}/{}", server_name, url_encoded_pub_id).as_bytes(), &self.secret);
@@ -15,10 +129,7 @@ impl super::account_json::UserData {
             .await?
             .into_websocket()
             .await?;
-        Ok(super::IntercomListener {
-            websocket,
-            _d: Default::default(),
-        })
+        Ok(IntercomListener::new(websocket))
     }
 
     async fn post_to_intercom<D: serde::Serialize>(&self, data: &D, server_name: &str, operation: &str) -> Result<(), reqwest::Error> {
@@ -86,7 +197,7 @@ impl super::IntercomUser for super::account_json::UserData {
         Ok(())
     }
 
-    async fn webservice_listener(&self) -> Result<super::IntercomListener<IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError> {
+    async fn webservice_listener(&self) -> Result<IntercomListener<IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError> {
         self.listen_on_websocket(".oj_services").await
             .map_err(|e| polariton_server::operations::SimpleOpError::with_message(
                 crate::data::error_codes::WebServicesError::PlatformFeatureNotAvailable as i16,
