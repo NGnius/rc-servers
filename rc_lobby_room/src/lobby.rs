@@ -520,7 +520,7 @@ impl QueueHandler {
         } else {
             log::debug!("Rejecting join queue for unknown custom game for user {}", public_id);
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
-                code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
+                code: oj_rc_core::data::error_codes::LobbyReasonCode::GroupFailedChecks as i16,
                 text: "User is not in a custom game".to_owned(),
             });
         }

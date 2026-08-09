@@ -28,6 +28,19 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
         };
         if let Some(game) = game_opt {
             log::debug!("User {} retrieved their custom game session {} info", my_pub_id, game.session_id);
+            if !is_workaround {
+                user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
+                    session_id: game.session_id.clone(),
+                    config: game.config_core,
+                    users: game.users.iter()
+                        .filter(|user| !user.is_invited)
+                        .map(|user| oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
+                            public_id: user.public_id.clone(),
+                            team: user.team,
+                        })
+                        .collect()
+                }).await;
+            }
             params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::SessionRetrieveResponse::SessionRetrieved as _));
             let pub_ids: Vec<String> = game.users.iter()
                 .map(|member| member.public_id.clone())
