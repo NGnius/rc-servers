@@ -1298,6 +1298,12 @@ impl BattleArenaLogic {
             };
             if let Some(player_desc) = generic.user_descriptor(player_id) {
                 let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+                let my_connection_latency = generic.users.read().await
+                .iter()
+                .filter(|(user_player_id, _)| **user_player_id == player_id)
+                .next()
+                .unwrap()
+                .1.connection.connection.latency();
                 tokio::task::spawn(super::respawn_player_after(
                     respawn_timestamp,
                     connections,
@@ -1305,6 +1311,7 @@ impl BattleArenaLogic {
                     Some(self.map_center.clone()),
                     player_id,
                     player_desc.machine.is_alive.clone(),
+                    my_connection_latency,
                 ));
             } else {
                 log::error!("Player {} cannot respawn because they are not in the game!?", player_id);

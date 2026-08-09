@@ -368,6 +368,12 @@ impl PitLogic {
             ).await;
             let spawn_point = Self::choose_spawn_point(&generic.map_config, player_id).1;
             let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
+            let my_connection_latency = generic.users.read().await
+                .iter()
+                .filter(|(user_player_id, _)| **user_player_id == player_id)
+                .next()
+                .unwrap()
+                .1.connection.connection.latency();
             tokio::task::spawn(super::respawn_player_after(
                 respawn_timestamp,
                 connections,
@@ -375,6 +381,7 @@ impl PitLogic {
                 Some(self.map_center.clone()),
                 player_id,
                 player_desc.machine.is_alive.clone(),
+                my_connection_latency,
             ));
         }
     }

@@ -16,8 +16,8 @@ pub use team_death_match::TeamDeathMatchLogic;
 
 pub(super) mod trackers;
 
-async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, looking_at: Option<oj_rc_core::persist::config::Point>, player_id: u8, alive_flag: std::sync::Arc<std::sync::atomic::AtomicBool>) {
-    let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep");
+async fn respawn_player_after(after: chrono::DateTime<chrono::Utc>, players: Vec<crate::matches::generic::UserSender>, spawn: oj_rc_core::persist::config::Point, looking_at: Option<oj_rc_core::persist::config::Point>, player_id: u8, alive_flag: std::sync::Arc<std::sync::atomic::AtomicBool>, player_latency: std::time::Duration) {
+    let sleep_dur = after.signed_duration_since(chrono::Utc::now()).to_std().expect("Respawn duration too long to sleep") - player_latency;
     tokio::time::sleep(sleep_dur).await;
     let spawn_payload = rlnl::events::sync::SpawnPoint {
         pos: rlnl::types::PosQuatPair {
