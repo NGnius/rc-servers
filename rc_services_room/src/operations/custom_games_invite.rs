@@ -26,10 +26,8 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
             log::debug!("User {} is in keylock workaround mode ({})", my_pub_id, session.session_id);
             is_workaround = true;
             Some(session)
-        } else if let Some(session) = self.games.get_user_game(my_pub_id).await {
-            Some(session)
         } else {
-            None
+            self.games.get_user_game(my_pub_id).await
         };
         if let Some(session) = session {
             let myself = session.users.iter().find(|u| u.public_id == my_pub_id).unwrap();

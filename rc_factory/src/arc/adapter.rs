@@ -37,7 +37,7 @@ impl ArcAdapter {
 
     fn thumbnail_url(&self, meta: String, id: u32) -> String {
         if self.override_cdn && id <= 7_946_212 {
-            format!("{}/roboshop/arc/Live/{}", &self.cdn, id)
+            format!("{}/roboshop/arc/Live/{}", self.cdn, id)
         } else {
             meta
         }
@@ -281,7 +281,7 @@ impl crate::VehicleFactoryAdapter for ArcAdapter {
         }.insert(&transaction).await?;
         super::entities::robot_metadata::ActiveModel {
             id: Set(cubes.id),
-            thumbnail: Set(format!("{}/roboshop/Live/{}", &self.cdn, cubes.id)),
+            thumbnail: Set(format!("{}/roboshop/Live/{}", self.cdn, cubes.id)),
             ..Default::default()
         }.update(&transaction).await?;
         transaction.commit().await?;

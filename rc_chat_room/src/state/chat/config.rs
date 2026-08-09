@@ -417,7 +417,7 @@ impl System {
                 }
                 let perm = SystemPermission::from_str(params[1]);
                 if perm.is_none() {
-                    return format!("Unrecognised permission \"{}\" (try dev, admin, or mod)", &params[1]);
+                    return format!("Unrecognised permission \"{}\" (try dev, admin, or mod)", params[1]);
                 }
                 let perm = perm.unwrap();
                 if let Err(e) = ctx.user.set_permission(params[2].to_owned(), perm.role(), perm.value()).await {
@@ -427,7 +427,7 @@ impl System {
                         format!("Failed to grant permission (code {})", e.error_code())
                     }
                 } else {
-                    format!("Granted {} to {} (they should re-log)", perm.display(), &params[2])
+                    format!("Granted {} to {} (they should re-log)", perm.display(), params[2])
                 }
             },
             Self::ClearGarageFactoryFlag => {

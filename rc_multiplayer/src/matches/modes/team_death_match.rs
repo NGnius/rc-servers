@@ -308,11 +308,10 @@ impl TeamDeathMatchLogic {
             if let Some(player_desc) = generic.user_descriptor(player_id) {
                 let connections = generic.users.read().await.values().map(|player_info| player_info.connection.clone()).collect();
                 let my_connection_latency = generic.users.read().await
-                .iter()
-                .filter(|(user_player_id, _)| **user_player_id == player_id)
-                .next()
-                .unwrap()
-                .1.connection.connection.latency();
+                    .iter()
+                    .find(|(user_player_id, _)| **user_player_id == player_id)
+                    .unwrap()
+                    .1.connection.connection.latency();
                 tokio::task::spawn(super::respawn_player_after(
                     respawn_timestamp,
                     connections,

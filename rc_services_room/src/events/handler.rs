@@ -56,7 +56,7 @@ impl IntercomHandler {
                             }
                             IntercomWebServiceUserMessage::Workaround(IntercomWorkaroundMessage::KeybindLockout { }) => {
                                 let session = keybind_workaround.add_user(user.account_id(), user.public_id().to_owned()).await;
-                                let non_me = session.users.iter().next().unwrap();
+                                let non_me = session.users.first().unwrap();
                                 let event = super::CustomGameInvite {
                                     inviter_public_id: non_me.public_id.clone(),
                                     inviter_display_name: non_me.public_id.clone(),

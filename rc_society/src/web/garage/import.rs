@@ -149,7 +149,7 @@ pub async fn post(form: actix_multipart::form::MultipartForm<ImportForm>, handle
             }
             for (i, file) in form.files.iter().enumerate() {
                 #[cfg(debug_assertions)]
-                log::trace!("import {} file {} data: {:?}", &*form.plugin, i, &file.data[..]);
+                log::trace!("import {} file {} data: {:?}", *form.plugin, i, &file.data[..]);
                 let import_data = match importer.import_by_name(&form.plugin, &file.data)
                     .map_err(|e| super::PluginPortError { code: e }) {
                     Ok(x) => x,

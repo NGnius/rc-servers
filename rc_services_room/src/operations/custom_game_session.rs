@@ -23,10 +23,8 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
         let game_opt = if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
             is_workaround = true;
             Some(session)
-        } else if let Some(session) = self.games.get_user_game(my_pub_id).await {
-            Some(session)
         } else {
-            None
+            self.games.get_user_game(my_pub_id).await
         };
         if let Some(game) = game_opt {
             log::debug!("User {} retrieved their custom game session {} info", my_pub_id, game.session_id);

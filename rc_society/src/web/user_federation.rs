@@ -58,7 +58,7 @@ pub async fn post_remove(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option
                 fedi.defederated.remove(i);
                 user.fedi_set(fedi).await;
             } else {
-                log::warn!("Failed to find domain {} in defederated list for user {}", &*domain, user.public_id());
+                log::warn!("Failed to find domain {} in defederated list for user {}", *domain, user.public_id());
             }
             let resp = Redirect::to("/federation/list")
                 .respond_to(&req)

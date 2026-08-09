@@ -29,7 +29,7 @@ impl <D: serde::de::DeserializeOwned + 'static> IntercomListener<D> {
         stream.filter_map(move |msg_res| {
             let sink = sink.clone();
             Box::pin(async move {
-                let res = match msg_res.ok() {
+                match msg_res.ok() {
                     None => None,
                     /*reqwest_websocket::Message::Text(s) => {
                         (serde_json::from_str(&s).map_err(reqwest_websocket::Error::Json), None)
@@ -48,8 +48,7 @@ impl <D: serde::de::DeserializeOwned + 'static> IntercomListener<D> {
                         None
                     },
                     Some(msg) => Some(msg.json())
-                };
-                res
+                }
             }
         )})
     }
@@ -87,7 +86,7 @@ impl <D: serde::ser::Serialize + serde::de::DeserializeOwned + 'static> Intercom
         let stream_impl = stream.filter_map(move |msg_res| {
             let sink = sink.clone();
             Box::pin(async move {
-                let res = match msg_res.ok() {
+                match msg_res.ok() {
                     None => None,
                     /*reqwest_websocket::Message::Text(s) => {
                         (serde_json::from_str(&s).map_err(reqwest_websocket::Error::Json), None)
@@ -106,8 +105,7 @@ impl <D: serde::ser::Serialize + serde::de::DeserializeOwned + 'static> Intercom
                         None
                     },
                     Some(msg) => Some(msg.json())
-                };
-                res
+                }
             }
         )});
         (sink_impl, stream_impl)

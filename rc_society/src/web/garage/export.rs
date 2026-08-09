@@ -25,7 +25,7 @@ pub async fn get(id: Path<i32>, query: Query<super::PortQuery>, exporter: Data<I
                             use actix_web::http::header::{ContentDisposition, TryIntoHeaderPair};
                             let ext = exporter.file_ext(&query.plugin).unwrap();
                             // TODO sanitise vehicle name and include it in the filename
-                            let dispo = ContentDisposition::attachment(format!("export-{}-{}.{}", &query.plugin, *id, ext));
+                            let dispo = ContentDisposition::attachment(format!("export-{}-{}.{}", query.plugin, *id, ext));
                             let (key, val) = dispo.try_into_pair().unwrap();
                             let mut resp = HttpResponse::with_body(StatusCode::OK, export);
                             resp.headers_mut().append(key, val);
