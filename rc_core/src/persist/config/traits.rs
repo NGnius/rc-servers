@@ -164,17 +164,18 @@ pub struct ChatSystemConfig {
     pub can_create_channels: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GameEventSequence {
     pub strategy: GameRotationStrategy,
     pub modes: Vec<GameEvents>,
     pub index: usize,
     pub started: i64,
     pub(crate) needs_to_be_saved: bool,
+    pub(crate) lockouts: std::collections::HashMap<i32, GameEvent>,
 }
 
 impl GameEventSequence {
-    pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>) -> GameEventTransmissible {
+    pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>, user: i32) -> GameEventTransmissible {
         let time_now = chrono::Utc::now().timestamp();
         let mut item_now = &self.modes[self.index];
         let needs_refresh = time_now >= (item_now.duration.as_secs() as i64) + self.started;
@@ -207,42 +208,90 @@ impl GameEventSequence {
                 updater.set_singleplayer(sp).await;
             });
         }
-        let remaining_ticks = ((item_now.duration.as_secs() as i64) - (time_now - self.started)) * 10_000_000;
-        GameEventTransmissible {
-            maps: Typed::Arr(polariton::operation::Arr {
-                ty: polariton::serdes::TypePrefix::Str,
-                custom_ty: None,
-                items: vec![
-                    Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().into()),
-                    Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().into()),
-                ],
-            }),
-            visibilities: Typed::Arr(polariton::operation::Arr {
-                ty: polariton::serdes::TypePrefix::Int,
-                custom_ty: None,
-                items: vec![
-                    Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility) as _),
-                    Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility) as _),
-                ],
-            }),
-            modes: Typed::Arr(polariton::operation::Arr {
-                ty: polariton::serdes::TypePrefix::Int,
-                custom_ty: None,
-                items: vec![
-                    Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode) as _),
-                    Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.multiplayer.mode) as _),
-                ],
-            }),
-            auto_heals: Typed::Arr(polariton::operation::Arr {
-                ty: polariton::serdes::TypePrefix::Bool,
-                custom_ty: None,
-                items: vec![
-                    Typed::Bool(item_now.singleplayer.auto_heal),
-                    Typed::Bool(item_now.multiplayer.auto_heal),
-                ],
-            }),
-            remaining_ticks: Typed::Long(remaining_ticks),
+        if let Some(multiplayer_override) = self.lockouts.get(&user) {
+            GameEventTransmissible {
+                maps: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Str,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().into()),
+                        Typed::Str(crate::data::game_mode::GameMap::from_persist(multiplayer_override.map).as_str().into()),
+                    ],
+                }),
+                visibilities: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Int,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility) as _),
+                        Typed::Int(crate::data::game_mode::MapVisibility::from_persist(multiplayer_override.visibility) as _),
+                    ],
+                }),
+                modes: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Int,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode) as _),
+                        Typed::Int(crate::data::game_mode::GameMode::from_persist(multiplayer_override.mode) as _),
+                    ],
+                }),
+                auto_heals: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Bool,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Bool(item_now.singleplayer.auto_heal),
+                        Typed::Bool(multiplayer_override.auto_heal),
+                    ],
+                }),
+                remaining_ticks: Typed::Long(10_000_000),
+            }
+        } else {
+            let remaining_ticks = ((item_now.duration.as_secs() as i64) - (time_now - self.started)) * 10_000_000;
+            GameEventTransmissible {
+                maps: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Str,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.singleplayer.map).as_str().into()),
+                        Typed::Str(crate::data::game_mode::GameMap::from_persist(item_now.multiplayer.map).as_str().into()),
+                    ],
+                }),
+                visibilities: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Int,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.singleplayer.visibility) as _),
+                        Typed::Int(crate::data::game_mode::MapVisibility::from_persist(item_now.multiplayer.visibility) as _),
+                    ],
+                }),
+                modes: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Int,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.singleplayer.mode) as _),
+                        Typed::Int(crate::data::game_mode::GameMode::from_persist(item_now.multiplayer.mode) as _),
+                    ],
+                }),
+                auto_heals: Typed::Arr(polariton::operation::Arr {
+                    ty: polariton::serdes::TypePrefix::Bool,
+                    custom_ty: None,
+                    items: vec![
+                        Typed::Bool(item_now.singleplayer.auto_heal),
+                        Typed::Bool(item_now.multiplayer.auto_heal),
+                    ],
+                }),
+                remaining_ticks: Typed::Long(remaining_ticks),
+            }
         }
+    }
+
+    /// Returns true if replacing existing entry for user
+    pub fn add_lockout(&mut self, user: i32, event: GameEvent) -> bool {
+        self.lockouts.insert(user, event).is_some()
+    }
+
+    /// Returns true if entry for user existed
+    pub fn remove_lockout(&mut self, user: i32) -> bool {
+        self.lockouts.remove(&user).is_some()
     }
 }
 

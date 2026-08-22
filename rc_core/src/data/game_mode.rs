@@ -79,6 +79,21 @@ impl GameMap {
             crate::persist::config::GameMap::Earth2 => Self::Earth2,
         }
     }
+
+    #[inline]
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "RC_Planet_Mars_01_CTF" => Some(Self::Mars1), // og flat mars
+            "RC_Planet_Mars_02_BA" => Some(Self::Mars2), // the one with the bridge in the middle
+            "RC_Planet_Mars_03_BA" => Some(Self::Mars3), // tharsis rift without the rift
+            "RC_Planet_Neptune_01_CTF" => Some(Self::Neptune1), // og flat GJ1214b gliese lake without the lake
+            "RC_Planet_Neptune_02_BA" => Some(Self::Neptune2), // the one with the cave
+            "RC_Planet_Neptune_03_BA" => Some(Self::Neptune3), // spitzer dam
+            "RC_Planet_Earth_01_BA" => Some(Self::Earth1), // birmingham power station
+            "RC_Planet_Earth_02_BA" => Some(Self::Earth2), // vanguard
+            _ => None,
+        }
+    }
 }
 
 #[repr(u8)]

@@ -385,6 +385,18 @@ impl QueueHandler {
 
             }
         }
+        let to_unlock: Vec<String> = q_entry.users.iter().map(|user| user.user.public_id().to_owned()).collect();
+        if let Some(first) = q_entry.users.first() {
+            let first_user = first.user.clone();
+            tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(10_000)).await;
+                log::info!("Unlocking {} users' game mode events after entering match", to_unlock.len());
+                first_user.trigger_workaround(
+                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventUnlock {  }),
+                    to_unlock,
+                ).await;
+            });
+        }
     }
 
     async fn enter_custom_match(
@@ -394,15 +406,15 @@ impl QueueHandler {
         user: &(dyn oj_rc_core::persist::user::LobbyUser + Send + Sync),
     ) {
         let mode = match session.config.game_mode {
-            oj_rc_core::persist::user::intercom::CustomGameMode::BattleArena => oj_rc_core::data::game_mode::GameMode::BattleArena,
-            oj_rc_core::persist::user::intercom::CustomGameMode::TeamDeathmatch => oj_rc_core::data::game_mode::GameMode::TeamDeathmatch,
-            oj_rc_core::persist::user::intercom::CustomGameMode::Pit => oj_rc_core::data::game_mode::GameMode::Pit,
-            oj_rc_core::persist::user::intercom::CustomGameMode::SuddenDeath => oj_rc_core::data::game_mode::GameMode::SuddenDeath,
+            oj_rc_core::persist::user::intercom::IntercomGameMode::BattleArena => oj_rc_core::data::game_mode::GameMode::BattleArena,
+            oj_rc_core::persist::user::intercom::IntercomGameMode::TeamDeathmatch => oj_rc_core::data::game_mode::GameMode::TeamDeathmatch,
+            oj_rc_core::persist::user::intercom::IntercomGameMode::Pit => oj_rc_core::data::game_mode::GameMode::Pit,
+            oj_rc_core::persist::user::intercom::IntercomGameMode::SuddenDeath => oj_rc_core::data::game_mode::GameMode::SuddenDeath,
         };
         let visibility = match session.config.map_visibility {
-            oj_rc_core::persist::user::intercom::CustomGameVisibility::Good => oj_rc_core::data::game_mode::MapVisibility::Good,
-            oj_rc_core::persist::user::intercom::CustomGameVisibility::Poor => oj_rc_core::data::game_mode::MapVisibility::Poor,
-            oj_rc_core::persist::user::intercom::CustomGameVisibility::Bad => oj_rc_core::data::game_mode::MapVisibility::Bad,
+            oj_rc_core::persist::user::intercom::IntercomGameVisibility::Good => oj_rc_core::data::game_mode::MapVisibility::Good,
+            oj_rc_core::persist::user::intercom::IntercomGameVisibility::Poor => oj_rc_core::data::game_mode::MapVisibility::Poor,
+            oj_rc_core::persist::user::intercom::IntercomGameVisibility::Bad => oj_rc_core::data::game_mode::MapVisibility::Bad,
         };
         let key = QueueKey {
             map: session.config.map.clone(),
@@ -499,7 +511,7 @@ impl QueueHandler {
                     let new_player = QueueUser {
                         emitter: event_emitter,
                         player: player_data,
-                        user_id: oj_rc_core::persist::user::LobbyUser::user_id(lobby_user),
+                        user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
                         enqueued_at: chrono::Utc::now(),
                         user: user.clone(),
                     };
@@ -657,6 +669,17 @@ impl QueueHandler {
 
         self.ensure_autostart_task_running();
 
+        log::info!("Locking user {} game move event as they enter queue", user.public_id());
+        let game_event = oj_rc_core::persist::user::intercom::IntercomGameEvent {
+            map: oj_rc_core::persist::user::intercom::IntercomGameMap::from_str(&map).unwrap_or(oj_rc_core::persist::user::intercom::IntercomGameMap::Mars1),
+            visibility: oj_rc_core::persist::user::intercom::IntercomGameVisibility::from_data(visibility),
+            mode: oj_rc_core::persist::user::intercom::IntercomGameMode::from_data(mode),
+            auto_heal,
+        };
+        user.trigger_workaround(oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventLock {
+            event: game_event.clone(),
+        }), vec![user.public_id().to_owned()]).await;
+
         let key = QueueKey {
             map, mode, visibility, auto_heal,
         };
@@ -669,7 +692,7 @@ impl QueueHandler {
                 let new_player = QueueUser {
                     emitter: event_emitter,
                     player: player_data,
-                    user_id: oj_rc_core::persist::user::LobbyUser::user_id(lobby_user),
+                    user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
                     enqueued_at: chrono::Utc::now(),
                     user: user.clone(),
                 };
@@ -684,9 +707,13 @@ impl QueueHandler {
                     match self.change_strategy {
                         GamemodeChangeStrategy::Upgrade => {
                             let mut new_queue_map = std::collections::HashMap::<QueueKey, Queue>::with_capacity(lock.len());
+                            let mut to_update_lockout = Vec::new();
                             let mut count = 0;
                             for (_key, mut q_entry) in lock.drain() {
                                 count += q_entry.users.len();
+                                for user in q_entry.users.iter() {
+                                    to_update_lockout.push(user.user.public_id().to_owned());
+                                }
                                 if let Some(values) = new_queue_map.get_mut(&key) {
                                     values.users.append(&mut q_entry.users);
                                     values.platoons.extend(q_entry.platoons);
@@ -702,9 +729,17 @@ impl QueueHandler {
                             if count != 0 {
                                 log::info!("Upgraded {} users in queue to new gamemode {}", count, key.short());
                             }
+                            if !to_update_lockout.is_empty() {
+                                log::info!("Updating game event locks for {} users due to lobby upgrade", to_update_lockout.len());
+                                user.trigger_workaround(
+                                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventLock { event: game_event }),
+                                    to_update_lockout,
+                                ).await;
+                            }
                         },
                         GamemodeChangeStrategy::Notify => {
                             let mut seen = std::collections::HashSet::new();
+                            let mut to_update_lockout = Vec::new();
                             for (_key, q_entry) in lock.drain() {
                                 for player in q_entry.users {
                                     if seen.contains(&player.user_id) { continue; }
@@ -714,6 +749,7 @@ impl QueueHandler {
                                         text: "Please requeue".to_owned(),
                                     });
                                     seen.insert(player.user_id);
+                                    to_update_lockout.push(player.user.public_id().to_owned());
                                 }
                                 for platoon in q_entry.platoons.into_values() {
                                     for player in platoon.members {
@@ -729,6 +765,13 @@ impl QueueHandler {
                             }
                             if !seen.is_empty() {
                                 log::info!("Notified {} users in queue of new gamemode {}", seen.len(), key.short());
+                            }
+                            if !to_update_lockout.is_empty() {
+                                log::info!("Removing game event locks for {} users due to lobby notify", to_update_lockout.len());
+                                user.trigger_workaround(
+                                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventUnlock { }),
+                                    to_update_lockout,
+                                ).await;
                             }
                         },
                         GamemodeChangeStrategy::Ignore => {
@@ -786,7 +829,12 @@ impl QueueHandler {
 
     pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
         let public_id = user.public_id();
-        let user_id = oj_rc_core::persist::user::LobbyUser::user_id(user.as_ref().as_ref());
+        let user_id = oj_rc_core::persist::user::CommonUser::account_id(user.as_ref().as_ref());
+        log::info!("Unlocking user {} game mode events after leaving queue", public_id);
+        user.trigger_workaround(
+            oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventUnlock {  }),
+            vec![public_id.to_owned()],
+        ).await;
         if let Some(session_id) = self.custom_game_for_user.read().await.get(public_id) {
             // player is in custom game session
             let mut lock = self.users_in_custom_games_queue.lock().await;

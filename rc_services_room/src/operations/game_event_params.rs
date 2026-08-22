@@ -21,7 +21,7 @@ RC_Planet_Neptune_01_CTF
 */
 
 pub struct GameEventsParamsProvider {
-    sequence: std::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>,
+    sequence: std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,
 }
 
 #[async_trait::async_trait]
@@ -32,7 +32,7 @@ impl Operation<()> for GameEventsParamsProvider {
         match user.user() {
             Ok(user_info) => {
                 let mut params = params.to_dict();
-                let current_mode = self.sequence.lock().unwrap().now(user_info.current_game_event_setter());
+                let current_mode = self.sequence.lock().await.now(user_info.current_game_event_setter(), user_info.account_id());
                 params.insert(MAP_NAMES_PARAM_KEY, current_mode.maps);
                 params.insert(VISIBILITY_PARAM_KEY, current_mode.visibilities);
                 params.insert(MODE_PARAM_KEY, current_mode.modes);
@@ -64,9 +64,8 @@ impl OperationCode for GameEventsParamsProvider {
     }
 }
 
-pub(super) fn event_system_params_provider(conf: &oj_rc_core::ConfigImpl) -> GameEventsParamsProvider {
-    let game_seq = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemode_events(conf);
+pub(super) fn event_system_params_provider(init_ctx: &crate::InitConfig) -> GameEventsParamsProvider {
     GameEventsParamsProvider {
-        sequence: std::sync::Mutex::new(game_seq),
+        sequence: init_ctx.game_event_sequence.clone(),
     }
 }

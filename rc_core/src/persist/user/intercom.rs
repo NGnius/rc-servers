@@ -229,14 +229,20 @@ impl super::IntercomUser for super::account_json::UserData {
 
     async fn trigger_workaround(&self, msg: IntercomWorkaroundMessage, to: Vec<String>) {
         let send_to_everyone = to.is_empty();
-        let data = IntercomWebServiceMessage {
-            public_ids: to,
-            data: IntercomWebServiceUserMessage::Workaround(msg),
-            everyone: send_to_everyone,
-        };
-        if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
-            log::error!("Failed to send intercom workaround message: {}", e);
+        match msg {
+            IntercomWorkaroundMessage::Lobby(_lobby) => todo!(),
+            IntercomWorkaroundMessage::WebService(ws) => {
+                let data = IntercomWebServiceMessage {
+                    public_ids: to,
+                    data: IntercomWebServiceUserMessage::Workaround(ws),
+                    everyone: send_to_everyone,
+                };
+                if let Err(e) = self.post_to_intercom(&data, ".oj_services", "messages").await {
+                    log::error!("Failed to send intercom workaround message: {}", e);
+                }
+            }
         }
+
     }
 
     async fn update_custom_game(&self, msg: IntercomLobbyCustomGameDataMessage) {
@@ -266,26 +272,127 @@ pub struct IntercomLobbyCustomGameDataMessage {
     pub users: Vec<IntercomLobbyCustomGameUserData>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum CustomGameMode {
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum IntercomGameMap {
+    Mars1,
+    Mars2,
+    Mars3,
+    Neptune1,
+    Neptune2,
+    Neptune3,
+    Earth1,
+    Earth2,
+}
+
+impl IntercomGameMap {
+    pub fn into_conf(self) -> crate::persist::config::GameMap {
+        match self {
+            Self::Mars1 => crate::persist::config::GameMap::Mars1,
+            Self::Mars2 => crate::persist::config::GameMap::Mars2,
+            Self::Mars3 => crate::persist::config::GameMap::Mars3,
+            Self::Neptune1 => crate::persist::config::GameMap::Neptune1,
+            Self::Neptune2 => crate::persist::config::GameMap::Neptune2,
+            Self::Neptune3 => crate::persist::config::GameMap::Neptune3,
+            Self::Earth1 => crate::persist::config::GameMap::Earth1,
+            Self::Earth2 => crate::persist::config::GameMap::Earth2,
+        }
+    }
+
+    pub fn from_data(map: crate::data::game_mode::GameMap) -> Self {
+        match map {
+            crate::data::game_mode::GameMap::Mars1 => Self::Mars1,
+            crate::data::game_mode::GameMap::Mars2 => Self::Mars2,
+            crate::data::game_mode::GameMap::Mars3 => Self::Mars3,
+            crate::data::game_mode::GameMap::Neptune1 => Self::Neptune1,
+            crate::data::game_mode::GameMap::Neptune2 => Self::Neptune2,
+            crate::data::game_mode::GameMap::Neptune3 => Self::Neptune3,
+            crate::data::game_mode::GameMap::Earth1 => Self::Earth1,
+            crate::data::game_mode::GameMap::Earth2 => Self::Earth2,
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "RC_Planet_Mars_01_CTF" => Some(Self::Mars1),
+            "RC_Planet_Mars_02_BA" => Some(Self::Mars2),
+            "RC_Planet_Mars_03_BA" => Some(Self::Mars3),
+            "RC_Planet_Neptune_01_CTF" => Some(Self::Neptune1),
+            "RC_Planet_Neptune_02_BA" => Some(Self::Neptune2),
+            "RC_Planet_Neptune_03_BA" => Some(Self::Neptune3),
+            "RC_Planet_Earth_01_BA" => Some(Self::Earth1),
+            "RC_Planet_Earth_02_BA" => Some(Self::Earth2),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub enum IntercomGameMode {
     BattleArena,
     TeamDeathmatch,
     Pit,
     SuddenDeath,
 }
 
+impl IntercomGameMode {
+    pub fn into_conf(self) -> crate::persist::config::GameType {
+        match self {
+            Self::BattleArena => crate::persist::config::GameType::BattleArena,
+            Self::SuddenDeath => crate::persist::config::GameType::SuddenDeath,
+            Self::Pit => crate::persist::config::GameType::Pit,
+            Self::TeamDeathmatch => crate::persist::config::GameType::TeamDeathmatch,
+        }
+    }
+
+    pub fn from_data(mode: crate::data::game_mode::GameMode) -> Self {
+        match mode {
+            crate::data::game_mode::GameMode::BattleArena => Self::BattleArena,
+            crate::data::game_mode::GameMode::SuddenDeath => Self::SuddenDeath,
+            crate::data::game_mode::GameMode::Pit => Self::Pit,
+            crate::data::game_mode::GameMode::TeamDeathmatch => Self::TeamDeathmatch,
+            _ => Self::Pit,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
-pub enum CustomGameVisibility {
+pub enum IntercomGameVisibility {
     Good,
     Poor,
     Bad,
 }
 
+impl IntercomGameVisibility {
+    pub fn into_conf(self) -> crate::persist::config::GameVisibility {
+        match self {
+            Self::Good => crate::persist::config::GameVisibility::Good,
+            Self::Poor => crate::persist::config::GameVisibility::Poor,
+            Self::Bad => crate::persist::config::GameVisibility::Bad,
+        }
+    }
+
+    pub fn from_data(vis: crate::data::game_mode::MapVisibility) -> Self {
+        match vis {
+            crate::data::game_mode::MapVisibility::Good => Self::Good,
+            crate::data::game_mode::MapVisibility::Poor => Self::Poor,
+            crate::data::game_mode::MapVisibility::Bad => Self::Bad,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+pub struct IntercomGameEvent {
+    pub map: IntercomGameMap,
+    pub visibility: IntercomGameVisibility,
+    pub mode: IntercomGameMode,
+    pub auto_heal: bool,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IntercomLobbyCustomGameConfig {
-    pub game_mode: CustomGameMode,
+    pub game_mode: IntercomGameMode,
     pub map: String,
-    pub map_visibility: CustomGameVisibility,
+    pub map_visibility: IntercomGameVisibility,
     pub health_regen: bool,
     pub capture_segment_memory: bool,
     pub base_shields_go_down: bool,
@@ -350,7 +457,7 @@ pub struct IntercomWebServiceMessage {
 pub enum IntercomWebServiceUserMessage {
     DevMessage(IntercomDevMessage),
     Maintenance(IntercomMaintenanceMessage),
-    Workaround(IntercomWorkaroundMessage),
+    Workaround(IntercomWebServiceWorkaroundMessage),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -366,10 +473,31 @@ pub struct IntercomMaintenanceMessage {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "workaround")]
-pub enum IntercomWorkaroundMessage {
+pub enum IntercomWebServiceWorkaroundMessage {
     /// Trigger fix for getting stuck in build mode due to a bad/slow connection
     /// more info: https://git.ngram.ca/OpenJam/rc-servers/issues/127
     KeybindLockout { },
+    /// Lock game event expiry to currently-selected game mode for user
+    /// more info: https://git.ngram.ca/OpenJam/rc-servers/issues/84
+    GameModeEventLock {
+        event: IntercomGameEvent,
+    },
+    /// Return to normal game event expiry behaviour for user
+    /// more info: https://git.ngram.ca/OpenJam/rc-servers/issues/84
+    GameModeEventUnlock { },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "workaround")]
+pub enum IntercomLobbyWorkaroundMessage {
+
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "workaround")]
+pub enum IntercomWorkaroundMessage {
+    Lobby(IntercomLobbyWorkaroundMessage),
+    WebService(IntercomWebServiceWorkaroundMessage),
 }
 
 pub fn generate_token(salt: &[u8], key: &[u8]) -> String {

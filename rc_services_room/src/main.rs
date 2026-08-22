@@ -31,6 +31,7 @@ pub struct InitConfig {
     pub custom_games: std::sync::Arc<custom_game_tracker::CustomGameMesh>,
     pub user_mesh: std::sync::Arc<user_service::UserMesh>,
     pub workarounds: workarounds::Workarounds,
+    pub game_event_sequence: std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,
 }
 
 #[tokio::main]
@@ -49,6 +50,7 @@ async fn main() -> std::io::Result<()> {
         &parsers,
         vehicle_validator_plugins_path,
     );
+    let game_event_sequence = std::sync::Arc::new(tokio::sync::Mutex::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemode_events(&cubes)));
     let init_ctx = std::sync::Arc::new(InitConfig {
         cubes,
         users,
@@ -58,6 +60,7 @@ async fn main() -> std::io::Result<()> {
         custom_games: std::sync::Arc::new(custom_game_tracker::CustomGameMesh::new()),
         user_mesh: std::sync::Arc::new(user_service::UserMesh::new()),
         workarounds: workarounds::Workarounds::new(),
+        game_event_sequence,
     });
 
     let server = std::sync::Arc::new(polariton_server::Server::new(operations::handler(&init_ctx), polariton_server::events::EventsHandler::new()));

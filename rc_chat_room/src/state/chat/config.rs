@@ -322,7 +322,7 @@ impl Intercom {
             }
             Self::KeybindLockFix => {
                 ctx.user.trigger_workaround(
-                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::KeybindLockout {  },
+                    oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService( oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::KeybindLockout {  }),
                     vec![ctx.user.public_id().to_owned()]
                 ).await;
                 "Triggered key lockout workaround".to_owned()

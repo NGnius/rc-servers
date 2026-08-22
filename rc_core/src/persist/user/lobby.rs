@@ -11,10 +11,6 @@ fn fake_impl_to_db(client_emu: &crate::persist::config::ClientEmulator) -> oj_rc
 
 #[async_trait::async_trait]
 impl super::LobbyUser for UserData {
-    fn user_id(&self) -> i32 {
-        self.account.id
-    }
-
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError> {
         self.user_player_data(cpu_counter).await.map_err(|e| {
             if let Some(msg) = e.error_msg() {

@@ -651,20 +651,20 @@ impl GameConfig {
     fn as_core(&self) -> oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig {
         oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig {
             game_mode: match self.game_mode {
-                oj_rc_core::data::game_mode::GameMode::BattleArena => oj_rc_core::persist::user::intercom::CustomGameMode::BattleArena,
-                oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => oj_rc_core::persist::user::intercom::CustomGameMode::TeamDeathmatch,
-                oj_rc_core::data::game_mode::GameMode::Pit => oj_rc_core::persist::user::intercom::CustomGameMode::Pit,
-                oj_rc_core::data::game_mode::GameMode::SuddenDeath => oj_rc_core::persist::user::intercom::CustomGameMode::SuddenDeath,
+                oj_rc_core::data::game_mode::GameMode::BattleArena => oj_rc_core::persist::user::intercom::IntercomGameMode::BattleArena,
+                oj_rc_core::data::game_mode::GameMode::TeamDeathmatch => oj_rc_core::persist::user::intercom::IntercomGameMode::TeamDeathmatch,
+                oj_rc_core::data::game_mode::GameMode::Pit => oj_rc_core::persist::user::intercom::IntercomGameMode::Pit,
+                oj_rc_core::data::game_mode::GameMode::SuddenDeath => oj_rc_core::persist::user::intercom::IntercomGameMode::SuddenDeath,
                 invalid => {
                     log::warn!("Custom game set to invalid mode {:?} (using sudden death as fallback)", invalid);
-                    oj_rc_core::persist::user::intercom::CustomGameMode::SuddenDeath
+                    oj_rc_core::persist::user::intercom::IntercomGameMode::SuddenDeath
                 },
             },
             map: self.map.clone(),
             map_visibility: match self.map_visibility {
-                oj_rc_core::data::game_mode::MapVisibility::Good => oj_rc_core::persist::user::intercom::CustomGameVisibility::Good,
-                oj_rc_core::data::game_mode::MapVisibility::Poor => oj_rc_core::persist::user::intercom::CustomGameVisibility::Poor,
-                oj_rc_core::data::game_mode::MapVisibility::Bad => oj_rc_core::persist::user::intercom::CustomGameVisibility::Bad,
+                oj_rc_core::data::game_mode::MapVisibility::Good => oj_rc_core::persist::user::intercom::IntercomGameVisibility::Good,
+                oj_rc_core::data::game_mode::MapVisibility::Poor => oj_rc_core::persist::user::intercom::IntercomGameVisibility::Poor,
+                oj_rc_core::data::game_mode::MapVisibility::Bad => oj_rc_core::persist::user::intercom::IntercomGameVisibility::Bad,
             },
             health_regen: self.health_regen,
             capture_segment_memory: self.capture_segment_memory,

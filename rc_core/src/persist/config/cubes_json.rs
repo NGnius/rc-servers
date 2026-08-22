@@ -379,6 +379,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             index: first,
             started: chrono::Utc::now().timestamp(),
             needs_to_be_saved: true,
+            lockouts: std::collections::HashMap::new(),
         }
     }
 

@@ -4,12 +4,14 @@ use polariton_server::operations::{Operation, OperationCode};
 pub struct MoreLobbyAuth {
     mesh: std::sync::Arc<crate::user_service::UserMesh>,
     keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
+    game_event_seq: std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,
 }
 
-pub fn more_auth_provider(mesh: &std::sync::Arc<crate::user_service::UserMesh>, keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>) -> MoreLobbyAuth {
+pub fn more_auth_provider(mesh: &std::sync::Arc<crate::user_service::UserMesh>, keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>, game_event_seq: &std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,) -> MoreLobbyAuth {
     MoreLobbyAuth {
         mesh: mesh.to_owned(),
         keybind_workaround,
+        game_event_seq: game_event_seq.to_owned(),
     }
 }
 
@@ -50,6 +52,7 @@ impl <C: Send + 'static> Operation<C> for MoreLobbyAuth {
                                 &user_info,
                                 user.event_sender(),
                                 &self.keybind_workaround,
+                                &self.game_event_seq,
                             ).run();
                             return polariton::operation::OperationResponse {
                                 code: Self::op_code(),
