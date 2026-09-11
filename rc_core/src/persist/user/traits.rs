@@ -169,6 +169,30 @@ pub struct VehicleData {
     pub was_rated: Option<bool>,
 }
 
+pub struct FullVehicleData {
+    pub id: i32,
+    pub creation_time: i64,
+    pub slot: i32,
+    pub name: String,
+    pub crf_id: Option<i32>,
+    pub was_rated: bool,
+    pub movement_categories: Vec<u32>,
+    pub uuid: i64,
+    pub total_robot_cpu: i32,
+    pub total_cosmetic_cpu: i32,
+    pub total_robot_ranking: i32,
+    pub bay_cpu: i32,
+    pub control: ControlData,
+    pub mastery_level: i32,
+    pub bay_skin: String,
+    pub death_animation: String,
+    pub spawn_animation: String,
+    pub weapon_order: Vec<u32>,
+    pub robot_data: Vec<u8>,
+    pub colour_data: Vec<u8>,
+    pub selected: bool,
+}
+
 pub struct VehicleUploadData {
     pub version: String,
     pub slot: i32,
@@ -207,6 +231,15 @@ impl ControlType {
             Self::Camera => oj_rc_database::schema::garage::ControlType::Camera,
             Self::Keyboard => oj_rc_database::schema::garage::ControlType::Keyboard,
             Self::Count => oj_rc_database::schema::garage::ControlType::Count,
+        }
+    }
+
+    #[inline]
+    pub(super) fn from_db(db: oj_rc_database::schema::garage::ControlType) -> Self {
+        match db {
+            oj_rc_database::schema::garage::ControlType::Camera => Self::Camera,
+            oj_rc_database::schema::garage::ControlType::Keyboard => Self::Keyboard,
+            oj_rc_database::schema::garage::ControlType::Count => Self::Count,
         }
     }
 }
@@ -681,8 +714,10 @@ pub trait FactoryUser {
 #[async_trait::async_trait]
 pub trait WebUser: CommonUser {
     async fn garages(&self) -> Result<Vec<GarageWebInfo>, Box<dyn std::error::Error>>;
+    async fn garages_full_ordered(&self) -> Result<Vec<FullVehicleData>, Box<dyn std::error::Error>>;
     async fn garage_by_id(&self, id: i32) -> Result<Option<VehicleData>, Box<dyn std::error::Error>>;
-    async fn save_garage(&self, vehicle: crate::persist::user::VehicleData, garage_id: Option<i32>, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>>;
+    async fn save_garage(&self, vehicle: VehicleData, garage_id: Option<i32>, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>>;
+    async fn save_federated_garage(&self, is_create: bool, vehicle: FullVehicleData, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>>;
     async fn garage_id_selected(&self) -> Result<Option<i32>, Box<dyn std::error::Error>>;
     async fn garage_stats(&self) -> Result<GarageWebStats, Box<dyn std::error::Error>>;
     async fn account_stats(&self) -> Result<AccountWebStats, Box<dyn std::error::Error>>;
@@ -719,6 +754,8 @@ pub struct AccountWebStats {
     pub avatar_id: Option<i32>,
     pub premium_until: i64,
     pub rank: u32,
+    pub creation_time: i64,
+    pub last_seen_time: i64,
 }
 
 pub struct SanctionWebStats {

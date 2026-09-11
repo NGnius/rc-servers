@@ -24,7 +24,7 @@ impl super::WebUser for super::account_json::UserData {
                     slot: g.slot,
                     robot_data: g.robot_data,
                     colour_data: g.colour_data,
-                    weapon_order: Vec::default(),
+                    weapon_order: oj_rc_database::schema::parse_int_csv(&g.weapon_order).into_iter().map(|x| x as i32).collect(),
                     crf_id: g.crf_id,
                     was_rated: Some(g.was_rated),
                 })
@@ -32,6 +32,50 @@ impl super::WebUser for super::account_json::UserData {
                 None
             }
         ))
+    }
+
+    async fn garages_full_ordered(&self) -> Result<Vec<super::FullVehicleData>, Box<dyn std::error::Error>> {
+        let garages = self.db.garages_by_user_id(self.account.id).await?;
+        let order_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await?;
+        let slot_order = if let Some(order_aux) = order_aux {
+            serde_json::from_str(&order_aux.data).unwrap_or_default()
+        } else {
+            Vec::default()
+        };
+        let mut transformed_garages = Vec::with_capacity(garages.len());
+        for g in garages {
+            transformed_garages.push(super::FullVehicleData {
+                id: g.id,
+                creation_time: g.creation_time,
+                slot: g.slot,
+                name: g.name,
+                crf_id: g.crf_id,
+                was_rated: g.was_rated,
+                movement_categories: oj_rc_database::schema::parse_int_csv(&g.movement_categories),
+                uuid: g.uuid,
+                total_robot_cpu: g.total_robot_cpu,
+                total_cosmetic_cpu: g.total_cosmetic_cpu,
+                total_robot_ranking: g.total_robot_ranking,
+                bay_cpu: g.bay_cpu,
+                control: super::ControlData {
+                    slot: g.slot,
+                    control_ty: super::ControlType::from_db(g.control_type),
+                    vertical_strafing: g.vertical_strafing,
+                    sideways_driving: g.sideways_driving,
+                    tracks_turn_on_spot: g.tracks_turn_on_spot,
+                },
+                mastery_level: g.mastery_level,
+                bay_skin: g.bay_skin_id,
+                death_animation: g.death_animation_id,
+                spawn_animation: g.spawn_animation_id,
+                weapon_order: oj_rc_database::schema::parse_int_csv(&g.weapon_order),
+                robot_data: g.robot_data,
+                colour_data: g.colour_data,
+                selected: g.selected,
+            });
+        }
+        transformed_garages.sort_by_key(|g| slot_order.get(g.slot as usize).unwrap_or(&usize::MAX));
+        Ok(transformed_garages)
     }
 
     async fn save_garage(
@@ -102,6 +146,12 @@ impl super::WebUser for super::account_json::UserData {
         }
     }
 
+    async fn save_federated_garage(&self, _is_create: bool, vehicle: super::FullVehicleData, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>> {
+        let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&vehicle.robot_data));
+        let weapon_order = weapon_orderer.guess_weapons(&mut std::io::Cursor::new(&vehicle.robot_data));
+        todo!()
+    }
+
     async fn garage_id_selected(&self) -> Result<Option<i32>, Box<dyn std::error::Error>> {
         Ok(self.db.garage_selected(self.account.id).await?
             .map(|x| x.id))
@@ -132,6 +182,7 @@ impl super::WebUser for super::account_json::UserData {
         let mut avatar_id = None;
         let mut premium_until = 0;
         let mut user_rank = 0;
+        let mut last_seen = self.account.creation_time;
         for row in user_aux_data.iter() {
             match row.descriptor {
                 oj_rc_database::schema::user_aux::Descriptor::UserXP => {
@@ -155,6 +206,9 @@ impl super::WebUser for super::account_json::UserData {
                 oj_rc_database::schema::user_aux::Descriptor::UserRank => {
                     user_rank = row.data.parse().unwrap_or_default();
                 },
+                oj_rc_database::schema::user_aux::Descriptor::LastSeen => {
+                    last_seen = row.data.parse().unwrap_or_default();
+                },
                 _ => {},
             }
         }
@@ -165,6 +219,8 @@ impl super::WebUser for super::account_json::UserData {
             avatar_id,
             premium_until,
             rank: user_rank,
+            creation_time: self.account.creation_time,
+            last_seen_time: last_seen,
         })
     }
 

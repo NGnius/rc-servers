@@ -114,6 +114,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::account::delete_confirm::post)
             .service(api::config::get)
             .service(api::urls::get)
+            .service(api::user::federation::get)
+            .service(api::user::federation::outbox_get)
+            .service(api::user::federation::inbox_get)
+            .service(api::user::federation::inbox_post)
     })
     .bind((cli_args.ip, cli_args.port))?
     .run()
