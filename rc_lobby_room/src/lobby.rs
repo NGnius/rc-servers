@@ -671,13 +671,13 @@ impl QueueHandler {
 
         log::info!("Locking user {} game move event as they enter queue", user.public_id());
         let game_event = oj_rc_core::persist::user::intercom::IntercomGameEvent {
-            map: oj_rc_core::persist::user::intercom::IntercomGameMap::from_str(&map).unwrap_or(oj_rc_core::persist::user::intercom::IntercomGameMap::Mars1),
+            map: oj_rc_core::persist::user::intercom::IntercomGameMap::from_str_enum(&map).unwrap_or(oj_rc_core::persist::user::intercom::IntercomGameMap::Mars1),
             visibility: oj_rc_core::persist::user::intercom::IntercomGameVisibility::from_data(visibility),
             mode: oj_rc_core::persist::user::intercom::IntercomGameMode::from_data(mode),
             auto_heal,
         };
         user.trigger_workaround(oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventLock {
-            event: game_event.clone(),
+            event: game_event,
         }), vec![user.public_id().to_owned()]).await;
 
         let key = QueueKey {

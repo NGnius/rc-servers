@@ -81,7 +81,7 @@ impl GameMap {
     }
 
     #[inline]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_str_enum(s: &str) -> Option<Self> {
         match s {
             "RC_Planet_Mars_01_CTF" => Some(Self::Mars1), // og flat mars
             "RC_Planet_Mars_02_BA" => Some(Self::Mars2), // the one with the bridge in the middle

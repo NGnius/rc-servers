@@ -311,7 +311,7 @@ impl IntercomGameMap {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_str_enum(s: &str) -> Option<Self> {
         match s {
             "RC_Planet_Mars_01_CTF" => Some(Self::Mars1),
             "RC_Planet_Mars_02_BA" => Some(Self::Mars2),
