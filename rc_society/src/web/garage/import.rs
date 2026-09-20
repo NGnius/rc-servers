@@ -24,7 +24,7 @@ struct GarageData {
 }
 
 async fn import_impl(id: Option<i32>, handlebars_ref: Data<handlebars::Handlebars<'_>>, importer: Data<ImportPlugins>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let html = if let Some(id) = id {
@@ -133,7 +133,7 @@ struct ImportForm {
 
 #[post("/garages/import")]
 pub async fn post(form: actix_multipart::form::MultipartForm<ImportForm>, handlebars_ref: Data<handlebars::Handlebars<'_>>, importer: Data<ImportPlugins>, parsers: Data<oj_rc_core::cubes::CubeParsers>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let total_size: usize = form.files.iter().map(|f| f.data.len()).sum();

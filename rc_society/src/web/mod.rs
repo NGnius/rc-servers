@@ -6,8 +6,9 @@ pub mod garage;
 pub mod user_federation;
 pub mod logout;
 pub mod federation;
+pub mod account;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use actix_web::{web::{Html, Redirect}, Responder};
 
 fn version_string() -> String {
@@ -24,6 +25,25 @@ struct Context<T: Serialize> {
     error: Option<String>,
     version: String,
     source_url: String,
+}
+
+const CONFIRM_FORM_NAME: &str = "user_confirm";
+
+#[derive(Serialize)]
+struct ConfirmRenderData {
+    pub display_name: String,
+    pub public_id: String,
+    pub question: String,
+    pub yes_url: String,
+    pub no_url: String,
+    pub message: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "action")]
+enum ConfirmFormData {
+    Yes,
+    No,
 }
 
 fn render_ok<T: Serialize>(form: T, renderer: &handlebars::Handlebars<'_>, form_name: &str) -> Html {
@@ -51,7 +71,7 @@ enum LoginReturn {
     AuthFail(actix_web::HttpResponse<actix_web::body::BoxBody>),
 }
 
-async fn try_auth_user(user_opt: Option<actix_identity::Identity>, auth: &oj_rc_core::UserImpl, req: &actix_web::HttpRequest) -> Result<LoginReturn, actix_web::Error> {
+async fn try_auth_user(user_opt: &Option<actix_identity::Identity>, auth: &oj_rc_core::UserImpl, req: &actix_web::HttpRequest) -> Result<LoginReturn, actix_web::Error> {
     if let Some(user) = user_opt {
         let user_id = user.id()?;
         match <oj_rc_core::UserImpl as oj_rc_core::UserProvider<()>>::web_authenticate(auth, user_id.clone()).await {

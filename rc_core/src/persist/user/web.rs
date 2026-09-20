@@ -218,4 +218,21 @@ impl super::WebUser for super::account_json::UserData {
                 .collect()
         })
     }
+
+    /// Delete own account in the database, dangerous!
+    async fn delete_account(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let rows_deleted = self.db.delete_account(self.account.id).await?;
+        log::info!("Deleted account {} data, {} rows", self.account.id, rows_deleted);
+        Ok(())
+    }
+
+    async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.db.update_user(oj_rc_database::schema::user::ActiveModel {
+            id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+            display_name: oj_rc_database::sea_orm::ActiveValue::Set(new_name.to_owned()),
+            ..Default::default()
+        }).await?;
+        log::info!("Renamed account {} display from {} to {}", self.account.id, self.account.display_name, new_name);
+        Ok(())
+    }
 }

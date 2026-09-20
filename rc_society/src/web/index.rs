@@ -84,7 +84,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
     let links_info = links_details(server_links.as_ref());
     let federation_info = fedi_details(server_fedi.as_ref());
     if let Some(user) = user_opt {
-        match super::try_auth_user(Some(user), auth.as_ref(), &req).await? {
+        match super::try_auth_user(&Some(user), auth.as_ref(), &req).await? {
             super::LoginReturn::AuthFail(resp) => Ok(resp),
             super::LoginReturn::Success(user) => {
                 Ok(super::render_ok(

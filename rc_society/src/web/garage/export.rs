@@ -8,7 +8,7 @@ use crate::api::garage::plugins::ImportPlugins;
 
 #[get("/garages/{id}/export")]
 pub async fn get(id: Path<i32>, query: Query<super::PortQuery>, exporter: Data<ImportPlugins>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             match user.garage_by_id(*id).await {

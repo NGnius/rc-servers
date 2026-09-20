@@ -95,7 +95,7 @@ struct FederationData {
 }
 
 pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, factory: Data<oj_rc_core::factory::Factory>, server_config: Data<oj_rc_core::persist::config::ServerConfig>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match super::try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match super::try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         super::LoginReturn::AuthFail(resp) => Ok(resp),
         super::LoginReturn::Success(user) => {
             log::debug!("Rendering user's dashboard");

@@ -65,7 +65,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap_fn(|req, srv| {
                 use actix_web::dev::Service;
-                log::trace!("Request {} {}", req.method(), req.path());
+                #[cfg(debug_assertions)]
+                { log::debug!("Request {} {}", req.method(), req.path()); }
+                #[cfg(not(debug_assertions))]
+                { log::trace!("Request {} {}", req.method(), req.path()); }
                 srv.call(req)
             })
             .wrap(actix_identity::IdentityMiddleware::default())
@@ -105,6 +108,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::user_federation::post_off)
             .service(web::user_federation::post_on)
             .service(web::federation::get)
+            .service(web::account::management::get)
+            .service(web::account::management::post)
+            .service(web::account::delete_confirm::get)
+            .service(web::account::delete_confirm::post)
             .service(api::config::get)
             .service(api::urls::get)
     })

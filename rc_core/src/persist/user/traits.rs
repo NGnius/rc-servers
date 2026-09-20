@@ -689,6 +689,9 @@ pub trait WebUser: CommonUser {
     async fn sanction_stats(&self) -> Result<SanctionWebStats, Box<dyn std::error::Error>>;
     async fn social_stats(&self) -> Result<SocialWebStats, Box<dyn std::error::Error>>;
     async fn fedi_info(&self) -> Result<FederationWebData, Box<dyn std::error::Error>>;
+    /// Delete own account in the database, nuclear!
+    async fn delete_account(&self) -> Result<(), Box<dyn std::error::Error>>;
+    async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 pub struct GarageWebInfo {

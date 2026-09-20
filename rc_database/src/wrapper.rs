@@ -116,6 +116,12 @@ impl Database {
         entity.insert(self.orm.as_ref()).await
     }
 
+    pub async fn update_user(&self, entity: crate::schema::user::ActiveModel) -> Result<crate::schema::user::Model, sea_orm::DbErr> {
+        crate::schema::user::Entity::update(entity)
+            .exec(self.orm.as_ref())
+            .await
+    }
+
     pub async fn user_aux_by_user_id(&self, user_id: i32) -> Result<Vec<crate::schema::user_aux::Model>, sea_orm::DbErr> {
         crate::schema::user_aux::Entity::find()
             .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
@@ -948,6 +954,92 @@ impl Database {
         crate::schema::federation::Entity::update(entity)
             .exec(self.orm.as_ref())
             .await
+    }
+
+    /// Delete account and all associated data
+    pub async fn delete_account(&self, user_id: i32) -> Result<u64, sea_orm::DbErr> {
+        let total_records = self.orm.transaction(|txn| Box::pin(async move {
+            let mut total_records = 0;
+            let campaigns_retrieve = crate::schema::campaign::Entity::find()
+                .filter(crate::schema::campaign::Column::UserId.eq(user_id))
+                .all(txn).await?;
+            // singleplayer game info
+            let campaign_completions_task = crate::schema::campaign_difficulty_completion::Entity::delete_many()
+                .filter(crate::schema::campaign_difficulty_completion::Column::Id.is_in(
+                    campaigns_retrieve.into_iter().map(|campaign| campaign.id)
+                ))
+                .exec(txn);
+            let campaigns_task = crate::schema::campaign::Entity::delete_many()
+                .filter(crate::schema::campaign::Column::UserId.eq(user_id))
+                .exec(txn);
+            // social info
+            let clan_members_task = crate::schema::clan_member::Entity::delete_many()
+                .filter(crate::schema::clan_member::Column::UserId.eq(user_id))
+                .exec(txn);
+            let friends_task = crate::schema::friend::Entity::delete_many()
+                .filter(
+                    crate::schema::friend::Column::FriendSource.eq(user_id)
+                    .or(crate::schema::friend::Column::FriendTarget.eq(user_id))
+                )
+                .exec(txn);
+            // multiplayer game info
+            let players_retrieve = crate::schema::multiplayer_game_player::Entity::find()
+                .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+                .all(txn).await?;
+            let scores_task = crate::schema::multiplayer_game_score::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_score::Column::Id.is_in(
+                    players_retrieve.into_iter().map(|player| player.id)
+                ))
+                .exec(txn);
+            let players_task = crate::schema::multiplayer_game_player::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+                .exec(txn);
+            // vehicle info
+            let factory_vehicles_task = crate::schema::factory::vehicle::Entity::delete_many()
+                .filter(crate::schema::factory::vehicle::Column::UserId.eq(user_id))
+                .exec(txn);
+            let garages_task = crate::schema::garage::Entity::delete_many()
+                .filter(crate::schema::garage::Column::UserId.eq(user_id))
+                .exec(txn);
+            // basic info
+            let permissions_task = crate::schema::permissions::Entity::delete_many()
+                .filter(crate::schema::permissions::Column::UserId.eq(user_id))
+                .exec(txn);
+            let user_aux_task = crate::schema::user_aux::Entity::delete_many()
+                .filter(crate::schema::user_aux::Column::UserId.eq(user_id))
+                .exec(txn);
+            let sanctions_task = crate::schema::sanction::Entity::delete_many()
+                .filter(crate::schema::sanction::Column::UserId.eq(user_id))
+                .exec(txn);
+
+            let user_task = crate::schema::user::Entity::delete_by_id(user_id)
+                .exec(txn);
+            // TODO run these concurrently (independent threads already separated by block)
+            total_records += campaign_completions_task.await?.rows_affected;
+            total_records += campaigns_task.await?.rows_affected;
+
+            total_records += clan_members_task.await?.rows_affected;
+            total_records += friends_task.await?.rows_affected;
+
+            total_records += scores_task.await?.rows_affected;
+            total_records += players_task.await?.rows_affected;
+
+            total_records += factory_vehicles_task.await?.rows_affected;
+            total_records += garages_task.await?.rows_affected;
+
+            total_records += permissions_task.await?.rows_affected;
+            total_records += user_aux_task.await?.rows_affected;
+            total_records += sanctions_task.await?.rows_affected;
+
+            total_records += user_task.await?.rows_affected; // dependent on all others
+            Ok(total_records)
+        })).await.map_err(|e| {
+            match e {
+                sea_orm::TransactionError::Connection(db) => db,
+                sea_orm::TransactionError::Transaction(txn) => txn,
+            }
+        })?;
+        Ok(total_records)
     }
 
     pub async fn metrics(&self) -> super::DatabaseMetrics {

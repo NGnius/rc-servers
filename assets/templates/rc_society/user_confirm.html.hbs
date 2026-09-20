@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Are you sure? - Openjam</title>
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  {{> stylesheet}}
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      Welcome {{form.display_name}}! |
+      <a href="/">Home</a> |
+      <a href="/dashboard">Dashboard</a> |
+      <a href="/logout">Sign Out</a>
+    </div>
+    <h1 class="form-banner">{{form.question}}</h1>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+    {{#if form.message}}
+      <div class="form-success">
+        <p class="form-success-message">{{form.message}}</p>
+      </div>
+    {{/if}}
+
+    <div class="access-grid">
+      <div class="access-row-box access-box-input">
+        <form method="post" class="inline-form" action="{{form.yes_url}}">
+            <input type="hidden" id="action" name="action" value="Yes"/>
+            <div class="form-submit">
+                <input class="form-submit-button form-submit-button-danger" style="padding: 5px;" type="submit" value="Yes" />
+            </div>
+        </form>
+      </div>
+      <div class="access-row-box">
+        <a href="{{form.no_url}}">
+            <div class="access-box-banner">
+                Cancel
+            </div>
+        </a>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

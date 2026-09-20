@@ -183,6 +183,11 @@
         <input class="form-submit-button" type="submit" value="Submit">
       </div>
 
+      <a href="{{form.auth_url}}/register">
+        <div class="form-padded" style="text-align:center;">Register</div>
+        <input type="hidden" id="auth_url" name="auth_url" value="{{form.auth_url}}"/>
+      </a>
+
       <div class="form-disclaimer">
         <p>This project is not affiliated with FreeJam, Cardlife or Robocraft. We're just fixing their """sunset""".</p>
       </div>

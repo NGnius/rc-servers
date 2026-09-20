@@ -27,7 +27,7 @@ struct FederatedServer {
 
 #[get("/federation")]
 pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let fedi_info = match build_fedi_info(user.as_ref()).await {

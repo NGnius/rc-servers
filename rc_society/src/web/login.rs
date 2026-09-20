@@ -4,10 +4,21 @@ use serde::{Serialize, Deserialize};
 
 const FORM_NAME: &str = "login";
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 struct LoginForm {
     username: String,
     password: String,
+    auth_url: String,
+}
+
+impl LoginForm {
+    fn with_auth_url(auth_url: &str) -> Self {
+        LoginForm {
+            username: String::default(),
+            password: String::default(),
+            auth_url: auth_url.to_owned(),
+        }
+    }
 }
 
 #[post("/login")]
@@ -34,7 +45,7 @@ pub async fn form_submit(form: Form<LoginForm>, auth: Data<Box<oj_rc_core::UserI
 }
 
 #[get("/login")]
-pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
+pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, server_config: Data<oj_rc_core::persist::config::ServerConfig>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
     if let Some(user) = user_opt {
         let user_id = user.id()?;
         use oj_rc_core::UserAuthenticator;
@@ -44,7 +55,7 @@ pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: D
                 .map_into_boxed_body())
         } else {
             Ok(super::render_err(
-                LoginForm::default(),
+                LoginForm::with_auth_url(&server_config.auth_url),
                 "Invalid login token".to_owned(),
                 handlebars_ref.as_ref(),
                 FORM_NAME,
@@ -55,7 +66,7 @@ pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: D
         }
     } else {
         Ok(super::render_ok(
-            LoginForm::default(),
+            LoginForm::with_auth_url(&server_config.auth_url),
             handlebars_ref.as_ref(),
             FORM_NAME,
         )

@@ -15,7 +15,7 @@ struct RenderData {
 }
 
 async fn list_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let fedi = user.fedi_get().await;
@@ -50,7 +50,7 @@ pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<B
 
 #[post("/federation/list/remove/{domain}")]
 pub async fn post_remove(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest, domain: Path<String>) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let mut fedi = user.fedi_get().await;
@@ -79,7 +79,7 @@ struct AddForm {
 
 #[post("/federation/list/add")]
 pub async fn post_add(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest, form: Form<AddForm>) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let mut fedi = user.fedi_get().await;
@@ -104,7 +104,7 @@ pub async fn post_add(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Id
 
 #[post("/federation/off")]
 pub async fn post_off(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let mut fedi = user.fedi_get().await;
@@ -124,7 +124,7 @@ pub async fn post_off(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Id
 
 #[post("/federation/on")]
 pub async fn post_on(auth: Data<Box<oj_rc_core::UserImpl>>, user_opt: Option<Identity>, req: HttpRequest) -> Result<impl Responder, actix_web::error::Error> {
-    match try_auth_user(user_opt, auth.as_ref(), &req).await? {
+    match try_auth_user(&user_opt, auth.as_ref(), &req).await? {
         LoginReturn::AuthFail(resp) => Ok(resp),
         LoginReturn::Success(user) => {
             let mut fedi = user.fedi_get().await;
