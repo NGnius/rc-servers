@@ -227,6 +227,11 @@ impl super::WebUser for super::account_json::UserData {
     }
 
     async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(user) = self.db.user_by_any_unique_id(new_name.to_owned()).await? {
+            if user.id != self.account.id {
+                return Err(Box::from(format!("Name {} is already in use", new_name)));
+            }
+        }
         self.db.update_user(oj_rc_database::schema::user::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
             display_name: oj_rc_database::sea_orm::ActiveValue::Set(new_name.to_owned()),
