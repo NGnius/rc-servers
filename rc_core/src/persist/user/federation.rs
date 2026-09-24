@@ -2,6 +2,7 @@ use openidconnect::{OAuth2TokenResponse, TokenResponse};
 use serde::{Serialize, Deserialize};
 
 const SOCIETY_URLS_API_ENDPOINT: &str = "api/v1/services.json";
+const SOCIETY_USER_API_ENDPOINT: &str = "/api/v1/activitypub/user/";
 const ACCESS_CODE_AAD: &[u8] = b"oj-access-code";
 
 pub type DiscoveryMetadata = openidconnect::core::CoreProviderMetadata;
@@ -81,6 +82,46 @@ impl ring::aead::NonceSequence for NonceProvider {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ItemType {
+    OrderedCollection,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Outbox<T> {
+    #[serde(rename = "type")]
+    pub kind: ItemType,
+    pub id: String,
+    pub total_items: u32,
+    pub ordered_items: Vec<T>,
+    #[serde(default)]
+    pub endpoints: std::collections::HashMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<oj_serdes::society::activitypub::Image>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image: Option<oj_serdes::society::activitypub::Image>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ActivityType {
+    Create,
+    Update,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Activity<T> {
+    #[serde(rename = "type")]
+    pub kind: ActivityType,
+    pub id: String,
+    pub actor: String,
+    pub object: T,
+    pub published: chrono::DateTime<chrono::Utc>,
+    pub to: String,
+    pub cc: Vec<String>,
+}
+
 impl super::AccountProvider {
     fn nonce_provider(&self) -> NonceProvider {
         NonceProvider {
@@ -100,6 +141,7 @@ impl super::AccountProvider {
         false
     }
 
+    /// Login to a remote server from a local login request (Client -> Local (YOU ARE HERE) -> Remote)
     async fn local_login_impl(&self, auth_info: super::FederatedAuthInfo, federation: &Option<crate::persist::config::Federation>) -> Result<super::UserLoginInfo, super::AuthError> {
         if auth_info.display_name.is_empty() {
             return Err(super::AuthError {
@@ -312,15 +354,21 @@ impl super::AccountProvider {
                 .secret()
                 .to_owned();
             let remote_token = token_resp.access_token().secret();
+            let remote_token_data = jsonwebtoken::dangerous::insecure_decode::<crate::auth::Token>(remote_token)
+                .map_err(|e| super::AuthError {
+                    message: e.to_string(),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                })?;
             #[cfg(debug_assertions)]
             log::debug!("User {} authenticated to {} with access token {}", auth_info.display_name, target_domain, remote_token);
             // create/update federated user entry in DB
-            let user_id = self.update_local_database(&auth_info, &urls).await.map_err(|e| super::AuthError {
-                message: format!("Failed to update DB entries for {}: {}", auth_info.display_name, e),
+            let user_id = self.update_local_database(&remote_token_data, &auth_info, &urls).await.map_err(|e| super::AuthError {
+                message: format!("Failed to update DB user for {}: {}", auth_info.display_name, e),
                 code: crate::data::error_codes::AuthErrorCode::Unknown,
             })?;
+            self.update_from_fedi_user_data(user_id, remote_token, &remote_token_data, &urls).await?;
             // return local success token
-            let local_token = self.localify_token(remote_token)?;
+            let local_token = self.localify_token(remote_token, &remote_token_data)?;
             Ok(super::UserLoginInfo {
                 response: libfj::robocraft::AuthenticationResponseInfo {
                     token: local_token,
@@ -338,12 +386,8 @@ impl super::AccountProvider {
         }
     }
 
-    fn localify_token(&self, remote_token: &str) -> Result<String, super::AuthError> {
-        let remote_token_data = jsonwebtoken::dangerous::insecure_decode::<crate::auth::Token>(remote_token)
-            .map_err(|e| super::AuthError {
-                message: e.to_string(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            })?;
+    fn localify_token(&self, remote_token: &str, remote_token_data: &jsonwebtoken::TokenData<crate::auth::Token>) -> Result<String, super::AuthError> {
+        let remote_token_data = remote_token_data.to_owned();
         let mut rc_token = remote_token_data.claims.client_details;
         rc_token.email_address = format!("{}@{}", rc_token.robocraft_name, self.auth);
         rc_token.email_verified = true;
@@ -367,7 +411,7 @@ impl super::AccountProvider {
         Ok(token)
     }
 
-    async fn update_local_database(&self, auth_info: &super::FederatedAuthInfo, services_info: &oj_serdes::society::ServiceDomains) -> Result<i32, oj_rc_database::sea_orm::DbErr> {
+    async fn update_local_database(&self, remote_token_data: &jsonwebtoken::TokenData<crate::auth::Token>, auth_info: &super::FederatedAuthInfo, services_info: &oj_serdes::society::ServiceDomains) -> Result<i32, oj_rc_database::sea_orm::DbErr> {
         use oj_rc_database::sea_orm::IntoActiveModel;
         let now = chrono::Utc::now().timestamp();
         let fedi_id = if let Some(existing_fedi) = self.db.federation_by_domain(&services_info.root).await? {
@@ -391,7 +435,7 @@ impl super::AccountProvider {
             };
             self.db.insert_federation(new_entity).await?.id
         };
-        let qualified_name = format!("{}#{}", auth_info.display_name, services_info.root);
+        let qualified_name = format!("{}#{}", remote_token_data.claims.client_details.public_id, services_info.root);
         let user_id = if let Some(existing_user) = self.db.user_by_display_name_and_federation(qualified_name.clone(), fedi_id).await? {
             log::info!("Using existing federated user with id {} for {} from {}", existing_user.id, auth_info.display_name, auth_info.domain);
             existing_user.id
@@ -403,6 +447,184 @@ impl super::AccountProvider {
         Ok(user_id)
     }
 
+    async fn update_from_fedi_user_data(
+        &self,
+        local_user_id: i32,
+        token: &str,
+        remote_token_data: &jsonwebtoken::TokenData<crate::auth::Token>,
+        services_info: &oj_serdes::society::ServiceDomains,
+    ) -> Result<(), super::AuthError> {
+        let pub_id = &remote_token_data.claims.client_details.public_id;
+        let user_url = format!("{}/{}/{}", services_info.society, SOCIETY_USER_API_ENDPOINT, pub_id);
+        // TODO parse the context for activitypub endpoints too
+        let user_data: oj_serdes::society::activitypub::Person = self.intercom_http_client.get(&user_url)
+            .bearer_auth(token)
+            .send().await
+            .map_err(|e| {
+                log::error!("Failed to get {}: {}", user_url, e);
+                super::AuthError {
+                    message: format!("Failed to get {} for logging in {}", user_url, pub_id),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                }
+            })?
+            .json().await
+            .map_err(|e| {
+                log::error!("Failed to deserialize {}: {}", user_url, e);
+                super::AuthError {
+                    message: format!("Failed to deserialize {} for logging in {}", user_url, pub_id),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                }
+            })?;
+        let outbox_url = user_data.outbox;
+        let outbox_data: Outbox<oj_serdes::society::activitypub::Vehicle> = self.intercom_http_client.get(outbox_url.to_string())
+            .bearer_auth(token)
+            .send().await
+            .map_err(|e| {
+                log::error!("Failed to get {}: {}", outbox_url, e);
+                super::AuthError {
+                    message: format!("Failed to get {} for logging in {}", outbox_url, pub_id),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                }
+            })?
+            .json().await
+            .map_err(|e| {
+                log::error!("Failed to deserialize {}: {}", outbox_url, e);
+                super::AuthError {
+                    message: format!("Failed to deserialize {} for logging in {}", outbox_url, pub_id),
+                    code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+                }
+            })?;
+        // update slot order
+        let new_slots: Vec<u32> = outbox_data.ordered_items.iter().map(|x| x.slot).collect();
+        let slots_json = serde_json::to_string(&new_slots).unwrap();
+        let old_order = self.db.user_aux_by_user_id_and_descriptor(
+            local_user_id,
+            oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder,
+        ).await.map_err(|e| {
+            log::error!("Failed to retrieve slot order for federated user {}: {}", local_user_id, e);
+            super::AuthError {
+                message: format!("Failed to retrieve slot order for federated user {}", outbox_url),
+                code: crate::data::error_codes::AuthErrorCode::Unknown,
+            }
+        })?;
+        let old_slots: Vec<u32> = old_order.and_then(|aux| serde_json::from_str(&aux.data).ok()).unwrap_or_default();
+        self.db.update_user_aux_by_user_id_and_descriptor(
+            oj_rc_database::schema::user_aux::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                descriptor: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                data: oj_rc_database::sea_orm::ActiveValue::Set(slots_json),
+            },
+            local_user_id,
+            oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder,
+        ).await.map_err(|e| {
+            log::error!("Failed to save federated slot order for user {}: {}", local_user_id, e);
+            super::AuthError {
+                message: format!("Failed to save slot order for user {}", outbox_url),
+                code: crate::data::error_codes::AuthErrorCode::Unknown,
+            }
+        })?;
+        // merge garage data
+        let existing_slots = self.db.garages_by_user_id(local_user_id).await
+            .map_err(|e| {
+            log::error!("Failed to retrieve garages existing garage slots for user {}: {}", local_user_id, e);
+            super::AuthError {
+                message: format!("Failed to retrieve existing garage slots for user {}", outbox_url),
+                code: crate::data::error_codes::AuthErrorCode::Unknown,
+            }
+        })?;
+        let existing_len = existing_slots.len();
+        let federated_len = outbox_data.ordered_items.len();
+        let mut to_create = Vec::with_capacity(existing_len.saturating_sub(federated_len));
+        let mut to_update = Vec::with_capacity(existing_len.min(federated_len));
+        let now = chrono::Utc::now().timestamp();
+        for fedi_vehicle in outbox_data.ordered_items {
+            let is_in_old_slots = old_slots.contains(&fedi_vehicle.slot);
+            let is_in_new_slots = new_slots.contains(&fedi_vehicle.slot);
+            // is_in_old_slots == is_in_new_slots == false is impossible
+            let control_ty = if fedi_vehicle.is_camera_controls {
+                oj_rc_database::schema::garage::ControlType::Camera
+            } else {
+                oj_rc_database::schema::garage::ControlType::Keyboard
+            };
+            if is_in_new_slots && is_in_old_slots {
+                // update needed
+                let slot_num = fedi_vehicle.slot;
+                let model = oj_rc_database::schema::garage::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    slot: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    name: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.name),
+                    crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                    was_rated: oj_rc_database::sea_orm::ActiveValue::Set(true),
+                    movement_categories: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fedi_vehicle.movement_categories)),
+                    uuid: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    thumbnail_version: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_robot_cpu as _),
+                    total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_cosmetic_cpu as _),
+                    total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_robot_ranking as _),
+                    bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.bay_cpu as _),
+                    tutorial_robot: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    starter_robot_index: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    control_type: oj_rc_database::sea_orm::ActiveValue::Set(control_ty),
+                    vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.vertical_strafing),
+                    sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.sideways_driving),
+                    tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.tracks_turn_on_spot),
+                    mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.mastery_level as _),
+                    bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.bay_skin),
+                    death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.death_animation),
+                    spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.spawn_animation),
+                    weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fedi_vehicle.weapon_order)),
+                    robot_data: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.robot_data),
+                    colour_data: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.colour_data),
+                    selected: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.selected),
+                };
+                to_update.push((slot_num, model));
+            } else if is_in_new_slots {
+                // create needed
+                let uuid = super::uuid_sanitize(now ^ (fedi_vehicle.slot << 16) as i64);
+                let model = oj_rc_database::schema::garage::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(local_user_id),
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                    slot: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.slot as _),
+                    name: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.name),
+                    crf_id: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                    was_rated: oj_rc_database::sea_orm::ActiveValue::Set(true),
+                    movement_categories: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fedi_vehicle.movement_categories)),
+                    uuid: oj_rc_database::sea_orm::ActiveValue::Set(uuid),
+                    thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(1),
+                    total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_robot_cpu as _),
+                    total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_cosmetic_cpu as _),
+                    total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.total_robot_ranking as _),
+                    bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.bay_cpu as _),
+                    tutorial_robot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+                    starter_robot_index: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                    control_type: oj_rc_database::sea_orm::ActiveValue::Set(control_ty),
+                    vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.vertical_strafing),
+                    sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.sideways_driving),
+                    tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.tracks_turn_on_spot),
+                    mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.mastery_level as _),
+                    bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.bay_skin),
+                    death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.death_animation),
+                    spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.spawn_animation),
+                    weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fedi_vehicle.weapon_order)),
+                    robot_data: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.robot_data),
+                    colour_data: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.colour_data),
+                    selected: oj_rc_database::sea_orm::ActiveValue::Set(fedi_vehicle.selected),
+                };
+                to_create.push(model);
+            } else {
+                // delete/hide needed
+                // TODO
+            }
+        }
+        Ok(())
+    }
+
+    /// Login to a local account from a remote request (Client -> Local -> Remote (YOU ARE HERE))
     async fn remote_auth_impl(&self, auth_info: &FederatedAuthenticationPayload, challenge: &str, federation: &Option<crate::persist::config::Federation>) -> Result<String, super::AuthError> {
         if auth_info.display_name.is_empty() {
             return Err(super::AuthError {

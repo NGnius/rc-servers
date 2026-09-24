@@ -1,5 +1,7 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::header::{ContentType, AUTHORIZATION}, web::{Data, Path}};
 
+use oj_rc_core::persist::user::federation::{Outbox, ItemType};
+
 #[get("/api/v1/activitypub/user/{name}/outbox")]
 pub async fn get(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, req: HttpRequest) -> impl Responder {
     get_impl(name.as_ref().to_owned(), auth, req).await
@@ -45,15 +47,15 @@ pub async fn get_impl(name: String, auth: Data<Box<oj_rc_core::UserImpl>>, req: 
 }
 
 #[inline]
-fn empty_outbox(public_id: &str) -> super::Outbox<oj_serdes::society::activitypub::Vehicle> {
+fn empty_outbox(public_id: &str) -> Outbox<oj_serdes::society::activitypub::Vehicle> {
     into_outbox(public_id, Vec::default())
 }
 
-fn into_outbox(public_id: &str, vehicles: Vec<oj_serdes::society::activitypub::Vehicle>) -> super::Outbox<oj_serdes::society::activitypub::Vehicle> {
+fn into_outbox(public_id: &str, vehicles: Vec<oj_serdes::society::activitypub::Vehicle>) -> Outbox<oj_serdes::society::activitypub::Vehicle> {
     let outbox_url = super::outbox(public_id);
     let inbox_url = super::inbox(public_id);
-    super::Outbox {
-        kind: super::ItemType::OrderedCollection,
+    Outbox {
+        kind: ItemType::OrderedCollection,
         id: outbox_url.to_string(),
         total_items: vehicles.len() as _,
         ordered_items: vehicles,

@@ -1,9 +1,6 @@
 mod user;
 pub use user::get;
 
-mod serde;
-pub use serde::{ItemType, Outbox, ActivityType, Activity};
-
 mod outbox;
 pub use outbox::get as outbox_get;
 

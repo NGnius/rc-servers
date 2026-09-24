@@ -1,5 +1,7 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::{StatusCode, header::AUTHORIZATION}, post, web::{Data, Path, Bytes}};
 
+use oj_rc_core::persist::user::federation::{Activity, ActivityType};
+
 #[get("/api/v1/activitypub/user/{name}/inbox")]
 pub async fn get(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, req: HttpRequest) -> impl Responder {
     super::outbox::get_impl(name.as_ref().to_owned(), auth, req).await
@@ -18,7 +20,7 @@ pub async fn post(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, par
                         code: StatusCode::FORBIDDEN,
                     }.into())
                 } else {
-                    let activity: super::Activity<oj_serdes::society::activitypub::Vehicle> = serde_json::from_reader(std::io::Cursor::new(&body))
+                    let activity: Activity<oj_serdes::society::activitypub::Vehicle> = serde_json::from_reader(std::io::Cursor::new(&body))
                         .map_err(|e| {
                             log::warn!("Received invalid vehicle activity for user {} inbox: {}", name, e);
                             InboxError {
@@ -26,23 +28,23 @@ pub async fn post(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, par
                                 code: StatusCode::BAD_REQUEST,
                             }
                         })?;
-                    let is_create = matches!(activity.kind, super::ActivityType::Create);
+                    let is_create = matches!(activity.kind, ActivityType::Create);
                     let g = activity.object;
                     let transformed = oj_rc_core::persist::user::FullVehicleData {
                         id: -1,
                         creation_time: 0,
-                        slot: g.slot,
+                        slot: g.slot as _,
                         name: g.name,
                         crf_id: None,
                         was_rated: false,
                         movement_categories: g.movement_categories,
                         uuid: 0,
-                        total_robot_cpu: g.total_robot_cpu,
-                        total_cosmetic_cpu: g.total_cosmetic_cpu,
-                        total_robot_ranking: g.total_robot_ranking,
-                        bay_cpu: g.bay_cpu,
+                        total_robot_cpu: g.total_robot_cpu as _,
+                        total_cosmetic_cpu: g.total_cosmetic_cpu as _,
+                        total_robot_ranking: g.total_robot_ranking as _,
+                        bay_cpu: g.bay_cpu as _,
                         control: oj_rc_core::persist::user::ControlData {
-                            slot: g.slot,
+                            slot: g.slot as _,
                             control_ty: if g.is_camera_controls {
                                 oj_rc_core::persist::user::ControlType::Camera
                             } else {
@@ -52,7 +54,7 @@ pub async fn post(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, par
                             sideways_driving: g.sideways_driving,
                             tracks_turn_on_spot: g.tracks_turn_on_spot,
                         },
-                        mastery_level: g.mastery_level,
+                        mastery_level: g.mastery_level as _,
                         bay_skin: g.bay_skin,
                         death_animation: g.death_animation,
                         spawn_animation: g.spawn_animation,
