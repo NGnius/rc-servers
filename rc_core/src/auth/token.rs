@@ -14,7 +14,7 @@ pub struct Token {
     pub iat: i64,
     pub sub: String,
     pub aud: String,
-    pub fedi_token: Option<String>,
+    pub fedi_token: Option<FediToken>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -24,4 +24,12 @@ pub enum LoginMethod {
     Username,
     Email,
     OAuth,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct FediToken {
+    pub token: String,
+    pub society: String,
+    pub domain: String,
+    pub local_id: String,
 }

@@ -24,7 +24,7 @@ impl super::WebUser for super::account_json::UserData {
                     slot: g.slot,
                     robot_data: g.robot_data,
                     colour_data: g.colour_data,
-                    weapon_order: Vec::default(),
+                    weapon_order: oj_rc_database::schema::parse_int_csv(&g.weapon_order).into_iter().map(|x| x as i32).collect(),
                     crf_id: g.crf_id,
                     was_rated: Some(g.was_rated),
                 })
@@ -32,6 +32,50 @@ impl super::WebUser for super::account_json::UserData {
                 None
             }
         ))
+    }
+
+    async fn garages_full_ordered(&self) -> Result<Vec<super::FullVehicleData>, Box<dyn std::error::Error>> {
+        let garages = self.db.garages_by_user_id(self.account.id).await?;
+        let order_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder).await?;
+        let slot_order = if let Some(order_aux) = order_aux {
+            serde_json::from_str(&order_aux.data).unwrap_or_default()
+        } else {
+            Vec::default()
+        };
+        let mut transformed_garages = Vec::with_capacity(garages.len());
+        for g in garages {
+            transformed_garages.push(super::FullVehicleData {
+                id: g.id,
+                creation_time: g.creation_time,
+                slot: g.slot,
+                name: g.name,
+                crf_id: g.crf_id,
+                was_rated: g.was_rated,
+                movement_categories: oj_rc_database::schema::parse_int_csv(&g.movement_categories),
+                uuid: g.uuid,
+                total_robot_cpu: g.total_robot_cpu,
+                total_cosmetic_cpu: g.total_cosmetic_cpu,
+                total_robot_ranking: g.total_robot_ranking,
+                bay_cpu: g.bay_cpu,
+                control: super::ControlData {
+                    slot: g.slot,
+                    control_ty: super::ControlType::from_db(g.control_type),
+                    vertical_strafing: g.vertical_strafing,
+                    sideways_driving: g.sideways_driving,
+                    tracks_turn_on_spot: g.tracks_turn_on_spot,
+                },
+                mastery_level: g.mastery_level,
+                bay_skin: g.bay_skin_id,
+                death_animation: g.death_animation_id,
+                spawn_animation: g.spawn_animation_id,
+                weapon_order: oj_rc_database::schema::parse_int_csv(&g.weapon_order),
+                robot_data: g.robot_data,
+                colour_data: g.colour_data,
+                selected: g.selected,
+            });
+        }
+        transformed_garages.sort_by_key(|g| slot_order.get(g.slot as usize).unwrap_or(&usize::MAX));
+        Ok(transformed_garages)
     }
 
     async fn save_garage(
@@ -102,6 +146,130 @@ impl super::WebUser for super::account_json::UserData {
         }
     }
 
+    async fn save_federated_garage(&self, is_create: bool, vehicle: super::FullVehicleData, cpu_counter: &crate::cubes::CpuListParser, weapon_orderer: &crate::cubes::WeaponListParser) -> Result<(), Box<dyn std::error::Error>> {
+        let cpu_counts = cpu_counter.calculate_cpu(&mut std::io::Cursor::new(&vehicle.robot_data));
+        let weapon_order = weapon_orderer.guess_weapons(&mut std::io::Cursor::new(&vehicle.robot_data));
+        let real_weapon_order = if weapon_order.len() == vehicle.weapon_order.len() {
+            // ensure same weapons; order does not matter
+            let mut is_same_weapons = true;
+            for weapon in vehicle.weapon_order.iter() {
+                if !weapon_order.contains(&(*weapon as i32)) {
+                    is_same_weapons = false;
+                    break;
+                }
+            }
+            if is_same_weapons {
+                oj_rc_database::schema::dump_csv(&vehicle.weapon_order)
+            } else {
+                oj_rc_database::schema::dump_csv(&weapon_order)
+            }
+        } else {
+            oj_rc_database::schema::dump_csv(&weapon_order)
+        };
+        let garage_opt = self.db.garage_by_user_id_and_slot(self.account.id, vehicle.slot).await?;
+        if let Some(garage) = garage_opt {
+            if is_create {
+                log::warn!("Got federated create vehicle for existing garage slot of user {}, slot {} (updating instead)", self.account.public_id, vehicle.slot);
+            }
+            // update garage
+            let update = oj_rc_database::schema::garage::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::Set(garage.id),
+                user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                slot: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                name: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.name),
+                crf_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                was_rated: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.was_rated),
+                movement_categories: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&vehicle.movement_categories)),
+                uuid: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(garage.thumbnail_version + 1),
+                total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.total as _),
+                total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.cosmetic as _),
+                total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.bay_cpu),
+                tutorial_robot: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                starter_robot_index: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                control_type: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.control_ty.into_db()),
+                vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.vertical_strafing),
+                sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.sideways_driving),
+                tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.tracks_turn_on_spot),
+                mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.mastery_level),
+                bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.bay_skin),
+                death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.death_animation),
+                spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.spawn_animation),
+                weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(real_weapon_order),
+                robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
+                colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
+                selected: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.selected),
+            };
+            self.db.update_garage(update).await?;
+        } else {
+            if is_create {
+                log::warn!("Got federated update vehicle for non-existent garage slot of user {}, slot {} (creating instead)", self.account.public_id, vehicle.slot);
+            }
+            // create garage
+            let now = chrono::Utc::now().timestamp();
+            // don't let misconfigured remote instances put strange values into our database
+            let (creation_time, uuid) = if vehicle.creation_time >= now {
+                (now, super::uuid_sanitize(now ^ vehicle.uuid))
+            } else {
+                (vehicle.creation_time, vehicle.uuid)
+            };
+            let insert = oj_rc_database::schema::garage::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                user_id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                creation_time: oj_rc_database::sea_orm::ActiveValue::Set(creation_time),
+                slot: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.slot),
+                name: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.name),
+                crf_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.crf_id),
+                was_rated: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.was_rated),
+                movement_categories: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&vehicle.movement_categories)),
+                uuid: oj_rc_database::sea_orm::ActiveValue::Set(uuid),
+                thumbnail_version: oj_rc_database::sea_orm::ActiveValue::Set(1),
+                total_robot_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.total as _),
+                total_cosmetic_cpu: oj_rc_database::sea_orm::ActiveValue::Set(cpu_counts.cosmetic as _),
+                total_robot_ranking: oj_rc_database::sea_orm::ActiveValue::Set(0),
+                bay_cpu: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.bay_cpu),
+                tutorial_robot: oj_rc_database::sea_orm::ActiveValue::Set(false),
+                starter_robot_index: oj_rc_database::sea_orm::ActiveValue::Set(None),
+                control_type: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.control_ty.into_db()),
+                vertical_strafing: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.vertical_strafing),
+                sideways_driving: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.sideways_driving),
+                tracks_turn_on_spot: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.control.tracks_turn_on_spot),
+                mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.mastery_level),
+                bay_skin_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.bay_skin),
+                death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.death_animation),
+                spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.spawn_animation),
+                weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(real_weapon_order),
+                robot_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.robot_data),
+                colour_data: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.colour_data),
+                selected: oj_rc_database::sea_orm::ActiveValue::Set(vehicle.selected),
+            };
+            self.db.insert_garage(insert).await?;
+        }
+        if vehicle.selected {
+            // re-select to de-select any other garages
+            self.db.update_garage_selected_by_user_id_and_slot(self.account.id, vehicle.slot).await?;
+        }
+        Ok(())
+    }
+
+    async fn save_federated_garage_order(&self, new_slots: &[u32]) -> Result<(), Box<dyn std::error::Error>> {
+        let slots_json = serde_json::to_string_pretty(&new_slots).unwrap();
+        self.db.update_user_aux_by_user_id_and_descriptor(
+            oj_rc_database::schema::user_aux::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                descriptor: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                data: oj_rc_database::sea_orm::ActiveValue::Set(slots_json),
+            },
+            self.account.id,
+            oj_rc_database::schema::user_aux::Descriptor::GarageSlotOrder,
+        ).await?;
+        Ok(())
+    }
+
     async fn garage_id_selected(&self) -> Result<Option<i32>, Box<dyn std::error::Error>> {
         Ok(self.db.garage_selected(self.account.id).await?
             .map(|x| x.id))
@@ -132,6 +300,7 @@ impl super::WebUser for super::account_json::UserData {
         let mut avatar_id = None;
         let mut premium_until = 0;
         let mut user_rank = 0;
+        let mut last_seen = self.account.creation_time;
         for row in user_aux_data.iter() {
             match row.descriptor {
                 oj_rc_database::schema::user_aux::Descriptor::UserXP => {
@@ -155,6 +324,9 @@ impl super::WebUser for super::account_json::UserData {
                 oj_rc_database::schema::user_aux::Descriptor::UserRank => {
                     user_rank = row.data.parse().unwrap_or_default();
                 },
+                oj_rc_database::schema::user_aux::Descriptor::LastSeen => {
+                    last_seen = row.data.parse().unwrap_or_default();
+                },
                 _ => {},
             }
         }
@@ -165,6 +337,8 @@ impl super::WebUser for super::account_json::UserData {
             avatar_id,
             premium_until,
             rank: user_rank,
+            creation_time: self.account.creation_time,
+            last_seen_time: last_seen,
         })
     }
 

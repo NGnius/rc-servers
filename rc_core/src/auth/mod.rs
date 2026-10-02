@@ -1,2 +1,2 @@
 mod token;
-pub use token::{Token, LoginMethod};
+pub use token::{Token, LoginMethod, FediToken};

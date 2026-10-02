@@ -39,7 +39,7 @@ pub enum Descriptor {
     UserRank, // u32
     UserFreeCurrency, // u64
     UserPaidCurrency, // u64
-    GarageSlotOrder, // Vec<u32>, CSV
+    GarageSlotOrder, // Vec<u32>, JSON
     LastSeen, // u64, seconds since Unix epoch
     SubscribedChannels, // Vec<String>, JSON
     AvatarId, // u32, u32::MAX means custom avatar

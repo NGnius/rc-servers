@@ -99,8 +99,8 @@ impl AccountProvider {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
         })?;
-        let display_name = token_data.claims.client_details.display_name.clone();
-        let user_info = if let Some(user_info) = self.db.user_by_display_name(display_name.clone()).await.map_err(|e| super::AuthError {
+        let public_id = token_data.claims.client_details.public_id.clone();
+        let user_info = if let Some(user_info) = self.db.user_by_public_id(public_id.clone()).await.map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
         })? {
@@ -123,7 +123,7 @@ impl AccountProvider {
             });
         };
         #[cfg(debug_assertions)]
-        log::info!("Authenticated user {} with flags {:?}", display_name, token_data.claims.client_details.flags.as_slice());
+        log::info!("Authenticated user {} with flags {:?}", public_id, token_data.claims.client_details.flags.as_slice());
         Ok(UserData {
             account: user_info,
             perms: user_perms,
@@ -137,6 +137,7 @@ impl AccountProvider {
             http_client: std::sync::Arc::new(reqwest::Client::new()),
             db: self.db.clone(),
             secret: self.secret.clone(),
+            token: Some(std::sync::Arc::new(token_data.claims)),
         })
     }
 
@@ -259,11 +260,10 @@ impl AccountProvider {
             super::UserAuthInfo::Username { .. } => crate::auth::LoginMethod::Username,
         };
 
-        let pub_id = if is_fedi { format!("{}#{}", user_info.public_id, self.domain) } else { user_info.public_id.clone() };
         let client_details = libfj::robocraft::TokenPayload {
-            public_id: pub_id.clone(),
-            display_name: if is_fedi { format!("{}#{}", user_info.display_name, self.domain) } else { user_info.display_name.clone() },
-            robocraft_name: pub_id.clone(),
+            public_id: user_info.public_id.clone(),
+            display_name: user_info.display_name,
+            robocraft_name: user_info.public_id.clone(),
             email_address: if is_fedi { format!("{}@{}", user_info.public_id, self.domain) } else { user_info.email },
             email_verified: true,
             flags: vec![
@@ -271,6 +271,7 @@ impl AccountProvider {
             ],
         };
         let now = chrono::Utc::now().timestamp();
+        let sub_id = if is_fedi { format!("{}#{}", user_info.public_id, self.domain) } else { user_info.public_id.clone() };
         let payload = crate::auth::Token {
             client_details,
             federate: is_fedi,
@@ -281,7 +282,7 @@ impl AccountProvider {
             iss: self.auth.to_string(),
             exp: now + 86400, // 1 day
             iat: now,
-            sub: pub_id.clone(),
+            sub: sub_id,
             aud: audience.unwrap_or_else(|| self.domain.to_string()),
             fedi_token: None,
         };
@@ -348,6 +349,7 @@ impl <C: Clone + Send> super::UserProvider<C> for AccountProvider {
             http_client: std::sync::Arc::new(reqwest::Client::new()),
             db: self.db.clone(),
             secret: self.secret.clone(),
+            token: None,
         }))
     }
 
@@ -406,6 +408,7 @@ pub(super) struct UserData {
     pub(super) http_client: std::sync::Arc<reqwest::Client>,
     pub(super) db: std::sync::Arc<oj_rc_database::Database>,
     pub(super) secret: std::sync::Arc<Vec<u8>>,
+    pub(super) token: Option<std::sync::Arc<crate::auth::Token>>,
 }
 
 impl UserData {
@@ -416,7 +419,12 @@ impl UserData {
     }
 
     async fn save_garage_by_slot(&self, data: oj_rc_database::schema::garage::ActiveModel, slot: i32) -> Result<(), oj_rc_database::sea_orm::DbErr> {
-        self.db.update_garage_by_user_id_and_slot(data, self.account.id, slot).await?;
+        let updated_garage_opt = self.db.update_garage_by_user_id_and_slot(data, self.account.id, slot).await?;
+        if let Some(model) = updated_garage_opt {
+            if let Err(e) = self.federate_updated_garage(model).await {
+                log::warn!("Failed to federate garage update for user {}: {}", self.account.id, e);
+            }
+        }
         Ok(())
     }
 
@@ -906,7 +914,19 @@ impl <C: Clone + Send> super::User<C> for UserData {
         self.db.update_garage_selected_by_user_id_and_slot(self.account.id, slot).await.map_err(|e| {
             log::error!("Failed to select vehicle slot {} user_id {}: {}", slot, self.account.id, e);
             DATABASE_ERR
-        })
+        })?;
+        if self.token.as_ref().is_some_and(|x| x.fedi_token.is_some()) {
+            let selected = self.db.garage_selected(self.account.id).await.map_err(|e| {
+                log::error!("Failed to retrieve selected vehicle slot {} user_id {}: {}", slot, self.account.id, e);
+                DATABASE_ERR
+            })?;
+            if let Some(selected) = selected {
+                if let Err(e) = self.federate_updated_garage(selected).await {
+                    log::warn!("Failed to federate garage selection for user {}: {}", self.account.id, e);
+                }
+            }
+        }
+        Ok(())
     }
 
     async fn selected_vehicle_data(&self) -> Result<super::VehicleData, polariton_server::operations::SimpleOpError> {
@@ -1045,6 +1065,9 @@ impl <C: Clone + Send> super::User<C> for UserData {
             log::error!("Failed to update garage slot order for user_id {}: {}", self.account.id, e);
             DATABASE_ERR
         })?;
+        if let Err(e) = self.federate_updated_garage_order(&slots).await {
+            log::warn!("Failed to federate garage order update for user {}: {}", self.account.id, e);
+        }
         Ok(())
     }
 
