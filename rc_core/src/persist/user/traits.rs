@@ -333,12 +333,23 @@ pub trait LobbyUser {
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
     #[allow(clippy::too_many_arguments)]
     async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &dyn super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
-    #[allow(clippy::too_many_arguments)]
     async fn start_custom_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<MatchInfo>, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct FakePlayers {
     pub players: Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>
+}
+
+pub struct MatchInfo {
+    pub map: String,
+    pub mode: crate::data::game_mode::GameMode,
+    pub guid: String,
+    pub is_ranked: bool,
+    pub is_custom: bool,
+    pub visibility: crate::data::game_mode::MapVisibility,
+    pub auto_heal: bool,
+    pub player_datas: Vec<crate::data::player_data::PlayerData>,
 }
 
 pub struct CurrentGameEvent {

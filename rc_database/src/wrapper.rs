@@ -304,6 +304,14 @@ impl Database {
             .await
     }
 
+    pub async fn garages_selected(&self, user_ids: impl std::iter::Iterator<Item=i32>) -> Result<Vec<crate::schema::garage::Model>, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::UserId.is_in(user_ids))
+            .filter(crate::schema::garage::Column::Selected.eq(true))
+            .all(self.orm.as_ref())
+            .await
+    }
+
     pub async fn garage_by_user_id_and_slot(&self, user_id: i32, garage_slot: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
@@ -626,6 +634,18 @@ impl Database {
             .await?
             .into_iter()
             .map(|(player, _)| player)
+            .collect())
+    }
+
+    pub async fn players_by_game_id_heavy(&self, game_id: i32) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(player, user, _)| user.map(|user| (player, user)))
             .collect())
     }
 

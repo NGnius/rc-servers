@@ -48,6 +48,7 @@ pub trait ConfigProvider<C: Clone> {
     fn redacted_json(&self) -> String;
     /// None when federation is not enabled
     fn federation(&self) -> Option<Federation>;
+    fn reconnect(&self) -> Option<ReconnectConfig>;
     fn polariton_operation_modifier(&self) -> crate::OpModImpl;
 }
 
@@ -638,4 +639,8 @@ pub trait RedactedClone {
 pub struct Federation {
     pub aliases: std::collections::HashMap<String, String>,
     pub defederated: Vec<String>,
+}
+
+pub struct ReconnectConfig {
+    pub allowed_modes: Vec<GameType>,
 }

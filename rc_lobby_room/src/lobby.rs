@@ -175,6 +175,10 @@ impl QueueHandler {
         }
     }
 
+    pub fn redirect(&self) -> (std::sync::Arc<String>, u16) {
+        (self.hostname.clone(), self.hostport)
+    }
+
     fn ensure_autostart_task_running(&self) {
         if self.autostart_task_started.swap(true, std::sync::atomic::Ordering::AcqRel) || self.autostart_after.is_none() {
             return;

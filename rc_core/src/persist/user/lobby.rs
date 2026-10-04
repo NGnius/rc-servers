@@ -217,6 +217,101 @@ impl super::LobbyUser for UserData {
         })?;
         Ok(())
     }
+
+    async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<crate::persist::user::MatchInfo>, polariton_server::operations::SimpleOpError> {
+        let current_game_opt = self.db.game_by_user_id_and_completion(self.account.id, false).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                    format!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e),
+                )
+            })?;
+        if let Some(current_game) = current_game_opt {
+            let now = chrono::Utc::now().timestamp();
+            let mut uuid = super::uuid_sanitize(now);
+            let uuid_gen = move || {
+                let uuid_str = super::i64_as_uuid_str(uuid);
+                uuid += 1;
+                uuid_str
+            };
+            let allowed_modes_db: Vec<_> = allowed_modes.iter().map(|x| crate::data::game_mode::GameMode::from_persist(*x).to_db()).collect();
+            if allowed_modes_db.contains(&current_game.mode) {
+                let players = self.db.players_by_game_id_heavy(current_game.id).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game players for user {}: {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                            format!("Failed to retrieve ongoing game players: {}", e),
+                        )
+                    })?;
+                let user_ids = players.iter().map(|(_, user)| user.id);
+                let user_avatars = self.db.user_auxs_by_user_ids_and_descriptor(user_ids, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game player avatars for user {} : {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to retrieve ongoing game player avatars: {}", e),
+                        )
+                    })?;
+                let avatar_map: std::collections::HashMap<i32, u32> = user_avatars.iter()
+                    .filter_map(|avatar| avatar.data.parse().ok().map(|avatar_id| (avatar.user_id, avatar_id)))
+                    .collect();
+                let user_ids = players.iter().map(|(_, user)| user.id);
+                let garages = self.db.garages_selected(user_ids).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game player vehicles for user {} : {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to retrieve ongoing game player vehicles: {}", e),
+                        )
+                    })?;
+                 let garage_map: std::collections::HashMap<i32, oj_rc_database::schema::garage::Model> = garages.into_iter()
+                    .map(|garage| (garage.user_id, garage))
+                    .collect();
+                let player_datas = players.into_iter().map(|(player, user)| {
+                    let garage = garage_map.get(&user.id);
+                    crate::data::player_data::PlayerData {
+                        name: user.public_id,
+                        display_name: user.display_name,
+                        mastery: garage.map(|g| g.mastery_level).unwrap_or_default(),
+                        tier: 0, // TODO
+                        robot_name: garage.map(|g| g.name.to_owned()).unwrap_or_default(),
+                        robot_map: garage.map(|g| g.robot_data.to_owned()).unwrap_or_default(),
+                        group: player.group.map(|g| g.to_string()),
+                        team: player.team,
+                        has_premium: true,
+                        robot_uuid: garage.map(|g| super::i64_as_uuid_str(g.uuid)).unwrap_or_else(uuid_gen),
+                        cpu: garage.map(|g| g.total_robot_cpu).unwrap_or_default(),
+                        avatar_id: avatar_map.get(&user.id).map(|x| *x as i32),
+                        weapon_order: garage.map(|g| oj_rc_database::schema::parse_int_csv_i32(&g.weapon_order)).unwrap_or_default(),
+                        colour_map: garage.map(|g| g.colour_data.to_owned()).unwrap_or_default(),
+                        is_ai: false,
+                        spawn_effect: garage.map(|g| g.spawn_animation_id.to_owned()).unwrap_or_else(|| "Spawn".to_owned()),
+                        death_effect: garage.map(|g| g.death_animation_id.to_owned()).unwrap_or_else(|| "Explosion".to_owned()),
+                        player_rank: 0, // TODO
+                        weapon_rank: garage.map(|g| oj_rc_database::schema::parse_int_csv(&g.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect()).unwrap_or_default(),
+                        clan_name: None, // TODO
+                    }
+                }).collect();
+
+                Ok(Some(crate::persist::user::MatchInfo {
+                    map: current_game.map,
+                    mode: crate::data::game_mode::GameMode::from_db(current_game.mode),
+                    guid: super::i64_as_uuid_str(current_game.guid),
+                    is_ranked: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
+                    is_custom: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
+                    visibility: crate::data::game_mode::MapVisibility::from_db(current_game.visibility),
+                    auto_heal: current_game.auto_heal,
+                    player_datas,
+                }))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

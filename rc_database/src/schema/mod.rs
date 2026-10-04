@@ -23,6 +23,12 @@ pub fn parse_int_csv(s: &str) -> Vec<u32> {
     }).collect()
 }
 
+pub fn parse_int_csv_i32(s: &str) -> Vec<i32> {
+    s.split(',').filter_map(|i_as_s| {
+        i_as_s.parse().ok()
+    }).collect()
+}
+
 pub fn dump_csv<T: std::string::ToString>(slice: &[T]) -> String {
     itertools::Itertools::intersperse(slice.iter().map(|x| x.to_string()), ",".to_owned()).collect()
 }

@@ -312,7 +312,7 @@ pub enum GameType {
 }
 
 impl GameType {
-    fn into_conf(self) -> crate::persist::config::GameType {
+    pub(super) fn into_conf(self) -> crate::persist::config::GameType {
         match self {
             Self::BattleArena => crate::persist::config::GameType::BattleArena,
             Self::SuddenDeath => crate::persist::config::GameType::SuddenDeath,
@@ -639,6 +639,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         vehicle_validator: super::multiplayer::default_validator(),
         minimum_level: 0,
         minimum_cpu: super::multiplayer::default_minimum_cpu(),
+        reconnect: super::multiplayer::default_reconnect_conf(),
     }
 }
 

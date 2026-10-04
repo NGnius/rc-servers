@@ -641,6 +641,14 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         })
     }
 
+    fn reconnect(&self) -> Option<super::ReconnectConfig> {
+        if self.battle.multiplayer.reconnect.enabled && self.battle.multiplayer.enabled {
+            Some(self.battle.multiplayer.reconnect.clone().into())
+        } else {
+            None
+        }
+    }
+
     fn polariton_operation_modifier(&self) -> crate::OpModImpl {
         crate::OpModImpl::new(self.settings.polariton.clone())
     }

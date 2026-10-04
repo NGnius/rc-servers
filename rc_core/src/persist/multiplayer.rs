@@ -26,6 +26,8 @@ pub struct MultiplayerConfig {
     pub minimum_level: u16,
     #[serde(default = "default_minimum_cpu")]
     pub minimum_cpu: u16,
+    #[serde(default = "default_reconnect_conf")]
+    pub reconnect: ReconnectConfig,
 }
 
 impl super::config::SelfValidator for MultiplayerConfig {
@@ -529,6 +531,12 @@ impl std::convert::From<TeamDeathMatchConfig> for crate::persist::config::TeamDe
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReconnectConfig {
+    pub enabled: bool,
+    pub modes: Vec<super::combat::GameType>,
+}
+
 pub(super) fn default_tdm_conf() -> TeamDeathMatchConfig {
     TeamDeathMatchConfig {
         respawn_time_s: default_respawn_time(),
@@ -542,4 +550,25 @@ pub(super) fn default_validator() -> super::VehicleValidator {
         max: 2_000,
     }*/
     super::VehicleValidator::None
+}
+
+pub(super) fn default_reconnect_conf() -> ReconnectConfig {
+    ReconnectConfig {
+        enabled: true,
+        modes: vec![
+            super::combat::GameType::BattleArena,
+            super::combat::GameType::Pit,
+            super::combat::GameType::TeamDeathmatch,
+        ]
+    }
+}
+
+impl std::convert::From<ReconnectConfig> for crate::persist::config::ReconnectConfig {
+    fn from(value: ReconnectConfig) -> Self {
+        Self {
+            allowed_modes: value.modes.into_iter()
+                .map(|mode| mode.into_conf())
+                .collect()
+        }
+    }
 }
