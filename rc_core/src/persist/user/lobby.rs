@@ -269,13 +269,14 @@ impl super::LobbyUser for UserData {
                  let garage_map: std::collections::HashMap<i32, oj_rc_database::schema::garage::Model> = garages.into_iter()
                     .map(|garage| (garage.user_id, garage))
                     .collect();
+                log::debug!("Retrieved {} players, {} avatars, {} garages for game {} reconnect", players.len(), avatar_map.len(), garage_map.len(), current_game.id);
                 let player_datas = players.into_iter().map(|(player, user)| {
                     let garage = garage_map.get(&user.id);
                     crate::data::player_data::PlayerData {
                         name: user.public_id,
                         display_name: user.display_name,
                         mastery: garage.map(|g| g.mastery_level).unwrap_or_default(),
-                        tier: 0, // TODO
+                        tier: 1, // FIXME
                         robot_name: garage.map(|g| g.name.to_owned()).unwrap_or_default(),
                         robot_map: garage.map(|g| g.robot_data.to_owned()).unwrap_or_default(),
                         group: player.group.map(|g| g.to_string()),
@@ -283,13 +284,13 @@ impl super::LobbyUser for UserData {
                         has_premium: true,
                         robot_uuid: garage.map(|g| super::i64_as_uuid_str(g.uuid)).unwrap_or_else(uuid_gen),
                         cpu: garage.map(|g| g.total_robot_cpu).unwrap_or_default(),
-                        avatar_id: avatar_map.get(&user.id).map(|x| *x as i32),
+                        avatar_id: avatar_map.get(&user.id).map(|x| *x as i32).filter(|x| *x >= 0),
                         weapon_order: garage.map(|g| oj_rc_database::schema::parse_int_csv_i32(&g.weapon_order)).unwrap_or_default(),
                         colour_map: garage.map(|g| g.colour_data.to_owned()).unwrap_or_default(),
                         is_ai: false,
                         spawn_effect: garage.map(|g| g.spawn_animation_id.to_owned()).unwrap_or_else(|| "Spawn".to_owned()),
                         death_effect: garage.map(|g| g.death_animation_id.to_owned()).unwrap_or_else(|| "Explosion".to_owned()),
-                        player_rank: 0, // TODO
+                        player_rank: 1, // TODO
                         weapon_rank: garage.map(|g| oj_rc_database::schema::parse_int_csv(&g.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect()).unwrap_or_default(),
                         clan_name: None, // TODO
                     }

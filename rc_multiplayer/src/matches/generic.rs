@@ -570,6 +570,25 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         log::info!("Game {} has exited", self.game_guid());
     }
 
+    #[inline]
+    pub fn is_game_running(&self) -> bool {
+        self.loading_state.load(std::sync::atomic::Ordering::Relaxed) == LoadingState::InGame.to_u8()
+    }
+
+    #[inline]
+    pub fn time_remaining(&self) -> std::time::Duration {
+        let start_time = self.game_start.load(std::sync::atomic::Ordering::Relaxed);
+        let now = chrono::Utc::now().timestamp();
+        if self.is_game_running() && start_time < now {
+            // game already started
+            let time_since = std::time::Duration::from_secs((now - start_time).try_into().unwrap_or_default());
+            let time_remaining = self.game_duration - time_since;
+            time_remaining
+        } else {
+            self.game_duration
+        }
+    }
+
     async fn on_new_connection(&self,
         user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>>,
         game_guid: String,
@@ -600,7 +619,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             let player_info = player_info_opt.unwrap();
             let id = player_info.descriptor.player_id;
             let is_already_connected = self.users.read().await.contains_key(&id);
-            if is_already_connected {
+            if is_already_connected && !self.is_game_running() {
                 log::warn!("Player {} (user {}) is trying to connect again to game {}, they're probably in a bad state (short-circuiting approval)", id, player_info.descriptor.public_id, game_guid);
                 let mut users = self.users.write().await;
                 let old_user = users.remove(&id).unwrap();
@@ -624,6 +643,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 ).await);
                 users.insert(id, new_user);
             } else {
+                player_info.state.mode.store(ConnectionMode::Loading.to_u8(), std::sync::atomic::Ordering::Relaxed);
                 let aliases = self.fakes_handler.get_client_ais().await.into_iter().find(|(key, _val)| *key == id).map(|(_key, val)| val).unwrap_or_default();
                 log::info!("AIs running on new player {} in game {}: {:?}", id, game_guid, aliases);
                 let new_user = UserConnection {
@@ -661,7 +681,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             log::warn!("Non-existent fake player id {} (for player {}) was encountered while connecting to game {}, ignoring", *fake_id, id, game_guid);
                         }
                     }
-                    if was_empty {
+                    if was_empty && !self.is_game_running() {
                         self.start_loading_sync_timeouter().await;
                     }
                 } else {
@@ -791,6 +811,14 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 let progress_percent = ((progress * 100.0).ceil() as u8).clamp(0, 100);
                 log::debug!("User {} is loaded {}% into game {}", user_id, progress_percent, self.game_guid());
                 user_desc.state.progress.store(progress_percent, std::sync::atomic::Ordering::Relaxed);
+                let mode = ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+                match mode {
+                    ConnectionMode::Loading | ConnectionMode::Disconnected => {},
+                    ConnectionMode::WaitingForSync | ConnectionMode::Sync | ConnectionMode::WaitingToStart => {  },
+                    ConnectionMode::InGame => {
+                        log::warn!("Got loading progress for user {} who is supposed to be already in-game", user_id);
+                    },
+                }
                 continue;
             }
             let mode = ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
@@ -804,9 +832,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         &conn.connection.connection,
                     ).await);
                 },
-                ConnectionMode::InGame => {
-                    log::warn!("Got loading progress for user {} who is supposed to be already in-game", user_id);
-                },
+                ConnectionMode::InGame => { },
             }
         }
     }
@@ -919,28 +945,54 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
     }
 
     async fn on_request_loading_sync(&self, user_id: i32) {
-        // wait for all users to be ready before transitioning to loading sync
-        let mut ready_count = 0;
-        for (player_id, user) in self.users.read().await.iter() {
-            let user_desc = self.user_descriptor(*player_id).unwrap();
-            if user.aliases.contains(player_id) { continue; }
-            if user.user.account_id() == user_id  {
-                if !matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Loading | ConnectionMode::Disconnected) {
-                    log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
-                    continue;
+        if self.is_game_running() {
+            // reconnect
+            if let Some(user_key) = self.user_key_by_user_id(user_id) {
+                if let Some(user) = self.users.read().await.get(&user_key) {
+                    log::info!("Got loading sync for reconnecting player {}", user_key);
+                    let user_desc = self.user_descriptor(user_key).unwrap();
+                    if user.aliases.contains(&user_key) { return; }
+                    user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                    self.start_sync_for_player(user_key, user).await;
                 }
-                log::info!("User {} (player {}) is awaiting sync in game {}", user_id, player_id, self.game_guid());
-                user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
-                ready_count += 1;
-            } else if matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
-                ready_count += 1;
+            } else {
+                log::warn!("Unknown reconnecting user id {} for game {}", user_id, self.game_guid());
+                return;
+            }
+        } else {
+            // wait for all users to be ready before transitioning to loading sync
+            let mut ready_count = 0;
+            for (player_id, user) in self.users.read().await.iter() {
+                let user_desc = self.user_descriptor(*player_id).unwrap();
+                if user.aliases.contains(player_id) { continue; }
+                if user.user.account_id() == user_id  {
+                    if !matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::Loading | ConnectionMode::Disconnected) {
+                        log::warn!("Got RequestLoadingSync after user {} was already in/past WaitingForSync stage", user_id);
+                        continue;
+                    }
+                    log::info!("User {} (player {}) is awaiting sync in game {}", user_id, player_id, self.game_guid());
+                    user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+                    ready_count += 1;
+                } else if matches!(ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed)), ConnectionMode::WaitingForSync) {
+                    ready_count += 1;
+                }
+            }
+            let player_count = self.real_player_count();
+            //log::info!("Real players {}, ready players {}", player_count, ready_count);
+            if ready_count == player_count {
+                self.start_sync().await;
             }
         }
-        let player_count = self.real_player_count();
-        //log::info!("Real players {}, ready players {}", player_count, ready_count);
-        if ready_count == player_count {
-            self.start_sync().await;
-        }
+    }
+
+    async fn start_sync_for_player(&self, player_id: u8, conn: &UserConnection) -> bool {
+        let user_info = self.user_descriptor(player_id).unwrap();
+        let extra_packets = self.custom_logic_handler.extra_sync_events(self, conn, user_info).await;
+        let user_desc = self.user_descriptor(player_id).unwrap();
+        self.spawn_send_sync_events(conn, user_desc.descriptor.user_id, player_id, self.players_info(), extra_packets, self.map_config.clone());
+        let old_mode = user_desc.state.mode.swap(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
+        let old_mode = ConnectionMode::from_u8(old_mode);
+        matches!(old_mode, ConnectionMode::WaitingForSync)
     }
 
     async fn start_sync(&self) {
@@ -950,14 +1002,9 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         log::info!("Starting sync for {}/{} players in game {}", ready_players, player_count, self.game_guid());
         let mut to_disconnect = Vec::with_capacity(player_count - ready_players);
         for (user_key, conn) in self.users.read().await.iter() {
-            let user_info = self.user_descriptor(*user_key).unwrap();
-            let extra_packets = self.custom_logic_handler.extra_sync_events(self, conn, user_info).await;
-            let user_desc = self.user_descriptor(*user_key).unwrap();
-            self.spawn_send_sync_events(conn, user_desc.descriptor.user_id, *user_key, self.players_info(), extra_packets, self.map_config.clone());
-            let old_mode = user_desc.state.mode.swap(ConnectionMode::Sync.to_u8(), std::sync::atomic::Ordering::Relaxed);
-            let old_mode = ConnectionMode::from_u8(old_mode);
-            if !matches!(old_mode, ConnectionMode::WaitingForSync) {
-                if let Some(user_id) = user_desc.descriptor.user_id {
+            let success = self.start_sync_for_player(*user_key, conn).await;
+            if !success {
+                if let Some(user_id) = self.user_descriptor(*user_key).unwrap().descriptor.user_id {
                     to_disconnect.push(user_id);
                     //conn.connection.connection.goodbye(&conn.connection.sender).await;
                 }
@@ -981,6 +1028,39 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
                 user_desc.state.mode.store(ConnectionMode::WaitingToStart.to_u8(), std::sync::atomic::Ordering::Relaxed);
                 self.spawn_initial_ingame_events(conn, user_id);
+                if self.is_game_running() {
+                    log::info!("Got load complete for reconnecting player {}", user_key);
+                    if self.custom_logic_handler.on_player_reconnect_complete(&self, user_key).await {
+                        self.start_game_state_for_player(user_key);
+                        let game_start_timestamp = self.game_start.load(std::sync::atomic::Ordering::Relaxed);
+                        let game_start = chrono::DateTime::from_timestamp_secs(game_start_timestamp).unwrap();
+                        super::countdown::match_countdown(
+                            vec![
+                                (conn.connection.clone(), user_desc.state.clone()),
+                            ],
+                            game_start,
+                        );
+                        let spawn_payload = rlnl::events::sync::SpawnPoint {
+                            pos: rlnl::types::PosQuatPair {
+                                // FIXME spawn in the correct spot (nbd)
+                                pos: rlnl::types::CompressedVec3::from((0.0, -100.0, 0.0)),
+                                rot: rlnl::types::CompressedQuat { x: 0, y: 0, z: 0 },
+                            },
+                            owner: user_key,
+                        };
+                        for (player_id, player) in self.users.read().await.iter() {
+                            if *player_id == user_key { continue; }
+                            if !player.connection.connection.is_connected() { continue; }
+                            crate::events::log_lnl_send_failure(player.connection.rlnl().send_data(
+                                &spawn_payload,
+                                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
+                                literustlib::packet::Property::ReliableOrdered,
+                                &player.connection.connection,
+                            ).await);
+                        }
+                    }
+                    return;
+                }
             } else {
                 log::warn!("Invalid LoadComplete user key {} for game {}", user_key, self.game_guid());
                 return;
@@ -994,6 +1074,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         // trigger game start
         if all_users_loading_complete {
             self.start_game().await;
+        }
+    }
+
+    #[inline]
+    fn start_game_state_for_player(&self, player_id: u8) -> bool {
+        if let Some(user_desc) = self.user_descriptor(player_id) {
+            let mode = ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
+            matches!(mode, ConnectionMode::WaitingToStart)
+        } else {
+            false
         }
     }
 
@@ -1013,10 +1103,10 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             let mut senders = Vec::with_capacity(self.descriptors.len());
             let mut to_disconnect = Vec::with_capacity(player_count - ready_players);
             for (player_id, conn) in self.users.read().await.iter() {
+                let is_valid = self.start_game_state_for_player(*player_id);
                 let user_desc = self.user_descriptor(*player_id).unwrap();
-                if let Some(user_id) = user_desc.descriptor.user_id {
-                    let mode = ConnectionMode::from_u8(user_desc.state.mode.load(std::sync::atomic::Ordering::Relaxed));
-                    if !matches!(mode, ConnectionMode::WaitingToStart) {
+                if !is_valid {
+                    if let Some(user_id) = user_desc.descriptor.user_id {
                         to_disconnect.push(user_id);
                     }
                 }

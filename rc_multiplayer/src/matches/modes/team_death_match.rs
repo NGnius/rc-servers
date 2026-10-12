@@ -384,6 +384,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
                         respawn_full_heal_duration: self.respawn_full_heal_duration,
                     }
                 }),
+            },
+            crate::matches::RlnlPacket {
+                event: rlnl::event_code::NetworkEvent::CurrentGameTime,
+                property: literustlib::packet::Property::ReliableOrdered,
+                data: Box::new(rlnl::events::GameTime(generic.time_remaining().as_secs_f32())),
             }
         ]
     }
@@ -419,6 +424,10 @@ impl CustomGameLogic for TeamDeathMatchLogic {
             &super::trackers::SurrenderGameTracker::surrender_times(),
             false,
         ).await;
+        true
+    }
+
+    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
         true
     }
 

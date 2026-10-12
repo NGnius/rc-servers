@@ -12,24 +12,40 @@ pub fn time_to_game_start_payload(game_start: chrono::DateTime<chrono::Utc>) -> 
 async fn do_match_countdown_async(players: Vec<(super::generic::UserSender, std::sync::Arc<super::generic::UserState>)>, game_start: chrono::DateTime<chrono::Utc>) {
     let now = chrono::Utc::now();
     let time_until_start = game_start.signed_duration_since(now);
+    let is_reconnect = time_until_start < chrono::TimeDelta::zero();
 
-    let payload = time_to_game_start_payload(game_start);
-    for player in players.iter() {
-        let sender = player.0.rlnl();
-        if let Err(e) = sender.send_data(
-            &payload,
-            rlnl::event_code::NetworkEvent::TimeToGameStart,
-            literustlib::packet::Property::ReliableOrdered,
-            &player.0.connection)
-        .await {
-            log::error!("Failed to send TimeToGameStart to a user: {}", e);
+    if !is_reconnect {
+        let payload = time_to_game_start_payload(game_start);
+        for player in players.iter() {
+            let sender = player.0.rlnl();
+            if let Err(e) = sender.send_data(
+                &payload,
+                rlnl::event_code::NetworkEvent::TimeToGameStart,
+                literustlib::packet::Property::ReliableOrdered,
+                &player.0.connection)
+            .await {
+                log::error!("Failed to send TimeToGameStart to a user: {}", e);
+            }
+        }
+
+        tokio::time::sleep(time_until_start.to_std().unwrap_or_default()).await;
+    } else {
+        let payload = rlnl::events::GameTime(0.01);
+        for player in players.iter() {
+            let sender = player.0.rlnl();
+            if let Err(e) = sender.send_data(
+                &payload,
+                rlnl::event_code::NetworkEvent::TimeToGameStart,
+                literustlib::packet::Property::ReliableOrdered,
+                &player.0.connection)
+            .await {
+                log::error!("Failed to send fake TimeToGameStart to a user: {}", e);
+            }
         }
     }
-
-    tokio::time::sleep(time_until_start.to_std().unwrap_or_default()).await;
-    log::info!("Sending starting game event");
+    log::info!("Sending starting game event to {} players (reconnect? {})", players.len(), is_reconnect);
     let payload = rlnl::events::ingame::GameStart {
-        is_reconnecting: 0,
+        is_reconnecting: if is_reconnect { 1 } else { 0 },
     };
     for player in players.iter() {
         let sender = player.0.rlnl();

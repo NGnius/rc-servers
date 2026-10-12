@@ -642,6 +642,7 @@ impl Database {
             .find_also_related(crate::schema::user::Entity)
             .find_also_related(crate::schema::multiplayer_game::Entity)
             .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
+            .order_by_asc(crate::schema::multiplayer_game_player::Column::PlayerId)
             .all(self.orm.as_ref())
             .await?
             .into_iter()

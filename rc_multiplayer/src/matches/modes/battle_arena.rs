@@ -1561,7 +1561,7 @@ impl CustomGameLogic for BattleArenaLogic {
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(generic.game_duration.as_millis() as f32 / 1000.0)),
+                data: Box::new(rlnl::events::GameTime(generic.time_remaining().as_secs_f32())),
             }),
             // SyncTeamBaseCubes
             // TODO ???
@@ -1653,6 +1653,10 @@ impl CustomGameLogic for BattleArenaLogic {
             &SurrenderGameTracker::surrender_times(),
             false,
         ).await;
+        true
+    }
+
+    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
         true
     }
 

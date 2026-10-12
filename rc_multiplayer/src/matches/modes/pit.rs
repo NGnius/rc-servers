@@ -536,6 +536,10 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
+    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
+        true
+    }
+
     async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
         self.abort_timer_sync().await;
         true

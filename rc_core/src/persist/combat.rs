@@ -626,7 +626,7 @@ fn default_rotation() -> GameEventSequence {
 
 fn default_multiplayer() -> super::MultiplayerConfig {
     super::MultiplayerConfig {
-        players_per_game: 2,
+        players_per_game: 3,
         enabled: true,
         autostart_after_s: super::multiplayer::default_match_autostart_after_s(),
         continue_loading_after_s: super::multiplayer::default_continue_loading_after_s(),

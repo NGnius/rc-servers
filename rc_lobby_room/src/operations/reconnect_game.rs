@@ -20,6 +20,7 @@ impl <C: Send + 'static> SimpleOperation<C> for ReconnectGameProvider {
             let user = user.user()?;
             let game_opt = user.reconnect_info(&reconfig.allowed_modes).await?;
             if let Some(game) = game_opt {
+                log::debug!("User {} can reconnect to game {} with players {:?}", user.account_id(), game.guid, game.player_datas);
                 let battle_enter = crate::events::battle_enter::BattleEnter {
                     host: self.hostname.to_string(),
                     port: self.hostport,
