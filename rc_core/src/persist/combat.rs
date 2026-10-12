@@ -464,22 +464,23 @@ pub(super) fn default_campaigns() -> super::SingleplayerConfig {
     }
 }
 
+#[cfg(debug_assertions)]
 fn default_rotation() -> GameEventSequence {
     GameEventSequence {
         strategy: GameRotationStrategy::Sequence,
         modes: vec![
             // dev mode sequence
-            /*GameEvents {
+            GameEvents {
                 singleplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 duration_s: 30,
@@ -488,17 +489,26 @@ fn default_rotation() -> GameEventSequence {
                 singleplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
                 multiplayer: GameEvent {
                     map: GameMap::Earth2,
                     visibility: GameVisibility::Good,
-                    mode: GameType::BattleArena,
+                    mode: GameType::TeamDeathmatch,
                     auto_heal: true,
                 },
-                duration_s: 30, // 30 seconds
-            },*/
+                duration_s: 30,
+            },
+        ]
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn default_rotation() -> GameEventSequence {
+    GameEventSequence {
+        strategy: GameRotationStrategy::Sequence,
+        modes: vec![
             // release sequence
             GameEvents {
                 singleplayer: GameEvent {

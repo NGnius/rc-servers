@@ -1048,16 +1048,13 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             },
                             owner: user_key,
                         };
-                        for (player_id, player) in self.users.read().await.iter() {
-                            if *player_id == user_key { continue; }
-                            if !player.connection.connection.is_connected() { continue; }
-                            crate::events::log_lnl_send_failure(player.connection.rlnl().send_data(
-                                &spawn_payload,
-                                rlnl::event_code::NetworkEvent::FreeRespawnPoint,
-                                literustlib::packet::Property::ReliableOrdered,
-                                &player.connection.connection,
-                            ).await);
-                        }
+                        self.rebroadcast(
+                            user_id,
+                            rlnl::event_code::NetworkEvent::FreeRespawnPoint,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &spawn_payload,
+                            true,
+                        ).await;
                     }
                     return;
                 }
