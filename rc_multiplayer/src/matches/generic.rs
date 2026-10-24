@@ -582,8 +582,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         if self.is_game_running() && start_time < now {
             // game already started
             let time_since = std::time::Duration::from_secs((now - start_time).try_into().unwrap_or_default());
-            let time_remaining = self.game_duration - time_since;
-            time_remaining
+            self.game_duration - time_since
         } else {
             self.game_duration
         }
@@ -957,6 +956,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
             } else {
                 log::warn!("Unknown reconnecting user id {} for game {}", user_id, self.game_guid());
+                #[allow(clippy::needless_return)]
                 return;
             }
         } else {
@@ -1030,7 +1030,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 self.spawn_initial_ingame_events(conn, user_id);
                 if self.is_game_running() {
                     log::info!("Got load complete for reconnecting player {}", user_key);
-                    if self.custom_logic_handler.on_player_reconnect_complete(&self, user_key).await {
+                    if self.custom_logic_handler.on_player_reconnect_complete(self, user_key).await {
                         self.start_game_state_for_player(user_key);
                         let game_start_timestamp = self.game_start.load(std::sync::atomic::Ordering::Relaxed);
                         let game_start = chrono::DateTime::from_timestamp_secs(game_start_timestamp).unwrap();

@@ -689,13 +689,7 @@ impl EqualizerTracker {
                 for i in old_index..new_index {
                     losing_base.crystals_healths[i].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
                 }
-                let base_heal = losing_base.generate_full_base_heal(losing_team, ba_config.protonium_health as u32, crystals);
-                generic.broadcast(
-                    rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &base_heal,
-                    true
-                ).await;
+                losing_base.send_full_base_heal(losing_team, crystal_health, generic, crystals).await;
             } else {
                 log::warn!("Winning base {} no longer exists for game {}", winning_team, generic.game_guid());
             }
@@ -1069,6 +1063,26 @@ impl BaseInfo {
         }
     }
 
+    async fn send_full_base_heal(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+            literustlib::packet::Property::ReliableOrdered,
+            &base_heal,
+            true
+        ).await;
+    }
+
+    async fn send_full_base_heal_to(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], to: u8) {
+        let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
+        generic.send_to_player(
+            to,
+            rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+            literustlib::packet::Property::ReliableOrdered,
+            &base_heal,
+        ).await;
+    }
+
     fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
         //let base = self.bases.get(&base_id).unwrap();
         let target_crystals = &crystals[old_index..new_index];
@@ -1115,7 +1129,7 @@ fn crystal_health_map(crystal_health: u32) -> std::collections::HashMap<u32, u32
 pub struct BattleArenaLogic {
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
-    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
     player_tracking: PlayerTracker,
     capture_tracking: PointTracker,
     base_tracking: BaseTracker,
@@ -1640,7 +1654,7 @@ impl CustomGameLogic for BattleArenaLogic {
         drop(read_lock);
         let game_end = game_start + generic.game_duration;
         let extra_packets = Vec::default();
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets, Vec::default());
+        let new_timer_task = crate::matches::timer::MatchTimerHandle::spawn(senders, game_start, game_end, extra_packets, Vec::default());
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for battle arena mode suggests an assumption was wrong");
@@ -1656,7 +1670,46 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
+    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+        // re-sync all base crystals
+        for (team, base) in self.base_tracking.bases.iter() {
+            base.send_full_base_heal_to(
+                *team,
+                self.config.protonium_health as u32,
+                generic,
+                &self.crystals,
+                player,
+            ).await;
+        }
+
+        // init surrender info for new player
+        generic.send_to_player(
+            player,
+            rlnl::event_code::NetworkEvent::SetSurrenderTimes,
+            literustlib::packet::Property::ReliableOrdered,
+            &SurrenderGameTracker::surrender_times(),
+        ).await;
+
+        // update players for timer task
+        let mut player_info = None;
+        let users_lock = generic.users.read().await;
+        for (player_id, conn) in users_lock.iter() {
+            if *player_id != player { continue; }
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            player_info = Some((conn.connection.clone(), state));
+            break;
+        }
+        if let Some(new_player_info) = player_info {
+            let timer_lock = self.timer_task.lock().await;
+            if let Some(timer_t) = &*timer_lock {
+                timer_t.add_player(new_player_info).await;
+            } else {
+                log::warn!("Existing timer task missing but a player reconnected!");
+            }
+        } else {
+            log::warn!("Player reconnected without connection info!");
+        }
+
         true
     }
 

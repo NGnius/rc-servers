@@ -158,7 +158,7 @@ pub struct PitLogic {
     player_tracking: PlayerTracker,
     win_tracking: WinTracker,
     settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
-    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
     initial_spawns: Vec<(u8, oj_rc_core::persist::config::Point)>, // (player_id, spawn_point)
     map_center: oj_rc_core::persist::config::Point,
 }
@@ -525,7 +525,7 @@ impl CustomGameLogic for PitLogic {
         } else {
             Vec::default()
         };
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), end_packets);
+        let new_timer_task = crate::matches::timer::MatchTimerHandle::spawn(senders, game_start, game_end, Vec::default(), end_packets);
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for pit mode suggests an assumption was wrong");
@@ -536,7 +536,29 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
+    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+        // update players for timer task
+        let mut player_info = None;
+        let users_lock = generic.users.read().await;
+        for (player_id, conn) in users_lock.iter() {
+            if *player_id != player { continue; }
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            player_info = Some((conn.connection.clone(), state));
+            break;
+        }
+        if let Some(new_player_info) = player_info {
+            let timer_lock = self.timer_task.lock().await;
+            if let Some(timer_t) = &*timer_lock {
+                timer_t.add_player(new_player_info).await;
+            } else {
+                log::warn!("Existing timer task missing but a player reconnected!");
+            }
+        } else {
+            log::warn!("Player reconnected without connection info!");
+        }
+
+        self.do_leaderboard_update(generic).await;
+
         true
     }
 

@@ -214,7 +214,7 @@ pub struct TeamDeathMatchLogic {
     respawn_full_heal_duration: f32,
     kill_limit: u32,
     settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
-    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
     score_tracking: ScoreTracker,
     player_tracking: PlayerTracker,
     surrender_tracking: super::trackers::SurrenderGameTracker,
@@ -422,7 +422,7 @@ impl CustomGameLogic for TeamDeathMatchLogic {
                 }),
             }
         ];*/
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), Vec::default());
+        let new_timer_task = crate::matches::timer::MatchTimerHandle::spawn(senders, game_start, game_end, Vec::default(), Vec::default());
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for team death match mode suggests an assumption was wrong");
@@ -438,7 +438,35 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _player: u8) -> bool {
+    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+        // init surrender info for new player
+        generic.send_to_player(
+            player,
+            rlnl::event_code::NetworkEvent::SetSurrenderTimes,
+            literustlib::packet::Property::ReliableOrdered,
+            &super::trackers::SurrenderGameTracker::surrender_times(),
+        ).await;
+
+        // update players for timer task
+        let mut player_info = None;
+        let users_lock = generic.users.read().await;
+        for (player_id, conn) in users_lock.iter() {
+            if *player_id != player { continue; }
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            player_info = Some((conn.connection.clone(), state));
+            break;
+        }
+        if let Some(new_player_info) = player_info {
+            let timer_lock = self.timer_task.lock().await;
+            if let Some(timer_t) = &*timer_lock {
+                timer_t.add_player(new_player_info).await;
+            } else {
+                log::warn!("Existing timer task missing but a player reconnected!");
+            }
+        } else {
+            log::warn!("Player reconnected without connection info!");
+        }
+
         true
     }
 
