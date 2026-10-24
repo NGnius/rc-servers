@@ -349,14 +349,14 @@ impl QueueHandler {
             let team = team_picker.choose_team(&guid_str, i, &lobby_desc);
             lobby_desc.team = team;
             player.player.team = team;
-            player_descs.push(lobby_desc);
+            player_descs.push((lobby_desc, player.player.clone()));
         }
 
         wait_times.update_time_match_starting_now(q_entry.users.iter().map(|x| x.enqueued_at));
 
         let missing = users_per_game.saturating_sub(q_entry.users.len());
 
-        match user.start_game(game_desc, player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, team_picker, missing).await {
+        match user.start_game(game_desc, &player_descs, factory.as_ref(), &cpu_counter, &weapon_guesser, team_picker, missing).await {
             Ok(fakes) => {
                 let player_datas = q_entry.users.iter().map(|x| x.player.clone())
                     .chain(fakes.players.into_iter().map(|(desc, _emu)| desc))
@@ -438,19 +438,21 @@ impl QueueHandler {
             is_complete: false,
             overrides: Some(session.config.as_core()),
         };
-        let player_descs = session.users.iter()
+        let player_descs: Vec<_> = session.users.iter()
             .map(|user| {
                 let q_user = user.queue_user.as_ref().unwrap();
-                oj_rc_core::persist::user::PlayerLobbyDescriptor {
+                let lobby_desc = oj_rc_core::persist::user::PlayerLobbyDescriptor {
                     user_id: q_user.user_id,
                     team: user.team as i32,
                     group: None,
                     public_id: q_user.player.name.clone(),
                     display_name: q_user.player.display_name.clone(),
-                }
+                };
+                let player_desc = q_user.player.clone();
+                (lobby_desc, player_desc)
             })
             .collect();
-        match user.start_custom_game(game_desc, player_descs).await {
+        match user.start_custom_game(game_desc, &player_descs).await {
             Ok(_) => {
                 let player_datas = session.users.iter()
                     .map(|x| x.queue_user.as_ref().unwrap().player.clone())

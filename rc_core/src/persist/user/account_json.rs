@@ -58,7 +58,9 @@ impl AccountProvider {
     }
 
     pub async fn multiplayer_init(&self) -> Result<(), oj_rc_database::sea_orm::DbErr> {
-        self.db.complete_all_games().await
+        self.db.complete_all_games().await?;
+        self.db.delete_all_game_vehicles().await?;
+        Ok(())
     }
 
     /*pub fn fake_user<C: Clone>(&self) -> Box<dyn super::User<C> + Send + Sync> {

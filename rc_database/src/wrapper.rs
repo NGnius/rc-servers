@@ -545,10 +545,10 @@ impl Database {
             .and_then(|(game, player)| player.map(|player| (game, player))))
     }
 
-    pub async fn update_complete_game_by_game_guid(&self, game_guid: i64) -> Result<(), sea_orm::DbErr> {
+    pub async fn update_complete_game_by_game_id(&self, game_id: i32) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game::Entity::update_many()
             .col_expr(crate::schema::multiplayer_game::Column::IsComplete, sea_orm::sea_query::Expr::value(true))
-            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
             .exec(self.orm.as_ref())
             .await?;
         Ok(())
@@ -679,6 +679,33 @@ impl Database {
         .exec(self.orm.as_ref())
         .await?;
         Ok(())
+    }
+
+    pub async fn game_vehicles_by_game_id(&self, game_id: i32) -> Result<Vec<crate::schema::multiplayer_game_vehicle::Model>, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_vehicle::Entity::find()
+            .filter(crate::schema::multiplayer_game_vehicle::Column::GameId.eq(game_id))
+            .all(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn insert_game_vehicles(&self, entities: Vec<crate::schema::multiplayer_game_vehicle::ActiveModel>) -> Result<(), sea_orm::DbErr> {
+        crate::schema::multiplayer_game_vehicle::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
+        Ok(())
+    }
+
+    pub async fn delete_game_vehicles_by_game_id(&self, game_id: i32) -> Result<u64, sea_orm::DbErr> {
+        let result = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_vehicle::Column::GameId.eq(game_id))
+                .exec(self.orm.as_ref())
+                .await?;
+        Ok(result.rows_affected)
+    }
+
+    pub async fn delete_all_game_vehicles(&self) -> Result<u64, sea_orm::DbErr> {
+        let result = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .exec(self.orm.as_ref())
+                .await?;
+        Ok(result.rows_affected)
     }
 
     pub async fn game_event_at_time(&self, time: i64, variant: crate::schema::game_event::EventVariant) -> Result<Option<crate::schema::game_event::Model>, sea_orm::DbErr> {
@@ -1015,6 +1042,9 @@ impl Database {
             let players_task = crate::schema::multiplayer_game_player::Entity::delete_many()
                 .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
                 .exec(txn);
+            let game_vehicles_task = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_vehicle::Column::UserId.eq(user_id))
+                .exec(txn);
             // vehicle info
             let factory_vehicles_task = crate::schema::factory::vehicle::Entity::delete_many()
                 .filter(crate::schema::factory::vehicle::Column::UserId.eq(user_id))
@@ -1044,6 +1074,8 @@ impl Database {
 
             total_records += scores_task.await?.rows_affected;
             total_records += players_task.await?.rows_affected;
+
+            total_records += game_vehicles_task.await?.rows_affected;
 
             total_records += factory_vehicles_task.await?.rows_affected;
             total_records += garages_task.await?.rows_affected;

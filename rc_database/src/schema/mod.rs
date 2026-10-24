@@ -16,6 +16,7 @@ pub mod friend;
 pub mod clan;
 pub mod clan_member;
 pub mod federation;
+pub mod multiplayer_game_vehicle;
 
 pub fn parse_int_csv(s: &str) -> Vec<u32> {
     s.split(',').filter_map(|i_as_s| {

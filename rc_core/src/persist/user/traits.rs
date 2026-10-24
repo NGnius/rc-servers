@@ -332,8 +332,8 @@ pub enum UserRole {
 pub trait LobbyUser {
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
     #[allow(clippy::too_many_arguments)]
-    async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &dyn super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
-    async fn start_custom_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn start_game(&self, game: GameDescriptor, players: &[(PlayerLobbyDescriptor, crate::data::player_data::PlayerData)], factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &dyn super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
+    async fn start_custom_game(&self, game: GameDescriptor, players: &[(PlayerLobbyDescriptor, crate::data::player_data::PlayerData)]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<MatchInfo>, polariton_server::operations::SimpleOpError>;
 }
 
@@ -394,6 +394,7 @@ pub struct GameOverrides {
     pub max_cpu: i32,
 }
 
+#[derive(Clone)]
 pub struct PlayerLobbyDescriptor {
     pub user_id: i32,
     pub team: i32,

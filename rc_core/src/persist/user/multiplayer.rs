@@ -174,14 +174,38 @@ impl super::MultiplayerUser for UserData {
 
     async fn complete_game(&self, guid: &str) -> Result<(), super::MultiplayerError> {
         if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            self.db.update_complete_game_by_game_guid(guid).await
+            let game_opt = self.db.game_by_guid(guid).await
                 .map_err(|e| {
-                log::error!("Failed to complete ongoing game with user {}: {}", self.account.id, e);
-                super::MultiplayerError {
-                    code: super::MultiplayerErrorCode::CustomString,
-                    message: format!("Failed to complete ongoing game: {}", e),
-                }
-            })
+                    log::error!("Failed to retrieve ongoing game with user {}: {}", self.account.id, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to complete ongoing game: {}", e),
+                    }
+                })?;
+            if let Some(game) = game_opt {
+                self.db.update_complete_game_by_game_id(game.id).await
+                    .map_err(|e| {
+                    log::error!("Failed to complete ongoing game with user {}: {}", self.account.id, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to complete ongoing game: {}", e),
+                    }
+                })?;
+                self.db.delete_game_vehicles_by_game_id(game.id).await
+                    .map_err(|e| {
+                        log::error!("Failed to delete game vehicles with user {}: {}", self.account.id, e);
+                        super::MultiplayerError {
+                            code: super::MultiplayerErrorCode::CustomString,
+                            message: format!("Failed to delete game game vehicles: {}", e),
+                        }
+                    })?;
+                Ok(())
+            } else {
+                Err(super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                    message: format!("Failed to find game with GUID {}", guid),
+                })
+            }
         } else {
             Err(super::MultiplayerError {
                 code: super::MultiplayerErrorCode::IncorrectGameGuid,

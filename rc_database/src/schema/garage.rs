@@ -11,7 +11,7 @@ pub struct Model {
     pub name: String,
     pub crf_id: Option<i32>,
     pub was_rated: bool,
-    pub movement_categories: String, // csv?
+    pub movement_categories: String, // csv
     pub uuid: i64,
     pub thumbnail_version: i32,
     pub total_robot_cpu: i32,
@@ -30,7 +30,7 @@ pub struct Model {
     pub bay_skin_id: String,
     pub death_animation_id: String,
     pub spawn_animation_id: String,
-    pub weapon_order: String, // csv?
+    pub weapon_order: String, // csv
     pub robot_data: Vec<u8>,
     pub colour_data: Vec<u8>,
     pub selected: bool,
