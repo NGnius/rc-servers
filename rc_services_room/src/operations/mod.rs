@@ -204,7 +204,7 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(robot_sanction::robot_sanction_provider())
         .add(building_xp::building_xp_save_provider())
         .add(robot_sanction::all_robot_sanctions_provider())
-        .add(reconnect_game::available_reconnect_provider())
+        .add(reconnect_game::available_reconnect_provider(&init_ctx.cubes))
         .add(machine::garage_machine_save_provider(init_ctx.parsers.cpu_counter()))
         .add(polariton_server::operations::Ack::<32, _>::default()) // TODO handle SaveMachineColorRequest instead of ignoring it
         .add(polariton_server::operations::Ack::<45, _>::default()) // TODO handle UpdateThumbnailVersionRequest instead of ignoring it

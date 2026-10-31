@@ -33,6 +33,10 @@ impl CustomGameLogic for NoOpLogic {
         true
     }
 
+    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user: u8) -> bool {
+        true
+    }
+
     async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
         true
     }

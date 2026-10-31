@@ -18,7 +18,7 @@ pub struct BattleEnter {
     pub guid: String,
     pub is_ranked: bool,
     pub is_custom: bool,
-    pub visibility: Option<oj_rc_core::data::game_mode::MapVisibility>, // ?
+    pub visibility: Option<oj_rc_core::data::game_mode::MapVisibility>,
     pub auto_heal: bool,
     pub player_datas: Vec<oj_rc_core::data::player_data::PlayerData>,
     pub network_config: crate::data::network::NetworkConfigData,
@@ -27,7 +27,7 @@ pub struct BattleEnter {
 impl BattleEnter {
     const CODE: u8 = 5;
 
-    fn as_transmissible<C>(&self) -> Vec<(u8, polariton::operation::Typed<C>)> {
+    pub fn as_transmissible<C>(&self) -> Vec<(u8, polariton::operation::Typed<C>)> {
         let player_datas = polariton::operation::Typed::Arr(polariton::operation::Arr {
             ty: polariton::serdes::TypePrefix::HashMap,
             custom_ty: None,

@@ -1,5 +1,5 @@
 mod engine;
- use engine::{CustomGameLogic, RlnlPacket};
+use engine::{CustomGameLogic, RlnlPacket};
 
 mod messages;
 pub use messages::GameMessage;

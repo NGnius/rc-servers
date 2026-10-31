@@ -12,9 +12,11 @@ impl ScoreTracker {
     const TICK_MS: i64 = 50;
 
     fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor], self_destruct_is_kill: bool) -> Self {
+        let mut seen_teams = std::collections::HashSet::new();
+        players.iter().for_each(|p| { seen_teams.insert(p.team as u8); });
         Self {
             ticker: super::trackers::TickTracker::new(),
-            scores: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicU32::new(0))).collect(),
+            scores: seen_teams.iter().map(|t| (*t, std::sync::atomic::AtomicU32::new(0))).collect(),
             teams: players.iter().map(|p| (p.player_id, p.team as u8)).collect(),
             self_destruct_is_kill,
             is_sudden_death: std::sync::atomic::AtomicBool::new(false),
@@ -66,15 +68,19 @@ impl ScoreTracker {
         max.map(|(team, _score)| team)
     }
 
-    async fn update_team_scores(&self, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>) {
-        let packet = rlnl::events::sync::UpdateTeamDeathMatch {
+    fn build_team_scores(&self, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>) -> rlnl::events::sync::UpdateTeamDeathMatch {
+        rlnl::events::sync::UpdateTeamDeathMatch {
             num_teams: self.scores.len() as i32,
             team_scores: self.scores.iter().map(|(team, score)| rlnl::events::sync::TeamScore {
                 team_id: *team as i32,
                 score: score.load(std::sync::atomic::Ordering::Relaxed) as i32,
             }).collect(),
             time_expired: if generic.is_game_done() { 1 } else { 0 },
-        };
+        }
+    }
+
+    async fn update_team_scores(&self, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>) {
+        let packet = self.build_team_scores(generic);
         generic.broadcast(
             rlnl::event_code::NetworkEvent::TeamDeathMatchState,
             literustlib::packet::Property::ReliableOrdered,
@@ -208,7 +214,7 @@ pub struct TeamDeathMatchLogic {
     respawn_full_heal_duration: f32,
     kill_limit: u32,
     settings: std::sync::Arc<oj_rc_core::persist::config::TeamDeathMatchSettings>,
-    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
     score_tracking: ScoreTracker,
     player_tracking: PlayerTracker,
     surrender_tracking: super::trackers::SurrenderGameTracker,
@@ -376,6 +382,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
                 property: literustlib::packet::Property::ReliableOrdered,
+                data: Box::new(self.score_tracking.build_team_scores(generic)),
+            },
+            crate::matches::RlnlPacket {
+                event: rlnl::event_code::NetworkEvent::GameModeSettings,
+                property: literustlib::packet::Property::ReliableOrdered,
                 data: Box::new(rlnl::events::sync::UpdateTeamDeathmatchSettings {
                     settings: rlnl::types::GameModeSettings {
                         game_time_minutes: (generic.game_duration.as_secs() / 60) as i32,
@@ -384,6 +395,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
                         respawn_full_heal_duration: self.respawn_full_heal_duration,
                     }
                 }),
+            },
+            crate::matches::RlnlPacket {
+                event: rlnl::event_code::NetworkEvent::CurrentGameTime,
+                property: literustlib::packet::Property::ReliableOrdered,
+                data: Box::new(rlnl::events::GameTime(generic.time_remaining().as_secs_f32())),
             }
         ]
     }
@@ -406,7 +422,7 @@ impl CustomGameLogic for TeamDeathMatchLogic {
                 }),
             }
         ];*/
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, Vec::default(), Vec::default());
+        let new_timer_task = crate::matches::timer::MatchTimerHandle::spawn(senders, game_start, game_end, Vec::default(), Vec::default());
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for team death match mode suggests an assumption was wrong");
@@ -419,6 +435,38 @@ impl CustomGameLogic for TeamDeathMatchLogic {
             &super::trackers::SurrenderGameTracker::surrender_times(),
             false,
         ).await;
+        true
+    }
+
+    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+        // init surrender info for new player
+        generic.send_to_player(
+            player,
+            rlnl::event_code::NetworkEvent::SetSurrenderTimes,
+            literustlib::packet::Property::ReliableOrdered,
+            &super::trackers::SurrenderGameTracker::surrender_times(),
+        ).await;
+
+        // update players for timer task
+        let mut player_info = None;
+        let users_lock = generic.users.read().await;
+        for (player_id, conn) in users_lock.iter() {
+            if *player_id != player { continue; }
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            player_info = Some((conn.connection.clone(), state));
+            break;
+        }
+        if let Some(new_player_info) = player_info {
+            let timer_lock = self.timer_task.lock().await;
+            if let Some(timer_t) = &*timer_lock {
+                timer_t.add_player(new_player_info).await;
+            } else {
+                log::warn!("Existing timer task missing but a player reconnected!");
+            }
+        } else {
+            log::warn!("Player reconnected without connection info!");
+        }
+
         true
     }
 

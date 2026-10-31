@@ -332,13 +332,24 @@ pub enum UserRole {
 pub trait LobbyUser {
     async fn player_data(&self, cpu_counter: &crate::cubes::CpuListParser) -> Result<crate::data::player_data::PlayerData, polariton_server::operations::SimpleOpError>;
     #[allow(clippy::too_many_arguments)]
-    async fn start_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &dyn super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
-    #[allow(clippy::too_many_arguments)]
-    async fn start_custom_game(&self, game: GameDescriptor, players: Vec<PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn start_game(&self, game: GameDescriptor, players: &[(PlayerLobbyDescriptor, crate::data::player_data::PlayerData)], factory: &dyn oj_rc_factory::VehicleFactoryAdapter, cpu_counter: &crate::cubes::CpuListParser, weapon_lister: &crate::cubes::WeaponListParser, team_chooser: &dyn super::TeamChooser, missing_players: usize) -> Result<FakePlayers, polariton_server::operations::SimpleOpError>;
+    async fn start_custom_game(&self, game: GameDescriptor, players: &[(PlayerLobbyDescriptor, crate::data::player_data::PlayerData)]) -> Result<(), polariton_server::operations::SimpleOpError>;
+    async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<MatchInfo>, polariton_server::operations::SimpleOpError>;
 }
 
 pub struct FakePlayers {
     pub players: Vec<(crate::data::player_data::PlayerData, crate::persist::config::ClientEmulator)>
+}
+
+pub struct MatchInfo {
+    pub map: String,
+    pub mode: crate::data::game_mode::GameMode,
+    pub guid: String,
+    pub is_ranked: bool,
+    pub is_custom: bool,
+    pub visibility: crate::data::game_mode::MapVisibility,
+    pub auto_heal: bool,
+    pub player_datas: Vec<crate::data::player_data::PlayerData>,
 }
 
 pub struct CurrentGameEvent {
@@ -383,6 +394,7 @@ pub struct GameOverrides {
     pub max_cpu: i32,
 }
 
+#[derive(Clone)]
 pub struct PlayerLobbyDescriptor {
     pub user_id: i32,
     pub team: i32,
@@ -401,6 +413,13 @@ pub struct PlayerDescriptor {
     pub display_name: String,
     pub is_rewards_claimed: bool,
     pub mode: Option<crate::persist::config::ClientEmulator>,
+}
+
+pub struct GameVehicleDescriptor {
+    pub player_id: u8,
+    pub name: String,
+    pub robot_data: Vec<u8>,
+    pub colour_data: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -439,6 +458,7 @@ pub enum MultiplayerErrorCode {
 pub trait MultiplayerUser: IntercomUser + CommonUser {
     async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
+    async fn game_vehicles(&self, guid: &str) -> Result<Vec<GameVehicleDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
     async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn update_game_score(&self, guid: &str, score: PlayerScore) -> Result<i32, MultiplayerError>;

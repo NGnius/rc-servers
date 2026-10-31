@@ -3,6 +3,7 @@ use polariton::operation::Typed;
 #[async_trait::async_trait]
 pub trait ConfigProvider<C: Clone> {
     fn cube_list(&self) -> Typed<C>;
+    fn cube_healths(&self) -> std::collections::HashMap<u32, u32>;
     fn movement_list(&self) -> Typed<C>;
     fn weapon_list(&self) -> Typed<C>;
     fn weapon_upgrade_list(&self) -> Typed<C>;
@@ -48,6 +49,7 @@ pub trait ConfigProvider<C: Clone> {
     fn redacted_json(&self) -> String;
     /// None when federation is not enabled
     fn federation(&self) -> Option<Federation>;
+    fn reconnect(&self) -> Option<ReconnectConfig>;
     fn polariton_operation_modifier(&self) -> crate::OpModImpl;
 }
 
@@ -638,4 +640,8 @@ pub trait RedactedClone {
 pub struct Federation {
     pub aliases: std::collections::HashMap<String, String>,
     pub defederated: Vec<String>,
+}
+
+pub struct ReconnectConfig {
+    pub allowed_modes: Vec<GameType>,
 }

@@ -3,6 +3,7 @@ pub struct GameMatches {
     routing: std::collections::HashMap<i32, String>, // user id to game guid
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
+    cube_health_configs: std::sync::Arc<std::collections::HashMap<u32, u32>>,
     //fake_players: Vec<oj_rc_core::persist::config::FakePlayer>,
     cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>,
     ba_sorted_crystals: std::sync::Arc<tokio::sync::RwLock<std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>>>, // cached after first calculation
@@ -26,6 +27,7 @@ impl GameMatches {
                 .into_iter()
                 .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
                 .collect(),
+            cube_health_configs: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::cube_healths(conf)),
             //fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
             cube_parsers,
             ba_sorted_crystals,
@@ -120,6 +122,12 @@ impl GameMatches {
         } else {
             log::info!("There are {} ({} real) players for game {}", players.len(), players.iter().filter(|x| x.user_id.is_some()).count(), guid);
         }
+        let vehicles = user.game_vehicles(guid).await?;
+        if vehicles.is_empty() {
+            log::warn!("No vehicles found for game {}, loading may not work correctly", guid);
+        } else {
+            log::info!("There are {} vehicles for game {}", vehicles.len(), guid);
+        }
         let fakes = self.build_fake_players(&players);
         let fakes_handler = super::fake::Handler::start(fakes, players.clone()).await;
         match game_info.mode {
@@ -129,6 +137,8 @@ impl GameMatches {
                     map: map_config,
                     game_mode: &self.mode_configs.elimination,
                     players,
+                    vehicles,
+                    cube_healths: &self.cube_health_configs,
                 };
                 let inner = super::modes::EliminationLogic::new(
                     &self.mode_configs.elimination,
@@ -171,6 +181,8 @@ impl GameMatches {
                     map: map_config,
                     game_mode: &self.mode_configs.battle_arena,
                     players,
+                    vehicles,
+                    cube_healths: &self.cube_health_configs,
                 };
                 let inner = super::modes::BattleArenaLogic::new(
                     &super_conf,
@@ -191,6 +203,8 @@ impl GameMatches {
                     map: map_config,
                     game_mode: &self.mode_configs.the_pit,
                     players,
+                    vehicles,
+                    cube_healths: &self.cube_health_configs,
                 };
                 let inner = super::modes::PitLogic::new(
                     &self.mode_configs.the_pit,
@@ -212,6 +226,8 @@ impl GameMatches {
                     map: map_config,
                     game_mode: &self.mode_configs.team_deathmatch,
                     players,
+                    vehicles,
+                    cube_healths: &self.cube_health_configs,
                 };
                 let inner = super::modes::TeamDeathMatchLogic::new(
                     &self.mode_configs.team_deathmatch,

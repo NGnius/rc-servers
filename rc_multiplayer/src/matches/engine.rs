@@ -9,6 +9,8 @@ pub struct SuperConfig<'a> {
     pub map: oj_rc_core::persist::config::MapConfig,
     pub game_mode: &'a oj_rc_core::data::game_mode::GameModeConfig,
     pub players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
+    pub vehicles: Vec<oj_rc_core::persist::user::GameVehicleDescriptor>,
+    pub cube_healths: &'a std::sync::Arc<std::collections::HashMap<u32, u32>>,
 }
 
 /// Functions returning a boolean indicate if the generic engine should also perform the default behaviour
@@ -31,6 +33,8 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     async fn extra_sync_events(&self, generic: &super::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> Vec<RlnlPacket>;
     /// Called when loading completes and the countdown is starting
     async fn on_countdown_start(&self, generic: &super::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool;
+    /// Called when loading completes for a player when the game is already started
+    async fn on_player_reconnect_complete(&self, generic: &super::GenericGamemodeEngine<Self>, user: u8) -> bool;
     /// Called when the game is marked as complete
     async fn on_game_completed(&self, generic: &super::GenericGamemodeEngine<Self>) -> bool;
     /// Called when various network events are broadcast from one client but before they are sent to the rest of the clients

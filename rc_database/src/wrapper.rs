@@ -304,6 +304,14 @@ impl Database {
             .await
     }
 
+    pub async fn garages_selected(&self, user_ids: impl std::iter::Iterator<Item=i32>) -> Result<Vec<crate::schema::garage::Model>, sea_orm::DbErr> {
+        crate::schema::garage::Entity::find()
+            .filter(crate::schema::garage::Column::UserId.is_in(user_ids))
+            .filter(crate::schema::garage::Column::Selected.eq(true))
+            .all(self.orm.as_ref())
+            .await
+    }
+
     pub async fn garage_by_user_id_and_slot(&self, user_id: i32, garage_slot: i32) -> Result<Option<crate::schema::garage::Model>, sea_orm::DbErr> {
         crate::schema::garage::Entity::find()
             .filter(crate::schema::garage::Column::UserId.eq(user_id))
@@ -537,10 +545,10 @@ impl Database {
             .and_then(|(game, player)| player.map(|player| (game, player))))
     }
 
-    pub async fn update_complete_game_by_game_guid(&self, game_guid: i64) -> Result<(), sea_orm::DbErr> {
+    pub async fn update_complete_game_by_game_id(&self, game_id: i32) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game::Entity::update_many()
             .col_expr(crate::schema::multiplayer_game::Column::IsComplete, sea_orm::sea_query::Expr::value(true))
-            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
             .exec(self.orm.as_ref())
             .await?;
         Ok(())
@@ -629,6 +637,19 @@ impl Database {
             .collect())
     }
 
+    pub async fn players_by_game_id_heavy(&self, game_id: i32) -> Result<Vec<(crate::schema::multiplayer_game_player::Model, crate::schema::user::Model)>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_player::Entity::find()
+            .find_also_related(crate::schema::user::Entity)
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            .filter(crate::schema::multiplayer_game::Column::Id.eq(game_id))
+            .order_by_asc(crate::schema::multiplayer_game_player::Column::PlayerId)
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .filter_map(|(player, user, _)| user.map(|user| (player, user)))
+            .collect())
+    }
+
     pub async fn player_by_user_id_and_game_guid(&self, user_id: i32, game_guid: i64) -> Result<Option<crate::schema::multiplayer_game_player::Model>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game::Entity::find()
             .find_also_related(crate::schema::multiplayer_game_player::Entity)
@@ -658,6 +679,46 @@ impl Database {
         .exec(self.orm.as_ref())
         .await?;
         Ok(())
+    }
+
+    pub async fn game_vehicles_by_game_id(&self, game_id: i32) -> Result<Vec<crate::schema::multiplayer_game_vehicle::Model>, sea_orm::DbErr> {
+        crate::schema::multiplayer_game_vehicle::Entity::find()
+            .filter(crate::schema::multiplayer_game_vehicle::Column::GameId.eq(game_id))
+            .all(self.orm.as_ref())
+            .await
+    }
+
+    pub async fn game_vehicles_by_game_guid_and_completion(&self, game_guid: i64, is_complete: bool) -> Result<Vec<crate::schema::multiplayer_game_vehicle::Model>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_vehicle::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            //.into_model::<crate::schema::multiplayer_game_player::Model>()
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .map(|(vehicle, _)| vehicle)
+            .collect())
+    }
+
+    pub async fn insert_game_vehicles(&self, entities: Vec<crate::schema::multiplayer_game_vehicle::ActiveModel>) -> Result<(), sea_orm::DbErr> {
+        crate::schema::multiplayer_game_vehicle::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
+        Ok(())
+    }
+
+    pub async fn delete_game_vehicles_by_game_id(&self, game_id: i32) -> Result<u64, sea_orm::DbErr> {
+        let result = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_vehicle::Column::GameId.eq(game_id))
+                .exec(self.orm.as_ref())
+                .await?;
+        Ok(result.rows_affected)
+    }
+
+    pub async fn delete_all_game_vehicles(&self) -> Result<u64, sea_orm::DbErr> {
+        let result = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .exec(self.orm.as_ref())
+                .await?;
+        Ok(result.rows_affected)
     }
 
     pub async fn game_event_at_time(&self, time: i64, variant: crate::schema::game_event::EventVariant) -> Result<Option<crate::schema::game_event::Model>, sea_orm::DbErr> {
@@ -994,6 +1055,9 @@ impl Database {
             let players_task = crate::schema::multiplayer_game_player::Entity::delete_many()
                 .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
                 .exec(txn);
+            let game_vehicles_task = crate::schema::multiplayer_game_vehicle::Entity::delete_many()
+                .filter(crate::schema::multiplayer_game_vehicle::Column::UserId.eq(user_id))
+                .exec(txn);
             // vehicle info
             let factory_vehicles_task = crate::schema::factory::vehicle::Entity::delete_many()
                 .filter(crate::schema::factory::vehicle::Column::UserId.eq(user_id))
@@ -1023,6 +1087,8 @@ impl Database {
 
             total_records += scores_task.await?.rows_affected;
             total_records += players_task.await?.rows_affected;
+
+            total_records += game_vehicles_task.await?.rows_affected;
 
             total_records += factory_vehicles_task.await?.rows_affected;
             total_records += garages_task.await?.rows_affected;

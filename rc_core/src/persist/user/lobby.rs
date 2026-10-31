@@ -24,7 +24,7 @@ impl super::LobbyUser for UserData {
     async fn start_game(
         &self,
         game: super::GameDescriptor,
-        players: Vec<super::PlayerLobbyDescriptor>,
+        players: &[(super::PlayerLobbyDescriptor, crate::data::player_data::PlayerData)],
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
@@ -45,7 +45,10 @@ impl super::LobbyUser for UserData {
             oj_rc_database::schema::multiplayer_game::GameType::Standard
         };
 
-        let forced_fake_players = self.generate_forced_fake_players_data(&game.guid, &players, factory, cpu_counter, weapon_lister, chooser).await?;
+        let real_players: Vec<super::PlayerLobbyDescriptor> = players.iter()
+            .map(|(player, _)| player.to_owned())
+            .collect();
+        let forced_fake_players = self.generate_forced_fake_players_data(&game.guid, &real_players, factory, cpu_counter, weapon_lister, chooser).await?;
         let filler_players = self.generate_filler_players_data(&game.guid, factory, cpu_counter, weapon_lister, chooser, missing_players, players.len() + forced_fake_players.len()).await?;
 
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
@@ -73,7 +76,7 @@ impl super::LobbyUser for UserData {
 
         let mut group_map = std::collections::HashMap::new();
         let mut group_num = 1;
-        for player in players.iter() {
+        for (player, _) in players.iter() {
             if let Some(group) = &player.group {
                 if !group_map.contains_key(group) {
                     group_map.insert(group.to_owned(), group_num);
@@ -82,9 +85,83 @@ impl super::LobbyUser for UserData {
             }
         }
 
-        let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.into_iter()
+        let vehicles: Vec<oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel> = players.iter()
             .enumerate()
-            .map(|(i, player)| {
+            .map(|(i, (player, data))| {
+                oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                    player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
+                    tier: oj_rc_database::sea_orm::ActiveValue::Set(data.tier),
+                    name: oj_rc_database::sea_orm::ActiveValue::Set(data.robot_name.clone()),
+                    uuid: oj_rc_database::sea_orm::ActiveValue::Set(crate::persist::user::str_to_i64(&data.robot_uuid).unwrap_or(-1)),
+                    cpu: oj_rc_database::sea_orm::ActiveValue::Set(data.cpu),
+                    mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(data.mastery),
+                    death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(data.death_effect.clone()),
+                    spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(data.spawn_effect.clone()),
+                    weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&data.weapon_order)),
+                    robot_data: oj_rc_database::sea_orm::ActiveValue::Set(data.robot_map.clone()),
+                    colour_data: oj_rc_database::sea_orm::ActiveValue::Set(data.colour_map.clone()),
+                }
+            })
+            .chain(forced_fake_players.iter()
+                .enumerate()
+                .map(|(i, (fake, _variant))| {
+                    oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
+                        id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        user_id: oj_rc_database::sea_orm::ActiveValue::Set(None), // if ClientAI, they will be assigned to a user during game loading
+                        game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
+                        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                        player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len) as u8) as _),
+                        tier: oj_rc_database::sea_orm::ActiveValue::Set(fake.tier),
+                        name: oj_rc_database::sea_orm::ActiveValue::Set(fake.robot_name.clone()),
+                        uuid: oj_rc_database::sea_orm::ActiveValue::Set(crate::persist::user::str_to_i64(&fake.robot_uuid).unwrap_or(-1)),
+                        cpu: oj_rc_database::sea_orm::ActiveValue::Set(fake.cpu),
+                        mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(fake.mastery),
+                        death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.death_effect.clone()),
+                        spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.spawn_effect.clone()),
+                        weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fake.weapon_order)),
+                        robot_data: oj_rc_database::sea_orm::ActiveValue::Set(fake.robot_map.clone()),
+                        colour_data: oj_rc_database::sea_orm::ActiveValue::Set(fake.colour_map.clone()),
+                    }
+                })
+            )
+            .chain(filler_players.iter()
+                .enumerate()
+                .map(|(i, (fake, _variant))| {
+                    oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
+                        id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                        user_id: oj_rc_database::sea_orm::ActiveValue::Set(None), // if ClientAI, they will be assigned to a user during game loading
+                        game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
+                        creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                        player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len + forced_fake_players_len) as u8) as _),
+                        tier: oj_rc_database::sea_orm::ActiveValue::Set(fake.tier),
+                        name: oj_rc_database::sea_orm::ActiveValue::Set(fake.robot_name.clone()),
+                        uuid: oj_rc_database::sea_orm::ActiveValue::Set(crate::persist::user::str_to_i64(&fake.robot_uuid).unwrap_or(-1)),
+                        cpu: oj_rc_database::sea_orm::ActiveValue::Set(fake.cpu),
+                        mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(fake.mastery),
+                        death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.death_effect.clone()),
+                        spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.spawn_effect.clone()),
+                        weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&fake.weapon_order)),
+                        robot_data: oj_rc_database::sea_orm::ActiveValue::Set(fake.robot_map.clone()),
+                        colour_data: oj_rc_database::sea_orm::ActiveValue::Set(fake.colour_map.clone()),
+                    }
+                })
+            )
+            .collect();
+        self.db.insert_game_vehicles(vehicles).await.map_err(|e| {
+            log::error!("Failed to create game vehicles for {} through user_id {}: {}", game.guid, self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(
+                crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                format!("Failed to create game vehicles for {}: {}", game.guid, e),
+            )
+        })?;
+
+        let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.iter()
+            .enumerate()
+            .map(|(i, (player, _))| {
                 oj_rc_database::schema::multiplayer_game_player::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
                     user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
@@ -94,8 +171,8 @@ impl super::LobbyUser for UserData {
                     team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
                     group: oj_rc_database::sea_orm::ActiveValue::Set(player.group.as_ref().and_then(|x| group_map.get(x)).copied()),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
-                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id),
-                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name),
+                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.clone()),
+                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.clone()),
                     variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
@@ -149,7 +226,7 @@ impl super::LobbyUser for UserData {
         })
     }
 
-    async fn start_custom_game(&self, game: super::GameDescriptor, players: Vec<super::PlayerLobbyDescriptor>) -> Result<(), polariton_server::operations::SimpleOpError> {
+    async fn start_custom_game(&self, game: super::GameDescriptor, players: &[(super::PlayerLobbyDescriptor, crate::data::player_data::PlayerData)]) -> Result<(), polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
         let guid = crate::persist::user::str_to_i64(&game.guid)
             .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
@@ -190,9 +267,39 @@ impl super::LobbyUser for UserData {
             )
         })?;
 
-        let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.into_iter()
+        let vehicles: Vec<oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel> = players.iter()
             .enumerate()
-            .map(|(i, player)| {
+            .map(|(i, (player, data))| {
+                oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
+                    id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
+                    creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
+                    player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
+                    tier: oj_rc_database::sea_orm::ActiveValue::Set(data.tier),
+                    name: oj_rc_database::sea_orm::ActiveValue::Set(data.robot_name.clone()),
+                    uuid: oj_rc_database::sea_orm::ActiveValue::Set(crate::persist::user::str_to_i64(&data.robot_uuid).unwrap_or(-1)),
+                    cpu: oj_rc_database::sea_orm::ActiveValue::Set(data.cpu),
+                    mastery_level: oj_rc_database::sea_orm::ActiveValue::Set(data.mastery),
+                    death_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(data.death_effect.clone()),
+                    spawn_animation_id: oj_rc_database::sea_orm::ActiveValue::Set(data.spawn_effect.clone()),
+                    weapon_order: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::dump_csv(&data.weapon_order)),
+                    robot_data: oj_rc_database::sea_orm::ActiveValue::Set(data.robot_map.clone()),
+                    colour_data: oj_rc_database::sea_orm::ActiveValue::Set(data.colour_map.clone()),
+                }
+            })
+            .collect();
+        self.db.insert_game_vehicles(vehicles).await.map_err(|e| {
+            log::error!("Failed to create game vehicles for {} through user_id {}: {}", game.guid, self.account.id, e);
+            polariton_server::operations::SimpleOpError::with_message(
+                crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                format!("Failed to create game vehicles for {}: {}", game.guid, e),
+            )
+        })?;
+
+        let players: Vec<oj_rc_database::schema::multiplayer_game_player::ActiveModel> = players.iter()
+            .enumerate()
+            .map(|(i, (player, _))| {
                 oj_rc_database::schema::multiplayer_game_player::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
                     user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
@@ -202,8 +309,8 @@ impl super::LobbyUser for UserData {
                     team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
                     group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
-                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id),
-                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name),
+                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.clone()),
+                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.clone()),
                     variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
@@ -216,6 +323,102 @@ impl super::LobbyUser for UserData {
             )
         })?;
         Ok(())
+    }
+
+    async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<crate::persist::user::MatchInfo>, polariton_server::operations::SimpleOpError> {
+        let current_game_opt = self.db.game_by_user_id_and_completion(self.account.id, false).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_message(
+                    crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                    format!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e),
+                )
+            })?;
+        if let Some(current_game) = current_game_opt {
+            let now = chrono::Utc::now().timestamp();
+            let mut uuid = super::uuid_sanitize(now);
+            let uuid_gen = move || {
+                let uuid_str = super::i64_as_uuid_str(uuid);
+                uuid += 1;
+                uuid_str
+            };
+            let allowed_modes_db: Vec<_> = allowed_modes.iter().map(|x| crate::data::game_mode::GameMode::from_persist(*x).to_db()).collect();
+            if allowed_modes_db.contains(&current_game.mode) {
+                let players = self.db.players_by_game_id_heavy(current_game.id).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game players for user {}: {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16,
+                            format!("Failed to retrieve ongoing game players: {}", e),
+                        )
+                    })?;
+                let user_ids = players.iter().map(|(_, user)| user.id);
+                let user_avatars = self.db.user_auxs_by_user_ids_and_descriptor(user_ids, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game player avatars for user {} : {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to retrieve ongoing game player avatars: {}", e),
+                        )
+                    })?;
+                let avatar_map: std::collections::HashMap<i32, u32> = user_avatars.iter()
+                    .filter_map(|avatar| avatar.data.parse().ok().map(|avatar_id| (avatar.user_id, avatar_id)))
+                    .collect();
+                let garages = self.db.game_vehicles_by_game_id(current_game.id).await
+                    .map_err(|e| {
+                        log::error!("Failed to retrieve ongoing game player vehicles for user {} : {}", self.account.id, e);
+                        polariton_server::operations::SimpleOpError::with_message(
+                            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+                            format!("Failed to retrieve ongoing game player vehicles: {}", e),
+                        )
+                    })?;
+                // player_id -> game vehicle data
+                let garage_map: std::collections::HashMap<i16, oj_rc_database::schema::multiplayer_game_vehicle::Model> = garages.into_iter()
+                    .map(|garage| (garage.player_id, garage))
+                    .collect();
+                log::debug!("Retrieved {} players, {} avatars, {} garages for game {} reconnect", players.len(), avatar_map.len(), garage_map.len(), current_game.id);
+                let player_datas = players.into_iter().map(|(player, user)| {
+                    let garage = garage_map.get(&player.player_id);
+                    crate::data::player_data::PlayerData {
+                        name: user.public_id,
+                        display_name: user.display_name,
+                        mastery: garage.map(|g| g.mastery_level).unwrap_or_default(),
+                        tier: garage.map(|g| g.tier).unwrap_or(1),
+                        robot_name: garage.map(|g| g.name.to_owned()).unwrap_or_default(),
+                        robot_map: garage.map(|g| g.robot_data.to_owned()).unwrap_or_default(),
+                        group: player.group.map(|g| g.to_string()),
+                        team: player.team,
+                        has_premium: true,
+                        robot_uuid: garage.map(|g| super::i64_as_uuid_str(g.uuid)).unwrap_or_else(uuid_gen),
+                        cpu: garage.map(|g| g.cpu).unwrap_or_default(),
+                        avatar_id: avatar_map.get(&user.id).map(|x| *x as i32).filter(|x| *x >= 0),
+                        weapon_order: garage.map(|g| oj_rc_database::schema::parse_int_csv_i32(&g.weapon_order)).unwrap_or_default(),
+                        colour_map: garage.map(|g| g.colour_data.to_owned()).unwrap_or_default(),
+                        is_ai: false,
+                        spawn_effect: garage.map(|g| g.spawn_animation_id.to_owned()).unwrap_or_else(|| "Spawn".to_owned()),
+                        death_effect: garage.map(|g| g.death_animation_id.to_owned()).unwrap_or_else(|| "Explosion".to_owned()),
+                        player_rank: 1, // TODO
+                        weapon_rank: garage.map(|g| oj_rc_database::schema::parse_int_csv(&g.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect()).unwrap_or_default(),
+                        clan_name: None, // TODO
+                    }
+                }).collect();
+
+                Ok(Some(crate::persist::user::MatchInfo {
+                    map: current_game.map,
+                    mode: crate::data::game_mode::GameMode::from_db(current_game.mode),
+                    guid: super::i64_as_uuid_str(current_game.guid),
+                    is_ranked: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
+                    is_custom: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
+                    visibility: crate::data::game_mode::MapVisibility::from_db(current_game.visibility),
+                    auto_heal: current_game.auto_heal,
+                    player_datas,
+                }))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
 

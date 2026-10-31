@@ -103,6 +103,12 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         })
     }
 
+    fn cube_healths(&self) -> std::collections::HashMap<u32, u32> {
+        self.cubes.values()
+            .map(|cube| (cube.id, cube.info.health))
+            .collect()
+    }
+
     fn movement_list(&self) -> Typed<C> {
         let mut movements_stats = HashMap::<ItemCategory, HashMap<ItemTier, MovementData>>::new();
         for cube in self.cubes.values() {
@@ -639,6 +645,14 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             aliases: self.federation.aliases.clone(),
             defederated: self.federation.defederated.clone(),
         })
+    }
+
+    fn reconnect(&self) -> Option<super::ReconnectConfig> {
+        if self.battle.multiplayer.reconnect.enabled && self.battle.multiplayer.enabled {
+            Some(self.battle.multiplayer.reconnect.clone().into())
+        } else {
+            None
+        }
     }
 
     fn polariton_operation_modifier(&self) -> crate::OpModImpl {

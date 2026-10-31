@@ -139,7 +139,7 @@ impl FactoryDatabase {
     fn calculate_cube_amounts(&self, data: &[u8]) -> String {
         let mut counts: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
         let data = &data[4..];
-        for chunk in data.chunks_exact(8) {
+        for chunk in data.as_chunks::<8>().0 {
             let id_bytes: [u8; 4] = chunk[0..4].try_into().unwrap();
             let part_id = u32::from_le_bytes(id_bytes);
 

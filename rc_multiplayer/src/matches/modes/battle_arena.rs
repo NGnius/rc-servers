@@ -555,6 +555,14 @@ impl PointTracker {
             delta,
         })
     }
+
+    fn point_owned(&self, point_i: u8) -> i8 {
+        if let Some(point) = self.points.get(point_i as usize) {
+            point.team.load(std::sync::atomic::Ordering::SeqCst)
+        } else {
+            -1
+        }
+    }
 }
 
 struct EqualizerTracker {
@@ -689,13 +697,7 @@ impl EqualizerTracker {
                 for i in old_index..new_index {
                     losing_base.crystals_healths[i].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
                 }
-                let base_heal = losing_base.generate_full_base_heal(losing_team, ba_config.protonium_health as u32, crystals);
-                generic.broadcast(
-                    rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
-                    literustlib::packet::Property::ReliableOrdered,
-                    &base_heal,
-                    true
-                ).await;
+                losing_base.send_full_base_heal(losing_team, crystal_health, generic, crystals).await;
             } else {
                 log::warn!("Winning base {} no longer exists for game {}", winning_team, generic.game_guid());
             }
@@ -795,7 +797,7 @@ struct BaseTickInfo {
 impl BaseTracker {
     const DOMINATING_MULT: f32 = 8.0;
 
-    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
+    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
         let mut bases = std::collections::HashMap::new();
         for base_id in bases_iter {
             bases.insert(*base_id, BaseInfo::new(crystals, base_graph));
@@ -911,11 +913,11 @@ impl BaseTracker {
 struct BaseInfo {
     cube_index: atomic_float::AtomicF32,
     crystals_healths: std::sync::Arc<Vec<std::sync::atomic::AtomicU32>>,
-    base_graph: std::sync::Arc<oj_rc_core::cubes::CubeGraph>,
+    base_graph: std::sync::Arc<oj_rc_core::cubes::BaseCubeGraph>,
 }
 
 impl BaseInfo {
-    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo], base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
+    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo], base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
         Self {
             cube_index: atomic_float::AtomicF32::new(0.0),
             crystals_healths: std::sync::Arc::new((0..crystals.len())
@@ -1069,6 +1071,26 @@ impl BaseInfo {
         }
     }
 
+    async fn send_full_base_heal(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+        let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
+        generic.broadcast(
+            rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+            literustlib::packet::Property::ReliableOrdered,
+            &base_heal,
+            true
+        ).await;
+    }
+
+    async fn send_full_base_heal_to(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], to: u8) {
+        let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
+        generic.send_to_player(
+            to,
+            rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
+            literustlib::packet::Property::ReliableOrdered,
+            &base_heal,
+        ).await;
+    }
+
     fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
         //let base = self.bases.get(&base_id).unwrap();
         let target_crystals = &crystals[old_index..new_index];
@@ -1115,7 +1137,7 @@ fn crystal_health_map(crystal_health: u32) -> std::collections::HashMap<u32, u32
 pub struct BattleArenaLogic {
     respawn_full_heal_duration: f32,
     respawn_heal_duration: f32,
-    timer_task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
     player_tracking: PlayerTracker,
     capture_tracking: PointTracker,
     base_tracking: BaseTracker,
@@ -1131,7 +1153,7 @@ impl BattleArenaLogic {
     pub fn new(super_conf: &crate::matches::engine::SuperConfig, ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData, crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> Self {
         //let min_y = crystals.iter().min_by_key(|x| x.y).unwrap();
         //log::warn!("First crystal is as ({}, {}, {})", min_y.x, min_y.y, min_y.z);
-        let base_graph = oj_rc_core::cubes::CubeGraph::with_data(
+        let base_graph = oj_rc_core::cubes::BaseCubeGraph::with_data(
             &mut std::io::Cursor::new(&ba_config.base_machine_map),
             crystal_health_map(ba_config.protonium_health as u32),
             oj_rc_core::cubes::CLASP_ID,
@@ -1165,25 +1187,25 @@ impl BattleArenaLogic {
         *lock = None;
     }
 
-    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32) -> rlnl::types::CapturePoint {
+    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (sphere.center.x, sphere.center.y, sphere.center.z).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team: -1,
+            team,
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
     }
 
-    fn default_capture_point(max_progress: f32) -> rlnl::types::CapturePoint {
+    fn default_capture_point(max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (0.0, 0.0, 0.0).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team: -1,
+            team,
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
@@ -1504,14 +1526,23 @@ impl CustomGameLogic for BattleArenaLogic {
             if generic.map_config.capture_points.is_empty() || player.descriptor.user_id.is_none() {
                 None
             } else {
+                let point_0_team = self.capture_tracking.point_owned(0);
+                let point_1_team = self.capture_tracking.point_owned(1);
+                let point_2_team = self.capture_tracking.point_owned(2);
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::RegisterCapturePoints,
                     property: literustlib::packet::Property::ReliableOrdered,
                     data: Box::new(rlnl::events::sync::GetCapturePoints {
                         points: [
-                            generic.map_config.capture_points.first().map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
-                            generic.map_config.capture_points.get(1).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
-                            generic.map_config.capture_points.get(2).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
+                            generic.map_config.capture_points.first()
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_0_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_0_team)),
+                            generic.map_config.capture_points.get(1)
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_1_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_1_team)),
+                            generic.map_config.capture_points.get(2)
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_2_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_2_team)),
                         ]
                     }),
                 })
@@ -1561,7 +1592,7 @@ impl CustomGameLogic for BattleArenaLogic {
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::CurrentGameTime,
                 property: literustlib::packet::Property::ReliableOrdered,
-                data: Box::new(rlnl::events::GameTime(generic.game_duration.as_millis() as f32 / 1000.0)),
+                data: Box::new(rlnl::events::GameTime(generic.time_remaining().as_secs_f32())),
             }),
             // SyncTeamBaseCubes
             // TODO ???
@@ -1640,7 +1671,7 @@ impl CustomGameLogic for BattleArenaLogic {
         drop(read_lock);
         let game_end = game_start + generic.game_duration;
         let extra_packets = Vec::default();
-        let new_timer_task = crate::matches::timer::match_time_syncer(senders, game_start, game_end, extra_packets, Vec::default());
+        let new_timer_task = crate::matches::timer::MatchTimerHandle::spawn(senders, game_start, game_end, extra_packets, Vec::default());
         let mut timer_lock = self.timer_task.lock().await;
         if let Some(timer_t) = &*timer_lock { // this is quite unlikely (i.e. impossible), but I've done it for completeness
             log::warn!("Aborting an existing timer task for battle arena mode suggests an assumption was wrong");
@@ -1653,6 +1684,49 @@ impl CustomGameLogic for BattleArenaLogic {
             &SurrenderGameTracker::surrender_times(),
             false,
         ).await;
+        true
+    }
+
+    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+        // re-sync all base crystals
+        for (team, base) in self.base_tracking.bases.iter() {
+            base.send_full_base_heal_to(
+                *team,
+                self.config.protonium_health as u32,
+                generic,
+                &self.crystals,
+                player,
+            ).await;
+        }
+
+        // init surrender info for new player
+        generic.send_to_player(
+            player,
+            rlnl::event_code::NetworkEvent::SetSurrenderTimes,
+            literustlib::packet::Property::ReliableOrdered,
+            &SurrenderGameTracker::surrender_times(),
+        ).await;
+
+        // update players for timer task
+        let mut player_info = None;
+        let users_lock = generic.users.read().await;
+        for (player_id, conn) in users_lock.iter() {
+            if *player_id != player { continue; }
+            let state = generic.user_descriptor(*player_id).unwrap().state.clone();
+            player_info = Some((conn.connection.clone(), state));
+            break;
+        }
+        if let Some(new_player_info) = player_info {
+            let timer_lock = self.timer_task.lock().await;
+            if let Some(timer_t) = &*timer_lock {
+                timer_t.add_player(new_player_info).await;
+            } else {
+                log::warn!("Existing timer task missing but a player reconnected!");
+            }
+        } else {
+            log::warn!("Player reconnected without connection info!");
+        }
+
         true
     }
 
