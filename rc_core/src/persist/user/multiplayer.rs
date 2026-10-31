@@ -167,7 +167,33 @@ impl super::MultiplayerUser for UserData {
         } else {
             Err(super::MultiplayerError {
                 code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {}", guid),
+                message: format!("Failed to parse game GUID {} for player retrieval", guid),
+            })
+        }
+    }
+
+    async fn game_vehicles(&self, guid: &str) -> Result<Vec<super::GameVehicleDescriptor>, super::MultiplayerError> {
+        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
+            let vehicles = self.db.game_vehicles_by_game_guid_and_completion(guid, false).await
+                .map_err(|e| {
+                    log::error!("Failed to retrieve vehicles for game {} for user {}: {}", guid, self.account.id, e);
+                    super::MultiplayerError {
+                        code: super::MultiplayerErrorCode::CustomString,
+                        message: format!("Failed to retrieve vehicles for game {}: {}", guid, e),
+                    }
+                })?;
+            Ok(vehicles.into_iter()
+                .map(|vehicle| super::GameVehicleDescriptor {
+                    player_id: vehicle.player_id as u8,
+                    name: vehicle.name,
+                    robot_data: vehicle.robot_data,
+                    colour_data: vehicle.colour_data,
+                })
+                .collect())
+        } else {
+            Err(super::MultiplayerError {
+                code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                message: format!("Failed to parse game GUID {} for vehicle retrieval", guid),
             })
         }
     }

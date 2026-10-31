@@ -415,6 +415,13 @@ pub struct PlayerDescriptor {
     pub mode: Option<crate::persist::config::ClientEmulator>,
 }
 
+pub struct GameVehicleDescriptor {
+    pub player_id: u8,
+    pub name: String,
+    pub robot_data: Vec<u8>,
+    pub colour_data: Vec<u8>,
+}
+
 #[derive(Debug)]
 pub struct MultiplayerError {
     pub code: MultiplayerErrorCode,
@@ -451,6 +458,7 @@ pub enum MultiplayerErrorCode {
 pub trait MultiplayerUser: IntercomUser + CommonUser {
     async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
+    async fn game_vehicles(&self, guid: &str) -> Result<Vec<GameVehicleDescriptor>, MultiplayerError>;
     async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
     async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
     async fn update_game_score(&self, guid: &str, score: PlayerScore) -> Result<i32, MultiplayerError>;

@@ -34,7 +34,7 @@ enum AxisDirection {
 
 impl AxisDirection {
     #[inline]
-    fn opposite(&self) -> Self {
+    const fn opposite(&self) -> Self {
         match self {
             Self::Up => Self::Down,
             Self::Down => Self::Up,
@@ -59,7 +59,7 @@ impl AxisDirection {
     }
 }
 
-#[derive(Default)]
+/// Vehicle with a known non-changing base cube
 pub struct CubeGraph {
     cubes: std::sync::RwLock<std::collections::HashMap<CellPoint, CubeDescriptor>>,
     connects_to: std::sync::RwLock<std::collections::HashMap<CellPoint, Vec<Connection>>>,

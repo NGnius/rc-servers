@@ -688,6 +688,19 @@ impl Database {
             .await
     }
 
+    pub async fn game_vehicles_by_game_guid_and_completion(&self, game_guid: i64, is_complete: bool) -> Result<Vec<crate::schema::multiplayer_game_vehicle::Model>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game_vehicle::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game::Entity)
+            .filter(crate::schema::multiplayer_game::Column::Guid.eq(game_guid))
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            //.into_model::<crate::schema::multiplayer_game_player::Model>()
+            .all(self.orm.as_ref())
+            .await?
+            .into_iter()
+            .map(|(vehicle, _)| vehicle)
+            .collect())
+    }
+
     pub async fn insert_game_vehicles(&self, entities: Vec<crate::schema::multiplayer_game_vehicle::ActiveModel>) -> Result<(), sea_orm::DbErr> {
         crate::schema::multiplayer_game_vehicle::Entity::insert_many(entities).exec(self.orm.as_ref()).await?;
         Ok(())

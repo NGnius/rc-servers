@@ -19,11 +19,14 @@ pub use connections::{CUBE_CONNECTIONS, DEFAULT_CONNECTION};
 mod rotations;
 pub use rotations::CUBE_ROTATIONS;
 
-mod graph;
-pub use graph::{CubeGraph, CellPoint};
+mod base_graph;
+pub use base_graph::{CubeGraph as BaseCubeGraph, CellPoint};
 
 mod conversion;
 pub use conversion::CubeConversionParser;
+
+mod vehicle_graph;
+pub use vehicle_graph::CubeGraph as VehicleCubeGraph;
 
 pub const CRYSTAL_ID: u32 = 3950293873;
 pub const CLASP_ID: u32 = 606866102;

@@ -555,6 +555,14 @@ impl PointTracker {
             delta,
         })
     }
+
+    fn point_owned(&self, point_i: u8) -> i8 {
+        if let Some(point) = self.points.get(point_i as usize) {
+            point.team.load(std::sync::atomic::Ordering::SeqCst)
+        } else {
+            -1
+        }
+    }
 }
 
 struct EqualizerTracker {
@@ -789,7 +797,7 @@ struct BaseTickInfo {
 impl BaseTracker {
     const DOMINATING_MULT: f32 = 8.0;
 
-    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
+    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
         let mut bases = std::collections::HashMap::new();
         for base_id in bases_iter {
             bases.insert(*base_id, BaseInfo::new(crystals, base_graph));
@@ -905,11 +913,11 @@ impl BaseTracker {
 struct BaseInfo {
     cube_index: atomic_float::AtomicF32,
     crystals_healths: std::sync::Arc<Vec<std::sync::atomic::AtomicU32>>,
-    base_graph: std::sync::Arc<oj_rc_core::cubes::CubeGraph>,
+    base_graph: std::sync::Arc<oj_rc_core::cubes::BaseCubeGraph>,
 }
 
 impl BaseInfo {
-    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo], base_graph: &oj_rc_core::cubes::CubeGraph) -> Self {
+    fn new(crystals: &[oj_rc_core::cubes::CubeLocationInfo], base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
         Self {
             cube_index: atomic_float::AtomicF32::new(0.0),
             crystals_healths: std::sync::Arc::new((0..crystals.len())
@@ -1145,7 +1153,7 @@ impl BattleArenaLogic {
     pub fn new(super_conf: &crate::matches::engine::SuperConfig, ba_config: oj_rc_core::data::battle_arena_config::BattleArenaData, crystals: std::sync::Arc<Vec<oj_rc_core::cubes::CubeLocationInfo>>) -> Self {
         //let min_y = crystals.iter().min_by_key(|x| x.y).unwrap();
         //log::warn!("First crystal is as ({}, {}, {})", min_y.x, min_y.y, min_y.z);
-        let base_graph = oj_rc_core::cubes::CubeGraph::with_data(
+        let base_graph = oj_rc_core::cubes::BaseCubeGraph::with_data(
             &mut std::io::Cursor::new(&ba_config.base_machine_map),
             crystal_health_map(ba_config.protonium_health as u32),
             oj_rc_core::cubes::CLASP_ID,
@@ -1179,25 +1187,25 @@ impl BattleArenaLogic {
         *lock = None;
     }
 
-    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32) -> rlnl::types::CapturePoint {
+    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (sphere.center.x, sphere.center.y, sphere.center.z).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team: -1,
+            team,
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
     }
 
-    fn default_capture_point(max_progress: f32) -> rlnl::types::CapturePoint {
+    fn default_capture_point(max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (0.0, 0.0, 0.0).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team: -1,
+            team,
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
@@ -1518,14 +1526,23 @@ impl CustomGameLogic for BattleArenaLogic {
             if generic.map_config.capture_points.is_empty() || player.descriptor.user_id.is_none() {
                 None
             } else {
+                let point_0_team = self.capture_tracking.point_owned(0);
+                let point_1_team = self.capture_tracking.point_owned(1);
+                let point_2_team = self.capture_tracking.point_owned(2);
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::RegisterCapturePoints,
                     property: literustlib::packet::Property::ReliableOrdered,
                     data: Box::new(rlnl::events::sync::GetCapturePoints {
                         points: [
-                            generic.map_config.capture_points.first().map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
-                            generic.map_config.capture_points.get(1).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
-                            generic.map_config.capture_points.get(2).map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32)).unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32)),
+                            generic.map_config.capture_points.first()
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_0_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_0_team)),
+                            generic.map_config.capture_points.get(1)
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_1_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_1_team)),
+                            generic.map_config.capture_points.get(2)
+                                .map(|(s, _)| Self::sphere_to_capture_point(s, self.config.num_segments as f32, point_2_team))
+                                .unwrap_or_else(|| Self::default_capture_point(self.config.num_segments as f32, point_2_team)),
                         ]
                     }),
                 })

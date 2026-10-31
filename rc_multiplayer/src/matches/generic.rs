@@ -12,10 +12,10 @@ pub(super) struct UserDescriptor {
 }
 
 impl UserDescriptor {
-    fn new(descriptor: oj_rc_core::persist::user::PlayerDescriptor) -> Self {
+    fn new(descriptor: oj_rc_core::persist::user::PlayerDescriptor, graph: oj_rc_core::cubes::VehicleCubeGraph) -> Self {
         Self {
             state: std::sync::Arc::new(UserState::new()),
-            machine: MachineState::new(),
+            machine: MachineState::new(graph),
             descriptor: std::sync::Arc::new(descriptor),
             counters: UserData::new(),
         }
@@ -73,15 +73,17 @@ impl UserState {
 pub(super) struct MachineState {
     pub(super) selected_weapon: WeaponInfo,
     pub(super) location: Location,
-    pub(super) is_alive: std::sync::Arc<std::sync::atomic::AtomicBool>
+    pub(super) is_alive: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub(super) cubes: std::sync::Arc<oj_rc_core::cubes::VehicleCubeGraph>,
 }
 
 impl MachineState {
-    fn new() -> Self {
+    fn new(graph: oj_rc_core::cubes::VehicleCubeGraph) -> Self {
         Self {
             selected_weapon: WeaponInfo::new(),
             location: Location::new(),
             is_alive: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true)),
+            cubes: std::sync::Arc::new(graph),
         }
     }
 }
@@ -322,9 +324,23 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
             .map(|player| (player.team as u8, FakeUser::new(player.to_owned())))
             .collect();*/
 
-        let descriptors = super_conf.players.iter()
-            .map(|player| (player.player_id, UserDescriptor::new(player.to_owned())))
-            .collect();
+        let mut descriptors = std::collections::HashMap::with_capacity(super_conf.players.len());
+        for player in super_conf.players.iter() {
+            let vehicle_opt = super_conf.vehicles.iter().find(|v| v.player_id == player.player_id);
+            if let Some(vehicle) = vehicle_opt {
+                let vehicle_graph_res = oj_rc_core::cubes::VehicleCubeGraph::with_data(&mut std::io::Cursor::new(&vehicle.robot_data), super_conf.cube_healths);
+                let user_desc = match vehicle_graph_res {
+                    Ok(vehicle_graph) => UserDescriptor::new(player.to_owned(), vehicle_graph),
+                    Err(e) => {
+                        log::error!("Failed to parse vehicle for player {} in game {}: {}", player.player_id, super_conf.descriptor.guid, e);
+                        UserDescriptor::new(player.to_owned(), oj_rc_core::cubes::VehicleCubeGraph::empty())
+                    }
+                };
+                descriptors.insert(player.player_id, user_desc);
+            } else {
+                log::warn!("No vehicle found for player {} in game {}", player.player_id, super_conf.descriptor.guid);
+            }
+        }
 
         let user_id_map = super_conf.players.iter()
             .filter_map(|player| player.user_id.map(|id| (id, player.player_id)))
@@ -1055,6 +1071,57 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             &spawn_payload,
                             true,
                         ).await;
+                        // sync other robots' states
+                        for (player_id, desc) in self.descriptors.iter() {
+                            let is_alive = desc.machine.is_alive.load(std::sync::atomic::Ordering::Relaxed);
+                            if is_alive {
+                                let cubes_to_update = desc.machine.cubes.all_changed_cubes();
+                                if !cubes_to_update.is_empty() {
+                                    let cubes_destroyed: Vec<rlnl::types::CubeState> = cubes_to_update.iter()
+                                        .map(|c| rlnl::types::CubeState {
+                                            loc: rlnl::types::Byte3 {
+                                                x: c.location.x,
+                                                y: c.location.y,
+                                                z: c.location.z,
+                                            },
+                                            status: if c.current_health == 0 {
+                                                rlnl::types::CubeStatus {
+                                                    ty: rlnl::types::CubeHistoryEventType::Destroy,
+                                                    damage: None
+                                                }
+                                            } else {
+                                                rlnl::types::CubeStatus {
+                                                    ty: rlnl::types::CubeHistoryEventType::Damage,
+                                                    damage: Some((c.max_health - c.current_health) as i32),
+                                                }
+                                            },
+                                        })
+                                        .collect();
+                                    self.send_to_player(
+                                        user_key,
+                                        rlnl::event_code::NetworkEvent::DestroyCubeNoEffect,
+                                        literustlib::packet::Property::ReliableOrdered,
+                                        &rlnl::events::ingame::DestroyCubeNoEffect {
+                                            shooting_machine_id: -1,
+                                            hit_machine_id: *player_id as _,
+                                            target_type: rlnl::types::TargetType::Player,
+                                            num_hits: cubes_destroyed.len() as _,
+                                            hit_cubes: cubes_destroyed,
+                                        },
+                                    ).await;
+                                }
+                            } else {
+                                self.send_to_player(
+                                    user_key,
+                                    rlnl::event_code::NetworkEvent::MachineDestroyedConfirmed,
+                                    literustlib::packet::Property::ReliableOrdered,
+                                    &rlnl::events::ingame::Kill {
+                                        killee_player_id: *player_id,
+                                        killer_player_id: *player_id,
+                                    },
+                                ).await;
+                            }
+                        }
                     }
                     return;
                 }
@@ -1149,7 +1216,6 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 let was_killed = killed.machine.is_alive.swap(false, std::sync::atomic::Ordering::Relaxed);
                 if was_killed {
                     killed.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    killed.machine.is_alive.store(false, std::sync::atomic::Ordering::Relaxed);
                     let data = killed.counters.get_generic_packet(remote_player, rlnl::types::IngameStatId::RobotDestroyed, None);
                     self.broadcast(
                         rlnl::event_code::NetworkEvent::UpdateGameStats,
@@ -1191,6 +1257,20 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         let user_desc = self.user_descriptor(player_id).unwrap();
                         user_desc.state.mode.store(ConnectionMode::Disconnected.to_u8(), std::sync::atomic::Ordering::Relaxed);
                         conn.connection.connection.disconnect();
+                    }
+                }
+                if let Some(user_desc) = self.user_descriptor(player_id) {
+                    let was_killed = user_desc.machine.is_alive.swap(false, std::sync::atomic::Ordering::Relaxed);
+                    if was_killed {
+                        user_desc.counters.deaths.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let data = user_desc.counters.get_generic_packet(player_id, rlnl::types::IngameStatId::RobotDestroyed, None);
+                        self.broadcast(
+                            rlnl::event_code::NetworkEvent::UpdateGameStats,
+                            literustlib::packet::Property::ReliableOrdered,
+                            &data,
+                            true,
+                        ).await;
+                        user_desc.machine.cubes.full_heal();
                     }
                 }
             }
@@ -1363,7 +1443,8 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    async fn on_broadcast(&self,
+    async fn on_broadcast(
+        &self,
         user_id: i32,
         event: rlnl::event_code::NetworkEvent,
         event_in: rlnl::event_code::NetworkEvent,
@@ -1379,6 +1460,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 } else {
                     self.broadcast(event, property, &*data, true).await;
                 }
+                self.handle_damage_tracking(user_id, event, &*data);
             } else {
                 if skip_user {
                     self.rebroadcast_dataless(user_id, event, property, true).await;
@@ -1387,6 +1469,122 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 }
             }
         }
+    }
+
+    fn handle_damage_tracking(
+        &self,
+        user_id: i32,
+        event: rlnl::event_code::NetworkEvent,
+        data: &dyn crate::Broadcastable,
+    ) {
+        match event {
+            rlnl::event_code::NetworkEvent::DestroyCubesFull => {
+                if let Some(data) = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubesFull>(data) {
+                    if !matches!(data.target_type, rlnl::types::TargetType::Player) { return; }
+                    if let Some(desc) = self.user_descriptor(data.hit_machine_id as u8) {
+                        Self::damage_cubes(
+                            &desc.machine.cubes,
+                            data.hit_cubes.iter()
+                                .map(|c| (
+                                    oj_rc_core::cubes::CellPoint {
+                                        x: c.loc.x,
+                                        y: c.loc.y,
+                                        z: c.loc.z,
+                                    }, c.status.damage.map(|d| d as u32))
+                                ),
+                        );
+                    }
+                } else {
+                    log::warn!("Got strange DestroyCubesFull message data");
+                }
+            },
+            rlnl::event_code::NetworkEvent::DestroyCubeNoEffect => {
+                if let Some(data) = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubeNoEffect>(data) {
+                    if !matches!(data.target_type, rlnl::types::TargetType::Player) { return; }
+                    if let Some(desc) = self.user_descriptor(data.hit_machine_id as u8) {
+                        Self::damage_cubes(
+                            &desc.machine.cubes,
+                            data.hit_cubes.iter()
+                                .map(|c| (
+                                    oj_rc_core::cubes::CellPoint {
+                                        x: c.loc.x,
+                                        y: c.loc.y,
+                                        z: c.loc.z,
+                                    }, c.status.damage.map(|d| d as u32))
+                                ),
+                        );
+                    }
+                } else {
+                    log::warn!("Got strange DestroyCubeNoEffect message data");
+                }
+            },
+            rlnl::event_code::NetworkEvent::HealSelfResponse => {
+                if let Some(data) = <dyn core::any::Any>::downcast_ref::<rlnl::events::HealedCubes>(data) {
+                    if !matches!(data.target_type, rlnl::types::TargetType::Player) { return; }
+                    if let Some(desc) = self.user_descriptor(data.healed_machine as u8) {
+                        if let Some(actual_user_id) = desc.descriptor.user_id { // allow NPCs to work
+                            if actual_user_id != user_id {
+                                log::warn!("Received mismatched heal user/machine message (got:{}, expected:{})", user_id, actual_user_id);
+                                return;
+                            }
+                        }
+                        Self::heal_cubes(
+                            &desc.machine.cubes,
+                            data.hit_cubes.iter()
+                                .map(|c| (
+                                    oj_rc_core::cubes::CellPoint {
+                                        x: c.pos.x,
+                                        y: c.pos.y,
+                                        z: c.pos.z,
+                                    }, c.damage as u32)
+                                ),
+                        );
+                    }
+                } else {
+                    log::warn!("Got strange HealSelfResponse message data");
+                }
+            },
+            rlnl::event_code::NetworkEvent::HealAllyResponse => {
+                if let Some(data) = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::HealAllyCubes>(data) {
+                    if let Some(desc) = self.user_descriptor(data.healed_machine as u8) {
+                        Self::heal_cubes(
+                            &desc.machine.cubes,
+                            data.hit_cubes.iter()
+                                .map(|c| (
+                                    oj_rc_core::cubes::CellPoint {
+                                        x: c.cube_info.pos.x,
+                                        y: c.cube_info.pos.y,
+                                        z: c.cube_info.pos.z,
+                                    }, c.cube_info.damage as u32)
+                                ),
+                        );
+                    }
+                } else {
+                    log::warn!("Got strange HealAllyResponse message data");
+                }
+            },
+            _ => {}
+        }
+    }
+
+    fn damage_cubes(
+        graph: &oj_rc_core::cubes::VehicleCubeGraph,
+        cubes: impl std::iter::Iterator<Item=(oj_rc_core::cubes::CellPoint, Option<u32>)>,
+    ) {
+        cubes.for_each(|(location, damage_opt)| {
+            if let Some(damage) = damage_opt {
+                graph.damage_cube(&location, damage);
+            } else {
+                graph.destroy_cube(&location);
+            }
+        });
+    }
+
+    fn heal_cubes(
+        graph: &oj_rc_core::cubes::VehicleCubeGraph,
+        cubes: impl std::iter::Iterator<Item=(oj_rc_core::cubes::CellPoint, u32)>,
+    ) {
+        cubes.for_each(|(location, damage)| graph.heal_cube(&location, damage));
     }
 
     async fn on_player_input_changed(&self, user_id: i32, input: rlnl::events::ingame::PlayerIdAndInputData) {

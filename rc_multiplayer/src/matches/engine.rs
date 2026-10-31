@@ -9,6 +9,8 @@ pub struct SuperConfig<'a> {
     pub map: oj_rc_core::persist::config::MapConfig,
     pub game_mode: &'a oj_rc_core::data::game_mode::GameModeConfig,
     pub players: Vec<oj_rc_core::persist::user::PlayerDescriptor>,
+    pub vehicles: Vec<oj_rc_core::persist::user::GameVehicleDescriptor>,
+    pub cube_healths: &'a std::sync::Arc<std::collections::HashMap<u32, u32>>,
 }
 
 /// Functions returning a boolean indicate if the generic engine should also perform the default behaviour

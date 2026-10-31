@@ -3,6 +3,7 @@ use polariton::operation::Typed;
 #[async_trait::async_trait]
 pub trait ConfigProvider<C: Clone> {
     fn cube_list(&self) -> Typed<C>;
+    fn cube_healths(&self) -> std::collections::HashMap<u32, u32>;
     fn movement_list(&self) -> Typed<C>;
     fn weapon_list(&self) -> Typed<C>;
     fn weapon_upgrade_list(&self) -> Typed<C>;
