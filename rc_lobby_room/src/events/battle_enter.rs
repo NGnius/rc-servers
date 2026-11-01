@@ -21,7 +21,7 @@ pub struct BattleEnter {
     pub visibility: Option<oj_rc_core::data::game_mode::MapVisibility>,
     pub auto_heal: bool,
     pub player_datas: Vec<oj_rc_core::data::player_data::PlayerData>,
-    pub network_config: crate::data::network::NetworkConfigData,
+    pub network_config: std::sync::Arc<crate::data::network::NetworkConfigData>,
 }
 
 impl BattleEnter {

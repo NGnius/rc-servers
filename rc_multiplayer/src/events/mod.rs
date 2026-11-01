@@ -17,12 +17,14 @@ mod damage_bonus;
 mod heal_bonus;
 mod player_leave;
 mod heal_assist_bonus;
+mod test_message;
 
 pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHandler {
     crate::handler::LnlEventHandler::new(
         init_ctx.users.clone(),
         crate::vehicle_motion::handler(init_ctx),
         crate::disconnect::handler(init_ctx),
+        oj_rc_core::ConfigProvider::<()>::multiplayer_settings(&init_ctx.config).should_test_connection,
     )
         .add(validate_game_guid::handler(init_ctx))
         .add(loading_progress::handler(init_ctx))
@@ -222,6 +224,7 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
             rlnl::events::ingame::HealAllyCubes,
         >::handler(init_ctx))
         .add(heal_assist_bonus::handler(init_ctx))
+        .add(test_message::handler())
 }
 
 #[inline]

@@ -62,6 +62,12 @@ struct Queue {
     platoons: HashMap<String, Platoon>,
 }
 
+impl Queue {
+    fn is_all_ready(&self) -> bool {
+        self.users.iter().all(|user| !user.is_testing_connection.load(std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
 struct Platoon {
     total: u8,
     members: Vec<PlatoonUser>,
@@ -82,6 +88,7 @@ impl PlatoonUser {
             user_id: self.0.user_id,
             enqueued_at: self.0.enqueued_at,
             user: self.0.user.clone(),
+            is_testing_connection: std::sync::atomic::AtomicBool::new(false),
         }
     }
 }
@@ -98,11 +105,22 @@ struct QueueUser {
     user_id: i32,
     enqueued_at: chrono::DateTime<chrono::Utc>,
     user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
+    is_testing_connection: std::sync::atomic::AtomicBool,
 }
 
 struct CustomGameQueue {
     config: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig,
     users: Vec<CustomGameQueueUser>,
+}
+
+impl CustomGameQueue {
+    fn is_all_ready(&self) -> bool {
+        self.users.iter().all(
+            |user| user.queue_user.as_ref().map(
+                |user| !user.is_testing_connection.load(std::sync::atomic::Ordering::Relaxed)
+            ).unwrap_or(false)
+        )
+    }
 }
 
 struct CustomGameQueueUser {
@@ -118,9 +136,10 @@ pub struct QueueHandler {
     users_per_game: usize,
     is_enabled: bool,
     is_parties_enabled: bool,
+    is_testing_connection_enabled: bool,
     hostname: std::sync::Arc<String>,
     hostport: u16,
-    network_conf: crate::data::network::NetworkConfigData,
+    network_conf: std::sync::Arc<crate::data::network::NetworkConfigData>,
     factory: std::sync::Arc<oj_rc_core::factory::Factory>,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
     weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
@@ -161,9 +180,10 @@ impl QueueHandler {
             users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
             is_enabled: mp_settings.is_enabled,
             is_parties_enabled: server_conf.allow_parties,
+            is_testing_connection_enabled: mp_settings.should_test_connection,
             hostname: std::sync::Arc::new(name),
             hostport: port,
-            network_conf: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf)),
+            network_conf: std::sync::Arc::new(crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf))),
             factory,
             cpu_counter,
             weapon_guesser,
@@ -175,8 +195,8 @@ impl QueueHandler {
         }
     }
 
-    pub fn redirect(&self) -> (std::sync::Arc<String>, u16) {
-        (self.hostname.clone(), self.hostport)
+    pub fn networking(&self) -> (std::sync::Arc<String>, u16, std::sync::Arc<crate::data::network::NetworkConfigData>) {
+        (self.hostname.clone(), self.hostport, self.network_conf.clone())
     }
 
     fn ensure_autostart_task_running(&self) {
@@ -313,7 +333,7 @@ impl QueueHandler {
     async fn enter_match_static(
         hostname: std::sync::Arc<String>,
         hostport: u16,
-        network_conf: crate::data::network::NetworkConfigData,
+        network_conf: std::sync::Arc<crate::data::network::NetworkConfigData>,
         factory: std::sync::Arc<oj_rc_core::factory::Factory>,
         cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>,
         weapon_guesser: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
@@ -510,6 +530,7 @@ impl QueueHandler {
             let lobby_user = user.as_ref().as_ref();
             match lobby_user.player_data(&self.cpu_counter).await {
                 Ok(mut player_data) => {
+                    self.start_connection_test(&event_emitter);
                     let target_queuer = session.users.iter_mut()
                         .find(|user| user.public_id == public_id)
                         .unwrap();
@@ -520,6 +541,7 @@ impl QueueHandler {
                         user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
                         enqueued_at: chrono::Utc::now(),
                         user: user.clone(),
+                        is_testing_connection: std::sync::atomic::AtomicBool::new(self.is_testing_connection_enabled),
                     };
                     target_queuer.queue_user = Some(new_player);
                 },
@@ -531,7 +553,7 @@ impl QueueHandler {
                     return;
                 }
             }
-            let is_all_enqueued = session.users.iter().all(|user| user.queue_user.is_some());
+            let is_all_enqueued = session.is_all_ready();
             if is_all_enqueued {
                 self.enter_custom_match(session_id, session, lobby_user).await;
             }
@@ -654,6 +676,17 @@ impl QueueHandler {
         }
     }
 
+    fn start_connection_test(&self, event_emitter: &polariton_server::events::EventEmitter) {
+        if self.is_testing_connection_enabled {
+            let event = crate::events::test_connection::ConnectTest {
+                host: self.hostname.to_string(),
+                port: self.hostport,
+                network_config: self.network_conf.clone(),
+            };
+            event_emitter.emit(event);
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter, platoon: Option<PlatoonInfo>) {
         if !self.is_enabled {
@@ -692,6 +725,7 @@ impl QueueHandler {
         let lobby_user = user.as_ref().as_ref();
         match lobby_user.player_data(&self.cpu_counter).await {
             Ok(mut player_data) => {
+                self.start_connection_test(&event_emitter);
                 if let Some(platoon) = &platoon {
                     player_data.group = Some(platoon.platoon_id.clone());
                 }
@@ -701,6 +735,7 @@ impl QueueHandler {
                     user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
                     enqueued_at: chrono::Utc::now(),
                     user: user.clone(),
+                    is_testing_connection: std::sync::atomic::AtomicBool::new(self.is_testing_connection_enabled),
                 };
 
                 let mut lock = self.users_in_queue.lock().await;
@@ -785,7 +820,7 @@ impl QueueHandler {
                         }
                     }
                 }
-                let players_len = if let Some(q_entry) = lock.get_mut(&key) {
+                let (players_len, is_queue_ready) = if let Some(q_entry) = lock.get_mut(&key) {
                     if let Some(platoon) = platoon {
                         log::info!("User {} platooned {} queue for existing match {}", new_player.user_id, platoon.platoon_id, key.short());
                         self.join_or_create_platoon(new_player, platoon, q_entry);
@@ -793,7 +828,7 @@ impl QueueHandler {
                         log::info!("User {} entered queue for existing match {}", new_player.user_id, key.short());
                         q_entry.users.push(new_player);
                     }
-                    q_entry.users.len()
+                    (q_entry.users.len(), q_entry.is_all_ready())
                 } else {
                     if let Some(platoon) = platoon {
                         log::info!("User {} platooned {} queue for new match {}", new_player.user_id, platoon.platoon_id, key.short());
@@ -802,26 +837,30 @@ impl QueueHandler {
                             platoons: HashMap::default(),
                         };
                         self.join_or_create_platoon(new_player, platoon, &mut q_entry);
+                        let is_all_ready = q_entry.is_all_ready();
                         lock.insert(key.clone(), q_entry);
-                        0
+                        (0, is_all_ready)
                     } else {
                         log::info!("User {} entered queue for new match {}", new_player.user_id, key.short());
-                        lock.insert(key.clone(), Queue {
+                        let q_entry = Queue {
                             users: vec![new_player],
                             platoons: HashMap::default(),
-                        });
-                        1
+                        };
+                        let is_all_ready = q_entry.is_all_ready();
+                        lock.insert(key.clone(), q_entry);
+                        (1, is_all_ready)
                     }
                 };
                 for q_key in lock.keys() {
                     log::debug!("Now queue for {} (matches joiner? {})", q_key.short(), q_key.short().to_string() == key.short().to_string());
                 }
-                let game_ready = players_len >= self.users_per_game;
+                let game_ready = players_len >= self.users_per_game && is_queue_ready;
                 let players = if game_ready { lock.remove(&key) } else { None };
                 drop(lock);
                 if let Some(players) = players {
                     self.enter_match(key, players, lobby_user).await;
                 }
+                // TODO: send battle found event instead when players_len >= self.users_per_game && !is_queue_ready
                 log::debug!("join_queue complete success");
             },
             Err(e) => {
@@ -829,6 +868,61 @@ impl QueueHandler {
                     code: e.error_code(),
                     text: e.error_msg().map(|x| x.to_owned()).unwrap_or_else(|| "Unknown queue join error".to_owned()),
                 });
+            }
+        }
+    }
+
+    pub async fn complete_connection_test(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
+        // look through public queue
+        let mut is_user_found = false;
+        let user_id = user.account_id();
+        let mut ready_q_opt = None;
+        let mut lock = self.users_in_queue.lock().await;
+        for (q_key, q_entry) in lock.iter() {
+            let mut is_own_q = false;
+            'user_loop: for user in q_entry.users.iter() {
+                if user.user_id == user_id {
+                    user.is_testing_connection.store(false, std::sync::atomic::Ordering::Relaxed);
+                    is_own_q = true;
+                    is_user_found = true;
+                    break 'user_loop;
+                }
+            }
+            let players_len = q_entry.users.len();
+            let is_queue_ready = q_entry.is_all_ready();
+            let is_game_ready = players_len >= self.users_per_game && is_queue_ready;
+            if is_game_ready && is_own_q {
+                ready_q_opt = Some(q_key.to_owned());
+                break;
+            }
+            if is_own_q { break; }
+        }
+        let lobby_user = user.as_ref().as_ref();
+        if let Some(key) = ready_q_opt {
+            let players = lock.remove(&key);
+            drop(lock);
+            if let Some(players) = players {
+                self.enter_match(key, players, lobby_user).await;
+            }
+            log::debug!("join_queue in complete_connection_test complete success");
+        }
+        if is_user_found { return; }
+        // look through custom games
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(user.public_id()) {
+            let mut lock = self.users_in_custom_games_queue.lock().await;
+            let session = lock.get_mut(session_id).unwrap();
+            for user in session.users.iter() {
+                if let Some(q_user) = &user.queue_user {
+                    if q_user.user_id == user_id {
+                        q_user.is_testing_connection.store(false, std::sync::atomic::Ordering::Relaxed);
+                        //is_user_found = true;
+                        break;
+                    }
+                }
+            }
+            let is_all_enqueued = session.is_all_ready();
+            if is_all_enqueued {
+                self.enter_custom_match(session_id, session, lobby_user).await;
             }
         }
     }

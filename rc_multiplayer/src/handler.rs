@@ -2,16 +2,18 @@ pub struct LnlEventHandler {
     event_handlers: std::collections::HashMap<i16, Box<dyn super::EventCodeHandler>>,
     motion_handler: Box<dyn super::RobotMotionHandler>,
     disconnect_handler: Box<dyn super::DisconnectHandler>,
-    user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>
+    user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>,
+    is_testing_connection_enabled: bool,
 }
 
 impl LnlEventHandler {
-    pub fn new<M: super::RobotMotionHandler + 'static, D: super::DisconnectHandler + 'static>(user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, motion_handler: M, disconnect_handler: D) -> Self {
+    pub fn new<M: super::RobotMotionHandler + 'static, D: super::DisconnectHandler + 'static>(user_provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>, motion_handler: M, disconnect_handler: D, is_testing_connection_enabled: bool) -> Self {
         Self {
             event_handlers: std::collections::HashMap::new(),
             motion_handler: Box::new(motion_handler),
             disconnect_handler: Box::new(disconnect_handler),
             user_provider,
+            is_testing_connection_enabled,
         }
     }
 
@@ -65,14 +67,34 @@ impl literustlib_server::EventHandler for LnlEventHandler {
         Some(crate::UserData::new(self.user_provider.clone()))
     }
 
-    async fn on_connect_done(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, _user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
+    async fn on_connect_done(&self, peer: &std::sync::Arc<literustlib_server::Connection<Self::PacketData>>, user: &Self::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<Self::PacketData>>) {
         log::debug!("New connection completed (id:{})", peer.id());
-        let data = EventData::without_data(
-            crate::data::MessageType::ServerMsg,
-            rlnl::event_code::NetworkEvent::OnConnectedToGameServer,
-        );
-        if let Err(e) = sender.send_data(data, literustlib::packet::Property::Reliable, peer).await {
-            log::error!("Failed to send rlnl OnConnectedToGameServer event: {}", e);
+        if self.is_testing_connection_enabled {
+            let peer = peer.to_owned();
+            let sender = sender.to_owned();
+            let test_flag = user.is_testing_connection_flag();
+            tokio::task::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                if !test_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                    let data = EventData::without_data(
+                        crate::data::MessageType::ServerMsg,
+                        rlnl::event_code::NetworkEvent::OnConnectedToGameServer,
+                    );
+                    if let Err(e) = sender.send_data(data, literustlib::packet::Property::Reliable, &peer).await {
+                        log::error!("Failed to send rlnl OnConnectedToGameServer event: {}", e);
+                    }
+                } else {
+                    log::debug!("Not sending initial game server event for connection tester {}", peer.id());
+                }
+            });
+        } else {
+            let data = EventData::without_data(
+                crate::data::MessageType::ServerMsg,
+                rlnl::event_code::NetworkEvent::OnConnectedToGameServer,
+            );
+            if let Err(e) = sender.send_data(data, literustlib::packet::Property::Reliable, peer).await {
+                log::error!("Failed to send rlnl OnConnectedToGameServer event: {}", e);
+            }
         }
     }
 

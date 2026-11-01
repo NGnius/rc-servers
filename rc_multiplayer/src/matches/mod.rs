@@ -16,6 +16,6 @@ pub mod modes;
 
 mod timer;
 
- mod fake;
+mod fake;
 
 pub const CHANNEL_BOUND: usize = 16;

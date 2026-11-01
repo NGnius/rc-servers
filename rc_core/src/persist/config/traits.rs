@@ -606,6 +606,7 @@ pub struct MultiplayerSettings {
     pub loading_autostart_after: Option<std::time::Duration>,
     pub min_level: i32,
     pub min_cpu: i32,
+    pub should_test_connection: bool,
 }
 
 pub struct VehicleValidators {

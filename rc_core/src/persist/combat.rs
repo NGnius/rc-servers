@@ -650,6 +650,7 @@ fn default_multiplayer() -> super::MultiplayerConfig {
         minimum_level: 0,
         minimum_cpu: super::multiplayer::default_minimum_cpu(),
         reconnect: super::multiplayer::default_reconnect_conf(),
+        should_test_connection: false,
     }
 }
 

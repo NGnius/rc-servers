@@ -1,11 +1,14 @@
 pub struct User {
     state: tokio::sync::RwLock<UserState>,
+    /// User is just testing their connection
+    is_testing: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl User {
     pub fn new(provider: std::sync::Arc<oj_rc_core::persist::user::UserImpl>) -> Self {
         Self {
             state: tokio::sync::RwLock::new(UserState::Unauthenticated(provider)),
+            is_testing: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -47,6 +50,21 @@ impl User {
             UserState::Unauthenticated(_) => None,
             UserState::Authenticated(user) => Some(user.game.clone()),
         }
+    }
+
+    #[inline]
+    pub fn flag_is_testing_connection(&self) {
+        self.is_testing.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    #[inline]
+    pub fn is_testing_connection(&self) -> bool {
+        self.is_testing.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    #[inline]
+    pub fn is_testing_connection_flag(&self) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
+        self.is_testing.clone()
     }
 }
 

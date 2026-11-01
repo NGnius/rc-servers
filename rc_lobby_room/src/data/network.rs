@@ -1,4 +1,3 @@
-#[derive(Clone)]
 pub struct NetworkConfigData {
     pub network_channel_ty: String,
     pub max_sent_message_queue_size: u16,

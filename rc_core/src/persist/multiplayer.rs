@@ -28,6 +28,8 @@ pub struct MultiplayerConfig {
     pub minimum_cpu: u16,
     #[serde(default = "default_reconnect_conf")]
     pub reconnect: ReconnectConfig,
+    #[serde(default)]
+    pub should_test_connection: bool,
 }
 
 impl super::config::SelfValidator for MultiplayerConfig {

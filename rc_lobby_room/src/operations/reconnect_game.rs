@@ -5,7 +5,7 @@ const CODE: u8 = 8;
 
 pub(super) struct ReconnectGameProvider {
     config: Option<oj_rc_core::persist::config::ReconnectConfig>,
-    network: crate::data::network::NetworkConfigData,
+    network: std::sync::Arc<crate::data::network::NetworkConfigData>,
     hostname: std::sync::Arc<String>,
     hostport: u16,
 }
@@ -45,10 +45,10 @@ impl <C: Send + 'static> SimpleOperation<C> for ReconnectGameProvider {
 }
 
 pub(super) fn reconnect_provider<C: Send + 'static>(config: &oj_rc_core::persist::config::ConfigImpl, queue_handler: &std::sync::Arc<crate::QueueHandler>) -> SimpleOpImpl<C, crate::UserTy, ReconnectGameProvider> {
-    let (hostname, hostport) = queue_handler.redirect();
+    let (hostname, hostport, network) = queue_handler.networking();
     SimpleOpImpl::new(ReconnectGameProvider {
         config: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::reconnect(config),
-        network: crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(config)),
+        network,
         hostname,
         hostport,
     })

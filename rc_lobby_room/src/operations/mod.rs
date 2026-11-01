@@ -3,6 +3,7 @@ mod more_auth;
 mod no_quit;
 mod join_queue;
 mod reconnect_game;
+mod connect_test_finished;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -15,4 +16,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(no_quit::quit_blocker_provider())
         .add(join_queue::join_queue_provider(&init_ctx.queue))
         .add(reconnect_game::reconnect_provider(&init_ctx.config, &init_ctx.queue))
+        .add(connect_test_finished::connect_test_finished_provider(&init_ctx.queue))
 }
