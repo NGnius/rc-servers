@@ -104,7 +104,7 @@ struct QueueUser {
     player: oj_rc_core::data::player_data::PlayerData,
     user_id: i32,
     enqueued_at: chrono::DateTime<chrono::Utc>,
-    user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
+    user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>,
     is_testing_connection: std::sync::atomic::AtomicBool,
 }
 
@@ -515,7 +515,7 @@ impl QueueHandler {
         }
     }
 
-    pub async fn join_custom_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
+    pub async fn join_custom_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter) {
         if !self.is_enabled {
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
                 code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
@@ -688,7 +688,7 @@ impl QueueHandler {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter, platoon: Option<PlatoonInfo>) {
+    pub async fn join_queue(&self, map: String, mode: oj_rc_core::data::game_mode::GameMode, visibility: oj_rc_core::data::game_mode::MapVisibility, auto_heal: bool, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>, event_emitter: polariton_server::events::EventEmitter, platoon: Option<PlatoonInfo>) {
         if !self.is_enabled {
             event_emitter.emit(crate::events::enqueue_error::QueueJoinError {
                 code: oj_rc_core::data::error_codes::LobbyReasonCode::NoSuitableLobbyFound as i16,
@@ -872,7 +872,7 @@ impl QueueHandler {
         }
     }
 
-    pub async fn complete_connection_test(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
+    pub async fn complete_connection_test(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>) {
         // look through public queue
         let mut is_user_found = false;
         let user_id = user.account_id();
@@ -927,7 +927,7 @@ impl QueueHandler {
         }
     }
 
-    pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>) {
+    pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>) {
         let public_id = user.public_id();
         let user_id = oj_rc_core::persist::user::CommonUser::account_id(user.as_ref().as_ref());
         log::info!("Unlocking user {} game mode events after leaving queue", public_id);

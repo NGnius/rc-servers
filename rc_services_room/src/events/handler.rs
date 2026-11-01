@@ -3,7 +3,7 @@ use oj_rc_core::persist::user::intercom::{IntercomWebServiceUserMessage, Interco
 
 pub struct IntercomHandler {
     listener: IntercomListener<IntercomWebServiceUserMessage>,
-    user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
+    user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>,
     emitter: polariton_server::events::WeakEventEmitter<()>,
     keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
     game_event_seq: std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,
@@ -12,7 +12,7 @@ pub struct IntercomHandler {
 impl IntercomHandler {
     pub fn new(
         listener: IntercomListener<IntercomWebServiceUserMessage>,
-        user: &std::sync::Arc<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
+        user: &std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>,
         emitter: &polariton_server::events::EventEmitter<()>,
         keybind_workaround: &std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
         game_event_seq: &std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,
@@ -28,7 +28,7 @@ impl IntercomHandler {
 
     async fn run_loop(
         listener: IntercomListener<IntercomWebServiceUserMessage>,
-        user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::User<()> + Send + Sync>>,
+        user: std::sync::Weak<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>,
         emitter: polariton_server::events::WeakEventEmitter<()>,
         keybind_workaround: std::sync::Arc<crate::workarounds::EditModeInputLockupWorkaround>,
         game_event_seq: std::sync::Arc<tokio::sync::Mutex<oj_rc_core::persist::config::GameEventSequence>>,

@@ -543,7 +543,7 @@ pub(super) fn item_shop_sku(i: usize) -> String {
 }
 
 impl ShopEntriesResolver {
-    pub async fn resolve_entries<C>(&self, user: &dyn crate::persist::user::User<C>) -> Typed<C> {
+    pub async fn resolve_entries<C>(&self, user: &dyn crate::persist::user::User) -> Typed<C> {
         let unlocked_cubes = user.unlocked_parts().await;
         crate::data::item_shop_bundle::ItemShopBundle::as_transmissible_vec(
             self.items.iter().enumerate()

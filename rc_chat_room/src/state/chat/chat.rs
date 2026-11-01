@@ -99,7 +99,7 @@ impl ChatSystem {
         }
     }
 
-    pub async fn handle_public_message(&self, user: &(dyn oj_rc_core::persist::user::User<()> + Send + Sync), text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+    pub async fn handle_public_message(&self, user: &dyn oj_rc_core::persist::user::User, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if self.config.is_command_channel(&channel) {
             if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty).await;
@@ -142,7 +142,7 @@ impl ChatSystem {
         }
     }
 
-    async fn handle_public_command(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+    async fn handle_public_command(&self, user: &dyn oj_rc_core::persist::user::User, text: String, handle: &super::UserHandle, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         let event_params = crate::events::chat_message::PublicMessage {
             sender_name: self.config.command_username().to_owned(),
             sender_display_name: self.config.command_username().to_owned(),
@@ -165,7 +165,7 @@ impl ChatSystem {
         handle.send(polariton_server::ToSend::Data { data: polariton::packet::Data::Event(event), encrypt: true, channel: 0, reliable: true });
     }
 
-    pub async fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, recipient: String) {
+    pub async fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User, text: String, recipient: String) {
         if self.config.is_command_user(&recipient) {
             if let Some(user_handle) = self.online_users.get(user.public_id()) {
                 self.handle_private_command(user, text, user_handle).await;
@@ -183,7 +183,7 @@ impl ChatSystem {
         }
     }
 
-    async fn handle_private_command(&self, user: &dyn oj_rc_core::persist::user::User<()>, text: String, handle: &super::UserHandle) {
+    async fn handle_private_command(&self, user: &dyn oj_rc_core::persist::user::User, text: String, handle: &super::UserHandle) {
         let event_params = crate::events::chat_message::PrivateMessage {
             sender_name: self.config.command_username().to_owned(),
             sender_display_name: self.config.command_username().to_owned(),

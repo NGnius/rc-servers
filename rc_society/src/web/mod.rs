@@ -73,8 +73,9 @@ enum LoginReturn {
 
 async fn try_auth_user(user_opt: &Option<actix_identity::Identity>, auth: &oj_rc_core::UserImpl, req: &actix_web::HttpRequest) -> Result<LoginReturn, actix_web::Error> {
     if let Some(user) = user_opt {
+        use oj_rc_core::UserProvider;
         let user_id = user.id()?;
-        match <oj_rc_core::UserImpl as oj_rc_core::UserProvider<()>>::web_authenticate(auth, user_id.clone()).await {
+        match auth.web_authenticate(user_id.clone()).await {
             Ok(user) => {
                 //log::debug!("Web auth success");
                 Ok(LoginReturn::Success(user))

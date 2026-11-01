@@ -23,10 +23,10 @@ pub(super) fn init(config: &dyn oj_rc_core::ConfigProvider) {
 }
 
 pub async fn auth_user(auth: actix_web::web::Data<Box<oj_rc_core::UserImpl>>, token: &actix_web::http::header::HeaderValue) -> Result<Box<dyn oj_rc_core::persist::user::WebUser>, Box<dyn std::error::Error>> {
-    use oj_rc_core::UserProvider;
     let token = token.to_str()?;
     if let Some((_, token)) = token.split_once(' ') {
-        <oj_rc_core::UserImpl as UserProvider<()>>::web_authenticate(&auth, token.to_owned()).await
+        use oj_rc_core::UserProvider;
+        auth.web_authenticate(token.to_owned()).await
             .map_err(|e| Box::from(e.message))
     } else {
         Err("Invalid Authorization header".into())

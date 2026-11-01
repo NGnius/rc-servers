@@ -189,7 +189,7 @@ fn all_deaths() -> Vec<CustomisationData> {
 
 pub(super) fn all_customisations_provider() -> Immediate<216, crate::UserTy> {
     Immediate::new(|| {
-        let mut params = polariton::operation::ParameterTable::with_capacity(8);
+        let mut params = ParameterTable::with_capacity(8);
         params.insert(SKINS_KEY, Typed::Arr(Arr {
             ty: TypePrefix::HashMap, // hashtable
             custom_ty: None,

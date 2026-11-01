@@ -66,11 +66,13 @@ pub struct AuthError {
 }
 
 #[async_trait::async_trait]
-pub trait UserProvider<C> {
-    async fn authenticate(&self, user: UserToken) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
+pub trait UserProviderC<C> {
+    async fn authenticate(&self, user: UserToken) -> Result<Box<dyn UserC<C> + Send + Sync>, AuthError>;
+}
 
-    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn User<C> + Send + Sync>, AuthError>;
-
+#[async_trait::async_trait]
+pub trait UserProvider {
+    async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn MultiplayerUser>, AuthError>;
     async fn web_authenticate(&self, token: String) -> Result<Box<dyn WebUser>, AuthError>;
 }
 
@@ -90,27 +92,21 @@ pub trait FederatedAuthenticator {
 }
 
 #[async_trait::async_trait]
-pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser + FactoryUser {
+pub trait User: ServiceUser + ChatUser + SocialUser + LobbyUser + MultiplayerUser + SingleplayerUser + IntercomUser + CommonUser + FactoryUser {
     async fn unlocked_parts(&self) -> Vec<u32>;
     async fn unlock_parts(&self, parts: &[u32]) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn selected_garage(&self) -> (String, u32);
     async fn select_garage(&self, slot: i32) -> Result<(), i16>;
     async fn selected_vehicle_data(&self) -> Result<VehicleData, polariton_server::operations::SimpleOpError>;
-    async fn all_slots(&self) -> UserSlots<C>;
-    async fn slot_by_id(&self, id: i32) -> Result<UserSlotData<C>, i16>;
     async fn save_slot(&self, vehicle: VehicleData, cpu_counter: &crate::cubes::CpuListParser) -> Result<(), i16>;
     async fn save_slot_order(&self, slots: Vec<i32>) -> Result<(), i16>;
-    async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData<C>, i16>;
     async fn copy_slot(&self, slot: i32, into_slot: Option<i32>, append: &str) -> Result<(), i16>;
-    async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed<C>, i16>;
     async fn save_slot_controls(&self, controls: ControlData) -> Result<(), i16>;
     async fn save_slot_customisations(&self, customs: CustomisationData) -> Result<(), i16>;
-    async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData<C>, i16>;
     async fn set_slot_name(&self, slot: i32, name: String) -> Result<(), i16>;
     fn signup_date(&self) -> i64;
-    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<polariton::operation::Typed<C>, i16>;
+    async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<polariton::operation::Typed, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
-    async fn get_avatar_info(&self) -> Result<GetAvatarInfo<C>, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
     async fn list_avatar_info(&self, public_ids: &[String]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
     fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
@@ -122,6 +118,19 @@ pub trait User<C>: ChatUser + SocialUser + SocialUserC<C> + LobbyUser + Multipla
 }
 
 #[async_trait::async_trait]
+pub trait UserC<C>: User + SocialUserC<C> {}
+
+#[async_trait::async_trait]
+pub trait ServiceUser: CommonUser + IntercomUser {
+    async fn all_slots(&self) -> UserSlots;
+    async fn slot_by_id(&self, id: i32) -> Result<UserSlotData, polariton_server::operations::SimpleOpError>;
+    async fn new_slot(&self, reset_slot: Option<i32>) -> Result<NewSlotData, polariton_server::operations::SimpleOpError>;
+    async fn upgrade_slot(&self, increments: i32) -> Result<polariton::operation::Typed, polariton_server::operations::SimpleOpError>;
+    async fn get_slot_customisations(&self, uuid: &str) -> Result<GetCustomisationData, polariton_server::operations::SimpleOpError>;
+    async fn get_avatar_info(&self) -> Result<GetAvatarInfo, polariton_server::operations::SimpleOpError>;
+}
+
+#[async_trait::async_trait]
 pub trait GameEventSetter: Send + Sync + 'static {
     async fn set_multiplayer(&self, event: CurrentGameEvent);
     async fn get_multiplayer(&self) -> Option<CurrentGameEvent>;
@@ -129,12 +138,12 @@ pub trait GameEventSetter: Send + Sync + 'static {
     async fn get_singleplayer(&self) -> Option<CurrentGameEvent>;
 }
 
-pub struct UserSlots<C> {
+pub struct UserSlots<C = ()> {
     pub slot_info: polariton::operation::Typed<C>,
     pub slot_order: polariton::operation::Typed<C>,
 }
 
-pub struct UserSlotData<C> {
+pub struct UserSlotData<C = ()> {
     pub data: polariton::operation::Typed<C>,
     pub colour_data: polariton::operation::Typed<C>,
     pub cube_count: polariton::operation::Typed<C>,
@@ -149,7 +158,7 @@ pub struct UserSlotData<C> {
     pub uuid: polariton::operation::Typed<C>,
 }
 
-pub struct NewSlotData<C> {
+pub struct NewSlotData<C = ()> {
     pub name: polariton::operation::Typed<C>,
     pub uuid_0: polariton::operation::Typed<C>,
     pub uuid_1: polariton::operation::Typed<C>,
@@ -251,13 +260,13 @@ pub struct CustomisationData {
     pub death: String,
 }
 
-pub struct GetCustomisationData<C> {
+pub struct GetCustomisationData<C = ()> {
     pub bay: polariton::operation::Typed<C>,
     pub spawn: polariton::operation::Typed<C>,
     pub death: polariton::operation::Typed<C>,
 }
 
-pub struct GetAvatarInfo<C> {
+pub struct GetAvatarInfo<C = ()> {
     pub avatar_id: polariton::operation::Typed<C>,
     pub use_custom: polariton::operation::Typed<C>,
 }

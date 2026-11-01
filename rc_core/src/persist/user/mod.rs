@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::{UnlockedParts, UnlockOverride};
 
 mod traits;
-pub use traits::{UserProvider, User, UserToken, UserSlots, UserSlotData, VehicleData, FullVehicleData, UserAuthInfo, FederatedAuthInfo, UserLoginInfo, UserAuthenticator, FederatedAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameVehicleDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats, FederationWebData, FederationWebDetails, MatchInfo};
+pub use traits::{UserProvider, UserProviderC, User, UserC, ServiceUser, UserToken, UserSlots, UserSlotData, VehicleData, FullVehicleData, UserAuthInfo, FederatedAuthInfo, UserLoginInfo, UserAuthenticator, FederatedAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameVehicleDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats, FederationWebData, FederationWebDetails, MatchInfo};
 
 pub mod intercom;
 pub use intercom::generate_token as generate_intercom_token;
@@ -28,6 +28,7 @@ mod userless;
 mod team;
 pub use team::{TeamChooser, StandardTeamChooser};
 mod web;
+mod services;
 
 pub mod federation;
 pub use federation::Federation;
@@ -40,10 +41,12 @@ pub const GARAGE_DIR: &str = "vehicles";
 
 pub type UserImpl = AccountProvider;
 
-fn __must_impl<T: UserProvider<()>>() {}
+fn __must_impl<T: UserProvider>() {}
+fn __must_impl_c<T: UserProviderC<()>>() {}
 
 fn __test_impl() {
     __must_impl::<UserImpl>();
+    __must_impl_c::<UserImpl>();
 }
 
 pub fn since_windows_epoch(since_unix_epoch: i64) -> i64 {

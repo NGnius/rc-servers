@@ -1,4 +1,4 @@
-use crate::persist::user::UserProvider;
+use crate::persist::user::UserProviderC;
 use polariton_server::ToSend;
 
 pub struct UserState<C: Clone + Send + 'static = ()> {
@@ -62,7 +62,7 @@ impl <C: Clone + Send + 'static> UserState<C> {
         }
     }
 
-    pub fn user(&self) -> Result<std::sync::Arc<Box<dyn crate::persist::user::User<C> + Send + Sync>>, i16> {
+    pub fn user(&self) -> Result<std::sync::Arc<Box<dyn crate::persist::user::UserC<C> + Send + Sync>>, i16> {
         let lock = self.state.read().unwrap();
         match &*lock {
             InitState::Unauthenticated(_) => Err(120),
@@ -86,5 +86,5 @@ impl <C: Clone + Send + 'static> UserState<C> {
 #[derive(Clone)]
 enum InitState<C> {
     Unauthenticated(std::sync::Arc<crate::persist::user::UserImpl>),
-    Authenticated(std::sync::Arc<Box<dyn crate::persist::user::User<C> + Send + Sync>>),
+    Authenticated(std::sync::Arc<Box<dyn crate::persist::user::UserC<C> + Send + Sync>>),
 }

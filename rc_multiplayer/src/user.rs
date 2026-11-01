@@ -16,7 +16,8 @@ impl User {
         let init_state_clone = self.state.read().await.clone();
         match init_state_clone {
             UserState::Unauthenticated(auth) => {
-                let result = <oj_rc_core::persist::user::UserImpl as oj_rc_core::UserProvider<()>>::multiplayer_authenticate::<'_, '_>(&auth, info.player_name.0.clone()).await;
+                use oj_rc_core::UserProvider;
+                let result = auth.multiplayer_authenticate(info.player_name.0.clone()).await;
                 match result {
                     Ok(user) => {
                         *self.state.write().await = UserState::Authenticated(UserInfo {
