@@ -33,6 +33,6 @@ impl OperationCode for CubeInventoryProvider {
 }
 
 pub(super) fn cube_inv_provider(cubes: &oj_rc_core::ConfigImpl) -> CubeInventoryProvider {
-    let cube_ids = <oj_rc_core::ConfigImpl as ConfigProvider<()>>::ids(cubes);
+    let cube_ids = cubes.cube_ids();
     CubeInventoryProvider { cube_ids }
 }

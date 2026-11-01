@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{Operation, OperationCode};
 
 pub struct MaintenanceModeTeller {
@@ -31,6 +32,6 @@ impl OperationCode for MaintenanceModeTeller {
 
 pub fn maintenace_teller(conf: &oj_rc_core::ConfigImpl) -> MaintenanceModeTeller {
     MaintenanceModeTeller {
-        message: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).maintenance_message,
+        message: conf.server_config().maintenance_message,
     }
 }

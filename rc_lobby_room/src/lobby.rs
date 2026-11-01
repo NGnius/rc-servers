@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use oj_rc_core::persist::user::TeamChooser;
+use oj_rc_core::{ConfigProvider, persist::user::TeamChooser};
 
 #[derive(Clone, Copy)]
 pub enum GamemodeChangeStrategy {
@@ -168,8 +168,8 @@ impl QueueHandler {
         } else {
             panic!("Invalid multiplayer redirect host address");
         };
-        let mp_settings = oj_rc_core::ConfigProvider::<()>::multiplayer_settings(conf);
-        let server_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf);
+        let mp_settings = conf.multiplayer_settings();
+        let server_conf = conf.server_config();
         if !mp_settings.is_enabled {
             log::info!("Multiplayer is disabled, disallowing others from joining any lobby");
         }
@@ -177,13 +177,13 @@ impl QueueHandler {
             users_in_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             users_in_custom_games_queue: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             custom_game_for_user: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            users_per_game: oj_rc_core::ConfigProvider::<()>::players_per_game(conf),
+            users_per_game: conf.players_per_game(),
             is_enabled: mp_settings.is_enabled,
             is_parties_enabled: server_conf.allow_parties,
             is_testing_connection_enabled: mp_settings.should_test_connection,
             hostname: std::sync::Arc::new(name),
             hostport: port,
-            network_conf: std::sync::Arc::new(crate::data::network::NetworkConfigData::from_conf(oj_rc_core::ConfigProvider::<()>::network_config(conf))),
+            network_conf: std::sync::Arc::new(crate::data::network::NetworkConfigData::from_conf(conf.network_config())),
             factory,
             cpu_counter,
             weapon_guesser,

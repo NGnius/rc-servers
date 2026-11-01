@@ -1,3 +1,5 @@
+use oj_rc_core::ConfigProvider;
+
 mod validate_game_guid;
 mod loading_progress;
 mod all_loading_progress;
@@ -24,7 +26,7 @@ pub async fn handler(init_ctx: &crate::InitConfig) -> crate::handler::LnlEventHa
         init_ctx.users.clone(),
         crate::vehicle_motion::handler(init_ctx),
         crate::disconnect::handler(init_ctx),
-        oj_rc_core::ConfigProvider::<()>::multiplayer_settings(&init_ctx.config).should_test_connection,
+        init_ctx.config.multiplayer_settings().should_test_connection,
     )
         .add(validate_game_guid::handler(init_ctx))
         .add(loading_progress::handler(init_ctx))

@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
@@ -7,9 +8,9 @@ const PLATFORM_CONFIG_KEY: u8 = 197;
 
 pub(super) fn platform_config_provider<C: Send + 'static>(conf: &oj_rc_core::ConfigImpl) -> SimpleOpImpl<C, crate::UserTy, PlatformConfigProvider> {
     SimpleOpImpl::new(PlatformConfigProvider {
-        chat_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::chat_system_config(conf),
-        links: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(conf),
-        platform_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::platform(conf),
+        chat_config: conf.chat_system_config(),
+        links: conf.url_links(),
+        platform_config: conf.platform(),
     })
 }
 

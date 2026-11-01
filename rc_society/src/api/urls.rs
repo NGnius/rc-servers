@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, Responder, get, http::header::ContentType};
 
 static JSON_DATA: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-pub(super) fn init(config: &dyn oj_rc_core::ConfigProvider<()>) {
+pub(super) fn init(config: &dyn oj_rc_core::ConfigProvider) {
     JSON_DATA.get_or_init(|| {
         let urls = config.server_config();
         let data = oj_serdes::society::ServiceDomains {

@@ -25,17 +25,17 @@ impl AccountProvider {
         let token_path = root.as_ref().join(super::TOKEN_SECRET_FILENAME);
         log::debug!("Loading secret from {}", token_path.display());
         let secret = std::fs::read(&token_path)?;
-        let server_settings = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::server_config(conf);
+        let server_settings = conf.server_config();
         let database_uri = server_settings.database;
         log::debug!("Connecting to user database URI: {}", database_uri);
         let db = oj_rc_database::Database::init(&database_uri).await
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotConnected, e))?;
-        let federation_conf = <crate::persist::config::ConfigImpl as ConfigProvider<()>>::federation(conf);
+        let federation_conf = conf.federation();
         Ok(Self {
-            cubes: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::ids(conf)),
-            garage_upgrades: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::garage_upgrades(conf)),
-            fake_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::fake_players(conf)),
-            filler_players: std::sync::Arc::new(<crate::persist::config::ConfigImpl as ConfigProvider<()>>::filler_players(conf)),
+            cubes: std::sync::Arc::new(conf.cube_ids()),
+            garage_upgrades: std::sync::Arc::new(conf.garage_upgrades()),
+            fake_players: std::sync::Arc::new(conf.fake_players()),
+            filler_players: std::sync::Arc::new(conf.filler_players()),
             auto_signups: server_settings.auto_signup,
             domain: std::sync::Arc::new(server_settings.domain),
             cdn: std::sync::Arc::new(server_settings.cdn_url),

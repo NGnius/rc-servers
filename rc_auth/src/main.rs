@@ -4,6 +4,7 @@ mod robocraft;
 mod oauth;
 
 use actix_web::{App, HttpServer, Responder};
+use oj_rc_core::ConfigProvider;
 
 #[actix_web::get("/")]
 async fn index() -> impl Responder {
@@ -33,7 +34,7 @@ async fn main() -> std::io::Result<()> {
         return res;
     }
 
-    let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&conf));
+    let server_settings = actix_web::web::Data::new(conf.server_config());
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
     let rc_preloaded = actix_web::web::Data::new(cli_args.clone().preloaded().await);

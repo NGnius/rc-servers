@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{Operation, OperationCode};
 
 pub struct VersionTeller {
@@ -31,6 +32,6 @@ impl OperationCode for VersionTeller {
 
 pub fn version_teller(conf: &oj_rc_core::ConfigImpl) -> VersionTeller {
     VersionTeller {
-        latest_version: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(conf).minimum_version,
+        latest_version: conf.server_config().minimum_version,
     }
 }

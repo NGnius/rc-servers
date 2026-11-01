@@ -1,25 +1,28 @@
 use polariton::operation::Typed;
 
-#[async_trait::async_trait]
-pub trait ConfigProvider<C: Clone> {
+pub trait ConfigProviderC<C: Clone> {
     fn cube_list(&self) -> Typed<C>;
-    fn cube_healths(&self) -> std::collections::HashMap<u32, u32>;
     fn movement_list(&self) -> Typed<C>;
     fn weapon_list(&self) -> Typed<C>;
     fn weapon_upgrade_list(&self) -> Typed<C>;
     fn weapon_keys(&self) -> Typed<C>;
-    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider;
-    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32>; // cube id (hex) -> tech point cost
-    fn ids(&self) -> Vec<u32>;
     fn regen_config(&self) -> Typed<C>;
     fn after_battle_vote_config(&self) -> Typed<C>;
     fn game_mode_config(&self) -> Typed<C>;
-    fn campaign_details(&self) -> super::CompleteCampaignProvider;
-    fn campaigns(&self) -> super::CampaignResolver;
     fn client_config(&self) -> Typed<C>;
-    fn platform(&self) -> PlatformConfig;
     fn login_messages(&self) -> DevMessageProvider<C>;
     fn public_channels(&self) -> Typed<C>;
+}
+
+#[async_trait::async_trait]
+pub trait ConfigProvider {
+    fn cube_healths(&self) -> std::collections::HashMap<u32, u32>;
+    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider;
+    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32>; // cube id (hex) -> tech point cost
+    fn cube_ids(&self) -> Vec<u32>;
+    fn campaign_details(&self) -> super::CompleteCampaignProvider;
+    fn campaigns(&self) -> super::CampaignResolver;
+    fn platform(&self) -> PlatformConfig;
     fn server_config(&self) -> ServerConfig;
     fn garage_upgrades(&self) -> GarageUpgrades;
     async fn factory(&self, builtin_factory_provider: &(dyn (Fn() -> oj_rc_database::FactoryDatabase) + Sync)) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>>;

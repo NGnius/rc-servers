@@ -90,8 +90,7 @@ impl CubeConfig {
     }
 }
 
-#[async_trait::async_trait]
-impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
+impl <C: Clone + Send> super::ConfigProviderC<C> for CubeConfig {
     fn cube_list(&self) -> Typed<C> {
         Typed::Dict(Dict {
             key_ty: TypePrefix::Str,
@@ -101,12 +100,6 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
                 cube_d.as_transmissible_key_val(cube.id)
             }).collect(),
         })
-    }
-
-    fn cube_healths(&self) -> std::collections::HashMap<u32, u32> {
-        self.cubes.values()
-            .map(|cube| (cube.id, cube.info.health))
-            .collect()
     }
 
     fn movement_list(&self) -> Typed<C> {
@@ -208,34 +201,6 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         Typed::IntArr(keys_vec.into())
     }
 
-    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider {
-        let mut nodes = indexmap::IndexMap::with_capacity(self.cubes.len());
-        for cube in self.cubes.values() {
-            if let Some(tree_data) = &cube.tree {
-                nodes.insert(cube.id, tree_data.to_owned());
-            }
-        }
-        nodes.shrink_to_fit();
-        super::TechTreeNodeProvider {
-            tree: nodes,
-        }
-    }
-
-    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32> { // cube id (hex) -> tech point cost
-        let mut costs = std::collections::HashMap::with_capacity(self.cubes.len());
-        for cube in self.cubes.values() {
-            if let Some(tree_data) = &cube.tree {
-                costs.insert(hex::encode(cube.id.to_be_bytes()), tree_data.tech_points);
-            }
-        }
-        costs.shrink_to_fit(); // probably unnecessary, but free memory usage reduction!
-        costs
-    }
-
-    fn ids(&self) -> Vec<u32> {
-        self.cubes.values().map(|cube| cube.id).collect()
-    }
-
     fn regen_config(&self) -> Typed<C> {
         let regen_data: crate::data::auto_regen::AutoRegenHealthConfig = self.battle.regen.clone().into();
         regen_data.as_transmissible()
@@ -264,6 +229,66 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         game_mode_data.as_transmissible()
     }
 
+    fn client_config(&self) -> Typed<C> {
+        let conf_data: crate::data::client_config::GameplaySettings = self.settings.gameplay.clone().into();
+        Typed::Dict(Dict {
+            key_ty: TypePrefix::Str,
+            val_ty: TypePrefix::HashMap,
+            items: vec![
+                (Typed::Str("GameplaySettings".into()), conf_data.as_transmissible()),
+            ],
+        })
+    }
+
+    fn login_messages(&self) -> super::DevMessageProvider<C> {
+        super::DevMessageProvider::new(self.settings.banners.iter().map(|msg| (msg.message.clone(), msg.duration as i32)).collect())
+    }
+
+    fn public_channels(&self) -> Typed<C> {
+        Typed::Arr(polariton::operation::Arr {
+            ty: TypePrefix::Str,
+            custom_ty: None,
+            items: self.chat.public_channels.iter().map(|s| Typed::Str(s.into())).collect(),
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl super::ConfigProvider for CubeConfig {
+    fn cube_healths(&self) -> std::collections::HashMap<u32, u32> {
+        self.cubes.values()
+            .map(|cube| (cube.id, cube.info.health))
+            .collect()
+    }
+
+    fn tech_tree_nodes(&self) -> super::TechTreeNodeProvider {
+        let mut nodes = indexmap::IndexMap::with_capacity(self.cubes.len());
+        for cube in self.cubes.values() {
+            if let Some(tree_data) = &cube.tree {
+                nodes.insert(cube.id, tree_data.to_owned());
+            }
+        }
+        nodes.shrink_to_fit();
+        super::TechTreeNodeProvider {
+            tree: nodes,
+        }
+    }
+
+    fn tech_tree_costs(&self) -> std::collections::HashMap<String, u32> { // cube id (hex) -> tech point cost
+        let mut costs = std::collections::HashMap::with_capacity(self.cubes.len());
+        for cube in self.cubes.values() {
+            if let Some(tree_data) = &cube.tree {
+                costs.insert(hex::encode(cube.id.to_be_bytes()), tree_data.tech_points);
+            }
+        }
+        costs.shrink_to_fit(); // probably unnecessary, but free memory usage reduction!
+        costs
+    }
+
+    fn cube_ids(&self) -> Vec<u32> {
+        self.cubes.values().map(|cube| cube.id).collect()
+    }
+
     fn campaign_details(&self) -> super::CompleteCampaignProvider {
         let mut map = std::collections::HashMap::with_capacity(self.battle.singleplayer.campaigns.len());
         for campaign in self.battle.singleplayer.campaigns.iter() {
@@ -285,17 +310,6 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
         }
     }
 
-    fn client_config(&self) -> Typed<C> {
-        let conf_data: crate::data::client_config::GameplaySettings = self.settings.gameplay.clone().into();
-        Typed::Dict(Dict {
-            key_ty: TypePrefix::Str,
-            val_ty: TypePrefix::HashMap,
-            items: vec![
-                (Typed::Str("GameplaySettings".into()), conf_data.as_transmissible()),
-            ],
-        })
-    }
-
     fn platform(&self) -> super::PlatformConfig {
         super::PlatformConfig {
             enable_buy_premium: self.settings.gameplay.platform.can_buy_premium,
@@ -307,18 +321,6 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
             enable_standard_units: self.settings.gameplay.platform.can_si,
         }
 
-    }
-
-    fn login_messages(&self) -> super::DevMessageProvider<C> {
-        super::DevMessageProvider::new(self.settings.banners.iter().map(|msg| (msg.message.clone(), msg.duration as i32)).collect())
-    }
-
-    fn public_channels(&self) -> Typed<C> {
-        Typed::Arr(polariton::operation::Arr {
-            ty: TypePrefix::Str,
-            custom_ty: None,
-            items: self.chat.public_channels.iter().map(|s| Typed::Str(s.into())).collect(),
-        })
     }
 
     fn server_config(&self) -> super::ServerConfig {
@@ -350,7 +352,7 @@ impl <C: Clone + Send> super::ConfigProvider<C> for CubeConfig {
     }
 
     async fn factory(&self, builtin_factory_provider: &(dyn (Fn() -> oj_rc_database::FactoryDatabase) + Sync)) -> Result<crate::factory::Factory, Box<dyn std::error::Error + 'static>> {
-        crate::factory::Factory::from_config(&self.factory, &<Self as super::ConfigProvider<()>>::server_config(self), builtin_factory_provider).await
+        crate::factory::Factory::from_config(&self.factory, &self.server_config(), builtin_factory_provider).await
     }
 
     fn factory_config(&self) -> super::FactoryConfig {

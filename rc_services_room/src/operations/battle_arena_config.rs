@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::ParameterTable;
 
@@ -29,7 +30,7 @@ impl <C: Send + 'static> SimpleOperation<C> for BattleArenaConfigurer {
 
 pub(super) fn battle_arena_config_provider<C: Send + 'static>(conf: &oj_rc_core::ConfigImpl, factory: &std::sync::Arc<oj_rc_core::factory::Factory>, weapon_list: std::sync::Arc<oj_rc_core::cubes::WeaponListParser>,
     cpu_counter: std::sync::Arc<oj_rc_core::cubes::CpuListParser>) -> SimpleOpImpl<C, crate::UserTy, BattleArenaConfigurer> {
-    let ba_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf);
+    let ba_conf = conf.ba_settings();
     SimpleOpImpl::new(BattleArenaConfigurer {
         factory: factory.to_owned(),
         weapon_list,

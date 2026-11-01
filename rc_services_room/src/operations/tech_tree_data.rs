@@ -1,5 +1,6 @@
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::ParameterTable;
+use oj_rc_core::ConfigProvider;
 
 const CODE: u8 = 183;
 
@@ -53,6 +54,6 @@ impl <C: Send + 'static> SimpleOperation<C> for TechTreeNoder {
 
 pub(super) fn tech_tree_layout_provider<C: Send + 'static>(cubes: &oj_rc_core::ConfigImpl) -> SimpleOpImpl<C, crate::UserTy, TechTreeNoder> {
     SimpleOpImpl::new(TechTreeNoder {
-        nodes: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tech_tree_nodes(cubes),
+        nodes: cubes.tech_tree_nodes(),
     })
 }

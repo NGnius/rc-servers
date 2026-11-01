@@ -13,8 +13,9 @@ mod list_sanctions;
 use polariton_server::operations::OperationsHandler;
 
 pub fn handler(chat_system: crate::state::chat::ChatImpl, conf: &oj_rc_core::persist::config::ConfigImpl) -> OperationsHandler<crate::UserTy> {
+    use oj_rc_core::ConfigProvider;
     OperationsHandler::new()
-        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(conf))
+        .modify(conf.polariton_operation_modifier())
         .add(more_auth::MoreLobbyAuth::new())
         .add(chat_ignores::ignores_provider())
         .add(pending_sanctions::pending_sanctions_checker())

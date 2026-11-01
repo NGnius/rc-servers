@@ -45,9 +45,10 @@ impl <C: Send + 'static> SimpleOperation<C> for ReconnectGameProvider {
 }
 
 pub(super) fn reconnect_provider<C: Send + 'static>(config: &oj_rc_core::persist::config::ConfigImpl, queue_handler: &std::sync::Arc<crate::QueueHandler>) -> SimpleOpImpl<C, crate::UserTy, ReconnectGameProvider> {
+    use oj_rc_core::ConfigProvider;
     let (hostname, hostport, network) = queue_handler.networking();
     SimpleOpImpl::new(ReconnectGameProvider {
-        config: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::reconnect(config),
+        config: config.reconnect(),
         network,
         hostname,
         hostport,

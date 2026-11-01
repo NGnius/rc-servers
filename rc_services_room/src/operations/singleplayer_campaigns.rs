@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{Operation, OperationCode, SimpleFunc};
 use polariton::operation::{ParameterTable, Typed};
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
@@ -18,7 +19,7 @@ pub struct SingleplayerCampaignProvider {
 }
 
 pub(super) fn singleplayer_campaigns_provider<C: Send + Clone + 'static>(init_ctx: &crate::InitConfig) -> SimpleOpImpl<C, crate::UserTy, SingleplayerCampaignProvider> {
-    let campaigns = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::campaigns(&init_ctx.cubes);
+    let campaigns = init_ctx.cubes.campaigns();
     SimpleOpImpl::new(SingleplayerCampaignProvider {
         resolver: campaigns,
         factory: init_ctx.factory.clone(),
@@ -126,7 +127,7 @@ impl OperationCode for SingleplayerCompleteCampaignProvider {
 }
 
 pub(super) fn singleplayer_complete_campaign_provider(init_ctx: &crate::InitConfig) -> SingleplayerCompleteCampaignProvider {
-    let campaign_details: oj_rc_core::persist::config::CompleteCampaignProvider = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::campaign_details(&init_ctx.cubes);
+    let campaign_details: oj_rc_core::persist::config::CompleteCampaignProvider = init_ctx.cubes.campaign_details();
     SingleplayerCompleteCampaignProvider {
         campaign_details,
         factory: init_ctx.factory.clone(),

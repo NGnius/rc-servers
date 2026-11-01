@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::Immediate;
 
 //use oj_rc_core::ConfigProvider;
@@ -5,7 +6,7 @@ use polariton_server::operations::Immediate;
 const PARAM_KEY: u8 = 68;
 
 pub(super) fn garage_slots_limit(conf: &oj_rc_core::ConfigImpl) -> Immediate<60, crate::UserTy> {
-    let limit = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::garage_slot_limit(conf);
+    let limit = conf.garage_slot_limit();
     Immediate::new(move || {
         let mut params = std::collections::HashMap::with_capacity(2);
         params.insert(PARAM_KEY, polariton::operation::Typed::Int(limit));

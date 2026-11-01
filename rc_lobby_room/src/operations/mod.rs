@@ -8,8 +8,9 @@ mod connect_test_finished;
 use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
+    use oj_rc_core::ConfigProvider;
     OperationsHandler::<crate::UserTy>::new()
-        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.config))
+        .modify(init_ctx.config.polariton_operation_modifier())
         .add(more_auth::MoreLobbyAuth)
         //.add(eac::EacChallengeIgnorer)
         .add(polariton_server::operations::Ack::<2, _>::default())

@@ -6,8 +6,9 @@ mod save_result;
 use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
+    use oj_rc_core::ConfigProvider;
     OperationsHandler::<crate::UserTy>::new()
-        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.config))
+        .modify(init_ctx.config.polariton_operation_modifier())
         .add(more_auth::MoreLobbyAuth)
         .add(eac::EacChallengeIgnorer)
         .add(load_ai_robots::tdm_machines_provider(&init_ctx.factory, init_ctx.parsers.weapon_order(), &init_ctx.config, init_ctx.parsers.cpu_counter()))

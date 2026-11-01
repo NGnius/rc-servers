@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::ParameterTable;
 
@@ -25,7 +26,7 @@ impl SimpleOperation<()> for ItemBundleRetriever {
 
 pub(super) fn item_bundle_provider(conf: &oj_rc_core::ConfigImpl) -> SimpleOpImpl<(), crate::UserTy, ItemBundleRetriever> {
     SimpleOpImpl::new(ItemBundleRetriever {
-        resolver: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::shop_entries(conf),
+        resolver: conf.shop_entries(),
     })
 }
 

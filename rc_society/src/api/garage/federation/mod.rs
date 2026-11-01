@@ -1,6 +1,6 @@
 static SOCIETY_URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-pub(super) fn init(config: &dyn oj_rc_core::ConfigProvider<()>) {
+pub(super) fn init(config: &dyn oj_rc_core::ConfigProvider) {
     SOCIETY_URL.get_or_init(|| {
         let urls = config.server_config();
         urls.society_url

@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton::operation::{ParameterTable, OperationResponse};
 
 const CODE: u8 = 1;
@@ -8,7 +9,7 @@ pub(super) fn tdm_machines_provider(factory: &std::sync::Arc<oj_rc_core::factory
     AiRobots {
         factory: factory.to_owned(),
         weapon_parser: weapon_order,
-        singleplayer_config: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::singleplayer_details(conf),
+        singleplayer_config: conf.singleplayer_details(),
         cpu_parser: cpu_counter,
     }
 }

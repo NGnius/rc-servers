@@ -4,6 +4,7 @@ mod api;
 mod web;
 
 use actix_web::{App, HttpServer, Responder};
+use oj_rc_core::ConfigProvider;
 
 pub static START_TIME: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(-1);
 
@@ -26,9 +27,9 @@ async fn main() -> std::io::Result<()> {
     let config = oj_rc_core::ConfigImpl::load(&cli_args.assets_robocraft)?;
     api::init(&config);
 
-    let server_settings = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::server_config(&config));
-    let server_links = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::url_links(&config));
-    let server_fed = actix_web::web::Data::new(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::federation(&config));
+    let server_settings = actix_web::web::Data::new(config.server_config());
+    let server_links = actix_web::web::Data::new(config.url_links());
+    let server_fed = actix_web::web::Data::new(config.federation());
 
     let parsers = oj_rc_core::cubes::CubeParsers::new(&config);
 
@@ -39,7 +40,7 @@ async fn main() -> std::io::Result<()> {
     let parsers_ref = actix_web::web::Data::new(parsers);
 
     let users = oj_rc_core::UserImpl::load(&cli_args.data_robocraft, &config).await.expect("Bad user data");
-    let factory = <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::factory(&config, &|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config");
+    let factory = config.factory(&|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config");
     let factory_ref = actix_web::web::Data::new(factory);
     let auth_ref = actix_web::web::Data::new(Box::new(users));
 

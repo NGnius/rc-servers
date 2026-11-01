@@ -2,7 +2,7 @@ mod cubes_json;
 pub use cubes_json::CubeConfig;
 
 mod traits;
-pub use traits::{ConfigProvider, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings, ShopEntriesResolver, ShopAction, ShopGain, PromoCode, MultiplayerSettings, BattleArenaCrystalParams, VehicleValidators, TeamChoosers, FactoryConfig, PlatformConfig, Federation, ReconnectConfig};
+pub use traits::{ConfigProvider, ConfigProviderC, DevMessageProvider, ServerConfig, GarageUpgrades, GarageUpgradeIncrement, ChatSystemConfig, GameEventSequence, GameEvents, GameRotationStrategy, GameEvent, GameMap, GameVisibility, GameType, SingleplayerConfig, VehicleInfo, VehicleDescriptor, QueueChangeMode, Point, Sphere, MapConfig, LinksConfig, FakePlayer, ClientEmulator, EnergyConfig, BattleArenaResolver, PitSettings, PitWinCondition, TeamDeathMatchSettings, ShopEntriesResolver, ShopAction, ShopGain, PromoCode, MultiplayerSettings, BattleArenaCrystalParams, VehicleValidators, TeamChoosers, FactoryConfig, PlatformConfig, Federation, ReconnectConfig};
 pub(super) use traits::RedactedClone;
 
 mod validation;
@@ -16,8 +16,10 @@ pub use tech_tree::TechTreeNodeProvider;
 
 pub type ConfigImpl = CubeConfig;
 
-fn __must_impl<T: ConfigProvider<()>>() {}
+fn __must_impl<T: ConfigProviderC<()>>() {}
+fn __must_impl_no_generic<T: ConfigProvider>() {}
 
 fn __test_impl() {
     __must_impl::<ConfigImpl>();
+    __must_impl_no_generic::<ConfigImpl>();
 }

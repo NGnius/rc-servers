@@ -1,10 +1,11 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::Immediate;
 use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
 
 const PARAM_KEY: u8 = 1;
 
 pub(super) fn league_battle_parameters_provider(conf: &oj_rc_core::ConfigImpl) -> Immediate<57, crate::UserTy> {
-    let multiplayer_conf = <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::multiplayer_settings(conf);
+    let multiplayer_conf = conf.multiplayer_settings();
     let player_level = multiplayer_conf.min_level;
     let cpu = multiplayer_conf.min_cpu;
     Immediate::new(move || {

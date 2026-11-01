@@ -121,8 +121,9 @@ mod custom_game_team;
 use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy> {
+    use oj_rc_core::ConfigProvider;
     OperationsHandler::new()
-        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.cubes))
+        .modify(init_ctx.cubes.polariton_operation_modifier())
         .add(eac::EacChallengeIgnorer)
         .add(more_auth::more_auth_provider(&init_ctx.user_mesh, init_ctx.workarounds.edit_mode_input_lockup(), &init_ctx.game_event_sequence))
         .add(versioner::version_teller(&init_ctx.cubes))

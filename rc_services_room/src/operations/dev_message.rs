@@ -1,6 +1,6 @@
 use polariton_server::operations::{Operation, OperationCode};
 use rand::RngExt;
-use oj_rc_core::ConfigProvider;
+use oj_rc_core::persist::config::ConfigProviderC;
 
 const MAX_DELTA: u64 = 60 * 60 * 24; // 1 day
 

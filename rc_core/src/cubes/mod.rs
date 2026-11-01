@@ -43,7 +43,8 @@ pub struct CubeParsers {
 
 impl CubeParsers {
     pub fn new(conf: &crate::ConfigImpl) -> Self {
-        let cubes = <crate::ConfigImpl as crate::ConfigProvider<()>>::cubes(conf);
+        use crate::ConfigProvider;
+        let cubes = conf.cubes();
         Self {
             weapon_list: std::sync::Arc::new(WeaponListParser::with_cubes(cubes.values())),
             cpu_counter: std::sync::Arc::new(CpuListParser::with_cubes(cubes.values())),

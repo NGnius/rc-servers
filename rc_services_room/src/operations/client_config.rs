@@ -1,6 +1,5 @@
 use polariton_server::operations::Immediate;
-//use polariton::{operation::{Dict, ParameterTable, Typed}, serdes::TypePrefix};
-use oj_rc_core::ConfigProvider;
+use oj_rc_core::persist::config::ConfigProviderC;
 
 const PARAM_KEY: u8 = 36;
 

@@ -1,3 +1,4 @@
+use oj_rc_core::ConfigProvider;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -89,6 +90,6 @@ impl SimpleOperation<()> for PromoCodeApplier {
 
 pub(super) fn code_redeem_provider(conf: &oj_rc_core::ConfigImpl) -> SimpleOpImpl<(), crate::UserTy, PromoCodeApplier> {
     SimpleOpImpl::new(PromoCodeApplier {
-        code_map: <oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::promo_codes(conf),
+        code_map: conf.promo_codes(),
     })
 }

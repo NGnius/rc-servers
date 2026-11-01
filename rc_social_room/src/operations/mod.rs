@@ -41,8 +41,9 @@ mod user_can_be_custom_gamed;
 use polariton_server::operations::OperationsHandler;
 
 pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy, crate::data::custom::CustomType> {
+    use oj_rc_core::ConfigProvider;
     OperationsHandler::<crate::UserTy, crate::data::custom::CustomType>::new()
-        .modify(<oj_rc_core::ConfigImpl as oj_rc_core::ConfigProvider<()>>::polariton_operation_modifier(&init_ctx.config))
+        .modify(init_ctx.config.polariton_operation_modifier())
         .add(more_auth::more_lobby_auth(init_ctx))
         .add(friend_list::friends_provider(init_ctx)) // TODO friend object parsing Token: 0x0200169C RID: 5788
         .add(settings::settings_provider()) // TODO save settings persistently

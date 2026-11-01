@@ -17,25 +17,26 @@ pub struct GameMatches {
 
 impl GameMatches {
     pub fn new(conf: &oj_rc_core::persist::config::ConfigImpl, cube_parsers: std::sync::Arc<oj_rc_core::cubes::CubeParsers>, factory: std::sync::Arc<oj_rc_core::factory::Factory>) -> Self {
-        let ba_settings = std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::ba_settings(conf));
+        use oj_rc_core::ConfigProvider;
+        let ba_settings = std::sync::Arc::new(conf.ba_settings());
         let ba_sorted_crystals = std::sync::Arc::new(Self::maybe_init_ba_sorted_crystals(&ba_settings, &cube_parsers));
         Self {
             matches: std::collections::HashMap::new(),
             routing: std::collections::HashMap::new(),
-            mode_configs: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::gamemodes(conf),
-            map_configs: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::maps(conf)
+            mode_configs: conf.gamemodes(),
+            map_configs: conf.maps()
                 .into_iter()
                 .map(|(map, conf)| (oj_rc_core::data::game_mode::GameMap::from_persist(map).as_str().to_owned(), conf))
                 .collect(),
-            cube_health_configs: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::cube_healths(conf)),
-            //fake_players: <oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::fake_players(conf),
+            cube_health_configs: std::sync::Arc::new(conf.cube_healths()),
+            //fake_players: conf.fake_players(),
             cube_parsers,
             ba_sorted_crystals,
             ba_settings,
-            pit_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::pit_settings(conf)),
-            tdm_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::tdm_settings(conf)),
+            pit_settings: std::sync::Arc::new(conf.pit_settings()),
+            tdm_settings: std::sync::Arc::new(conf.tdm_settings()),
             factory,
-            mp_settings: std::sync::Arc::new(<oj_rc_core::persist::config::ConfigImpl as oj_rc_core::ConfigProvider<()>>::multiplayer_settings(conf)),
+            mp_settings: std::sync::Arc::new(conf.multiplayer_settings()),
             is_crystal_regen_running: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
