@@ -1,4 +1,4 @@
-use polariton_server::operations::SimpleFunc;
+use polariton_server::operations::Immediate;
 use polariton::{operation::{Arr, ParameterTable, Typed}, serdes::TypePrefix};
 
 use crate::data::customisation_info::CustomisationData;
@@ -187,9 +187,9 @@ fn all_deaths() -> Vec<CustomisationData> {
     ]
 }
 
-pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, impl (Fn(ParameterTable, &crate::UserTy) -> Result<ParameterTable, i16>) + Sync + Sync> {
-    SimpleFunc::new(|params, _| {
-        let mut params = params.to_dict();
+pub(super) fn all_customisations_provider() -> Immediate<216, crate::UserTy> {
+    Immediate::new(|| {
+        let mut params = polariton::operation::ParameterTable::with_capacity(8);
         params.insert(SKINS_KEY, Typed::Arr(Arr {
             ty: TypePrefix::HashMap, // hashtable
             custom_ty: None,
@@ -210,6 +210,6 @@ pub(super) fn all_customisations_provider() -> SimpleFunc<216, crate::UserTy, im
         params.insert(OWNED_SPAWNS_KEY, Typed::StrArr(all_spawns().into_iter().map(|x| x.id.into()).collect::<Vec<_>>().into()));
         params.insert(OWNED_DEATHS_KEY, Typed::StrArr(all_deaths().into_iter().map(|x| x.id.into()).collect::<Vec<_>>().into()));
         params.insert(OWNED_EMOTES_KEY, Typed::StrArr(vec![].into())); // this isn't used??? (see owned_cosmetics)
-        Ok(params.into())
+        params
     })
 }
