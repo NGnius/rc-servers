@@ -1,6 +1,8 @@
 #[derive(Clone)]
 pub struct UserHandle {
-    display_name: String,
+    public_id: oj_rc_core::types::PublicId,
+    #[allow(dead_code)]
+    display_name: oj_rc_core::types::DisplayName,
     event_tx: tokio::sync::mpsc::WeakUnboundedSender<polariton_server::ToSend>,
 }
 
@@ -9,9 +11,10 @@ impl UserHandle {
         self.event_tx.strong_count() != 0
     }
 
-    pub fn from_strong_sender(event_tx: tokio::sync::mpsc::UnboundedSender<polariton_server::ToSend>, display_name: String) -> Self {
+    pub fn from_strong_sender(event_tx: tokio::sync::mpsc::UnboundedSender<polariton_server::ToSend>, public_id: oj_rc_core::types::PublicId, display_name: oj_rc_core::types::DisplayName) -> Self {
         Self {
             event_tx: event_tx.downgrade(),
+            public_id,
             display_name,
         }
     }
@@ -48,7 +51,7 @@ impl UserHandle {
         });
     }
 
-    pub fn name(&self) -> &'_ str {
-        &self.display_name
+    pub fn name(&self) -> &'_ oj_rc_core::types::PublicId {
+        &self.public_id
     }
 }

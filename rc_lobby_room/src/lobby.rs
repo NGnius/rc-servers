@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use oj_rc_core::{ConfigProvider, persist::user::TeamChooser};
+use oj_rc_core::{ConfigProvider, persist::user::TeamChooser, types::RawType};
 
 #[derive(Clone, Copy)]
 pub enum GamemodeChangeStrategy {
@@ -47,13 +47,13 @@ impl QueueKey {
         format!("{}@{}|{}{}", mode, self.map, visibility, auto_heal)
     }
 
-    fn unique_guid(&self) -> String {
+    fn unique_guid(&self) -> oj_rc_core::types::GameGuid {
         use std::hash::Hasher;
         let mut hasher = std::hash::DefaultHasher::new();
         self.hash(&mut hasher);
         chrono::Utc::now().timestamp_micros().hash(&mut hasher);
         let guid = oj_rc_core::persist::user::uuid_sanitize(hasher.finish() as i64);
-        oj_rc_core::persist::user::i64_as_uuid_str(guid)
+        oj_rc_core::types::GameGuid::from_raw(guid)
     }
 }
 
@@ -102,7 +102,7 @@ pub struct PlatoonInfo {
 struct QueueUser {
     emitter: polariton_server::events::EventEmitter,
     player: oj_rc_core::data::player_data::PlayerData,
-    user_id: i32,
+    user_id: oj_rc_core::types::UserId,
     enqueued_at: chrono::DateTime<chrono::Utc>,
     user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>,
     is_testing_connection: std::sync::atomic::AtomicBool,
@@ -124,15 +124,15 @@ impl CustomGameQueue {
 }
 
 struct CustomGameQueueUser {
-    public_id: String,
-    team: u8,
+    public_id: oj_rc_core::types::PublicId,
+    team: oj_rc_core::types::TeamId,
     queue_user: Option<QueueUser>, // if None, the user is not enqueued
 }
 
 pub struct QueueHandler {
     users_in_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<QueueKey, Queue>>>,
     users_in_custom_games_queue: std::sync::Arc<tokio::sync::Mutex<HashMap<String, CustomGameQueue>>>,
-    custom_game_for_user: std::sync::Arc<tokio::sync::RwLock<HashMap<String, String>>>,
+    custom_game_for_user: std::sync::Arc<tokio::sync::RwLock<HashMap<oj_rc_core::types::PublicId, String>>>,
     users_per_game: usize,
     is_enabled: bool,
     is_parties_enabled: bool,
@@ -344,9 +344,9 @@ impl QueueHandler {
         team_choosers: &crate::team_selection::InitedTeamChoosers,
         wait_times: &crate::queue_time_tracker::QueueTimeTracker,
     ) {
-        let guid_str = key.unique_guid();
+        let guid = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
-            guid: guid_str.clone(),
+            guid,
             map: key.map.clone(),
             mode: key.mode,
             visibility: key.visibility,
@@ -361,12 +361,12 @@ impl QueueHandler {
         for (i, player) in q_entry.users.iter_mut().enumerate() {
             let mut lobby_desc = oj_rc_core::persist::user::PlayerLobbyDescriptor {
                 user_id: player.user_id,
-                team: -1,
+                team: oj_rc_core::types::TeamId::from_raw(-1),
                 group: player.player.group.clone(),
                 public_id: player.player.name.clone(),
                 display_name: player.player.display_name.clone(),
             };
-            let team = team_picker.choose_team(&guid_str, i, &lobby_desc);
+            let team = oj_rc_core::types::TeamId::from_raw(team_picker.choose_team(&guid.as_guid_str(), i, &lobby_desc));
             lobby_desc.team = team;
             player.player.team = team;
             player_descs.push((lobby_desc, player.player.clone()));
@@ -386,7 +386,7 @@ impl QueueHandler {
                     port: hostport,
                     map: key.map.clone(),
                     mode: key.mode,
-                    guid: guid_str.clone(),
+                    guid,
                     is_ranked: false,
                     is_custom: false,
                     visibility: Some(key.visibility),
@@ -398,7 +398,7 @@ impl QueueHandler {
                 for player in q_entry.users.iter() {
                     tokio::spawn(Self::send_events_to_player(arc_event.clone(), player.emitter.clone()));
                 }
-                log::info!("{} players are entering match {}", q_entry.users.len(), guid_str);
+                log::info!("{} players are entering match {}", q_entry.users.len(), guid);
             },
             Err(e) => {
                 if let Some(msg) = e.error_msg() {
@@ -409,7 +409,7 @@ impl QueueHandler {
 
             }
         }
-        let to_unlock: Vec<String> = q_entry.users.iter().map(|user| user.user.public_id().to_owned()).collect();
+        let to_unlock: Vec<oj_rc_core::types::PublicId> = q_entry.users.iter().map(|user| user.user.public_id()).collect();
         if let Some(first) = q_entry.users.first() {
             let first_user = first.user.clone();
             tokio::spawn(async move {
@@ -446,9 +446,9 @@ impl QueueHandler {
             visibility,
             auto_heal: session.config.health_regen,
         };
-        let guid_str = key.unique_guid();
+        let guid = key.unique_guid();
         let game_desc = oj_rc_core::persist::user::GameDescriptor {
-            guid: guid_str.clone(),
+            guid,
             map: session.config.map.clone(),
             mode,
             visibility,
@@ -463,7 +463,7 @@ impl QueueHandler {
                 let q_user = user.queue_user.as_ref().unwrap();
                 let lobby_desc = oj_rc_core::persist::user::PlayerLobbyDescriptor {
                     user_id: q_user.user_id,
-                    team: user.team as i32,
+                    team: user.team,
                     group: None,
                     public_id: q_user.player.name.clone(),
                     display_name: q_user.player.display_name.clone(),
@@ -482,7 +482,7 @@ impl QueueHandler {
                     port: self.hostport,
                     map: session.config.map.clone(),
                     mode,
-                    guid: guid_str.clone(),
+                    guid,
                     is_ranked: false,
                     is_custom: true,
                     visibility: Some(key.visibility),
@@ -495,7 +495,7 @@ impl QueueHandler {
                     let player = user.queue_user.take().unwrap();
                     tokio::spawn(Self::send_events_to_player(arc_event.clone(), player.emitter.clone()));
                 }
-                log::info!("{} players are entering custom match {}; {}", session.users.len(), guid_str, key.short());
+                log::info!("{} players are entering custom match {}; {}", session.users.len(), guid, key.short());
             },
             Err(e) => {
                 if let Some(msg) = e.error_msg() {
@@ -524,7 +524,7 @@ impl QueueHandler {
             return;
         }
         let public_id = user.public_id();
-        if let Some(session_id) = self.custom_game_for_user.read().await.get(public_id) {
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(&public_id) {
             let mut lock = self.users_in_custom_games_queue.lock().await;
             let session = lock.get_mut(session_id).unwrap();
             let lobby_user = user.as_ref().as_ref();
@@ -534,11 +534,11 @@ impl QueueHandler {
                     let target_queuer = session.users.iter_mut()
                         .find(|user| user.public_id == public_id)
                         .unwrap();
-                    player_data.team = target_queuer.team as i32;
+                    player_data.team = target_queuer.team;
                     let new_player = QueueUser {
                         emitter: event_emitter,
                         player: player_data,
-                        user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
+                        user_id: lobby_user.user_id(),
                         enqueued_at: chrono::Utc::now(),
                         user: user.clone(),
                         is_testing_connection: std::sync::atomic::AtomicBool::new(self.is_testing_connection_enabled),
@@ -573,7 +573,7 @@ impl QueueHandler {
         lock.remove(session_id).is_some()
     }
 
-    pub async fn update_custom_queue(&self, session_id: &str, members: impl std::iter::Iterator<Item = (String, u8)>, config: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig) -> bool {
+    pub async fn update_custom_queue(&self, session_id: &str, members: impl std::iter::Iterator<Item = (oj_rc_core::types::PublicId, oj_rc_core::types::TeamId)>, config: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig) -> bool {
         let mut lock = self.users_in_custom_games_queue.lock().await;
         let members: std::collections::HashMap<_, _> = members.collect();
         let mut user_map_lock = self.custom_game_for_user.write().await;
@@ -589,7 +589,7 @@ impl QueueHandler {
                     let new_team = *members.get(&user.public_id).unwrap();
                     user.team = new_team;
                     if let Some(q_user) = &mut user.queue_user {
-                        q_user.player.team = new_team as i32;
+                        q_user.player.team = new_team;
                     }
                 });
             // collect users which are still members
@@ -656,7 +656,7 @@ impl QueueHandler {
         }
     }
 
-    fn platoon_leave_queue(&self, user_id: i32, platoon_id: String, q_entry: &mut Queue) {
+    fn platoon_leave_queue(&self, user_id: oj_rc_core::types::UserId, platoon_id: String, q_entry: &mut Queue) {
         let needs_remove = if let Some(platoon) = q_entry.platoons.get_mut(&platoon_id) {
             let wants_usize = platoon.total as usize;
             if wants_usize == platoon.members.len() {
@@ -732,7 +732,7 @@ impl QueueHandler {
                 let new_player = QueueUser {
                     emitter: event_emitter,
                     player: player_data,
-                    user_id: oj_rc_core::persist::user::CommonUser::account_id(lobby_user),
+                    user_id: lobby_user.user_id(),
                     enqueued_at: chrono::Utc::now(),
                     user: user.clone(),
                     is_testing_connection: std::sync::atomic::AtomicBool::new(self.is_testing_connection_enabled),
@@ -875,7 +875,7 @@ impl QueueHandler {
     pub async fn complete_connection_test(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>) {
         // look through public queue
         let mut is_user_found = false;
-        let user_id = user.account_id();
+        let user_id = user.user_id();
         let mut ready_q_opt = None;
         let mut lock = self.users_in_queue.lock().await;
         for (q_key, q_entry) in lock.iter() {
@@ -908,7 +908,7 @@ impl QueueHandler {
         }
         if is_user_found { return; }
         // look through custom games
-        if let Some(session_id) = self.custom_game_for_user.read().await.get(user.public_id()) {
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(&user.public_id()) {
             let mut lock = self.users_in_custom_games_queue.lock().await;
             let session = lock.get_mut(session_id).unwrap();
             for user in session.users.iter() {
@@ -929,13 +929,13 @@ impl QueueHandler {
 
     pub async fn leave_queue(&self, user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::UserC<()> + Send + Sync>>) {
         let public_id = user.public_id();
-        let user_id = oj_rc_core::persist::user::CommonUser::account_id(user.as_ref().as_ref());
+        let user_id = user.user_id();
         log::info!("Unlocking user {} game mode events after leaving queue", public_id);
         user.trigger_workaround(
             oj_rc_core::persist::user::intercom::IntercomWorkaroundMessage::WebService(oj_rc_core::persist::user::intercom::IntercomWebServiceWorkaroundMessage::GameModeEventUnlock {  }),
             vec![public_id.to_owned()],
         ).await;
-        if let Some(session_id) = self.custom_game_for_user.read().await.get(public_id) {
+        if let Some(session_id) = self.custom_game_for_user.read().await.get(&public_id) {
             // player is in custom game session
             let mut lock = self.users_in_custom_games_queue.lock().await;
             let session = lock.get_mut(session_id).unwrap();

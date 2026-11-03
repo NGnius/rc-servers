@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use rand::RngExt;
 use byteserde::ser_heap::ByteSerializeHeap;
 
@@ -17,11 +18,11 @@ impl ExperimentalPlayer {
 
 #[async_trait::async_trait]
 impl super::FakeUser for ExperimentalPlayer {
-    async fn on_init(&self, _descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], _player_id: u8) {
+    async fn on_init(&self, _descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], _player_id: oj_rc_core::types::PlayerId) {
 
     }
 
-    async fn on_ready(&self, real_players: &std::collections::HashMap<u8, crate::matches::generic::UserSender>) {
+    async fn on_ready(&self, real_players: &std::collections::HashMap<oj_rc_core::types::PlayerId, crate::matches::generic::UserSender>) {
         let movement_rx = real_players.values().map(|x| x.to_owned()).collect();
         let is_complete = self.is_complete.clone();
         let player_id = self.me.player_id;
@@ -45,7 +46,7 @@ fn random_height_coord(rng: &mut rand::rngs::ThreadRng) -> f32 {
     ((int as f32) * CONVERSION_FACTOR) + 10.0
 }
 
-async fn erratic_behaviour(send_to: Vec<crate::matches::generic::UserSender>, is_complete: std::sync::Arc<std::sync::atomic::AtomicBool>, player_id: u8) {
+async fn erratic_behaviour(send_to: Vec<crate::matches::generic::UserSender>, is_complete: std::sync::Arc<std::sync::atomic::AtomicBool>, player_id: oj_rc_core::types::PlayerId) {
     const SLEEP_PERIOD: std::time::Duration = std::time::Duration::from_secs(1);
     let mut fake_timestamp = 42.0;
     while !is_complete.load(std::sync::atomic::Ordering::Relaxed) {
@@ -60,7 +61,7 @@ async fn erratic_behaviour(send_to: Vec<crate::matches::generic::UserSender>, is
             last_sent_seconds_a: 1.0,
             last_sent_seconds_b: 2.0,
             timestamp: fake_timestamp,
-            player_id,
+            player_id: player_id.as_raw(),
             target_point: rlnl::types::CompressedVec3::from((50.0, 50.0, 50.0)),
             rb_state: rlnl::machine_motion::RigidBodyState {
                 rb_pos_rot: rlnl::types::PosQuatPair {

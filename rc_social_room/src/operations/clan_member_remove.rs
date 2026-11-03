@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -17,22 +18,23 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanRemover {
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         if let Some(Typed::Str(to_remove)) = params.remove(&USERNAME_PARAM_KEY) {
             let user_info = user.user()?;
+            let to_remove_pub_id = oj_rc_core::types::PublicId::from_raw(to_remove.string);
             let mut members = if let Some((_clan, members)) = user_info.my_clan_info(true).await? {
                 members.into_iter().map(|mem| mem.public_id).collect()
             } else {
                 std::collections::HashSet::default()
             };
-            log::debug!("User {} wants to remove {} from their clan", user_info.public_id(), to_remove.string);
-            user_info.remove_user_from_clan(&to_remove.string).await?;
-            self.social.send_event_to(&to_remove.string, crate::events::clan_member_removed::ClanMemberRemoved).await;
+            log::debug!("User {} wants to remove {} from their clan", user_info.public_id(), to_remove_pub_id);
+            user_info.remove_user_from_clan(&to_remove_pub_id).await?;
+            self.social.send_event_to(&to_remove_pub_id, crate::events::clan_member_removed::ClanMemberRemoved).await;
             self.social.filter_online_only(&mut members).await;
             let my_pub_id = user_info.public_id();
             let event = crate::events::clan_member_left::ClanMemberLeft {
-                leaver_public_id: to_remove.string.clone(),
+                leaver_public_id: to_remove_pub_id.clone(),
                 new_leader_public_id: None,
             };
             for member in members {
-                if member == to_remove.string { continue; }
+                if member == to_remove_pub_id { continue; }
                 if member == my_pub_id { continue; }
                 self.social.send_event_to(&member, event.clone()).await;
             }

@@ -16,3 +16,5 @@ pub mod factory;
 pub mod cubes;
 
 mod auth;
+
+pub mod types;

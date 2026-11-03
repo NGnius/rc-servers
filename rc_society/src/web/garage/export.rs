@@ -1,6 +1,7 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::StatusCode, web::{Data, Path, Query}};
 use actix_identity::Identity;
 
+use oj_rc_core::types::RawType;
 use oj_rc_plugins::vehicle_import::VehicleImportData;
 
 use crate::web::{LoginReturn, try_auth_user};
@@ -17,7 +18,7 @@ pub async fn get(id: Path<i32>, query: Query<super::PortQuery>, exporter: Data<I
                         cube_data: garage.robot_data,
                         colour_data: garage.colour_data,
                         vehicle_name: garage.name,
-                        vehicle_author: Some(user.display_name().to_owned()),
+                        vehicle_author: Some(user.display_name().as_raw()),
                     };
                     match exporter.export_by_name(&query.plugin, &data) {
                         Ok(export) => {

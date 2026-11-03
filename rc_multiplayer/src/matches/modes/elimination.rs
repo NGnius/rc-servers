@@ -1,8 +1,10 @@
+use oj_rc_core::types::RawType;
+
 use crate::matches::CustomGameLogic;
 
 struct PlayerTracker {
-    alive: tokio::sync::Mutex<std::collections::HashMap<u8, std::collections::HashSet<u8>>>, // team -> set of player_id
-    in_base: std::collections::HashMap<u8, std::sync::atomic::AtomicU16>, // player_id -> in base state (if base > u8::MAX then not in a base)
+    alive: tokio::sync::Mutex<std::collections::HashMap<crate::types::Team, std::collections::HashSet<oj_rc_core::types::PlayerId>>>, // team -> set of player_id
+    in_base: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicU16>, // player_id -> in base state (if base > u8::MAX then not in a base)
 }
 
 impl PlayerTracker {
@@ -15,26 +17,26 @@ impl PlayerTracker {
 
     async fn track_vehicle(&self, player: &oj_rc_core::persist::user::PlayerDescriptor) {
         let mut alive_lock = self.alive.lock().await;
-        if let Some(team) = alive_lock.get_mut(&(player.team as u8)) {
+        if let Some(team) = alive_lock.get_mut(&crate::types::Team::from_id(player.team)) {
             team.insert(player.player_id);
         } else {
             let mut new_team = std::collections::HashSet::new();
             new_team.insert(player.player_id);
-            alive_lock.insert(player.team as u8, new_team);
+            alive_lock.insert(crate::types::Team::from_id(player.team), new_team);
         }
         //self.in_base.write().await.insert(player.player_id, std::sync::atomic::AtomicU16::new(u16::MAX));
     }
 
     async fn destroy_vehicle(&self, player: &oj_rc_core::persist::user::PlayerDescriptor) {
         let mut alive_lock = self.alive.lock().await;
-        if let Some(team) = alive_lock.get_mut(&(player.team as u8)) {
+        if let Some(team) = alive_lock.get_mut(&crate::types::Team::from_id(player.team)) {
             team.remove(&player.player_id);
         } else {
             log::warn!("Destroyed player's vehicle for previously-unseen team");
         }
     }
 
-    async fn winner_team(&self) -> Option<u8> {
+    async fn winner_team(&self) -> Option<crate::types::Team> {
         let alive_lock = self.alive.lock().await;
         let mut only_alive_team = None;
         for (team, players) in alive_lock.iter() {
@@ -50,7 +52,7 @@ impl PlayerTracker {
         only_alive_team
     }
 
-    async fn alive_count(&self) -> std::collections::HashMap<u8, u8> {
+    async fn alive_count(&self) -> std::collections::HashMap<crate::types::Team, u8> {
         let alive_lock = self.alive.lock().await;
         let mut alive_players = std::collections::HashMap::new();
         for (team, players) in alive_lock.iter() {
@@ -65,7 +67,7 @@ impl PlayerTracker {
         self.alive.lock().await.keys().map(|x| *x).collect()
     }*/
 
-    async fn player_team(&self, player_id: u8) -> Option<u8> {
+    async fn player_team(&self, player_id: oj_rc_core::types::PlayerId) -> Option<crate::types::Team> {
         for (team, players) in self.alive.lock().await.iter() {
             if players.contains(&player_id) {
                 return Some(*team);
@@ -74,13 +76,13 @@ impl PlayerTracker {
         None
     }
 
-    fn swap_is_in_base(&self, player_id: u8, base: Option<u8>) -> Option<u8> {
+    fn swap_is_in_base(&self, player_id: oj_rc_core::types::PlayerId, base: Option<crate::types::Base>) -> Option<crate::types::Base> {
         self.in_base.get(&player_id).and_then(|x| {
-            let base = x.swap(base.map(|x| x as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
+            let base = x.swap(base.map(|x| x.as_raw() as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
             if base > u8::MAX as u16 {
                 None
             } else {
-                Some(base as u8)
+                Some(crate::types::Base::from_raw(base as u8))
             }
         })
     }
@@ -105,7 +107,7 @@ impl BaseCounters {
 }
 
 struct BaseTracker {
-    bases: std::collections::HashMap<u8, BaseCounters>,
+    bases: std::collections::HashMap<crate::types::Base, BaseCounters>,
     ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
     is_baseless: bool,
 }
@@ -114,12 +116,12 @@ impl BaseTracker {
     const TICK_MS: i64 = 50;
     //const CAPTURE_PER_TICK: f32 = 0.007;
 
-    async fn on_enter(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>, base_id: u8, is_friendly: bool, player_id: u8) {
+    async fn on_enter(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>, base_id: crate::types::Base, is_friendly: bool, player_id: oj_rc_core::types::PlayerId) {
         if let Some(base) = self.bases.get(&base_id) {
             if let Some(conn) = generic.users.read().await.get(&player_id) {
                 crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
                         &rlnl::events::ingame::TeamBaseBoolean {
-                        team: base_id,
+                        team: base_id.as_raw(),
                         value: 1,
                     },
                     rlnl::event_code::NetworkEvent::PlayerInsideBase,
@@ -136,7 +138,7 @@ impl BaseTracker {
                             rlnl::event_code::NetworkEvent::TeamBaseContested,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::TeamBaseBoolean {
-                                team: base_id,
+                                team: base_id.as_raw(),
                                 value: 1,
                             },
                             true
@@ -145,7 +147,7 @@ impl BaseTracker {
                             rlnl::event_code::NetworkEvent::TeamBaseCaptureStop,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::TeamBaseState {
-                                base_team_or_mining_point_index: base_id,
+                                base_team_or_mining_point_index: base_id.as_raw(),
                                 current_progress: rlnl::types::ByteFloat::from(base.capture.load(std::sync::atomic::Ordering::SeqCst)),
                                 max_progress: rlnl::types::ByteFloat::from(4.0),
                             },
@@ -163,7 +165,7 @@ impl BaseTracker {
                             rlnl::event_code::NetworkEvent::TeamBaseContested,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::TeamBaseBoolean {
-                                team: base_id,
+                                team: base_id.as_raw(),
                                 value: 1,
                             },
                             true
@@ -173,7 +175,7 @@ impl BaseTracker {
                             rlnl::event_code::NetworkEvent::TeamBaseCaptureStart,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::TeamBaseState {
-                                base_team_or_mining_point_index: base_id,
+                                base_team_or_mining_point_index: base_id.as_raw(),
                                 current_progress: rlnl::types::ByteFloat::from(base.capture.load(std::sync::atomic::Ordering::SeqCst)),
                                 max_progress: rlnl::types::ByteFloat::from(4.0),
                             },
@@ -185,12 +187,12 @@ impl BaseTracker {
         }
     }
 
-    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>, base_id: u8, is_friendly: bool, player_id: u8) {
+    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>, base_id: crate::types::Base, is_friendly: bool, player_id: oj_rc_core::types::PlayerId) {
         if let Some(base) = self.bases.get(&base_id) {
             if let Some(conn) = generic.users.read().await.get(&player_id) {
                 crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
                         &rlnl::events::ingame::TeamBaseBoolean {
-                        team: base_id,
+                        team: base_id.as_raw(),
                         value: 0,
                     },
                     rlnl::event_code::NetworkEvent::PlayerInsideBase,
@@ -206,7 +208,7 @@ impl BaseTracker {
                         rlnl::event_code::NetworkEvent::TeamBaseContested,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::TeamBaseBoolean {
-                            team: base_id,
+                            team: base_id.as_raw(),
                             value: 0,
                         },
                         true
@@ -216,7 +218,7 @@ impl BaseTracker {
                             rlnl::event_code::NetworkEvent::TeamBaseCaptureStart,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::TeamBaseState {
-                                base_team_or_mining_point_index: base_id,
+                                base_team_or_mining_point_index: base_id.as_raw(),
                                 current_progress: rlnl::types::ByteFloat::from(base.capture.load(std::sync::atomic::Ordering::SeqCst)),
                                 max_progress: rlnl::types::ByteFloat::from(4.0),
                             },
@@ -235,7 +237,7 @@ impl BaseTracker {
                         rlnl::event_code::NetworkEvent::TeamBaseCaptureStop,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::TeamBaseState {
-                            base_team_or_mining_point_index: base_id,
+                            base_team_or_mining_point_index: base_id.as_raw(),
                             current_progress: rlnl::types::ByteFloat::from(last_state),
                             max_progress: rlnl::types::ByteFloat::from(4.0),
                         },
@@ -255,7 +257,7 @@ impl BaseTracker {
                         rlnl::event_code::NetworkEvent::TeamBaseState,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::TeamBaseState {
-                            base_team_or_mining_point_index: base_id,
+                            base_team_or_mining_point_index: base_id.as_raw(),
                             current_progress: rlnl::types::ByteFloat::from(rounded_state + f32::EPSILON),
                             max_progress: rlnl::types::ByteFloat::from(4.0),
                         },
@@ -269,7 +271,8 @@ impl BaseTracker {
     async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<EliminationLogic>) {
         let delta = self.ticker.tick();
         if delta == 0 { return; }
-        for (team, base) in self.bases.iter() {
+        for (base_id, base) in self.bases.iter() {
+            let team = base_id.team();
             if base.friendlies.load(std::sync::atomic::Ordering::SeqCst) > 0 { continue; }
             if base.enemies.load(std::sync::atomic::Ordering::SeqCst) <= 0 { continue; }
             let to_add = (delta as f32) * (Self::TICK_MS as f32) * base.percent_per_second * 4.0 / (100.0 * 1000.0);
@@ -279,7 +282,7 @@ impl BaseTracker {
                 log::info!("Team {}'s base was captured in game {}", team, generic.game_guid());
                 base.capture.store(4.0, std::sync::atomic::Ordering::SeqCst);
                 let data = rlnl::events::ingame::TeamBaseState {
-                    base_team_or_mining_point_index: *team,
+                    base_team_or_mining_point_index: team.as_raw(),
                     current_progress: rlnl::types::ByteFloat::from(4.0),
                     max_progress: rlnl::types::ByteFloat::from(4.0),
                 };
@@ -289,14 +292,14 @@ impl BaseTracker {
                     &data,
                     true
                 ).await;
-                let winning_team = if *team == 0 { 1u8 } else { 0u8 };
-                let winning_team_i32 = winning_team as i32;
+                let winning_team = crate::types::Team::from_raw(if team.as_raw() == 0 { 1u8 } else { 0u8 });
+                let winning_team_id = winning_team.into_id();
                 let win_data = rlnl::events::ingame::GameLoseWin {
-                    winning_team,
+                    winning_team: winning_team.as_raw(),
                     end_reason: rlnl::types::GameEndReason::BaseCaptured,
                 };
                 for (player_id, player_info) in generic.user_descriptors().iter() {
-                    let event = if player_info.descriptor.team == winning_team_i32 {
+                    let event = if player_info.descriptor.team == winning_team_id {
                         rlnl::event_code::NetworkEvent::GameWon
                     } else {
                         rlnl::event_code::NetworkEvent::GameLost
@@ -312,7 +315,7 @@ impl BaseTracker {
                 break;
             } else {
                 let data = rlnl::events::ingame::TeamBaseState {
-                    base_team_or_mining_point_index: *team,
+                    base_team_or_mining_point_index: team.as_raw(),
                     current_progress: rlnl::types::ByteFloat::from(post_add),
                     max_progress: rlnl::types::ByteFloat::from(4.0),
                 };
@@ -328,8 +331,8 @@ impl BaseTracker {
         }
     }
 
-    fn teams(&self) -> std::collections::HashSet<u8> {
-        self.bases.keys().copied().collect()
+    fn teams(&self) -> std::collections::HashSet<crate::types::Team> {
+        self.bases.keys().map(|b| b.team()).collect()
     }
 }
 
@@ -346,7 +349,7 @@ impl EliminationLogic {
         Self {
             tracked: PlayerTracker::new(players),
             bases: BaseTracker {
-                bases: map.bases.iter().map(|(team, base)| (*team, BaseCounters::new(base.1))).collect(),
+                bases: map.bases.iter().map(|(team, base)| (crate::types::Base::from_team_id(*team), BaseCounters::new(base.1))).collect(),
                 ticker: super::trackers::TickTracker::new(),
                 is_baseless: map.bases.is_empty(),
             },
@@ -370,7 +373,7 @@ impl EliminationLogic {
         generic.game_done();
         self.abort_timer_sync().await;
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team: if player.descriptor.team == 0 { 1 } else { 0 }, // always the other team
+            winning_team: if player.descriptor.team.as_raw() == 0 { 1 } else { 0 }, // always the other team
             end_reason: rlnl::types::GameEndReason::NoPlayersRemaining,
         };
         crate::events::log_lnl_send_failure(conn.connection.rlnl().send_data(
@@ -381,18 +384,18 @@ impl EliminationLogic {
         ).await);
     }
 
-    async fn send_win_info(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, winning_team: u8) {
+    async fn send_win_info(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, winning_team: crate::types::Team) {
         generic.game_done();
         self.abort_timer_sync().await;
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team,
+            winning_team: winning_team.as_raw(),
             end_reason: rlnl::types::GameEndReason::OneTeamRemaining,
         };
-        let winning_team_i32 = winning_team as i32;
+        let winning_team_id = winning_team.into_id();
         for (player_id, conn) in generic.users.read().await.iter() {
             let user_info = generic.user_descriptor(*player_id).unwrap();
             if user_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let event = if user_info.descriptor.team == winning_team_i32 {
+            let event = if user_info.descriptor.team == winning_team_id {
                 rlnl::event_code::NetworkEvent::GameWon
             } else {
                 rlnl::event_code::NetworkEvent::GameLost
@@ -409,12 +412,22 @@ impl EliminationLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for EliminationLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_join(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _conn: &crate::matches::generic::UserConnection,
+        player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         self.tracked.track_vehicle(&player.descriptor).await;
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_end(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        connection: &crate::matches::generic::UserConnection,
+        player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         if generic.is_game_done() {
             return true;
         }
@@ -438,11 +451,16 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, victim: u8) -> bool {
+    async fn on_vehicle_destroyed(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         if let Some(victim_info) = generic.user_descriptor(victim) {
             self.tracked.destroy_vehicle(&victim_info.descriptor).await;
             let final_score = rlnl::events::ingame::SetFinalGameScore {
-                player_id: victim,
+                player_id: victim.as_raw(),
                 score: 42,
             };
             generic.broadcast(
@@ -467,20 +485,35 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user: oj_rc_core::types::PlayerId,
+        is_classic: bool,
+    ) -> bool {
         if is_classic {
-            self.on_vehicle_destroyed(generic, u8::MAX, user).await
+            self.on_vehicle_destroyed(generic, user, user).await
         } else {
             log::warn!("Received non-elimination self destruct in elimination game mode");
             false
         }
     }
 
-    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+    async fn on_kill_bonus(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        _victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> Vec<crate::matches::RlnlPacket> {
         vec![
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -498,7 +531,11 @@ impl CustomGameLogic for EliminationLogic {
         ]
     }
 
-    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+    async fn on_countdown_start(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        game_start: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         let read_lock = generic.users.read().await;
         let mut senders = Vec::with_capacity(read_lock.len());
         for (player_id, conn) in read_lock.iter() {
@@ -512,7 +549,7 @@ impl CustomGameLogic for EliminationLogic {
             event: rlnl::event_code::NetworkEvent::TeamBaseInitialise,
             property: literustlib::packet::Property::ReliableOrdered,
             data: Box::new(rlnl::events::ingame::TeamBaseState {
-                base_team_or_mining_point_index: *team,
+                base_team_or_mining_point_index: team.as_raw(),
                 current_progress: rlnl::types::ByteFloat::from(0.0),
                 max_progress: rlnl::types::ByteFloat::from(4.0),
             }),
@@ -536,7 +573,11 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+    async fn on_player_reconnect_complete(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         // update players for timer task
         let mut player_info = None;
         let users_lock = generic.users.read().await;
@@ -560,16 +601,33 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+    async fn on_game_completed(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+    ) -> bool {
         self.abort_timer_sync().await;
         true
     }
 
-    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+    async fn on_broadcast(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event_out: rlnl::event_code::NetworkEvent,
+        _event_in: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: &Option<Box<dyn crate::Broadcastable>>,
+        _skip_user: bool,
+    ) -> bool {
         true
     }
 
-    async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool {
+    async fn on_motion(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        motion: &rlnl::machine_motion::MachineMotion,
+        location: (f32, f32, f32),
+    ) -> bool {
         if generic.is_game_done() {
             self.abort_timer_sync().await;
             return true;
@@ -583,21 +641,23 @@ impl CustomGameLogic for EliminationLogic {
             return true; // don't bother trying to track whether players are in bases since there are no bases
         }
         // ignore dead or invalid players
-        if let Some(player_team) = self.tracked.player_team(motion.player_id).await {
+        let motion_player_id = oj_rc_core::types::PlayerId::from_raw(motion.player_id);
+        if let Some(player_team) = self.tracked.player_team(motion_player_id).await {
+            let player_base = crate::types::Base::from_team(player_team);
             let mut now_in_base = None;
-            for (&team, base) in generic.map_config.bases.iter() {
+            for (team, base) in generic.map_config.bases.iter() {
                 if crate::matches::GenericGamemodeEngine::<Self>::is_in(&location, &base.0) {
-                    now_in_base = Some(team);
+                    now_in_base = Some(crate::types::Base::from_team_id(*team));
                     break;
                 }
             }
-            let was_in_base = self.tracked.swap_is_in_base(motion.player_id, now_in_base);
+            let was_in_base = self.tracked.swap_is_in_base(motion_player_id, now_in_base);
             if now_in_base != was_in_base {
                 if let Some(was_in_base) = was_in_base {
-                    self.bases.on_exit(generic, was_in_base, player_team == was_in_base, motion.player_id).await;
+                    self.bases.on_exit(generic, was_in_base, player_base == was_in_base, motion_player_id).await;
                 }
                 if let Some(now_in_base) = now_in_base {
-                    self.bases.on_enter(generic, now_in_base, player_team == now_in_base, motion.player_id).await;
+                    self.bases.on_enter(generic, now_in_base, player_base == now_in_base, motion_player_id).await;
                 }
             }
         }
@@ -605,9 +665,21 @@ impl CustomGameLogic for EliminationLogic {
         true
     }
 
-    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+    async fn on_custom(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: Box<dyn crate::Broadcastable>,
+    ) {}
 
-    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+    async fn on_spot_vehicle(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _remote_player: oj_rc_core::types::PlayerId
+    ) -> bool {
         true
     }
 }

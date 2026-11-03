@@ -19,7 +19,7 @@ impl crate::DisconnectHandler for ClientDisconnecter {
     async fn handle(&self, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData) {
         if let Some(user_info) = user.user().await {
             crate::events::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::EndConnection {
-                user_id: user_info.account_id(),
+                user_id: user_info.user_id(),
                 is_unregister: false,
             }).await);
         } else if user.is_testing_connection() {

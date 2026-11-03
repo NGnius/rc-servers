@@ -1,5 +1,6 @@
 use actix_web::{get, post, web::{Data, Path, Redirect, Form}, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok};
@@ -21,8 +22,8 @@ async fn list_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<
             let fedi = user.fedi_get().await;
             let html = render_ok(
                 RenderData {
-                    display_name: user.display_name().to_owned(),
-                    public_id: user.public_id().to_owned(),
+                    display_name: user.display_name().as_raw(),
+                    public_id: user.public_id().as_raw(),
                     enabled: fedi.enabled,
                     defederated: fedi.defederated,
                 },

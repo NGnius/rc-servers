@@ -1,5 +1,6 @@
 use actix_web::{get, post, web::Data, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 const FORM_NAME: &str = "dashboard";
@@ -99,8 +100,7 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
         super::LoginReturn::AuthFail(resp) => Ok(resp),
         super::LoginReturn::Success(user) => {
             log::debug!("Rendering user's dashboard");
-            let creation_time = user.creation();
-            let creation_time_chrono = chrono::DateTime::<chrono::Utc>::from_timestamp_secs(creation_time).unwrap_or_default();
+            let creation_time_chrono = user.creation();
             let (garage_stats, factory_stats) = match build_garage_data(user.as_ref(), factory.as_ref()).await {
                 Ok(x) => x,
                 Err(e) => return Ok(fallback_render(e, user.as_ref(), handlebars_ref.as_ref(), &req)),
@@ -123,11 +123,11 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
             };
             Ok(super::render_ok(
                 RenderData {
-                    display_name: user.display_name().to_owned(),
-                    public_id: user.public_id().to_owned(),
+                    display_name: user.display_name().as_raw(),
+                    public_id: user.public_id().as_raw(),
                     debug: DebugData {
-                        user_id: user.account_id(),
-                        creation_time_unix: creation_time,
+                        user_id: user.user_id().as_raw(),
+                        creation_time_unix: creation_time_chrono.timestamp(),
                         creation_time_iso: creation_time_chrono.to_rfc3339(),
                         cdn: server_config.cdn_url.clone(),
                         factory: server_config.factory_url.clone(),
@@ -151,15 +151,14 @@ pub async fn dashboard_impl(handlebars_ref: Data<handlebars::Handlebars<'_>>, au
 }
 
 fn fallback_render(error: Box<dyn std::error::Error>, user: &dyn oj_rc_core::persist::user::WebUser, handlebars_ref: &handlebars::Handlebars<'_>, req: &HttpRequest) -> actix_web::HttpResponse {
-    let creation_time = user.creation();
-    let creation_time_chrono = chrono::DateTime::<chrono::Utc>::from_timestamp_secs(creation_time).unwrap_or_default();
+    let creation_time_chrono = user.creation();
     super::render_err(
         RenderData {
-            display_name: user.display_name().to_owned(),
-            public_id: user.public_id().to_owned(),
+            display_name: user.display_name().as_raw(),
+            public_id: user.public_id().as_raw(),
             debug: DebugData {
-                user_id: user.account_id(),
-                creation_time_unix: creation_time,
+                user_id: user.user_id().as_raw(),
+                creation_time_unix: creation_time_chrono.timestamp(),
                 creation_time_iso: creation_time_chrono.to_rfc3339(),
                 cdn: String::default(),
                 factory: String::default(),
@@ -242,7 +241,7 @@ async fn build_garage_data(user: &dyn oj_rc_core::persist::user::WebUser, factor
         weapon_category_filter: Vec::default(),
         minimum_cpu: 0,
         maximum_cpu: i32::MAX as _,
-        text_filter: user.public_id().to_owned(),
+        text_filter: user.public_id().as_raw(),
         text_search_field: libfj::robocraft::FactoryTextSearchField::Player,
         buyable: false,
         prepend_featured_robot: false,

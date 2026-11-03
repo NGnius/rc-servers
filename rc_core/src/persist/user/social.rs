@@ -1,8 +1,10 @@
+use crate::types::RawType;
+
 use super::account_json::UserData;
 
 impl UserData {
-    async fn apply_friend_state_to(&self, public_id: String, state: oj_rc_database::schema::friend::FriendStatus) -> Result<bool, polariton_server::operations::SimpleOpError> {
-        let target_user = self.db.user_by_public_id(public_id.clone()).await
+    async fn apply_friend_state_to(&self, public_id: &crate::types::PublicId, state: oj_rc_database::schema::friend::FriendStatus) -> Result<bool, polariton_server::operations::SimpleOpError> {
+        let target_user = self.db.user_by_public_id(public_id.as_raw()).await
             .map_err(|e| {
                 log::error!("Failed to retrieve user {} to statify friend by user {}: {}", public_id, self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(
@@ -51,8 +53,8 @@ impl UserData {
             .collect();
         Ok(members.into_iter()
             .map(|(member, user)| super::ClanMember {
-                public_id: user.public_id,
-                display_name: user.display_name,
+                public_id: crate::types::PublicId::from_raw(user.public_id),
+                display_name: crate::types::DisplayName::from_raw(user.display_name),
                 is_confirmed: matches!(member.status, oj_rc_database::schema::clan_member::ClanMemberStatus::Confirmed),
                 avatar_id: avatar_infos.get(&user.id).copied().flatten(),
                 rank: super::ClanMemberRank::db_to_core(&member.rank),
@@ -65,19 +67,19 @@ impl UserData {
 
 #[async_trait::async_trait]
 impl super::SocialUser for UserData {
-    async fn accept_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError> {
+    async fn accept_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError> {
         self.apply_friend_state_to(username, oj_rc_database::schema::friend::FriendStatus::Accepted).await
     }
 
-    async fn decline_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError> {
+    async fn decline_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError> {
         self.apply_friend_state_to(username, oj_rc_database::schema::friend::FriendStatus::Declined).await
     }
 
-    async fn cancel_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError> {
+    async fn cancel_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError> {
         self.apply_friend_state_to(username, oj_rc_database::schema::friend::FriendStatus::Cancelled).await
     }
 
-    async fn remove_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError> {
+    async fn remove_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError> {
         self.apply_friend_state_to(username, oj_rc_database::schema::friend::FriendStatus::Removed).await
     }
 
@@ -104,8 +106,8 @@ impl super::SocialUser for UserData {
             .collect();
         Ok(friends.into_iter()
             .map(|(friend, user)| super::FriendData {
-                public_id: user.public_id,
-                display_name: user.display_name,
+                public_id: crate::types::PublicId::from_raw(user.public_id),
+                display_name: crate::types::DisplayName::from_raw(user.display_name),
                 clan_name: None, // TODO clan
                 state: super::FriendInviteStatus::from_db(friend.state),
                 avatar_id: friend_avatar_map.get(&user.id).copied().unwrap_or(u32::MAX)
@@ -114,8 +116,8 @@ impl super::SocialUser for UserData {
         )
     }
 
-    async fn list_social_info(&self, public_ids: &[String]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
-        let users = self.db.users_by_public_id(public_ids.iter()).await
+    async fn list_social_info(&self, public_ids: &[crate::types::PublicId]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
+        let users = self.db.users_by_public_id(public_ids.iter().map(|id| id.as_raw_ref())).await
             .map_err(|e| {
                 log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(
@@ -137,8 +139,8 @@ impl super::SocialUser for UserData {
             .collect();
         Ok(users.iter()
             .map(|user| super::SocialInfo {
-                public_id: user.public_id.clone(),
-                display_name: user.display_name.clone(),
+                public_id: crate::types::PublicId::from_raw(user.public_id.clone()),
+                display_name: crate::types::DisplayName::from_raw(user.display_name.clone()),
                 avatar_id: avatar_map.get(&user.id).and_then(|&avatar_id| if avatar_id == u32::MAX { None } else { Some(avatar_id as i32) }),
             })
             .collect()
@@ -199,6 +201,7 @@ impl super::SocialUser for UserData {
                 )
             })?;
         if let Some(unclaimed_score) = unclaimed_score_opt {
+            use crate::types::RawType;
             self.db.score_claim(unclaimed_score.id).await
                 .map_err(|e| {
                     log::error!("Failed to claim player score {} for user {} : {}", unclaimed_score.id, self.account.id, e);
@@ -209,7 +212,7 @@ impl super::SocialUser for UserData {
                 })?;
             // TODO calculate currency rewards
             let reward = unclaimed_score.total as u64;
-            self.currency_op(super::CurrencyType::Free, super::CurrencyOp::Add(reward)).await
+            self.currency_op(super::CurrencyType::Free, super::CurrencyOp::Add(crate::types::Currency::from_raw(reward))).await
                 .map_err(|e| {
                     log::error!("Failed to save currency reward for user {}: {}", self.account.id, e);
                     polariton_server::operations::SimpleOpError::with_message(
@@ -218,7 +221,7 @@ impl super::SocialUser for UserData {
                     )
                 })?;
             let experience = unclaimed_score.total as u64 * 4;
-            self.currency_op(super::CurrencyType::Experience, super::CurrencyOp::Add(experience)).await
+            self.currency_op(super::CurrencyType::Experience, super::CurrencyOp::Add(crate::types::Currency::from_raw(experience))).await
                 .map_err(|e| {
                     log::error!("Failed to save experience reward for user {}: {}", self.account.id, e);
                     polariton_server::operations::SimpleOpError::with_message(
@@ -397,8 +400,8 @@ impl super::SocialUser for UserData {
 
         Ok(vec![
             super::ClanMember {
-                public_id: self.account.public_id.clone(),
-                display_name: self.account.display_name.clone(),
+                public_id: crate::types::PublicId::from_raw(self.account.public_id.clone()),
+                display_name: crate::types::DisplayName::from_raw(self.account.display_name.clone()),
                 is_confirmed: true,
                 avatar_id: avatar_info,
                 rank: super::ClanMemberRank::Leader,
@@ -605,7 +608,7 @@ impl super::SocialUser for UserData {
         }
     }
 
-    async fn remove_user_from_clan(&self, public_id: &str) -> Result<bool, polariton_server::operations::SimpleOpError> {
+    async fn remove_user_from_clan(&self, public_id: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError> {
         let joined_clan_opt = self.db.clan_by_user_id(self.account.id).await
             .map_err(|e| {
                 log::error!("Failed to retrieve clan of user {}: {}", self.account.id, e);
@@ -633,7 +636,7 @@ impl super::SocialUser for UserData {
                     )
                 })?;
             let target_member_opt = members.iter()
-                .find(|(_mem, user)| user.public_id == public_id);
+                .find(|(_mem, user)| &user.public_id == public_id.as_raw_ref());
             if let Some((target_member, target_user)) = target_member_opt {
                 let can_kick = match target_member.rank {
                     oj_rc_database::schema::clan_member::ClanMemberRank::Member => true, // already guaranteed to be leader OR officer
@@ -720,7 +723,7 @@ impl super::SocialUser for UserData {
         }
     }
 
-    async fn invite_to_clan(&self, public_id: &str) -> Result<super::ClanMember, polariton_server::operations::SimpleOpError> {
+    async fn invite_to_clan(&self, public_id: &crate::types::PublicId) -> Result<super::ClanMember, polariton_server::operations::SimpleOpError> {
         // TODO make this a transaction
         let my_clan_opt = self.db.clan_by_user_id(self.account.id).await
             .map_err(|e| {
@@ -738,7 +741,7 @@ impl super::SocialUser for UserData {
                     "User cannot invite to clan (rank is member)".to_owned(),
                 ));
             }
-            let target_user = self.db.user_by_public_id(public_id.to_owned()).await
+            let target_user = self.db.user_by_public_id(public_id.as_raw()).await
                 .map_err(|e| {
                     log::error!("Failed to retrieve user {} to invite to clan for user {}: {}", public_id, self.account.id, e);
                     polariton_server::operations::SimpleOpError::with_message(
@@ -810,8 +813,8 @@ impl super::SocialUser for UserData {
                 })?
                 .and_then(|x| x.data.parse().ok());
             Ok(super::ClanMember {
-                public_id: target_user.public_id,
-                display_name: target_user.display_name,
+                public_id: crate::types::PublicId::from_raw(target_user.public_id),
+                display_name: crate::types::DisplayName::from_raw(target_user.display_name),
                 is_confirmed: false,
                 avatar_id,
                 rank: super::ClanMemberRank::Member,
@@ -866,8 +869,8 @@ impl super::SocialUser for UserData {
         for (invite_clan, _invite_member) in invites {
             if let Some(invitee) = clan_leaders.get(&invite_clan.id) {
                 clan_invites.push(super::ClanInviteData {
-                    public_id: invitee.public_id.clone(),
-                    display_name: invitee.display_name.clone(),
+                    public_id: crate::types::PublicId::from_raw(invitee.public_id.clone()),
+                    display_name: crate::types::DisplayName::from_raw(invitee.display_name.clone()),
                     avatar_id: clan_leaders_avatars.get(&invitee.id).copied().flatten(),
                     clan_name: invite_clan.name,
                     clan_description: invite_clan.description,
@@ -923,8 +926,8 @@ impl super::SocialUser for UserData {
         Ok(true)
     }
 
-    async fn cancel_invite_to_clan(&self, public_id: &str) -> Result<(super::ClanData, Vec<super::ClanMember>), polariton_server::operations::SimpleOpError> {
-        let user_opt = self.db.user_by_public_id(public_id.to_owned()).await
+    async fn cancel_invite_to_clan(&self, public_id: &crate::types::PublicId) -> Result<(super::ClanData, Vec<super::ClanMember>), polariton_server::operations::SimpleOpError> {
+        let user_opt = self.db.user_by_public_id(public_id.as_raw()).await
             .map_err(|e| {
                 log::error!("Failed to retrieve user {} to cancel invite by user {}: {}", public_id, self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(
@@ -995,8 +998,8 @@ impl super::SocialUser for UserData {
         }
     }
 
-    async fn update_clan_member(&self, public_id: &str, rank: super::ClanMemberRank) -> Result<Vec<super::ClanMember>, polariton_server::operations::SimpleOpError> {
-        let user = self.db.user_by_public_id(public_id.to_owned()).await
+    async fn update_clan_member(&self, public_id: &crate::types::PublicId, rank: super::ClanMemberRank) -> Result<Vec<super::ClanMember>, polariton_server::operations::SimpleOpError> {
+        let user = self.db.user_by_public_id(public_id.as_raw()).await
             .map_err(|e| {
                 log::error!("Failed to retrieve user {} to update clan member for user {}: {}", public_id, self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(
@@ -1162,8 +1165,8 @@ impl <C> super::SocialUserC<C> for UserData {
             let my_avatar_id: Result<u32, _> = my_user_avatar_aux.data.parse();
             let target_avatar_id: Result<i32, _> = target_user_avatar_aux.data.parse();
             Ok(super::FriendInviteReturn {
-                target_public_id: target_user.public_id,
-                target_display_name: target_user.display_name,
+                target_public_id: crate::types::PublicId::from_raw(target_user.public_id),
+                target_display_name: crate::types::DisplayName::from_raw(target_user.display_name),
                 my_clan_name: None, // TODO clan
                 target_clan_name: None, // TODO clan
                 my_avatar_id: my_avatar_id.unwrap_or(0),

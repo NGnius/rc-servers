@@ -1,9 +1,11 @@
+use oj_rc_core::types::RawType;
+
 use crate::matches::{modes::trackers::SurrenderGameTracker, CustomGameLogic};
 
 struct PlayerTracker {
-    connected: tokio::sync::Mutex<std::collections::HashMap<u8, std::collections::HashSet<u8>>>, // team -> set of player_id
-    in_point: std::collections::HashMap<u8, std::sync::atomic::AtomicU16>, // player_id -> in point state (if val > u8::MAX then not in a point)
-    respawning: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>, // player_id -> time when they'll spawn (time since unix epoch)
+    connected: tokio::sync::Mutex<std::collections::HashMap<crate::types::Team, std::collections::HashSet<oj_rc_core::types::PlayerId>>>, // team -> set of player_id
+    in_point: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicU16>, // player_id -> in point state (if val > u8::MAX then not in a point)
+    respawning: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicI64>, // player_id -> time when they'll spawn (time since unix epoch)
 }
 
 impl PlayerTracker {
@@ -15,45 +17,46 @@ impl PlayerTracker {
         }
     }
 
-    async fn team(&self, player_id: u8) -> Option<u8> {
+    async fn team(&self, player_id: oj_rc_core::types::PlayerId) -> crate::types::MaybeTeam {
         for (team, players) in self.connected.lock().await.iter() {
             if players.contains(&player_id) {
-                return Some(*team);
+                return crate::types::MaybeTeam::from_team(*team);
             }
         }
-        None
+        crate::types::MaybeTeam::unset()
     }
 
-    fn swap_is_in_point(&self, player_id: u8, point: Option<u8>) -> Option<u8> {
+    fn swap_is_in_point(&self, player_id: oj_rc_core::types::PlayerId, point: Option<crate::types::CapturePoint>) -> Option<crate::types::CapturePoint> {
         self.in_point.get(&player_id).and_then(|x| {
-            let old_point = x.swap(point.map(|x| x as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
+            let old_point = x.swap(point.map(|x| x.as_raw() as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
             if old_point > u8::MAX as u16 {
                 None
             } else {
-                Some(old_point as u8)
+                Some(crate::types::CapturePoint::from_raw(old_point as u8))
             }
         })
     }
 
     async fn track_player(&self, player: &oj_rc_core::persist::user::PlayerDescriptor) {
         let mut conn_lock = self.connected.lock().await;
-        if let Some(team) = conn_lock.get_mut(&(player.team as u8)) {
+        let player_team = crate::types::Team::from_id(player.team);
+        if let Some(team) = conn_lock.get_mut(&player_team) {
             team.insert(player.player_id);
         } else {
             let mut new_team = std::collections::HashSet::new();
             new_team.insert(player.player_id);
-            conn_lock.insert(player.team as u8, new_team);
+            conn_lock.insert(player_team, new_team);
         }
     }
 
-    async fn disconnect_player(&self, player_id: u8) {
+    async fn disconnect_player(&self, player_id: oj_rc_core::types::PlayerId) {
         let mut conn_lock = self.connected.lock().await;
         for team_members in conn_lock.values_mut() {
             team_members.remove(&player_id);
         }
     }
 
-    async fn single_remaining_team(&self) -> Option<u8> {
+    async fn single_remaining_team(&self) -> Option<crate::types::Team> {
         let conn_lock = self.connected.lock().await;
         let mut first_remaining_team = None;
         for (team, team_members) in conn_lock.iter() {
@@ -68,7 +71,7 @@ impl PlayerTracker {
         first_remaining_team
     }
 
-    async fn players_on_team(&self, team: u8) -> Vec<u8> {
+    async fn players_on_team(&self, team: crate::types::Team) -> Vec<oj_rc_core::types::PlayerId> {
         if let Some(members) = self.connected.lock().await.get(&team) {
             members.iter().copied().collect()
         } else {
@@ -80,7 +83,7 @@ impl PlayerTracker {
 struct PointInfo {
     team: std::sync::atomic::AtomicI8,
     attackers: std::sync::atomic::AtomicI8,
-    on_point: tokio::sync::RwLock<std::collections::HashMap<u8, std::sync::atomic::AtomicU8>>,
+    on_point: tokio::sync::RwLock<std::collections::HashMap<crate::types::Team, std::sync::atomic::AtomicU8>>,
     capture: atomic_float::AtomicF32,
     percent_per_second: f32,
 }
@@ -91,8 +94,8 @@ impl PointInfo {
             team: std::sync::atomic::AtomicI8::new(-1),
             attackers: std::sync::atomic::AtomicI8::new(-1),
             on_point: tokio::sync::RwLock::new([
-                (0, std::sync::atomic::AtomicU8::new(0)),
-                (1, std::sync::atomic::AtomicU8::new(0)),
+                (crate::types::Team::from_raw(0), std::sync::atomic::AtomicU8::new(0)),
+                (crate::types::Team::from_raw(1), std::sync::atomic::AtomicU8::new(0)),
             ].into_iter().collect()),
             capture: atomic_float::AtomicF32::new(0.0),
             percent_per_second,
@@ -107,7 +110,7 @@ impl PointInfo {
         }
     }*/
 
-    async fn enemies_on_point(&self, team: u8) -> u8 {
+    async fn enemies_on_point(&self, team: crate::types::Team) -> u8 {
         let mut total = 0;
         for (iter_team, counter) in self.on_point.read().await.iter() {
             if team == *iter_team { continue; }
@@ -120,7 +123,7 @@ impl PointInfo {
         let team = self.team.load(std::sync::atomic::Ordering::SeqCst);
         if team < 0 {
             0
-        } else if let Some(counter) = self.on_point.read().await.get(&(team as u8)) {
+        } else if let Some(counter) = self.on_point.read().await.get(&crate::types::Team::from_raw(team as u8)) {
             counter.load(std::sync::atomic::Ordering::SeqCst)
         } else {
             0
@@ -135,38 +138,39 @@ impl PointInfo {
                 total += counter.load(std::sync::atomic::Ordering::SeqCst);
             }
         } else {
+            let owning_team = crate::types::Team::from_raw(owning_team as u8);
             for (team, counter) in self.on_point.read().await.iter() {
-                if (owning_team as u8) == *team { continue; }
+                if owning_team == *team { continue; }
                 total += counter.load(std::sync::atomic::Ordering::SeqCst);
             }
         }
         total
     }
 
-    async fn stealers_team(&self) -> Option<u8> {
+    async fn stealers_team(&self) -> crate::types::MaybeTeam {
         let owning_team = self.team.load(std::sync::atomic::Ordering::SeqCst);
-        let mut stealing_team = None;
+        let mut stealing_team = crate::types::MaybeTeam::unset();
         if owning_team < 0 {
             for (team, counter) in self.on_point.read().await.iter() {
                 let count = counter.load(std::sync::atomic::Ordering::SeqCst);
                 if count != 0 {
-                    if stealing_team.is_some() {
-                        return None;
+                    if stealing_team.is_team() {
+                        return crate::types::MaybeTeam::unset();
                     } else {
-                        stealing_team = Some(*team);
+                        stealing_team = crate::types::MaybeTeam::from_team(*team);
                     }
                 }
             }
         } else {
-            let owning_team = owning_team as u8;
+            let owning_team = crate::types::Team::from_raw(owning_team as u8);
             for (team, counter) in self.on_point.read().await.iter() {
                 if owning_team == *team { continue; }
                 let count = counter.load(std::sync::atomic::Ordering::SeqCst);
                 if count != 0 {
-                    if stealing_team.is_some() {
-                        return None;
+                    if stealing_team.is_team() {
+                        return crate::types::MaybeTeam::unset();
                     } else {
-                        stealing_team = Some(*team);
+                        stealing_team = crate::types::MaybeTeam::from_team(*team);
                     }
                 }
             }
@@ -178,15 +182,15 @@ impl PointInfo {
 struct PointTracker {
     points: Vec<PointInfo>,
     ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
-    last_capture_team: std::sync::atomic::AtomicU8,
+    last_capture_team: std::sync::atomic::AtomicI8,
     last_capture_time: std::sync::atomic::AtomicI64,
 }
 
 struct PointTickInfo {
-    owned: std::collections::HashMap<u8, u8>, // team -> capture point count
-    captured_firsts: std::collections::HashSet<u8>, // team
-    lost_lasts: std::collections::HashSet<u8>, // team
-    dominating: Option<u8>,
+    owned: std::collections::HashMap<crate::types::Team, u8>, // team -> capture point count
+    captured_firsts: std::collections::HashSet<crate::types::Team>, // team
+    lost_lasts: std::collections::HashSet<crate::types::Team>, // team
+    dominating: crate::types::MaybeTeam,
     delta: u16,
 }
 
@@ -198,36 +202,37 @@ impl PointTracker {
         Self {
             points: points.map(PointInfo::new).collect(),
             ticker: super::trackers::TickTracker::new(),
-            last_capture_team: std::sync::atomic::AtomicU8::new(u8::MAX),
+            last_capture_team: std::sync::atomic::AtomicI8::new(-1),
             last_capture_time: std::sync::atomic::AtomicI64::new(i64::MIN),
         }
     }
 
-    async fn on_enter(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: u8, _player_id: u8, player_team: i8) {
-        if player_team < 0 {
+    async fn on_enter(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: crate::types::CapturePoint, _player_id: oj_rc_core::types::PlayerId, player_team: crate::types::MaybeTeam) {
+        let player_team = if let Some(team) = player_team.as_team() {
+            team
+        } else {
             return;
-        }
-        let player_team_u8 = player_team as u8;
-        if let Some(point) = self.points.get(point_i as usize) {
-            let point_team = point.team.load(std::sync::atomic::Ordering::SeqCst);
-            let attacking_team = point.attackers.load(std::sync::atomic::Ordering::SeqCst);
-            if !point.on_point.read().await.contains_key(&player_team_u8) {
-                point.on_point.write().await.insert(player_team_u8, std::sync::atomic::AtomicU8::new(0));
+        };
+        if let Some(point) = self.points.get(point_i.as_raw() as usize) {
+            let point_team = crate::types::MaybeTeam::from_raw(point.team.load(std::sync::atomic::Ordering::SeqCst));
+            let attacking_team = crate::types::MaybeTeam::from_raw(point.attackers.load(std::sync::atomic::Ordering::SeqCst));
+            if !point.on_point.read().await.contains_key(&player_team) {
+                point.on_point.write().await.insert(player_team, std::sync::atomic::AtomicU8::new(0));
             }
             // update counter
-            let old_count = point.on_point.read().await[&player_team_u8].fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            if point_team == -1 {
+            let old_count = point.on_point.read().await[&player_team].fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if !point_team.is_team() {
                 // at start of game, no team has captured this point yet
                 //let current_enemies = point.enemies_on_point(player_team_u8).await;
-                if let Some(new_attackers) = point.stealers_team().await {
+                if let Some(new_attackers) = point.stealers_team().await.as_team() {
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
-                            id: point_i,
-                            defending_team: -1,
-                            attacking_team: new_attackers as i8,
+                            id: point_i.as_raw(),
+                            defending_team: crate::types::MaybeTeam::unset().as_raw(),
+                            attacking_team: new_attackers.as_raw() as i8,
                         },
                         true,
                     ).await;
@@ -237,42 +242,41 @@ impl PointTracker {
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
-                            id: point_i,
-                            defending_team: -1,
-                            attacking_team: player_team,
+                            id: point_i.as_raw(),
+                            defending_team: crate::types::MaybeTeam::unset().as_raw(),
+                            attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                         },
                         true,
                     ).await;
                 }
-            } else if point_team == player_team {
+            } else if point_team.as_team().unwrap() == player_team {
                 let old_friendlies = old_count;
-                let current_enemies = point.enemies_on_point(player_team_u8).await;
+                let current_enemies = point.enemies_on_point(player_team).await;
                 if current_enemies != 0 && old_friendlies == 0 {
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
-                            id: point_i,
-                            defending_team: point_team,
-                            attacking_team: player_team,
+                            id: point_i.as_raw(),
+                            defending_team: point_team.as_raw(),
+                            attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                         },
                         true,
                     ).await;
                 }
-            } else if attacking_team == -1 {
+            } else if let Some(attacking_team) = attacking_team.as_team() {
                 let old_enemies = old_count;
                 if old_enemies == 0 {
                     let current_friendlies = point.owners_on_point().await;
-                    point.attackers.store(player_team, std::sync::atomic::Ordering::SeqCst);
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
-                            id: point_i,
-                            defending_team: point_team,
-                            attacking_team: player_team,
+                            id: point_i.as_raw(),
+                            defending_team: point_team.as_raw(),
+                            attacking_team: crate::types::MaybeTeam::from_team(attacking_team).as_raw(),
                         },
                         true,
                     ).await;
@@ -282,9 +286,9 @@ impl PointTracker {
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::CapturePointNotification {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: player_team,
+                                id: point_i.as_raw(),
+                                defending_team: point_team.as_raw(),
+                                attacking_team: crate::types::MaybeTeam::from_team(attacking_team).as_raw(),
                             },
                             true,
                         ).await;
@@ -294,14 +298,15 @@ impl PointTracker {
                 let old_enemies = old_count;
                 if old_enemies == 0 {
                     let current_friendlies = point.owners_on_point().await;
+                    point.attackers.store(crate::types::MaybeTeam::from_team(player_team).as_raw(), std::sync::atomic::Ordering::SeqCst);
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
-                            id: point_i,
-                            defending_team: point_team,
-                            attacking_team,
+                            id: point_i.as_raw(),
+                            defending_team: point_team.as_raw(),
+                            attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                         },
                         true,
                     ).await;
@@ -311,9 +316,9 @@ impl PointTracker {
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::CapturePointNotification {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureStoppedByDefenders,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team,
+                                id: point_i.as_raw(),
+                                defending_team: point_team.as_raw(),
+                                attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                             },
                             true,
                         ).await;
@@ -323,37 +328,38 @@ impl PointTracker {
         }
     }
 
-    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: u8, _player_id: u8, player_team: i8) {
-        if player_team < 0 {
+    async fn on_exit(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, point_i: crate::types::CapturePoint, _player_id: oj_rc_core::types::PlayerId, player_team: crate::types::MaybeTeam) {
+        let player_team = if let Some(team) = player_team.as_team() {
+            team
+        } else {
             return;
-        }
-        let player_team_u8 = player_team as u8;
-        if let Some(point) = self.points.get(point_i as usize) {
-            let point_team = point.team.load(std::sync::atomic::Ordering::SeqCst);
-            let attacking_team = point.attackers.load(std::sync::atomic::Ordering::SeqCst);
-            if !point.on_point.read().await.contains_key(&player_team_u8) {
-                point.on_point.write().await.insert(player_team_u8, std::sync::atomic::AtomicU8::new(0));
+        };
+        if let Some(point) = self.points.get(point_i.as_raw() as usize) {
+            let point_team = crate::types::MaybeTeam::from_raw(point.team.load(std::sync::atomic::Ordering::SeqCst));
+            let attacking_team = crate::types::MaybeTeam::from_raw(point.attackers.load(std::sync::atomic::Ordering::SeqCst));
+            if !point.on_point.read().await.contains_key(&player_team) {
+                point.on_point.write().await.insert(player_team, std::sync::atomic::AtomicU8::new(0));
             }
             // update counter
-            let old_count = point.on_point.read().await[&player_team_u8].fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            let old_count = point.on_point.read().await[&player_team].fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
             if old_count == 0 {
                 // something is out of sync, let's just ignore it and try to undo any underflow
                 log::warn!("Team {} players on point {} counting error", player_team, point_i);
-                point.on_point.read().await[&player_team_u8].store(0, std::sync::atomic::Ordering::SeqCst);
+                point.on_point.read().await[&player_team].store(0, std::sync::atomic::Ordering::SeqCst);
                 return;
             }
-            if point_team == player_team {
+            if point_team.as_team() == Some(player_team) {
                 let old_friendlies = old_count;
-                let current_enemies = point.enemies_on_point(player_team_u8).await;
+                let current_enemies = point.enemies_on_point(player_team).await;
                 if old_friendlies == 1 && current_enemies != 0 {
                     generic.broadcast(
                         rlnl::event_code::NetworkEvent::CapturePointNotification,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
-                            id: point_i,
-                            defending_team: point_team,
-                            attacking_team,
+                            id: point_i.as_raw(),
+                            defending_team: point_team.as_raw(),
+                            attacking_team: attacking_team.as_raw(),
                         },
                         true,
                     ).await;
@@ -365,28 +371,27 @@ impl PointTracker {
                 if old_enemies == 1 {
                     //log::info!("Enemy has left the capture point");
                     // check if there's another team attacking the point
-                    if let Some(new_attackers) = point.stealers_team().await {
-                        let new_attackers = new_attackers as i8;
+                    if let Some(new_attackers) = point.stealers_team().await.as_team() {
                         // there is another attacking team; continue capture with them
                         //let new_enemies = point.on_point.read().await[&new_attackers].load(std::sync::atomic::Ordering::SeqCst);
-                        if attacking_team == new_attackers {
+                        if attacking_team.as_team() == Some(new_attackers) {
                             log::info!("Player {} stopped capturing point {}, resuming team {} capturing", _player_id, point_i, attacking_team);
                         } else {
                             log::info!("Player {} stopped capturing point {}, switching to team {} capturing", _player_id, point_i, new_attackers);
-                            point.attackers.store(new_attackers, std::sync::atomic::Ordering::SeqCst);
+                            point.attackers.store(crate::types::MaybeTeam::from_team(new_attackers).as_raw(), std::sync::atomic::Ordering::SeqCst);
                         }
                         generic.broadcast(
                             rlnl::event_code::NetworkEvent::CapturePointNotification,
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::CapturePointNotification {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureStarted,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: new_attackers,
+                                id: point_i.as_raw(),
+                                defending_team: point_team.as_raw(),
+                                attacking_team: crate::types::MaybeTeam::from_team(new_attackers).as_raw(),
                             },
                             true,
                         ).await;
-                    } else if attacking_team == player_team {
+                    } else if attacking_team.as_team() == Some(player_team) {
                         // NOTE: this assumes there are only two teams, so if the attacking team leaves
                         // there will only be one team at most left on the point (which will become the new capturing team)
                         // stealers_team() returns None for 2 teams or 0 teams, so both cases would take this branch
@@ -398,9 +403,9 @@ impl PointTracker {
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::CapturePointNotification {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureStoppedNoAttackers,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: player_team,
+                                id: point_i.as_raw(),
+                                defending_team: point_team.as_raw(),
+                                attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                             },
                             true,
                         ).await;
@@ -412,9 +417,9 @@ impl PointTracker {
                             literustlib::packet::Property::ReliableOrdered,
                             &rlnl::events::ingame::CapturePointNotification {
                                 notification: rlnl::types::CapturePointNotificationType::CaptureStoppedNoAttackers,
-                                id: point_i,
-                                defending_team: point_team,
-                                attacking_team: player_team,
+                                id: point_i.as_raw(),
+                                defending_team: point_team.as_raw(),
+                                attacking_team: crate::types::MaybeTeam::from_team(player_team).as_raw(),
                             },
                             true,
                         ).await;
@@ -431,9 +436,8 @@ impl PointTracker {
         let mut captured_firsts = std::collections::HashSet::new();
         let mut lost_lasts = std::collections::HashSet::new();
         for cap_point in self.points.iter() {
-            let point_owner = cap_point.team.load(std::sync::atomic::Ordering::SeqCst);
-            if point_owner >= 0 {
-                let point_owner = point_owner as u8;
+            let point_owner = crate::types::MaybeTeam::from_raw(cap_point.team.load(std::sync::atomic::Ordering::SeqCst));
+            if let Some(point_owner) = point_owner.as_team() {
                 if let Some(count) = owned_points.get_mut(&point_owner) {
                     *count += 1;
                 } else {
@@ -442,7 +446,8 @@ impl PointTracker {
             }
         }
         for (i, cap_point) in self.points.iter().enumerate() {
-            let point_owner = cap_point.team.load(std::sync::atomic::Ordering::SeqCst);
+            let i = crate::types::CapturePoint::from_raw(i as u8);
+            let point_owner = crate::types::MaybeTeam::from_raw(cap_point.team.load(std::sync::atomic::Ordering::SeqCst));
             let to_add = (delta as f32) * (Self::TICK_MS as f32) * cap_point.percent_per_second * max_progress / (100.0 * 1000.0);
             let friendlies = cap_point.owners_on_point().await;
             let enemies = cap_point.stealers_on_point().await;
@@ -460,8 +465,11 @@ impl PointTracker {
             } else {
                 if friendlies != 0 { continue; }
                 let stealing_team = cap_point.stealers_team().await;
-                if stealing_team.is_none() { continue; }
-                let stealing_team = stealing_team.unwrap();
+                let stealing_team = if let Some(team) = stealing_team.as_team() {
+                    team
+                } else {
+                    continue;
+                };
                 //log::info!("Team {} is capturing point {} (# of players: {})", stealing_team, i, enemies);
                 let to_add = to_add * (enemies as f32).sqrt(); // TODO is this reasonable scaling?
                 let pre_add = cap_point.capture.fetch_add(to_add, std::sync::atomic::Ordering::SeqCst);
@@ -474,35 +482,37 @@ impl PointTracker {
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::SegmentCompleted,
-                            id: i as u8,
-                            defending_team: point_owner,
-                            attacking_team: stealing_team as i8,
+                            id: i.as_raw(),
+                            defending_team: point_owner.as_raw(),
+                            attacking_team: crate::types::MaybeTeam::from_team(stealing_team).as_raw(),
                         },
                         true,
                     ).await;
                 }
                 if post_add >= max_progress {
-                    let new_team = stealing_team as i8;
+                    let new_team = crate::types::MaybeTeam::from_team(stealing_team);
                     log::info!("Point {} was captured by team {} in game {}", i, new_team, generic.game_guid());
                     cap_point.capture.store(0.0, std::sync::atomic::Ordering::SeqCst);
-                    cap_point.team.store(new_team, std::sync::atomic::Ordering::SeqCst);
+                    cap_point.team.store(new_team.as_raw(), std::sync::atomic::Ordering::SeqCst);
                     cap_point.attackers.store(-1, std::sync::atomic::Ordering::SeqCst);
-                    self.last_capture_team.store(stealing_team, std::sync::atomic::Ordering::Relaxed);
+                    self.last_capture_team.store(new_team.as_raw(), std::sync::atomic::Ordering::Relaxed);
                     self.last_capture_time.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::Relaxed);
-                    if owned_points.get(&(new_team as u8)).copied().unwrap_or(0) == 0 {
-                        captured_firsts.insert(new_team as u8);
+                    if owned_points.get(&stealing_team).copied().unwrap_or(0) == 0 {
+                        captured_firsts.insert(stealing_team);
                     }
-                    if point_owner >= 0 && *owned_points.get(&(point_owner as u8)).unwrap() == 1 {
-                        lost_lasts.insert(point_owner as u8);
+                    if let Some(point_owner) = point_owner.as_team() {
+                        if owned_points.get(&point_owner).copied().unwrap_or_default() == 1 {
+                            lost_lasts.insert(point_owner);
+                        }
                     }
                     // in case 2+ points are captured in the same tick
-                    if let Some(new_team_owned_points) = owned_points.get_mut(&(new_team as u8)) {
+                    if let Some(new_team_owned_points) = owned_points.get_mut(&stealing_team) {
                         *new_team_owned_points += 1;
                     } else {
-                        owned_points.insert(new_team as u8, 1);
+                        owned_points.insert(stealing_team, 1);
                     }
-                    if point_owner >= 0 {
-                        if let Some(old_owner_owned_points) = owned_points.get_mut(&(point_owner as u8)) {
+                    if let Some(point_owner) = point_owner.as_team() {
+                        if let Some(old_owner_owned_points) = owned_points.get_mut(&point_owner) {
                             *old_owner_owned_points -= 1;
                         }
                     }
@@ -511,9 +521,9 @@ impl PointTracker {
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::ingame::CapturePointNotification {
                             notification: rlnl::types::CapturePointNotificationType::CaptureCompleted,
-                            id: i as u8,
-                            defending_team: point_owner,
-                            attacking_team: new_team,
+                            id: i.as_raw(),
+                            defending_team: point_owner.as_raw(),
+                            attacking_team: new_team.as_raw(),
                         },
                         true,
                     ).await;
@@ -523,7 +533,7 @@ impl PointTracker {
             if is_cap_amount_changed {
                 let progress_now = cap_point.capture.load(std::sync::atomic::Ordering::SeqCst);
                 let data = rlnl::events::ingame::TeamBaseState {
-                    base_team_or_mining_point_index: i as u8,
+                    base_team_or_mining_point_index: i.as_raw(),
                     current_progress: rlnl::types::ByteFloat::from(progress_now),
                     max_progress: rlnl::types::ByteFloat::from(max_progress),
                 };
@@ -535,17 +545,17 @@ impl PointTracker {
                 ).await;
             }
         }
-        let last_capture_team = self.last_capture_team.load(std::sync::atomic::Ordering::Relaxed);
-        let dominating = if last_capture_team != u8::MAX && self.points.iter().all(|p| p.team.load(std::sync::atomic::Ordering::SeqCst) == (last_capture_team as i8)) {
+        let last_capture_team = crate::types::MaybeTeam::from_raw(self.last_capture_team.load(std::sync::atomic::Ordering::Relaxed));
+        let dominating = if last_capture_team.is_team() && self.points.iter().all(|p| crate::types::MaybeTeam::from_raw(p.team.load(std::sync::atomic::Ordering::SeqCst)) == last_capture_team) {
             let last_capture_time = self.last_capture_time.load(std::sync::atomic::Ordering::Relaxed);
             let now = chrono::Utc::now().timestamp();
             if now > last_capture_time && now - last_capture_time >= Self::TIME_BEFORE_DOMINANT_S {
-                Some(last_capture_team)
+                last_capture_team
             } else {
-                None
+                crate::types::MaybeTeam::unset()
             }
         } else {
-            None
+            crate::types::MaybeTeam::unset()
         };
         Some(PointTickInfo {
             owned: owned_points,
@@ -556,11 +566,11 @@ impl PointTracker {
         })
     }
 
-    fn point_owned(&self, point_i: u8) -> i8 {
-        if let Some(point) = self.points.get(point_i as usize) {
-            point.team.load(std::sync::atomic::Ordering::SeqCst)
+    fn point_owned(&self, point_i: crate::types::CapturePoint) -> crate::types::MaybeTeam {
+        if let Some(point) = self.points.get(point_i.as_raw() as usize) {
+            crate::types::MaybeTeam::from_raw(point.team.load(std::sync::atomic::Ordering::SeqCst))
         } else {
-            -1
+            crate::types::MaybeTeam::unset()
         }
     }
 }
@@ -602,7 +612,7 @@ impl EqualizerTracker {
         }
     }
 
-    async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, bases: &std::collections::HashMap<u8, BaseInfo>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) {
+    async fn tick(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, bases: &std::collections::HashMap<crate::types::Base, BaseInfo>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) {
         if self.is_disabled { return; }
         let trigger_index = self.trigger_index.load(std::sync::atomic::Ordering::Relaxed) as usize;
         let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
@@ -634,9 +644,9 @@ impl EqualizerTracker {
                     self.send_notification(rlnl::types::EqualizerState::Defended, ba_config, eq_start, now, generic).await;
                 } else {
                     // check for change in leading team
-                    let old_winning_team = self.winning_team.load(std::sync::atomic::Ordering::Relaxed);
+                    let old_winning_team = crate::types::Team::from_raw(self.winning_team.load(std::sync::atomic::Ordering::Relaxed));
                     if let Some((winning_base_id, _)) = Self::winning_base(bases) {
-                        if winning_base_id != old_winning_team {
+                        if winning_base_id.team() != old_winning_team {
                             // cancel equalizer
                             log::info!("Equalizer cancelled because winning base lost the lead");
                             self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -651,8 +661,8 @@ impl EqualizerTracker {
                     if let Some(losing_base) = Self::losing_base(bases) {
                         if losing_base.0 != winning_base.0 && winning_base.1 > 0.0 {
                             self.activated.store(true, std::sync::atomic::Ordering::Relaxed);
-                            self.winning_team.store(winning_base.0, std::sync::atomic::Ordering::Relaxed);
-                            self.losing_team.store(losing_base.0, std::sync::atomic::Ordering::Relaxed);
+                            self.winning_team.store(winning_base.0.team().as_raw(), std::sync::atomic::Ordering::Relaxed);
+                            self.losing_team.store(losing_base.0.team().as_raw(), std::sync::atomic::Ordering::Relaxed);
                             self.health.store(ba_config.equalizer_health as u64, std::sync::atomic::Ordering::Relaxed);
                             self.send_notification(rlnl::types::EqualizerState::Start, ba_config, eq_start, now, generic).await;
                         } else {
@@ -669,7 +679,7 @@ impl EqualizerTracker {
         }
     }
 
-    async fn damage_equalizer(&self, damage: i32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32) {
+    async fn damage_equalizer(&self, damage: i32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<crate::types::Base, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32) {
         if !self.activated.load(std::sync::atomic::Ordering::Relaxed) { return; }
         let damage_u64 = damage as u64;
         let old_health = self.health.fetch_sub(damage as u64, std::sync::atomic::Ordering::Relaxed);
@@ -679,7 +689,7 @@ impl EqualizerTracker {
         }
     }
 
-    async fn destroy_equalizer(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<u8, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32) {
+    async fn destroy_equalizer(&self, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, bases: &std::collections::HashMap<crate::types::Base, BaseInfo>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32) {
         if !self.activated.swap(false, std::sync::atomic::Ordering::Relaxed) { return; }
         self.cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
         let eq_start = self.start.load(std::sync::atomic::Ordering::Relaxed);
@@ -687,17 +697,17 @@ impl EqualizerTracker {
         self.send_notification(rlnl::types::EqualizerState::Destroyed, ba_config, eq_start, now, generic).await;
         self.health.store(0, std::sync::atomic::Ordering::Relaxed);
         // give health to losing team
-        let winning_team = self.winning_team.load(std::sync::atomic::Ordering::Relaxed);
-        let losing_team = self.losing_team.load(std::sync::atomic::Ordering::Relaxed);
-        if let Some(losing_base) = bases.get(&losing_team) {
-            if let Some(winning_base) = bases.get(&winning_team) {
+        let winning_team = crate::types::Team::from_raw(self.winning_team.load(std::sync::atomic::Ordering::Relaxed));
+        let losing_team = crate::types::Team::from_raw(self.losing_team.load(std::sync::atomic::Ordering::Relaxed));
+        if let Some(losing_base) = bases.get(&crate::types::Base::from_team(losing_team)) {
+            if let Some(winning_base) = bases.get(&crate::types::Base::from_team(winning_team)) {
                 let old_index = losing_base.max_index();
                 losing_base.cube_index.store(winning_base.cube_index.load(std::sync::atomic::Ordering::Relaxed), std::sync::atomic::Ordering::Relaxed);
                 let new_index = losing_base.max_index();
                 for i in old_index..new_index {
                     losing_base.crystals_healths[i].store(crystal_health, std::sync::atomic::Ordering::Relaxed);
                 }
-                losing_base.send_full_base_heal(losing_team, crystal_health, generic, crystals).await;
+                losing_base.send_full_base_heal(crate::types::Base::from_team(losing_team), crystal_health, generic, crystals).await;
             } else {
                 log::warn!("Winning base {} no longer exists for game {}", winning_team, generic.game_guid());
             }
@@ -753,7 +763,7 @@ impl EqualizerTracker {
         }
     }
 
-    fn winning_base(bases: &std::collections::HashMap<u8, BaseInfo>) -> Option<(u8, f32)> {
+    fn winning_base(bases: &std::collections::HashMap<crate::types::Base, BaseInfo>) -> Option<(crate::types::Base, f32)> {
         let mut max = None;
         for (id, info) in bases.iter() {
             if let Some((_, charge)) = max {
@@ -768,7 +778,7 @@ impl EqualizerTracker {
         max
     }
 
-    fn losing_base(bases: &std::collections::HashMap<u8, BaseInfo>) -> Option<(u8, f32)> {
+    fn losing_base(bases: &std::collections::HashMap<crate::types::Base, BaseInfo>) -> Option<(crate::types::Base, f32)> {
         let mut min = None;
         for (id, info) in bases.iter() {
             if let Some((_, charge)) = min {
@@ -785,22 +795,22 @@ impl EqualizerTracker {
 }
 
 struct BaseTracker {
-    bases: std::collections::HashMap<u8, BaseInfo>,
+    bases: std::collections::HashMap<crate::types::Base, BaseInfo>,
     equalizer: EqualizerTracker,
     dominating: std::sync::atomic::AtomicBool,
 }
 
 struct BaseTickInfo {
-    win: Option<(u8, WinMode)>,
+    win: Option<(crate::types::Base, WinMode)>,
 }
 
 impl BaseTracker {
     const DOMINATING_MULT: f32 = 8.0;
 
-    fn new<'a>(bases_iter: impl std::iter::Iterator<Item=&'a u8>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
+    fn new(bases_iter: impl std::iter::Iterator<Item=crate::types::Base>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData, base_graph: &oj_rc_core::cubes::BaseCubeGraph) -> Self {
         let mut bases = std::collections::HashMap::new();
         for base_id in bases_iter {
-            bases.insert(*base_id, BaseInfo::new(crystals, base_graph));
+            bases.insert(base_id, BaseInfo::new(crystals, base_graph));
         }
         Self {
             bases,
@@ -810,7 +820,7 @@ impl BaseTracker {
     }
 
     async fn tick(&self, tick_info: &PointTickInfo, crystals: &[oj_rc_core::cubes::CubeLocationInfo], generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, capture_points_count: usize, crystal_health: u32, ba_config: &oj_rc_core::data::battle_arena_config::BattleArenaData) -> BaseTickInfo {
-        let multiplier = if let Some(dominant_team) = tick_info.dominating {
+        let multiplier = if let Some(dominant_team) = tick_info.dominating.as_team() {
             if !self.dominating.swap(true, std::sync::atomic::Ordering::Relaxed) {
                 log::info!("Team {} is now dominating game {}", dominant_team, generic.game_guid());
                 generic.broadcast(
@@ -819,7 +829,7 @@ impl BaseTracker {
                     &rlnl::events::ingame::CapturePointNotification {
                         notification: rlnl::types::CapturePointNotificationType::Dominating,
                         id: u8::MAX, // ignored?
-                        attacking_team: dominant_team as i8,
+                        attacking_team: crate::types::MaybeTeam::from_team(dominant_team).as_raw(),
                         defending_team: -1, // ignored?
                         //defending_team: (((dominant_team as usize) + 1) % generic.map_config.bases.len()) as i8
                     },
@@ -835,7 +845,7 @@ impl BaseTracker {
         };
         for (base_id, tracked_base) in self.bases.iter() {
                 //log::info!("Healing base {}", base_id);
-                if let Some(owned_points) = tick_info.owned.get(base_id) {
+                if let Some(owned_points) = tick_info.owned.get(&base_id.team()) {
                     let one_tick = (crystals.len() as f32)
                     * ((PointTracker::TICK_MS as f32) / (generic.game_duration.as_millis() as f32))
                     * ((self.bases.len() as f32) / (capture_points_count as f32));
@@ -862,7 +872,7 @@ impl BaseTracker {
                                 tracked_base.add_crystals_update_graph(vec![target_crystal.to_owned()], crystal_health);
                             }
                             rlnl::events::HealedCubes {
-                                healed_machine: *base_id as u16,
+                                healed_machine: base_id.as_raw() as u16,
                                 type_performing_healing: rlnl::types::TargetType::TeamBase,
                                 target_type: rlnl::types::TargetType::TeamBase,
                                 num_healed_cubes: 1,
@@ -1049,7 +1059,7 @@ impl BaseInfo {
         self.crystals_healths[i].store(0, std::sync::atomic::Ordering::Relaxed);
     }
 
-    fn generate_full_base_heal(&self, base_id: u8, max_health: u32, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> rlnl::events::HealedCubes {
+    fn generate_full_base_heal(&self, base_id: crate::types::Base, max_health: u32, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) -> rlnl::events::HealedCubes {
         let max_index = self.max_index();
         let target_crystals: Vec<rlnl::types::HitCubeInfo> = (0..crystals.len())
             .take_while(|&i| i <= max_index)
@@ -1063,7 +1073,7 @@ impl BaseInfo {
             })
             .collect();
         rlnl::events::HealedCubes {
-            healed_machine: base_id as u16,
+            healed_machine: base_id.as_raw() as u16,
             type_performing_healing: rlnl::types::TargetType::TeamBase,
             target_type: rlnl::types::TargetType::TeamBase,
             num_healed_cubes: target_crystals.len() as _,
@@ -1071,7 +1081,7 @@ impl BaseInfo {
         }
     }
 
-    async fn send_full_base_heal(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
+    async fn send_full_base_heal(&self, base_id: crate::types::Base, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo]) {
         let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
         generic.broadcast(
             rlnl::event_code::NetworkEvent::SyncTeamBaseCubes,
@@ -1081,7 +1091,7 @@ impl BaseInfo {
         ).await;
     }
 
-    async fn send_full_base_heal_to(&self, base_id: u8, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], to: u8) {
+    async fn send_full_base_heal_to(&self, base_id: crate::types::Base, crystal_health: u32, generic: &crate::matches::GenericGamemodeEngine<BattleArenaLogic>, crystals: &[oj_rc_core::cubes::CubeLocationInfo], to: oj_rc_core::types::PlayerId) {
         let base_heal = self.generate_full_base_heal(base_id, crystal_health, crystals);
         generic.send_to_player(
             to,
@@ -1091,7 +1101,7 @@ impl BaseInfo {
         ).await;
     }
 
-    fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: u8, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
+    fn apply_partial_base_heal(&self, crystals: &[oj_rc_core::cubes::CubeLocationInfo], crystal_health: u32, base_id: crate::types::Base, old_index: usize, new_index: usize) -> rlnl::events::HealedCubes {
         //let base = self.bases.get(&base_id).unwrap();
         let target_crystals = &crystals[old_index..new_index];
         let mut healed = Vec::with_capacity(target_crystals.len());
@@ -1102,7 +1112,7 @@ impl BaseInfo {
         }
         self.add_crystals_update_graph(healed, crystal_health);
         rlnl::events::HealedCubes {
-            healed_machine: base_id as u16,
+            healed_machine: base_id.as_raw() as u16,
             type_performing_healing: rlnl::types::TargetType::TeamBase,
             target_type: rlnl::types::TargetType::TeamBase,
             num_healed_cubes: target_crystals.len() as _,
@@ -1165,7 +1175,10 @@ impl BattleArenaLogic {
             player_tracking: PlayerTracker::new(&super_conf.players),
             capture_tracking: PointTracker::new(super_conf.map.capture_points.iter().map(|(_, speed)| *speed)),
             surrender_tracking: super::trackers::SurrenderGameTracker::new(),
-            base_tracking: BaseTracker::new(super_conf.map.bases.keys(), &crystals, &ba_config, &base_graph),
+            base_tracking: BaseTracker::new(
+                super_conf.map.bases.keys().map(|k| crate::types::Base::from_team_id(*k)),
+                &crystals, &ba_config, &base_graph
+            ),
             //cube_parser,
             //ba_base: teambase,
             //ba_equalizer: equalizer,
@@ -1187,25 +1200,25 @@ impl BattleArenaLogic {
         *lock = None;
     }
 
-    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
+    fn sphere_to_capture_point(sphere: &oj_rc_core::persist::config::Sphere, max_progress: f32, team: crate::types::MaybeTeam) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (sphere.center.x, sphere.center.y, sphere.center.z).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team,
+            team: team.as_raw(),
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
     }
 
-    fn default_capture_point(max_progress: f32, team: i8) -> rlnl::types::CapturePoint {
+    fn default_capture_point(max_progress: f32, team: crate::types::MaybeTeam) -> rlnl::types::CapturePoint {
         rlnl::types::CapturePoint {
             pos: rlnl::types::PosQuatPair {
                 pos: (0.0, 0.0, 0.0).into(),
                 rot: (0.0, 0.0, 0.0, 0.0).into(),
             },
-            team,
+            team: team.as_raw(),
             progress: 0.0.into(),
             max_progress: max_progress.into(),
         }
@@ -1225,10 +1238,10 @@ impl BattleArenaLogic {
                     winning_team = Some((*base, tracking.cube_index.load(std::sync::atomic::Ordering::SeqCst)));
                 }
             }
-            let winners = if let Some((winning_team, _)) = winning_team {
-                winning_team
+            let winners = if let Some((winning_base, _)) = winning_team {
+                winning_base.team()
             } else {
-                u8::MAX
+                crate::types::Team::from_raw(0)
             };
             // game is done, hooray
             self.do_win(winners, WinMode::OutOfTime, generic).await;
@@ -1238,7 +1251,7 @@ impl BattleArenaLogic {
         }
     }
 
-    async fn do_win(&self, winning_team: u8, ty: WinMode, generic: &crate::matches::GenericGamemodeEngine<Self>) {
+    async fn do_win(&self, winning_team: crate::types::Team, ty: WinMode, generic: &crate::matches::GenericGamemodeEngine<Self>) {
         generic.game_done();
         let end_reason = match ty {
             WinMode::BaseFull => rlnl::types::GameEndReason::BaseDestroyed,
@@ -1247,12 +1260,12 @@ impl BattleArenaLogic {
             WinMode::OutOfTime => rlnl::types::GameEndReason::TimeOut,
         };
         let payload = rlnl::events::ingame::GameLoseWin {
-            winning_team,
+            winning_team: winning_team.as_raw(),
             end_reason,
         };
         for (player_id, player) in generic.user_descriptors().iter() {
             if player.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let is_winner = player.descriptor.team == winning_team as i32;
+            let is_winner = player.descriptor.team == winning_team.into_id();
             let net_event = match ty {
                 WinMode::BaseFull
                 | WinMode::OutOfPlayers
@@ -1272,16 +1285,16 @@ impl BattleArenaLogic {
         }
     }
 
-    async fn do_destruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
-        if let Some(player_team) = self.player_tracking.team(player_id).await {
+    async fn do_destruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: oj_rc_core::types::PlayerId) {
+        if let Some(player_team) = self.player_tracking.team(player_id).await.as_team() {
             let was_in_point = self.player_tracking.swap_is_in_point(player_id, None);
             if let Some(was_in_point) = was_in_point {
-                self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team as i8).await;
+                self.capture_tracking.on_exit(generic, was_in_point, player_id, player_team.maybe()).await;
             }
         }
     }
 
-    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: oj_rc_core::types::PlayerId) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
         let respawn_time = std::time::Duration::from_secs(self.config.respawn_time_seconds as u64);
         let now = chrono::Utc::now();
@@ -1290,7 +1303,7 @@ impl BattleArenaLogic {
             player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
         }
         let respawn_payload = rlnl::events::ingame::RespawnTime {
-            owner: player_id,
+            owner: player_id.as_raw(),
             waiting_time: self.config.respawn_time_seconds as i16,
         };
         generic.broadcast(
@@ -1299,23 +1312,23 @@ impl BattleArenaLogic {
             &respawn_payload,
             true
         ).await;
-        if let Some(player_team) = self.player_tracking.team(player_id).await {
-            let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&player_team) {
+        if let Some(player_team) = self.player_tracking.team(player_id).await.as_team() {
+            let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&player_team.into_id()) {
                 if team_spawns.is_empty() {
                     oj_rc_core::persist::config::Point {
-                        x: 10.0 * (player_id as f32),
+                        x: 10.0 * (player_id.as_raw() as f32),
                         y: 100.0,
-                        z: 10.0 * (player_team as f32) + 10.0,
+                        z: 10.0 * (player_team.as_raw() as f32) + 10.0,
                     }
                 } else {
-                    let index = (player_id as usize) % team_spawns.len();
+                    let index = (player_id.as_raw() as usize) % team_spawns.len();
                     team_spawns[index].clone()
                 }
             } else {
                 oj_rc_core::persist::config::Point {
-                    x: 10.0 * (player_id as f32),
+                    x: 10.0 * (player_id.as_raw() as f32),
                     y: 100.0,
-                    z: 10.0 * (player_team as f32) + 10.0,
+                    z: 10.0 * (player_team.as_raw() as f32) + 10.0,
                 }
             };
             if let Some(player_desc) = generic.user_descriptor(player_id) {
@@ -1343,7 +1356,7 @@ impl BattleArenaLogic {
     }
 
     async fn do_team_base_stealing(&self, cube_damage: &rlnl::events::ingame::DestroyCubeNoEffect, generic: &crate::matches::GenericGamemodeEngine<Self>, actual_damage_data: impl FnOnce(Vec<rlnl::types::CubeState>) -> crate::matches::RlnlPacket) {
-        let base_id = cube_damage.hit_machine_id as u8;
+        let base_id = crate::types::Base::from_raw(cube_damage.hit_machine_id as u8);
         let mut total_destroyed = 0;
         #[cfg(debug_assertions)]
         let mut total_damaged = 0;
@@ -1381,8 +1394,9 @@ impl BattleArenaLogic {
             ).await;
         }
         if total_destroyed != 0 {
-            if let Some(team_id) = self.player_tracking.team(cube_damage.shooting_machine_id as u8).await {
-                if let Some(base) = self.base_tracking.bases.get(&team_id) {
+            let shooting_player_id = oj_rc_core::types::PlayerId::from_raw(cube_damage.shooting_machine_id as u8);
+            if let Some(team_id) = self.player_tracking.team(shooting_player_id).await.as_team() {
+                if let Some(base) = self.base_tracking.bases.get(&team_id.base()) {
                     //log::info!("Player {} stole {} crystals", cube_damage.shooting_machine_id, total_destroyed);
                     let total_destroyed_f32 = total_destroyed as f32;
                     let old_float_index = base.cube_index.fetch_add(total_destroyed_f32, std::sync::atomic::Ordering::SeqCst);
@@ -1392,7 +1406,7 @@ impl BattleArenaLogic {
                     let payload = base.apply_partial_base_heal(
                         &self.crystals,
                         self.config.protonium_health as u32,
-                        team_id,
+                        team_id.base(),
                         old_index,
                         new_index,
                     );
@@ -1430,13 +1444,23 @@ impl BattleArenaLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for BattleArenaLogic {
-    async fn on_player_join(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_join(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _conn: &crate::matches::generic::UserConnection,
+        player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         log::info!("Player {} joined BA game {}", player.descriptor.player_id, generic.game_guid());
         self.player_tracking.track_player(&player.descriptor).await;
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_end(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         if generic.is_game_done() {
             return true;
         }
@@ -1454,23 +1478,43 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, victim: u8) -> bool {
+    async fn on_vehicle_destroyed(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         self.do_destruct_tasks(generic, victim).await;
         self.do_respawn_tasks(generic, victim).await;
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user: oj_rc_core::types::PlayerId,
+        _is_classic: bool,
+    ) -> bool {
         self.do_destruct_tasks(generic, user).await;
         self.do_respawn_tasks(generic, user).await;
         true
     }
 
-    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+    async fn on_kill_bonus(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        _victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        player: &crate::matches::generic::UserDescriptor,
+    ) -> Vec<crate::matches::RlnlPacket> {
         vec![
             Some(crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -1489,10 +1533,10 @@ impl CustomGameLogic for BattleArenaLogic {
                     property: literustlib::packet::Property::ReliableOrdered,
                     data: Box::new(rlnl::events::sync::GetTeamBase {
                         base_1: rlnl::types::PosQuatPair {
-                            pos: generic.map_config.bases.get(&0)
+                            pos: generic.map_config.bases.get(&oj_rc_core::types::TeamId::from_raw(0))
                                 .map(|(s, _)| (s.center.x, s.center.y, s.center.z))
                                 .unwrap_or((0.0, 0.0, 0.0)).into(),
-                            rot: generic.map_config.bases.get(&0)
+                            rot: generic.map_config.bases.get(&oj_rc_core::types::TeamId::from_raw(0))
                                 .map(|(s, _)| {
                                     let loc = oj_rc_core::persist::config::Point {
                                         x: s.center.x,
@@ -1504,10 +1548,10 @@ impl CustomGameLogic for BattleArenaLogic {
                                 .unwrap_or((0.0, 0.0, 0.0, 0.0).into()),
                         },
                         base_2: rlnl::types::PosQuatPair {
-                            pos: generic.map_config.bases.get(&1)
+                            pos: generic.map_config.bases.get(&oj_rc_core::types::TeamId::from_raw(1))
                                 .map(|(s, _)| (s.center.x, s.center.y, s.center.z))
                                 .unwrap_or((0.0, 0.0, 0.0)).into(),
-                            rot: generic.map_config.bases.get(&1)
+                            rot: generic.map_config.bases.get(&oj_rc_core::types::TeamId::from_raw(1))
                                 .map(|(s, _)| {
                                     let loc = oj_rc_core::persist::config::Point {
                                         x: s.center.x,
@@ -1526,9 +1570,9 @@ impl CustomGameLogic for BattleArenaLogic {
             if generic.map_config.capture_points.is_empty() || player.descriptor.user_id.is_none() {
                 None
             } else {
-                let point_0_team = self.capture_tracking.point_owned(0);
-                let point_1_team = self.capture_tracking.point_owned(1);
-                let point_2_team = self.capture_tracking.point_owned(2);
+                let point_0_team = self.capture_tracking.point_owned(crate::types::CapturePoint::from_raw(0));
+                let point_1_team = self.capture_tracking.point_owned(crate::types::CapturePoint::from_raw(1));
+                let point_2_team = self.capture_tracking.point_owned(crate::types::CapturePoint::from_raw(2));
                 Some(crate::matches::RlnlPacket {
                     event: rlnl::event_code::NetworkEvent::RegisterCapturePoints,
                     property: literustlib::packet::Property::ReliableOrdered,
@@ -1661,7 +1705,11 @@ impl CustomGameLogic for BattleArenaLogic {
         ].into_iter().flatten().collect()
     }
 
-    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+    async fn on_countdown_start(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        game_start: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         let read_lock = generic.users.read().await;
         let mut senders = Vec::with_capacity(read_lock.len());
         for (player_id, conn) in read_lock.iter() {
@@ -1687,7 +1735,11 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+    async fn on_player_reconnect_complete(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         // re-sync all base crystals
         for (team, base) in self.base_tracking.bases.iter() {
             base.send_full_base_heal_to(
@@ -1730,12 +1782,24 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+    async fn on_game_completed(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+    ) -> bool {
         self.abort_timer_sync().await;
         true
     }
 
-    async fn on_broadcast(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+    async fn on_broadcast(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event_out: rlnl::event_code::NetworkEvent,
+        event_in: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        data: &Option<Box<dyn crate::Broadcastable>>,
+        _skip_user: bool,
+    ) -> bool {
         match (event_in, data) {
             (rlnl::event_code::NetworkEvent::DamageCube, Some(data)) => {
                 let maybe_cube_dmg = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::DestroyCubesFull>(data.as_ref());
@@ -1812,7 +1876,12 @@ impl CustomGameLogic for BattleArenaLogic {
         }
     }
 
-    async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool {
+    async fn on_motion(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        motion: &rlnl::machine_motion::MachineMotion,
+        location: (f32, f32, f32),
+    ) -> bool {
         let game_start = generic.game_start.load(std::sync::atomic::Ordering::Relaxed);
         if generic.game_start.load(std::sync::atomic::Ordering::Relaxed) == i64::MIN || chrono::Utc::now().timestamp() < game_start {
             // game is not in progress, ignore motion event
@@ -1835,26 +1904,28 @@ impl CustomGameLogic for BattleArenaLogic {
             log::debug!("No capture points for game {}", generic.game_guid());
             return true; // don't bother trying to track whether players are in capture points since there are none
         }
-        if let Some(player_team) = self.player_tracking.team(motion.player_id).await {
+        let motion_player_id = oj_rc_core::types::PlayerId::from_raw(motion.player_id);
+        if let Some(player_team) = self.player_tracking.team(motion_player_id).await.as_team() {
             let mut now_in_point = None;
             for (point_i, point) in generic.map_config.capture_points.iter().enumerate() {
+                let point_i = crate::types::CapturePoint::from_raw(point_i as u8);
                 if crate::matches::GenericGamemodeEngine::<Self>::is_in(&location, &point.0) {
-                    now_in_point = Some(point_i as u8);
+                    now_in_point = Some(point_i);
                     break;
                 }
             }
-            let was_in_point = self.player_tracking.swap_is_in_point(motion.player_id, now_in_point);
+            let was_in_point = self.player_tracking.swap_is_in_point(motion_player_id, now_in_point);
             if was_in_point != now_in_point {
                 //log::info!("Player {}'s occupied capture point changed from {:?} to {:?}", motion.player_id, was_in_point, now_in_point);
                 if let Some(now_in_point) = now_in_point {
-                    self.capture_tracking.on_enter(generic, now_in_point, motion.player_id, player_team as i8).await;
+                    self.capture_tracking.on_enter(generic, now_in_point, motion_player_id, player_team.maybe()).await;
                 }
                 if let Some(was_in_point) = was_in_point {
-                    self.capture_tracking.on_exit(generic, was_in_point, motion.player_id, player_team as i8).await;
+                    self.capture_tracking.on_exit(generic, was_in_point, motion_player_id, player_team.maybe()).await;
                 }
             }
         } else {
-            log::warn!("Unknown team for player {} in game {}", motion.player_id, generic.game_guid());
+            log::warn!("Unknown team for player {} in game {}", motion_player_id, generic.game_guid());
         }
         if let Some(tick_info) = self.capture_tracking.tick(generic, self.config.num_segments as f32).await {
             // handle shield (de)activation
@@ -1863,7 +1934,7 @@ impl CustomGameLogic for BattleArenaLogic {
                     rlnl::event_code::NetworkEvent::SetShieldState,
                     literustlib::packet::Property::ReliableOrdered,
                     &rlnl::events::sync::FusionShieldState {
-                        team_id: *team as i8,
+                        team_id: team.maybe().as_raw(),
                         full_power: 1,
                     },
                     true,
@@ -1875,7 +1946,7 @@ impl CustomGameLogic for BattleArenaLogic {
                         rlnl::event_code::NetworkEvent::SetShieldState,
                         literustlib::packet::Property::ReliableOrdered,
                         &rlnl::events::sync::FusionShieldState {
-                            team_id: *team as i8,
+                            team_id: team.maybe().as_raw(),
                             full_power: 0,
                         },
                         true,
@@ -1886,7 +1957,7 @@ impl CustomGameLogic for BattleArenaLogic {
             // do base charge tick
             let base_tick_info = self.base_tracking.tick(&tick_info, &self.crystals, generic, self.capture_tracking.points.len(), self.config.protonium_health as u32, &self.config).await;
             if let Some((winning_team, win_mode)) = base_tick_info.win {
-                self.do_win(winning_team, win_mode, generic).await;
+                self.do_win(winning_team.team(), win_mode, generic).await;
             }
 
             // handle surrender vote tick
@@ -1895,7 +1966,14 @@ impl CustomGameLogic for BattleArenaLogic {
         true
     }
 
-    async fn on_custom(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>) {
+    async fn on_custom(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user_id: oj_rc_core::types::UserId,
+        event: rlnl::event_code::NetworkEvent,
+        property: literustlib::packet::Property,
+        data: Box<dyn crate::Broadcastable>,
+    ) {
         match (event, property) {
             (rlnl::event_code::NetworkEvent::SendDamagedByEnemyShield, literustlib::packet::Property::ReliableOrdered) => {
                 generic.broadcast(
@@ -1908,11 +1986,12 @@ impl CustomGameLogic for BattleArenaLogic {
             (rlnl::event_code::NetworkEvent::SurrenderRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_init_surr = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::InitiateSurrender>(data.as_ref());
                 if let Some(init_surr) = maybe_init_surr {
-                    if let Some(team) = self.player_tracking.team(init_surr.player_id).await {
+                    let surr_player_id = oj_rc_core::types::PlayerId::from_raw(init_surr.player_id);
+                    if let Some(team) = self.player_tracking.team(surr_player_id).await.as_team() {
                         let team_members = self.player_tracking.players_on_team(team).await;
-                        let result = self.surrender_tracking.request_new(team, init_surr.player_id, team_members.into_iter(), generic).await;
+                        let result = self.surrender_tracking.request_new(team, surr_player_id, team_members.into_iter(), generic).await;
                         if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
-                            let winning_team = if team == 0 { 1 } else { 0 };
+                            let winning_team = crate::types::Team::from_raw(if team == crate::types::Team::from_raw(0) { 1 } else { 0 });
                             self.do_win(winning_team, WinMode::Surrender, generic).await;
                         }
                     }
@@ -1922,12 +2001,12 @@ impl CustomGameLogic for BattleArenaLogic {
             },
             (rlnl::event_code::NetworkEvent::SurrenderVoteCast, literustlib::packet::Property::ReliableOrdered) => {
                 if let Some(player_id) = generic.user_key_by_user_id(user_id) {
-                    if let Some(team) = self.player_tracking.team(player_id).await {
+                    if let Some(team) = self.player_tracking.team(player_id).await.as_team() {
                         let maybe_vote = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::SurrenderVoteCast>(data.as_ref());
                         if let Some(vote) = maybe_vote {
                             let result = self.surrender_tracking.vote(team, player_id, vote.surrender != 0, generic).await;
                             if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
-                                let winning_team = if team == 0 { 1 } else { 0 };
+                                let winning_team = crate::types::Team::from_raw(if team == crate::types::Team::from_raw(0) { 1 } else { 0 });
                                 self.do_win(winning_team, WinMode::Surrender, generic).await;
                             }
                         }
@@ -1937,9 +2016,10 @@ impl CustomGameLogic for BattleArenaLogic {
             (rlnl::event_code::NetworkEvent::AwardTeamBaseProtoniumDestroyedRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_crystal_bonus = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::AwardProtoniumDestroyedCubes>(data.as_ref());
                 if let Some(crystal_destroyed) = maybe_crystal_bonus {
-                    if let Some(generic_player) = generic.user_descriptor(crystal_destroyed.player_id) {
+                    let crystal_player_id = oj_rc_core::types::PlayerId::from_raw(crystal_destroyed.player_id);
+                    if let Some(generic_player) = generic.user_descriptor(crystal_player_id) {
                         generic_player.counters.crystals.fetch_add(crystal_destroyed.destroyed_cubes as u32, std::sync::atomic::Ordering::Relaxed);
-                        let data = generic_player.counters.get_generic_packet(crystal_destroyed.player_id, rlnl::types::IngameStatId::DestroyedProtoniumCubes, Some(crystal_destroyed.destroyed_cubes as _));
+                        let data = generic_player.counters.get_generic_packet(crystal_player_id, rlnl::types::IngameStatId::DestroyedProtoniumCubes, Some(crystal_destroyed.destroyed_cubes as _));
                         generic.broadcast(
                             rlnl::event_code::NetworkEvent::UpdateGameStats,
                             literustlib::packet::Property::ReliableOrdered,
@@ -1953,7 +2033,12 @@ impl CustomGameLogic for BattleArenaLogic {
         }
     }
 
-    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+    async fn on_spot_vehicle(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _remote_player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 }

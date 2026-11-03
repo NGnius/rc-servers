@@ -108,7 +108,7 @@ pub trait User: ServiceUser + ChatUser + SocialUser + LobbyUser + MultiplayerUse
     async fn singleplayer_robots(&self, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, singleplayer_config: &crate::persist::config::SingleplayerConfig, cpu_counter: &crate::cubes::CpuListParser) -> Result<polariton::operation::Typed, i16>;
     async fn last_seen(&self) -> Result<u64, i16>;
     async fn set_avatar_info(&self, info: AvatarInfo) -> Result<(), i16>;
-    async fn list_avatar_info(&self, public_ids: &[String]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
+    async fn list_avatar_info(&self, public_ids: &[crate::types::PublicId]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
     fn current_game_event_setter(&self) -> Box<dyn GameEventSetter>;
     async fn apply_purchase(&self, action: &crate::persist::config::ShopAction) -> Result<PurchaseResult, polariton_server::operations::SimpleOpError>;
     async fn currency_debit(&self, ty: CurrencyType, to_sub: u64) -> Result<(), polariton_server::operations::SimpleOpError>;
@@ -353,7 +353,7 @@ pub struct FakePlayers {
 pub struct MatchInfo {
     pub map: String,
     pub mode: crate::data::game_mode::GameMode,
-    pub guid: String,
+    pub guid: crate::types::GameGuid,
     pub is_ranked: bool,
     pub is_custom: bool,
     pub visibility: crate::data::game_mode::MapVisibility,
@@ -371,7 +371,7 @@ pub struct CurrentGameEvent {
 }
 
 pub struct GameDescriptor {
-    pub guid: String,
+    pub guid: crate::types::GameGuid,
     pub map: String,
     pub mode: crate::data::game_mode::GameMode,
     pub visibility: crate::data::game_mode::MapVisibility,
@@ -405,27 +405,27 @@ pub struct GameOverrides {
 
 #[derive(Clone)]
 pub struct PlayerLobbyDescriptor {
-    pub user_id: i32,
-    pub team: i32,
-    pub public_id: String,
-    pub display_name: String,
+    pub user_id: crate::types::UserId,
+    pub team: crate::types::TeamId,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub group: Option<String>,
 }
 
 #[derive(Clone)]
 pub struct PlayerDescriptor {
-    pub user_id: Option<i32>,
-    pub player_id: u8,
-    pub team: i32,
+    pub user_id: Option<crate::types::UserId>,
+    pub player_id: crate::types::PlayerId,
+    pub team: crate::types::TeamId,
     pub group: Option<i32>,
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub is_rewards_claimed: bool,
     pub mode: Option<crate::persist::config::ClientEmulator>,
 }
 
 pub struct GameVehicleDescriptor {
-    pub player_id: u8,
+    pub player_id: crate::types::PlayerId,
     pub name: String,
     pub robot_data: Vec<u8>,
     pub colour_data: Vec<u8>,
@@ -466,12 +466,12 @@ pub enum MultiplayerErrorCode {
 #[async_trait::async_trait]
 pub trait MultiplayerUser: IntercomUser + CommonUser {
     async fn current_game(&self) -> Result<Option<GameDescriptor>, MultiplayerError>;
-    async fn game_players(&self, guid: &str) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
-    async fn game_vehicles(&self, guid: &str) -> Result<Vec<GameVehicleDescriptor>, MultiplayerError>;
-    async fn complete_game(&self, guid: &str) -> Result<(), MultiplayerError>;
-    async fn game_info(&self, guid: &str) -> Result<Option<GameDescriptor>, MultiplayerError>;
-    async fn update_game_score(&self, guid: &str, score: PlayerScore) -> Result<i32, MultiplayerError>;
-    async fn save_player_connected_status(&self, guid: &str, is_connected: bool) -> Result<(), MultiplayerError>;
+    async fn game_players(&self, guid: &crate::types::GameGuid) -> Result<Vec<PlayerDescriptor>, MultiplayerError>;
+    async fn game_vehicles(&self, guid: &crate::types::GameGuid) -> Result<Vec<GameVehicleDescriptor>, MultiplayerError>;
+    async fn complete_game(&self, guid: &crate::types::GameGuid) -> Result<(), MultiplayerError>;
+    async fn game_info(&self, guid: &crate::types::GameGuid) -> Result<Option<GameDescriptor>, MultiplayerError>;
+    async fn update_game_score(&self, guid: &crate::types::GameGuid, score: PlayerScore) -> Result<i32, MultiplayerError>;
+    async fn save_player_connected_status(&self, guid: &crate::types::GameGuid, is_connected: bool) -> Result<(), MultiplayerError>;
 }
 
 pub struct PlayerScore {
@@ -493,9 +493,9 @@ pub trait IntercomUser: CommonUser {
     async fn save_custom_avatar(&self, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn save_factory_thumbnail(&self, factory_id: i32, image: Vec<u8>) -> Result<(), polariton_server::operations::SimpleOpError>;
     async fn webservice_listener(&self) -> Result<super::IntercomListener<super::intercom::IntercomWebServiceUserMessage>, polariton_server::operations::SimpleOpError>;
-    async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<String>);
-    async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<String>);
-    async fn trigger_workaround(&self, msg: super::intercom::IntercomWorkaroundMessage, to: Vec<String>);
+    async fn show_dev_message(&self, msg: super::intercom::IntercomDevMessage, to: Vec<crate::types::PublicId>);
+    async fn enter_maintenance(&self, msg: super::intercom::IntercomMaintenanceMessage, to: Vec<crate::types::PublicId>);
+    async fn trigger_workaround(&self, msg: super::intercom::IntercomWorkaroundMessage, to: Vec<crate::types::PublicId>);
     async fn update_custom_game(&self, msg: super::intercom::IntercomLobbyCustomGameDataMessage);
     async fn update_status(&self, server_name: &str, msg: oj_serdes::ServerStatus);
 }
@@ -516,12 +516,12 @@ pub struct ResolvedVehicle {
 
 #[async_trait::async_trait]
 pub trait CommonUser: Send + Sync {
-    fn account_id(&self) -> i32;
+    fn user_id(&self) -> crate::types::UserId;
     async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
-    fn public_id(&self) -> &'_ str;
-    fn display_name(&self) -> &'_ str;
+    fn public_id(&self) -> crate::types::PublicId;
+    fn display_name(&self) -> crate::types::DisplayName;
     /// Seconds since Unix epoch
-    fn creation(&self) -> i64;
+    fn creation(&self) -> chrono::DateTime<chrono::Utc>;
     fn is_mod(&self) -> bool;
     fn is_admin(&self) -> bool;
     fn is_dev(&self) -> bool;
@@ -529,7 +529,7 @@ pub trait CommonUser: Send + Sync {
     fn is_banned(&self) -> bool;
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
     async fn db_counters(&self) -> Vec<(&'static str, i64)>;
-    async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError>;
+    async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError>;
     async fn fedi_get(&self) -> super::Federation;
     async fn fedi_set(&self, fedi: super::Federation) -> bool;
 }
@@ -544,19 +544,19 @@ pub enum CurrencyType {
 
 pub enum CurrencyOp {
     Get,
-    Add(u64),
-    Sub(u64),
-    AddSub(i64),
+    Add(crate::types::Currency<u64>),
+    Sub(crate::types::Currency<u64>),
+    AddSub(crate::types::Currency<i64>),
 }
 
 #[async_trait::async_trait]
 pub trait SocialUser: Send + Sync {
-    async fn accept_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
-    async fn decline_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
-    async fn cancel_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
-    async fn remove_friend(&self, username: String) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn accept_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn decline_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn cancel_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn remove_friend(&self, username: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn list_friends(&self) -> Result<Vec<FriendData>, polariton_server::operations::SimpleOpError>;
-    async fn list_social_info(&self, public_ids: &[String]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
+    async fn list_social_info(&self, public_ids: &[crate::types::PublicId]) -> Result<Vec<SocialInfo>, polariton_server::operations::SimpleOpError>;
     async fn has_unclaimed_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn get_unclaimed_match_rewards(&self) -> Result<MatchRewards, polariton_server::operations::SimpleOpError>;
     async fn claim_match_rewards(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
@@ -566,14 +566,14 @@ pub trait SocialUser: Send + Sync {
     async fn create_clan(&self, clan: ClanData, avatar: Vec<u8>)-> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
     async fn join_clan(&self, clan_name: &str) -> Result<(ClanData, Vec<ClanMember>), polariton_server::operations::SimpleOpError>;
     async fn leave_clan(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
-    async fn remove_user_from_clan(&self, public_id: &str) -> Result<bool, polariton_server::operations::SimpleOpError>;
+    async fn remove_user_from_clan(&self, public_id: &crate::types::PublicId) -> Result<bool, polariton_server::operations::SimpleOpError>;
     async fn update_clan(&self, name: Option<String>, description: Option<String>, ty: Option<ClanType>, avatar: Option<Vec<u8>>) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
-    async fn invite_to_clan(&self, public_id: &str) -> Result<ClanMember, polariton_server::operations::SimpleOpError>;
+    async fn invite_to_clan(&self, public_id: &crate::types::PublicId) -> Result<ClanMember, polariton_server::operations::SimpleOpError>;
     async fn my_clan_invites(&self) -> Result<Vec<ClanInviteData>, polariton_server::operations::SimpleOpError>;
     async fn decline_clan_invite(&self, clan_name: &str) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
     async fn decline_all_clan_invites(&self) -> Result<bool, polariton_server::operations::SimpleOpError>;
-    async fn cancel_invite_to_clan(&self, public_id: &str) -> Result<(ClanData, Vec<ClanMember>), polariton_server::operations::SimpleOpError>;
-    async fn update_clan_member(&self, public_id: &str, rank: ClanMemberRank) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
+    async fn cancel_invite_to_clan(&self, public_id: &crate::types::PublicId) -> Result<(ClanData, Vec<ClanMember>), polariton_server::operations::SimpleOpError>;
+    async fn update_clan_member(&self, public_id: &crate::types::PublicId, rank: ClanMemberRank) -> Result<Vec<ClanMember>, polariton_server::operations::SimpleOpError>;
 }
 
 #[async_trait::async_trait]
@@ -595,8 +595,8 @@ pub struct MatchRewards {
 }
 
 pub struct FriendInviteReturn<C> {
-    pub target_public_id: String,
-    pub target_display_name: String,
+    pub target_public_id: crate::types::PublicId,
+    pub target_display_name: crate::types::DisplayName,
     pub my_clan_name: Option<String>,
     pub target_clan_name: Option<String>,
     pub my_avatar_id: u32,
@@ -604,8 +604,8 @@ pub struct FriendInviteReturn<C> {
 }
 
 pub struct FriendData {
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub clan_name: Option<String>,
     pub state: FriendInviteStatus, // FIXME don't directly pass database type
     pub avatar_id: u32,
@@ -613,8 +613,8 @@ pub struct FriendData {
 
 #[derive(Clone)]
 pub struct SocialInfo {
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub avatar_id: Option<i32>,
 }
 
@@ -650,8 +650,8 @@ pub struct ClanData {
 }
 
 pub struct ClanInviteData {
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub avatar_id: Option<i32>,
     pub clan_name: String,
     pub clan_description: String,
@@ -685,8 +685,8 @@ impl ClanType {
 }
 
 pub struct ClanMember {
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub is_confirmed: bool,
     pub avatar_id: Option<i32>,
     pub rank: ClanMemberRank,

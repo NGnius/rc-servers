@@ -1,5 +1,6 @@
 use actix_web::{get, web::Data, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
@@ -35,8 +36,8 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                     garage_infos.sort_by_key(|g| g.slot);
                     render_ok(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             factory: server_config.factory_url.clone(),
                             garages: garage_infos.into_iter()
                                 .map(|g| GarageData {
@@ -55,11 +56,11 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                     )
                 },
                 Err(e) => {
-                    log::error!("Failed to retrieve garages for user {}: {}", user.public_id(), e);
+                    log::error!("Failed to retrieve garages for {}: {}", user.public_id(), e);
                     render_err(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             factory: server_config.factory_url.clone(),
                             garages: Vec::new(),
                         },

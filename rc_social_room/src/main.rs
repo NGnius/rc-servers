@@ -86,9 +86,9 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
     ONLINE_USERS.store(social.online_count_read().await - 1, std::sync::atomic::Ordering::SeqCst);
     if let Ok(user_info) = user_state.user() {
         update_status(user_info.as_ref().as_ref()).await;
-        if let Some(platoon_id) = social.platoon_of_user(user_info.public_id()).await {
+        if let Some(platoon_id) = social.platoon_of_user(&user_info.public_id()).await {
             // send platoon leave event to others in platoon
-            social.remove_user_from_platoon(user_info.public_id()).await;
+            social.remove_user_from_platoon(&user_info.public_id()).await;
             let remaining_users = social.users_of_platoon(&platoon_id).await;
             let event = crate::events::platoon_member_left::PlatoonMemberLeft {
                 member_public_id: user_info.public_id().to_owned(),

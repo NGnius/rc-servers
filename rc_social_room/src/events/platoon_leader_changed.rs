@@ -1,7 +1,9 @@
+use oj_rc_core::types::RawType;
+
 #[derive(Clone)]
 pub struct PlatoonLeaderChanged {
-    pub leader_public_id: String,
-    pub leader_display_name: String,
+    pub leader_public_id: oj_rc_core::types::PublicId,
+    pub leader_display_name: oj_rc_core::types::DisplayName,
 }
 
 impl PlatoonLeaderChanged {
@@ -9,8 +11,8 @@ impl PlatoonLeaderChanged {
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
         let mut params = std::collections::HashMap::with_capacity(4);
-        params.insert(17, polariton::operation::Typed::Str(self.leader_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.leader_display_name.clone().into()));
+        params.insert(17, polariton::operation::Typed::Str(self.leader_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.leader_display_name.as_raw_ref().into()));
         params.into()
     }
 }

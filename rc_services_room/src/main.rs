@@ -111,7 +111,7 @@ async fn process_socket(mut socket: net::TcpStream, address: std::net::SocketAdd
         if let Some(session) = init_ctx.custom_games.leave_game(pub_id).await.1 {
             let session_members = session.users.iter()
                 .filter(|mem| !mem.is_invited)
-                .map(|mem| &mem.public_id as &str);
+                .map(|mem| &mem.public_id);
             let update_event = crate::events::CustomGameRefresh {
                 session: session.session_id,
             };

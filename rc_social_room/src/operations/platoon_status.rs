@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -23,10 +24,10 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonStatusUpdater {
                     oj_rc_core::data::error_codes::SocialErrorCode::UnexpectedError as i16,
                     "Invalid member status".to_owned(),
                 ))?;
-            if let Some(platoon_id) = self.social.platoon_of_user(my_public_id).await {
-                log::debug!("User {} platoon {} status updated to {:?}", my_public_id, platoon_id, member_status);
+            if let Some(platoon_id) = self.social.platoon_of_user(&my_public_id).await {
+                log::debug!("User {} platoon {} status updated to {:?}", my_public_id, platoon_id.as_raw_ref(), member_status);
                 let members = self.social.users_of_platoon(&platoon_id).await;
-                self.social.update_user_in_platoon(my_public_id, member_status).await;
+                self.social.update_user_in_platoon(&my_public_id, member_status).await;
                 let event = crate::events::platoon_member_update::PlatoonMemberStatusUpdate {
                     member_public_id: my_public_id.to_owned(),
                     member_display_name: user_info.display_name().to_owned(),

@@ -33,7 +33,7 @@ impl User {
                 }
             },
             UserState::Authenticated(info) => {
-                log::warn!("User {} already authenticated, ignoring", info.user.account_id());
+                log::warn!("User {} already authenticated, ignoring", info.user.user_id());
                 true
             }
         }

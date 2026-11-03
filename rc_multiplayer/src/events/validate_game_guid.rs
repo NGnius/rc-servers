@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 pub struct AuthUserGame {
     matches: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
@@ -21,7 +23,7 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
 
     async fn handle(&self, data: Self::In, peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         let username = data.player_name.0.clone();
-        let game_guid = data.game_guid.0.clone();
+        let game_guid = oj_rc_core::types::GameGuid::from_guid_str(&data.game_guid.0).unwrap_or_else(|| oj_rc_core::types::GameGuid::from_raw(-1));
         if user.authenticate(data).await {
             let user_info = user.user().await.unwrap();
             match user_info.current_game().await {
@@ -64,7 +66,7 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                     }
                 },
                 Ok(None) => {
-                    log::warn!("Cannot validate game guid for user {} with no ongoing game [disconnecting...]", user_info.account_id());
+                    log::warn!("Cannot validate game guid for user {} with no ongoing game [disconnecting...]", user_info.user_id());
                     super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: rlnl::types::GameServerErrorCodes::StrErrIncorrectGameGuid,
@@ -76,7 +78,7 @@ impl crate::handlers::RlnlEventCodeHandler for AuthUserGame {
                     peer.disconnect();
                 },
                 Err(e) => {
-                    log::error!("Failed to get current game for user {}: {} [disconnecting...]", user_info.account_id(), e.message);
+                    log::error!("Failed to get current game for user {}: {} [disconnecting...]", user_info.user_id(), e.message);
                     super::log_lnl_send_failure(crate::handlers::RlnlSender::new(sender)
                         .send_data(&rlnl::types::StringCode {
                             ty: core_to_rlnl_mp_error_code(e.code),

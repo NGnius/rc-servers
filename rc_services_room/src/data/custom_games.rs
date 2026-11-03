@@ -126,43 +126,44 @@ impl PlayerSessionStatus {
 }
 
 pub struct Session {
-    pub leader: String,
-    pub session: String,
-    pub members: Vec<String>,
-    pub members_display_name: Vec<String>,
-    pub invited: Vec<String>,
-    pub team_b_members: Vec<String>,
+    pub leader: oj_rc_core::types::PublicId,
+    pub session: crate::custom_game_tracker::CustomGameKey,
+    pub members: Vec<oj_rc_core::types::PublicId>,
+    pub members_display_name: Vec<oj_rc_core::types::DisplayName>,
+    pub invited: Vec<oj_rc_core::types::PublicId>,
+    pub team_b_members: Vec<oj_rc_core::types::PublicId>,
     pub config: std::collections::HashMap<String, String>,
-    pub avatar_info: std::collections::HashMap<String, oj_rc_core::data::player_data::AvatarInfo>,
-    pub player_session_state: std::collections::HashMap<String, PlayerSessionStatus>,
+    pub avatar_info: std::collections::HashMap<oj_rc_core::types::PublicId, oj_rc_core::data::player_data::AvatarInfo>,
+    pub player_session_state: std::collections::HashMap<oj_rc_core::types::PublicId, PlayerSessionStatus>,
 }
 
 impl Session {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
+        use oj_rc_core::types::RawType;
         Typed::HashMap(vec![
-            (Typed::Str("Leader".into()), Typed::Str(self.leader.clone().into())),
-            (Typed::Str("SessionID".into()), Typed::Str(self.session.clone().into())),
+            (Typed::Str("Leader".into()), Typed::Str(self.leader.as_raw_ref().into())),
+            (Typed::Str("SessionID".into()), Typed::Str(self.session.as_raw_ref().into())),
             (Typed::Str("Members".into()), Typed::HashMap(self.members.iter()
                 .enumerate()
-                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.into())))
+                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.as_raw_ref().into())))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
             (Typed::Str("MembersDisplayName".into()), Typed::HashMap(self.members_display_name.iter()
                 .enumerate()
-                .map(|(i, display_name)| (Typed::Int(i as _), Typed::Str(display_name.into())))
+                .map(|(i, display_name)| (Typed::Int(i as _), Typed::Str(display_name.as_raw_ref().into())))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
             (Typed::Str("Invited".into()), Typed::HashMap(self.invited.iter()
                 .enumerate()
-                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.into())))
+                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.as_raw_ref().into())))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
             (Typed::Str("TeamBMembers".into()), Typed::HashMap(self.team_b_members.iter()
                 .enumerate()
-                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.into())))
+                .map(|(i, pub_id)| (Typed::Int(i as _), Typed::Str(pub_id.as_raw_ref().into())))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
@@ -172,12 +173,12 @@ impl Session {
                 .into()
             )),
             (Typed::Str("AvatarInfo".into()), Typed::HashMap(self.avatar_info.iter()
-                .map(|(key, val)| (Typed::Str(key.into()), val.as_transmissible()))
+                .map(|(key, val)| (Typed::Str(key.as_raw_ref().into()), val.as_transmissible()))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
             (Typed::Str("PlayerSessionState".into()), Typed::HashMap(self.player_session_state.iter()
-                .map(|(key, val)| (Typed::Str(key.into()), Typed::Int(*val as _)))
+                .map(|(key, val)| (Typed::Str(key.as_raw_ref().into()), Typed::Int(*val as _)))
                 .collect::<Vec<(_, _)>>()
                 .into()
             )),
@@ -188,19 +189,20 @@ impl Session {
 /// not to be confused with the event which contains the same data
 /// ... just serialized differently (to be difficult?)
 pub struct CustomGameInvite {
-    pub inviter_public_id: String,
-    pub inviter_display_name: String,
-    pub session: String,
+    pub inviter_public_id: oj_rc_core::types::PublicId,
+    pub inviter_display_name: oj_rc_core::types::DisplayName,
+    pub session: crate::custom_game_tracker::CustomGameKey,
     pub avatar_id: Option<i32>,
     pub invited_to_team_b: bool,
 }
 
 impl CustomGameInvite {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
+        use oj_rc_core::types::RawType;
         Typed::HashMap(vec![
-            (polariton::operation::Typed::Str("SenderName".into()), polariton::operation::Typed::Str(self.inviter_public_id.clone().into())),
-            (polariton::operation::Typed::Str("SenderDisplayName".into()), polariton::operation::Typed::Str(self.inviter_display_name.clone().into())),
-            (polariton::operation::Typed::Str("SessionGUID".into()), polariton::operation::Typed::Str(self.session.clone().into())),
+            (polariton::operation::Typed::Str("SenderName".into()), polariton::operation::Typed::Str(self.inviter_public_id.as_raw_ref().into())),
+            (polariton::operation::Typed::Str("SenderDisplayName".into()), polariton::operation::Typed::Str(self.inviter_display_name.as_raw_ref().into())),
+            (polariton::operation::Typed::Str("SessionGUID".into()), polariton::operation::Typed::Str(self.session.as_raw_ref().into())),
             (polariton::operation::Typed::Str("UseCustomAvatar".into()), polariton::operation::Typed::Bool(self.avatar_id.is_none())),
             (polariton::operation::Typed::Str("AvatarId".into()), polariton::operation::Typed::Int(self.avatar_id.unwrap_or(0))),
             (polariton::operation::Typed::Str("IsInvitedToTeamB".into()), polariton::operation::Typed::Bool(self.invited_to_team_b)),

@@ -1,15 +1,17 @@
+use oj_rc_core::types::RawType;
 use polariton::operation::Typed;
 
 pub struct AvatarInfo {
-    pub name: String,
+    pub name: oj_rc_core::types::PublicId,
     pub use_custom_avatar: bool,
     pub avatar_id: i32,
 }
 
 impl AvatarInfo {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
+        use oj_rc_core::types::RawType;
         Typed::HashMap(vec![
-            (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
+            (Typed::Str("name".into()), Typed::Str(self.name.as_raw_ref().into())),
             (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),
         ].into())
@@ -20,8 +22,8 @@ impl AvatarInfo {
 pub struct FriendInfo {
     pub status: InviteStatus,
     pub is_online: bool,
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: oj_rc_core::types::PublicId,
+    pub display_name: oj_rc_core::types::DisplayName,
     pub clan_name: String,
 }
 
@@ -32,8 +34,8 @@ impl FriendInfo {
             self.is_online as u8,
         ])?;
         let mut total = 2;
-        total += oj_rc_core::data::write_str_for_binreader(&self.public_id, w)?;
-        total += oj_rc_core::data::write_str_for_binreader(&self.display_name, w)?;
+        total += oj_rc_core::data::write_str_for_binreader(self.public_id.as_raw_ref(), w)?;
+        total += oj_rc_core::data::write_str_for_binreader(self.display_name.as_raw_ref(), w)?;
         total += oj_rc_core::data::write_str_for_binreader(&self.clan_name, w)?;
         Ok(total)
     }
@@ -49,8 +51,8 @@ impl FriendInfo {
         Ok(Self {
             status,
             is_online,
-            public_id,
-            display_name,
+            public_id: oj_rc_core::types::PublicId::from_raw(public_id),
+            display_name: oj_rc_core::types::DisplayName::from_raw(display_name),
             clan_name,
         })
     }

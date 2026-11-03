@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -21,11 +22,11 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
         if let Some(Typed::Bool(is_accept)) = params.remove(&ACCEPT_PARAM_KEY) {
             let user_info = user.user()?;
             let my_pub_id = user_info.public_id();
-            if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
+            if let Some(session) = self.keylock_workaround.get_user(user_info.user_id(), &my_pub_id, &user_info.display_name()).await {
                 if is_accept {
-                    self.keylock_workaround.accept_invite(user_info.account_id()).await;
+                    self.keylock_workaround.accept_invite(user_info.user_id()).await;
                     let keylock_workaround = self.keylock_workaround.clone();
-                    let account_id = user_info.account_id();
+                    let account_id = user_info.user_id();
                     let my_owned_pub_id = my_pub_id.to_owned();
                     let mesh = self.mesh.clone();
                     tokio::task::spawn(async move {
@@ -37,11 +38,11 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
                         }).await;
                     });
                 } else {
-                    self.keylock_workaround.remove_user(user_info.account_id()).await;
+                    self.keylock_workaround.remove_user(user_info.user_id()).await;
                 }
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::InviteReplyCustomGameResponseCode::Success as _));
             } else {
-                let (resp_code, session_opt) = self.games.update_invite_user(my_pub_id, is_accept).await;
+                let (resp_code, session_opt) = self.games.update_invite_user(my_pub_id.clone(), is_accept).await;
                 if let Some(session) = session_opt {
                     if !is_accept {
                         let event = crate::events::CustomGameInviteDecline {
@@ -49,11 +50,11 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
                         };
                         let session_members_iter = session.users.iter()
                             .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
-                            .map(|mem| &mem.public_id as &str);
+                            .map(|mem| &mem.public_id);
                         self.mesh.broadcast_event_to(session_members_iter, event).await;
                     } else {
                         user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                            session_id: session.session_id.clone(),
+                            session_id: session.session_id.as_raw(),
                             config: session.config_core,
                             users: session.users.iter()
                                 .filter(|user| !user.is_invited)
@@ -69,7 +70,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameInviteResponder {
                     };
                     let other_session_members_iter = session.users.iter()
                         .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
-                        .map(|mem| &mem.public_id as &str);
+                        .map(|mem| &mem.public_id);
                     self.mesh.broadcast_event_to(other_session_members_iter, event).await;
                 }
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(resp_code as _));

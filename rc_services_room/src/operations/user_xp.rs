@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -19,7 +20,7 @@ impl <C: Send + 'static> SimpleOperation<C> for UserTotalExperiencer {
             oj_rc_core::persist::user::CurrencyType::Experience,
             oj_rc_core::persist::user::CurrencyOp::Get,
         ).await?;
-        table.insert(PARAM_KEY, Typed::Int(exp as _));
+        table.insert(PARAM_KEY, Typed::Int(exp.as_raw() as _));
         Ok(table)
     }
 }

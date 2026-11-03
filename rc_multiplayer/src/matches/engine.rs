@@ -22,11 +22,11 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     /// Called when player leaves the game server (i.e. player disconnects).
     async fn on_player_end(&self, generic: &super::GenericGamemodeEngine<Self>, connection: &crate::matches::generic::UserConnection, player: &crate::matches::generic::UserDescriptor) -> bool;
     /// Called when a player's vehicle is destroyed by another player.
-    async fn on_vehicle_destroyed(&self, generic: &super::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool;
+    async fn on_vehicle_destroyed(&self, generic: &super::GenericGamemodeEngine<Self>, killer: oj_rc_core::types::PlayerId, victim: oj_rc_core::types::PlayerId) -> bool;
     /// Called when a player's vehicle self-destructs.
-    async fn on_vehicle_self_destruct(&self, generic: &super::GenericGamemodeEngine<Self>, user: u8, is_classic: bool) -> bool;
+    async fn on_vehicle_self_destruct(&self, generic: &super::GenericGamemodeEngine<Self>, user: oj_rc_core::types::PlayerId, is_classic: bool) -> bool;
     /// Called when a kill bonus event is received after a confirmed kill
-    async fn on_kill_bonus(&self, generic: &super::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool;
+    async fn on_kill_bonus(&self, generic: &super::GenericGamemodeEngine<Self>, killer: oj_rc_core::types::PlayerId, victim: oj_rc_core::types::PlayerId) -> bool;
     /// Called during loading, before the sync stage is entered.
     ///
     /// Roughly, loading is as follows: `Loading -> WaitingForSync -> Sync -> WaitingToStart -> InGame`.
@@ -34,18 +34,18 @@ pub trait CustomGameLogic: Sized + Send + Sync + 'static {
     /// Called when loading completes and the countdown is starting
     async fn on_countdown_start(&self, generic: &super::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool;
     /// Called when loading completes for a player when the game is already started
-    async fn on_player_reconnect_complete(&self, generic: &super::GenericGamemodeEngine<Self>, user: u8) -> bool;
+    async fn on_player_reconnect_complete(&self, generic: &super::GenericGamemodeEngine<Self>, user: oj_rc_core::types::PlayerId) -> bool;
     /// Called when the game is marked as complete
     async fn on_game_completed(&self, generic: &super::GenericGamemodeEngine<Self>) -> bool;
     /// Called when various network events are broadcast from one client but before they are sent to the rest of the clients
     #[allow(clippy::too_many_arguments)]
-    async fn on_broadcast(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, skip_user: bool) -> bool;
+    async fn on_broadcast(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: oj_rc_core::types::UserId, event_out: rlnl::event_code::NetworkEvent, event_in: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: &Option<Box<dyn crate::Broadcastable>>, skip_user: bool) -> bool;
     /// Called when a vehicle motion event is received from a client
     async fn on_motion(&self, generic: &super::GenericGamemodeEngine<Self>, motion: &rlnl::machine_motion::MachineMotion, location: (f32, f32, f32)) -> bool;
     /// Called when a gamemode-specific network event is received from a client
-    async fn on_custom(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>);
+    async fn on_custom(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: oj_rc_core::types::UserId, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>);
 
     /// Called when an enemy vehicle is spotted
-    async fn on_spot_vehicle(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: i32, remote_player: u8) -> bool;
+    async fn on_spot_vehicle(&self, generic: &super::GenericGamemodeEngine<Self>, user_id: oj_rc_core::types::UserId, remote_player: oj_rc_core::types::PlayerId) -> bool;
 }
 

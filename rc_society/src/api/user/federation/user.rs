@@ -1,4 +1,5 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::header::{ContentType, AUTHORIZATION}, web::{Data, Path}};
+use oj_rc_core::types::RawType;
 use oj_serdes::society::activitypub::ObjectContext;
 
 #[get("/api/v1/activitypub/user/{name}")]
@@ -6,7 +7,7 @@ pub async fn get(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, req:
     let json = if let Some(auth_token) = req.headers().get(AUTHORIZATION) {
         match super::auth_user(auth, auth_token).await {
             Ok(user) => {
-                if user.public_id() != *name {
+                if user.public_id().as_raw_ref() != name.as_ref() {
                     log::error!("Wrong authenticated user: requested {}, token for {}", name, user.public_id());
                     super::build_person_from_public_id(&name)
                 } else {

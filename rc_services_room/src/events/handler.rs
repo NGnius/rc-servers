@@ -59,11 +59,11 @@ impl IntercomHandler {
                                 emitter.emit(event);
                             }
                             IntercomWebServiceUserMessage::Workaround(IntercomWebServiceWorkaroundMessage::KeybindLockout { }) => {
-                                let session = keybind_workaround.add_user(user.account_id(), user.public_id().to_owned()).await;
+                                let session = keybind_workaround.add_user(user.user_id(), user.public_id(), user.display_name()).await;
                                 let non_me = session.users.first().unwrap();
                                 let event = super::CustomGameInvite {
                                     inviter_public_id: non_me.public_id.clone(),
-                                    inviter_display_name: non_me.public_id.clone(),
+                                    inviter_display_name: non_me.display_name.clone(),
                                     session: session.session_id,
                                     avatar_id: Some(6),
                                     invited_to_team_a: true,
@@ -72,7 +72,7 @@ impl IntercomHandler {
                             },
                             IntercomWebServiceUserMessage::Workaround(IntercomWebServiceWorkaroundMessage::GameModeEventLock { event }) => {
                                 let is_replaced = game_event_seq.lock().await.add_lockout(
-                                    user.account_id(),
+                                    user.user_id(),
                                     oj_rc_core::persist::config::GameEvent {
                                         map: event.map.into_conf(),
                                         visibility: event.visibility.into_conf(),
@@ -83,7 +83,7 @@ impl IntercomHandler {
                                 log::info!("Activated game event lockout for user {} (replaced? {})", user.public_id(), is_replaced);
                             },
                             IntercomWebServiceUserMessage::Workaround(IntercomWebServiceWorkaroundMessage::GameModeEventUnlock { }) => {
-                                let is_existed = game_event_seq.lock().await.remove_lockout(user.account_id());
+                                let is_existed = game_event_seq.lock().await.remove_lockout(user.user_id());
                                 log::info!("Deactivated game event lockout for user {} (existed? {})", user.public_id(), is_existed);
                             }
                         }

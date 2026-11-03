@@ -1,6 +1,6 @@
 pub struct FriendInviteReceived {
-    pub friend_public_id: String,
-    pub friend_display_name: String,
+    pub friend_public_id: oj_rc_core::types::PublicId,
+    pub friend_display_name: oj_rc_core::types::DisplayName,
     pub clan_name: Option<String>,
     pub is_online: bool, // when would this ever be false?
     pub avatar_id: u32, // direct from database; u32::MAX means it is a custom avatar
@@ -10,9 +10,10 @@ impl FriendInviteReceived {
     pub const CODE: u8 = 0;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(8);
-        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.as_raw_ref().into()));
         if let Some(clan_name) = &self.clan_name {
             params.insert(31, polariton::operation::Typed::Str(clan_name.into()));
         } else {

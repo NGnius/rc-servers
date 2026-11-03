@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use crate::types::RawType;
+
 use super::ItemCategory;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -189,7 +191,7 @@ impl PrefabVehicle {
     pub(super) fn into_conf(&self) -> super::config::VehicleInfo {
         crate::persist::config::VehicleInfo {
             name: self.name.clone(),
-            username: self.username.clone(),
+            username: crate::types::PublicId::from_raw(self.username.clone()),
             id: self.id.clone().into(),
         }
     }

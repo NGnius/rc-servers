@@ -63,6 +63,8 @@ impl <C: Send + 'static> SimpleOperation<C> for PrivateMessageSender {
     async fn handle(&self, params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let mut params = params.to_dict();
         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
+            use oj_rc_core::types::RawType;
+            let user_pub_id = oj_rc_core::types::PublicId::from_raw(username.string.clone());
             if let Some(Typed::Str(message_text)) = params.remove(&MESSAGE_TEXT_PARAM_KEY) {
                 let user = user.user()?;
                 if message_text.string.len() > MAX_MESSAGE_LEN {
@@ -75,8 +77,8 @@ impl <C: Send + 'static> SimpleOperation<C> for PrivateMessageSender {
                     "<unknown location>".to_owned()
                 };
                 let chat_system = self.chat.system().await;
-                log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.public_id(), chat_loc, username.string);
-                chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, username.string).await;
+                log::debug!("Got message `{}` from user {} (@ {} to {})", message_text.string, user.public_id(), chat_loc, user_pub_id);
+                chat_system.handle_private_message(user.as_ref().as_ref(), message_text.string, &user_pub_id).await;
             }
         }
         Ok(params.into())

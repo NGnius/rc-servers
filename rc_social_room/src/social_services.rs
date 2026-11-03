@@ -1,6 +1,6 @@
 /// Primarily keeps track of who is online so events can be sent to them.
 pub struct SocialMesh {
-    users: tokio::sync::RwLock<std::collections::HashMap<String, std::sync::Arc<UserHandle>>>,
+    users: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::PublicId, std::sync::Arc<UserHandle>>>,
     platoons: Platoons,
 }
 
@@ -10,26 +10,45 @@ struct UserHandle {
 }
 
 struct Platoons {
-    platoon_by_id: tokio::sync::RwLock<std::collections::HashMap<String, Vec<PlatoonMember>>>,
-    platoon_by_user: tokio::sync::RwLock<std::collections::HashMap<String, String>>, // public_id -> platoon_id
+    platoon_by_id: tokio::sync::RwLock<std::collections::HashMap<PlatoonId, Vec<PlatoonMember>>>,
+    platoon_by_user: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::PublicId, PlatoonId>>, // public_id -> platoon_id
 }
 
 struct PlatoonMember {
-    public_id: String,
+    public_id: oj_rc_core::types::PublicId,
     //handle: std::sync::Arc<UserHandle>,
     status: crate::data::platoon::MemberStatus,
     timestamp: i64,
 }
 
 pub struct PlatoonMemberInfo {
-    pub public_id: String,
+    pub public_id: oj_rc_core::types::PublicId,
     pub status: crate::data::platoon::MemberStatus,
     pub timestamp: i64,
 }
 
-fn platoon_key(creator: &str) -> String {
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct PlatoonId(String);
+
+impl oj_rc_core::types::RawType for PlatoonId {
+    type Raw = String;
+
+    fn as_raw(&self) -> Self::Raw {
+        self.0.clone()
+    }
+
+    fn as_raw_ref(&self) -> &'_ Self::Raw {
+        &self.0
+    }
+
+    fn from_raw(value: Self::Raw) -> Self {
+        Self(value)
+    }
+}
+
+fn platoon_key(creator: &oj_rc_core::types::PublicId) -> PlatoonId {
     let now = chrono::Utc::now().timestamp();
-    format!("{}_{}_p", creator, now)
+    PlatoonId(format!("{}_{}_p", creator, now))
 }
 
 impl SocialMesh {
@@ -44,7 +63,7 @@ impl SocialMesh {
         }
     }
 
-    pub async fn send_event_to(&self, public_id: &str, event: impl polariton_server::events::IntoEvent<crate::data::custom::CustomType>) -> bool {
+    pub async fn send_event_to(&self, public_id: &oj_rc_core::types::PublicId, event: impl polariton_server::events::IntoEvent<crate::data::custom::CustomType>) -> bool {
         let user_lock = self.users.read().await;
         if let Some(user_handle) = user_lock.get(public_id) {
             let is_success = user_handle.emitter.emit(event);
@@ -57,7 +76,7 @@ impl SocialMesh {
 
     pub async fn add_user(
         &self,
-        public_id: String,
+        public_id: oj_rc_core::types::PublicId,
         emitter: polariton_server::events::WeakEventEmitter<crate::data::custom::CustomType>,
     ) {
         let mut user_lock = self.users.write().await;
@@ -69,13 +88,13 @@ impl SocialMesh {
     }
 
     /// Filter out offline users
-    pub async fn filter_online_only(&self, public_ids: &mut std::collections::HashSet<String>) {
+    pub async fn filter_online_only(&self, public_ids: &mut std::collections::HashSet<oj_rc_core::types::PublicId>) {
         let mut user_lock = self.users.write().await;
         Self::cleanup_dead_users(&mut user_lock).await;
         public_ids.retain(|public_id| user_lock.contains_key(public_id));
     }
 
-    async fn cleanup_dead_users(users: &mut std::collections::HashMap<String, std::sync::Arc<UserHandle>>) {
+    async fn cleanup_dead_users(users: &mut std::collections::HashMap<oj_rc_core::types::PublicId, std::sync::Arc<UserHandle>>) {
         users.retain(|_public_id, handle| handle.is_alive.load(std::sync::atomic::Ordering::SeqCst));
     }
 
@@ -86,17 +105,17 @@ impl SocialMesh {
             .count() as u64
     }
 
-    pub async fn platoon_of_user(&self, public_id: &str) -> Option<String> {
+    pub async fn platoon_of_user(&self, public_id: &oj_rc_core::types::PublicId) -> Option<PlatoonId> {
         self.platoons.platoon_by_user.read().await
             .get(public_id)
             .map(|x| x.to_owned())
     }
 
-    pub async fn platoon_invite_of_user(&self, public_id: &str) -> Option<String> {
+    pub async fn platoon_invite_of_user(&self, public_id: &oj_rc_core::types::PublicId) -> Option<PlatoonId> {
         if let Some(platoon_id) = self.platoons.platoon_by_user.read().await.get(public_id) {
             if let Some(platoon) = self.platoons.platoon_by_id.read().await.get(platoon_id) {
                 let myself = platoon.iter()
-                    .find(|mem| mem.public_id == public_id)
+                    .find(|mem| &mem.public_id == public_id)
                     .unwrap();
                 if matches!(myself.status, crate::data::platoon::MemberStatus::Invited) {
                     return Some(platoon_id.to_owned());
@@ -106,7 +125,7 @@ impl SocialMesh {
         None
     }
 
-    pub async fn users_of_platoon(&self, platoon_id: &str) -> Vec<PlatoonMemberInfo> {
+    pub async fn users_of_platoon(&self, platoon_id: &PlatoonId) -> Vec<PlatoonMemberInfo> {
         self.platoons.platoon_by_id.read().await
             .get(platoon_id)
             .map(|plat| plat.iter()
@@ -119,7 +138,7 @@ impl SocialMesh {
             ).unwrap_or_default()
     }
 
-    pub async fn add_user_to_platoon(&self, public_id: &str, platoon_id: &str, status: crate::data::platoon::MemberStatus) -> Option<i64> {
+    pub async fn add_user_to_platoon(&self, public_id: &oj_rc_core::types::PublicId, platoon_id: &PlatoonId, status: crate::data::platoon::MemberStatus) -> Option<i64> {
         /*let user_handle = if let Some(handle) = self.users.read().await.get(public_id) {
             handle.to_owned()
         } else {
@@ -140,7 +159,7 @@ impl SocialMesh {
         }
     }
 
-    pub async fn create_platoon(&self, public_id: &str) -> Option<(i64, String)> {
+    pub async fn create_platoon(&self, public_id: &oj_rc_core::types::PublicId) -> Option<(i64, PlatoonId)> {
         /*let user_handle = if let Some(handle) = self.users.read().await.get(public_id) {
             handle.to_owned()
         } else {
@@ -163,12 +182,12 @@ impl SocialMesh {
         Some((timestamp, platoon_id))
     }
 
-    pub async fn remove_user_from_platoon(&self, public_id: &str) -> bool {
+    pub async fn remove_user_from_platoon(&self, public_id: &oj_rc_core::types::PublicId) -> bool {
         let mut platoon_by_user_lock = self.platoons.platoon_by_user.write().await;
         if let Some(platoon_id) = platoon_by_user_lock.remove(public_id) {
             let mut platoon_by_id_lock = self.platoons.platoon_by_id.write().await;
             if let Some(platoon) = platoon_by_id_lock.get_mut(&platoon_id) {
-                platoon.retain(|member| member.public_id != public_id);
+                platoon.retain(|member| &member.public_id != public_id);
                 if platoon.len() <= 1 {
                     platoon_by_id_lock.remove(&platoon_id);
                     platoon_by_user_lock.retain(|_pub_id, platoon_id_val| platoon_id_val != &platoon_id);
@@ -182,11 +201,11 @@ impl SocialMesh {
         }
     }
 
-    pub async fn update_user_in_platoon(&self, public_id: &str, status: crate::data::platoon::MemberStatus) -> bool {
+    pub async fn update_user_in_platoon(&self, public_id: &oj_rc_core::types::PublicId, status: crate::data::platoon::MemberStatus) -> bool {
         if let Some(platoon_id) = self.platoons.platoon_by_user.write().await.get_mut(public_id) {
             if let Some(platoon) = self.platoons.platoon_by_id.write().await.get_mut(platoon_id) {
                 for member in platoon.iter_mut() {
-                    if member.public_id != public_id { continue; }
+                    if &member.public_id != public_id { continue; }
                     member.status = status;
                     break;
                 }
@@ -199,7 +218,7 @@ impl SocialMesh {
         }
     }
 
-    pub async fn remove_platoon(&self, platoon_id: &str) -> bool {
+    pub async fn remove_platoon(&self, platoon_id: &PlatoonId) -> bool {
         if let Some(platoon) = self.platoons.platoon_by_id.write().await.remove(platoon_id) {
             let mut platoon_by_user_lock = self.platoons.platoon_by_user.write().await;
             for member in platoon {

@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 pub struct KillEnemy {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
@@ -22,9 +24,9 @@ impl crate::handlers::RlnlEventCodeHandler for KillEnemy {
     async fn handle(&self, data: Self::In, _peer: &std::sync::Arc<literustlib_server::Connection<crate::PacketData>>, user: &crate::UserData, _sender: &std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>) {
         if let Some(user_info) = user.user().await {
             super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::DestroyVehicle {
-                user_id: user_info.account_id(),
-                remote_player: data.killee_player_id,
-                killer_player: data.killer_player_id,
+                user_id: user_info.user_id(),
+                remote_player: oj_rc_core::types::PlayerId::from_raw(data.killee_player_id),
+                killer_player: oj_rc_core::types::PlayerId::from_raw(data.killer_player_id),
             }).await);
         }
     }

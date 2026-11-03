@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -19,10 +20,10 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviteAccepter 
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         let user_info = user.user()?;
         let my_public_id = user_info.public_id();
-        if let Some(platoon_id) = self.social.platoon_of_user(my_public_id).await {
-            log::debug!("User {} accepted invite to platoon {}", my_public_id, platoon_id);
+        if let Some(platoon_id) = self.social.platoon_of_user(&my_public_id).await {
+            log::debug!("User {} accepted invite to platoon {}", my_public_id, platoon_id.as_raw_ref());
             let members = self.social.users_of_platoon(&platoon_id).await;
-            let member_pub_ids: Vec<String> = members.iter().map(|m| m.public_id.clone()).collect();
+            let member_pub_ids: Vec<oj_rc_core::types::PublicId> = members.iter().map(|m| m.public_id.clone()).collect();
             let social_infos = user_info.list_social_info(&member_pub_ids).await?;
             let plat_members: Vec<crate::data::platoon::PlatoonMemberInfo> = members.iter()
                 .map(|member| {
@@ -38,10 +39,10 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviteAccepter 
                         use_custom_avatar: true, // the game client has a bug that makes it need a custom avatar here
                     }
                 }).collect();
-            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.into()));
+            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.as_raw_ref().into()));
             params.insert(PLATOON_LEADER_PARAM_KEY, Typed::Str(
                 members.first()
-                    .map(|p| p.public_id.clone())
+                    .map(|p| p.public_id.as_raw())
                     .unwrap_or_default()
                     .into()
             ));
@@ -52,7 +53,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviteAccepter 
                     .map(|x| Typed::Custom(crate::data::custom::CustomType::PlatoonMember(x.to_owned())))
                     .collect(),
             }));
-            self.social.update_user_in_platoon(my_public_id, crate::data::platoon::MemberStatus::Ready).await;
+            self.social.update_user_in_platoon(&my_public_id, crate::data::platoon::MemberStatus::Ready).await;
             let event = crate::events::platoon_member_update::PlatoonMemberStatusUpdate {
                 member_public_id: my_public_id.to_owned(),
                 member_display_name: user_info.display_name().to_owned(),

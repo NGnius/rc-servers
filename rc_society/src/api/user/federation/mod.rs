@@ -1,4 +1,5 @@
 mod user;
+use oj_rc_core::types::RawType;
 pub use user::get;
 
 mod outbox;
@@ -60,22 +61,22 @@ fn avatar_url(public_id: &str) -> url::Url {
 async fn build_person_from_user(user: &dyn oj_rc_core::persist::user::WebUser) -> Result<oj_serdes::society::activitypub::Person, Box<dyn std::error::Error>> {
     let pub_id = user.public_id();
     let account_info = user.account_stats().await?;
-    let url_id = url(pub_id);
+    let url_id = url(pub_id.as_raw_ref());
     let mut key_url_id = url_id.clone();
     key_url_id.set_fragment(Some("main-key"));
     Ok(oj_serdes::society::activitypub::Person {
         kind: oj_serdes::society::activitypub::ActivityPubObjectKind::Person,
         id: url_id.to_string(),
-        name: user.display_name().to_owned(),
+        name: user.display_name().as_raw(),
         url: url_id.clone(),
-        preferred_username: pub_id.to_owned(),
+        preferred_username: pub_id.as_raw(),
         icon: if account_info.avatar_id.is_some() { None } else {
-            Some(oj_serdes::society::activitypub::Image::new(avatar_url(pub_id)))
+            Some(oj_serdes::society::activitypub::Image::new(avatar_url(pub_id.as_raw_ref())))
         },
         published: chrono::DateTime::from_timestamp(account_info.creation_time, 0).unwrap_or_else(chrono::Utc::now),
         updated: chrono::DateTime::from_timestamp(account_info.last_seen_time, 0),
-        inbox: inbox(pub_id),
-        outbox: outbox(pub_id),
+        inbox: inbox(pub_id.as_raw_ref()),
+        outbox: outbox(pub_id.as_raw_ref()),
         public_key: Some(oj_serdes::society::activitypub::PublicKey {
             id: key_url_id.to_string(),
             owner: url_id,

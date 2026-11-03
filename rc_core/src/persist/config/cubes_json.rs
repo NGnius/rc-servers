@@ -7,6 +7,7 @@ use polariton::operation::{Typed, Dict};
 use polariton::serdes::TypePrefix;
 
 use crate::persist::config::SelfValidator;
+use crate::types::RawType;
 
 use super::super::{MovementCategoryData, MovementData, Cube, ItemCategory, ItemTier, BattleConfig, Settings, ChatConfig, FactoryConfig, ItemShopConfig, FederationConfig};
 
@@ -474,11 +475,12 @@ impl super::ConfigProvider for CubeConfig {
 
     fn maps(&self) -> std::collections::HashMap<super::GameMap, super::MapConfig> {
         self.battle.maps.map.iter().map(|(map, conf)| {
-            let mut spawns = std::collections::HashMap::<u8, Vec<super::Point>>::with_capacity(2); // usually 2 teams
+            let mut spawns = std::collections::HashMap::<crate::types::TeamId, Vec<super::Point>>::with_capacity(2); // usually 2 teams
             let mut pit_spawns = Vec::default();
             for point in conf.spawn_points.iter() {
                 if let Some(point_team) = &point.team {
-                    if let Some(list) = spawns.get_mut(point_team) {
+                    let point_team = crate::types::TeamId::from_raw(*point_team as i32);
+                    if let Some(list) = spawns.get_mut(&point_team) {
                         list.push(super::Point {
                             x: point.x,
                             y: point.y,
@@ -491,7 +493,7 @@ impl super::ConfigProvider for CubeConfig {
                             y: point.y,
                             z: point.z,
                         });
-                        spawns.insert(*point_team, list);
+                        spawns.insert(point_team, list);
                     }
                 } else {
                     pit_spawns.push(super::Point {
@@ -501,7 +503,7 @@ impl super::ConfigProvider for CubeConfig {
                     });
                 }
             }
-            let bases = conf.bases.iter().map(|base| (base.team, (super::Sphere {
+            let bases = conf.bases.iter().map(|base| (crate::types::TeamId::from_raw(base.team as i32), (super::Sphere {
                 radius: base.radius,
                 center: super::Point {
                     x: base.x,

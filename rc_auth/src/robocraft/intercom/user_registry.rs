@@ -1,5 +1,5 @@
 struct ServiceListeners {
-    web_services: tokio::sync::RwLock<std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::WebServicesIntercomOp>>>,
+    web_services: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::PublicId, tokio::sync::mpsc::Sender<super::WebServicesIntercomOp>>>,
     lobby_state: tokio::sync::RwLock<Option<tokio::sync::mpsc::Sender<super::LobbyStateIntercomOp>>>,
 }
 
@@ -19,7 +19,7 @@ impl Users {
         }
     }
 
-    pub(super) async fn register_web_service(&self, public_id: String, sender: tokio::sync::mpsc::Sender<super::WebServicesIntercomOp>) {
+    pub(super) async fn register_web_service(&self, public_id: oj_rc_core::types::PublicId, sender: tokio::sync::mpsc::Sender<super::WebServicesIntercomOp>) {
         let mut write_lock = self.service_listeners.web_services.write().await;
         if let Some(old_sender) = write_lock.insert(public_id.clone(), sender) {
             if !old_sender.is_closed() {
@@ -39,7 +39,7 @@ impl Users {
         }
     }
 
-    pub async fn remove_web_service(&self, public_id: String) {
+    pub async fn remove_web_service(&self, public_id: oj_rc_core::types::PublicId) {
         let mut write_lock = self.service_listeners.web_services.write().await;
         if write_lock.remove(&public_id).is_none() {
             log::warn!("Tried to remove web services intercom channel for user {} without listener", public_id);

@@ -1,7 +1,9 @@
+use oj_rc_core::types::RawType;
+
 #[derive(Clone)]
 pub struct FriendStatus {
-    pub friend_public_id: String,
-    pub friend_display_name: String,
+    pub friend_public_id: oj_rc_core::types::PublicId,
+    pub friend_display_name: oj_rc_core::types::DisplayName,
     pub is_online: bool,
     pub invite_status: crate::data::friend::InviteStatus,
 }
@@ -11,8 +13,8 @@ impl FriendStatus {
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
         let mut params = std::collections::HashMap::with_capacity(4);
-        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.as_raw_ref().into()));
         params.insert(2, polariton::operation::Typed::Bool(self.is_online));
         params.insert(3, polariton::operation::Typed::Byte(self.invite_status.as_u8()));
         params.into()

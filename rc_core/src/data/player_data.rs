@@ -1,15 +1,17 @@
 use polariton::operation::Typed;
 
+use crate::types::RawType;
+
 #[derive(Clone, Debug)]
 pub struct PlayerData {
-    pub name: String,
-    pub display_name: String,
+    pub name: crate::types::PublicId,
+    pub display_name: crate::types::DisplayName,
     pub mastery: i32,
     pub tier: i32,
     pub robot_name: String,
     pub robot_map: Vec<u8>,
     pub group: Option<String>, // unused i32 too???
-    pub team: i32,
+    pub team: crate::types::TeamId,
     pub has_premium: bool,
     pub robot_uuid: String,
     pub cpu: i32,
@@ -26,15 +28,15 @@ pub struct PlayerData {
 
 impl PlayerData {
     fn dump(&self, writer: &mut dyn std::io::Write) -> std::io::Result<usize> {
-        let mut total_len = super::write_str_for_binreader(&self.name, writer)?;
-        total_len += super::write_str_for_binreader(&self.display_name, writer)?;
+        let mut total_len = super::write_str_for_binreader(self.name.as_raw_ref(), writer)?;
+        total_len += super::write_str_for_binreader(self.display_name.as_raw_ref(), writer)?;
         writer.write_all(&self.mastery.to_le_bytes())?;
         writer.write_all(&self.tier.to_le_bytes())?;
         total_len += super::write_str_for_binreader(&self.robot_name, writer)?;
         writer.write_all(&(self.robot_map.len() as i32).to_le_bytes())?;
         writer.write_all(&self.robot_map)?;
         writer.write_all(&[0xDE, 0xAD, 0xBE, 0xEF])?;
-        writer.write_all(&self.team.to_le_bytes())?;
+        writer.write_all(&self.team.as_raw().to_le_bytes())?;
         writer.write_all(&[self.has_premium as u8])?;
         total_len += super::write_str_for_binreader(&self.robot_uuid, writer)?;
         writer.write_all(&self.cpu.to_le_bytes())?;
@@ -63,8 +65,8 @@ impl PlayerData {
             items: self.weapon_rank.clone().into_iter().map(|(k, v)| (Typed::Int(k), Typed::Int(v))).collect(),
         });
         let mut entries = vec![
-            (Typed::Str("name".into()), Typed::Str(self.name.clone().into())),
-            (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
+            (Typed::Str("name".into()), Typed::Str(self.name.as_raw_ref().into())),
+            (Typed::Str("displayName".into()), Typed::Str(self.display_name.as_raw_ref().into())),
             (Typed::Str("robotName".into()), Typed::Str(self.robot_name.clone().into())),
             (Typed::Str("cubeMap".into()), Typed::Bytes(self.robot_map.clone().into())),
             (Typed::Str("colourMap".into()), Typed::Bytes(self.colour_map.clone().into())),
@@ -72,7 +74,7 @@ impl PlayerData {
             (Typed::Str("deathEffect".into()), Typed::Str(self.death_effect.clone().into())),
             //(Typed::Str("groupId".into()), Typed::Int(self.group)), // FIXME
             (Typed::Str("groupId".into()), Typed::Str(self.group.clone().unwrap_or_default().into())),
-            (Typed::Str("team".into()), Typed::Int(self.team)), // not strongly enforced in EnterBattleEventListener (but has to be parsable into an i32)
+            (Typed::Str("team".into()), Typed::Int(self.team.as_raw())), // not strongly enforced in EnterBattleEventListener (but has to be parsable into an i32)
             (Typed::Str("hasPremium".into()), Typed::Bool(self.has_premium)),
             (Typed::Str("weaponOrder".into()), Typed::IntArr(self.weapon_order.clone().into())),
             (Typed::Str("robotUniqueID".into()), Typed::Str(self.robot_uuid.clone().into())),

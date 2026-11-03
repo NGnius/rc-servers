@@ -30,7 +30,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameMemberStateUpdate {
                     session: session.session_id,
                 };
                 let members_iter = session.users.iter()
-                    .map(|mem| &mem.public_id as &str);
+                    .map(|mem| &mem.public_id);
                 self.mesh.broadcast_event_to(members_iter, update_event).await;
             }
         }

@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -21,16 +22,17 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanInviter {
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         if let Some(Typed::Str(invitee)) = params.remove(&PUBLIC_ID_PARAM_KEY) {
             let user_info = user.user()?;
-            log::debug!("User {} wants to invite {} to their clan", user_info.account_id(), invitee.string);
-            let invitee = user_info.invite_to_clan(&invitee.string).await?;
-            params.insert(PUBLIC_ID_PARAM_KEY, Typed::Str(invitee.public_id.clone().into()));
-            params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(invitee.display_name.clone().into()));
+            log::debug!("User {} wants to invite {} to their clan", user_info.user_id(), invitee.string);
+            let invitee_pub_id = oj_rc_core::types::PublicId::from_raw(invitee.string);
+            let invitee = user_info.invite_to_clan(&invitee_pub_id).await?;
+            params.insert(PUBLIC_ID_PARAM_KEY, Typed::Str(invitee.public_id.as_raw_ref().into()));
+            params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(invitee.display_name.as_raw_ref().into()));
             params.insert(CUSTOM_AVATAR_PARAM_KEY, Typed::Bool(invitee.avatar_id.is_none()));
             params.insert(AVATAR_ID_PARAM_KEY, Typed::Int(invitee.avatar_id.unwrap_or_default()));
             params.insert(SEASON_XP_PARAM_KEY, Typed::Int(invitee.season_xp));
             if let Some((my_clan, my_clan_members)) = user_info.my_clan_info(true).await? {
                 let my_pub_id = user_info.public_id();
-                let my_soc_info = user_info.list_social_info(&[my_pub_id.to_owned()]).await?;
+                let my_soc_info = user_info.list_social_info(std::slice::from_ref(&my_pub_id)).await?;
                 let event = crate::events::clan_invite_received::ClanInviteReceived {
                     inviter_public_id: my_pub_id.to_owned(),
                     inviter_display_name: user_info.display_name().to_owned(),

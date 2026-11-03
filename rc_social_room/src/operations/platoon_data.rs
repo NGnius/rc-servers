@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -29,8 +30,8 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInformer {
         let user_info = user.user()?;
         let my_public_id = user_info.public_id();
         log::debug!("Checking for existing platoon of user {}", my_public_id);
-        if let Some(platoon_id) = self.social.platoon_of_user(my_public_id).await {
-            log::debug!("User {} is in platoon {}", my_public_id, platoon_id);
+        if let Some(platoon_id) = self.social.platoon_of_user(&my_public_id).await {
+            log::debug!("User {} is in platoon {}", my_public_id, platoon_id.as_raw_ref());
             let members = self.social.users_of_platoon(&platoon_id).await;
             let member_ids = members.iter()
                 .map(|mem| mem.public_id.clone())
@@ -40,11 +41,11 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInformer {
                 let diff = members.len().wrapping_sub(social_infos.len());
                 return Err(SimpleOpError::with_message(
                     oj_rc_core::data::error_codes::SocialErrorCode::UserDoesNotExist as i16,
-                    format!("Could not find user avatar info for {} user(s) in platoon {}", diff, platoon_id),
+                    format!("Could not find user avatar info for {} user(s) in platoon {}", diff, platoon_id.as_raw_ref()),
                 ));
             }
-            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.into()));
-            params.insert(PLATOON_LEADER_PARAM_KEY, Typed::Str(member_ids.first().unwrap().clone().into()));
+            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.as_raw_ref().into()));
+            params.insert(PLATOON_LEADER_PARAM_KEY, Typed::Str(member_ids.first().unwrap().as_raw_ref().into()));
             params.insert(USER_LIST_PARAM_KEY, Typed::Arr(polariton::operation::Arr {
                 ty: polariton::serdes::TypePrefix::Custom,
                 custom_ty: Some(1),

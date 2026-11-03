@@ -2,8 +2,8 @@
 use polariton::operation::Typed;
 
 pub struct ClanMember {
-    pub username: String,
-    pub display_name: String,
+    pub username: oj_rc_core::types::PublicId,
+    pub display_name: oj_rc_core::types::DisplayName,
     pub member_state: ClanMemberState,
     pub use_custom_avatar: bool,
     pub avatar_id: i32,
@@ -14,9 +14,10 @@ pub struct ClanMember {
 
 impl ClanMember {
     pub fn as_transmissible<C>(&self) -> Typed<C> {
+        use oj_rc_core::types::RawType;
         Typed::HashMap(vec![
-            (Typed::Str("userName".into()), Typed::Str(self.username.clone().into())),
-            (Typed::Str("displayName".into()), Typed::Str(self.display_name.clone().into())),
+            (Typed::Str("userName".into()), Typed::Str(self.username.as_raw_ref().into())),
+            (Typed::Str("displayName".into()), Typed::Str(self.display_name.as_raw_ref().into())),
             (Typed::Str("memberState".into()), Typed::Int(self.member_state as i32)),
             (Typed::Str("useCustomAvatar".into()), Typed::Bool(self.use_custom_avatar)),
             (Typed::Str("avatarId".into()), Typed::Int(self.avatar_id)),

@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 pub struct HealAssistBonus {
     msg_router: tokio::sync::mpsc::Sender<crate::matches::GameMessage>,
 }
@@ -23,9 +25,9 @@ impl crate::handlers::RlnlEventCodeHandler for HealAssistBonus {
         if let Some(user_info) = user.user().await {
             //log::info!("Heal assist for player {}", data.healing_player_id);
             super::log_channel_send_failure(self.msg_router.send(crate::matches::GameMessage::HealAssistBonus {
-                user_id: user_info.account_id(),
-                healer: data.healing_player_id,
-                healee: data.healed_player_id,
+                user_id: user_info.user_id(),
+                healer: oj_rc_core::types::PlayerId::from_raw(data.healing_player_id),
+                healee: oj_rc_core::types::PlayerId::from_raw(data.healed_player_id),
             }).await);
         }
     }

@@ -1,6 +1,8 @@
+use oj_rc_core::types::RawType;
+
 pub struct PublicMessage {
-    pub sender_name: String,
-    pub sender_display_name: String,
+    pub sender_name: oj_rc_core::types::PublicId,
+    pub sender_display_name: oj_rc_core::types::DisplayName,
     pub text: String,
     pub is_dev: bool,
     pub is_mod: bool,
@@ -13,9 +15,10 @@ impl PublicMessage {
     pub const CODE: u8 = 1;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(8);
-        params.insert(5, polariton::operation::Typed::Str(self.sender_name.clone().into()));
-        params.insert(30, polariton::operation::Typed::Str(self.sender_display_name.clone().into()));
+        params.insert(5, polariton::operation::Typed::Str(self.sender_name.as_raw_ref().into()));
+        params.insert(30, polariton::operation::Typed::Str(self.sender_display_name.as_raw_ref().into()));
         params.insert(2, polariton::operation::Typed::Str(self.text.clone().into()));
         params.insert(6, polariton::operation::Typed::Bool(self.is_dev));
         params.insert(12, polariton::operation::Typed::Bool(self.is_mod));
@@ -53,8 +56,8 @@ impl <C: Send + 'static> polariton_server::events::IntoEvent<C> for &PublicMessa
 }
 
 pub struct PrivateMessage {
-    pub sender_name: String,
-    pub sender_display_name: String,
+    pub sender_name: oj_rc_core::types::PublicId,
+    pub sender_display_name: oj_rc_core::types::DisplayName,
     pub text: String,
     pub is_dev: bool,
     pub is_mod: bool,
@@ -66,8 +69,8 @@ impl PrivateMessage {
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
         let mut params = std::collections::HashMap::with_capacity(6);
-        params.insert(5, polariton::operation::Typed::Str(self.sender_name.clone().into()));
-        params.insert(30, polariton::operation::Typed::Str(self.sender_display_name.clone().into()));
+        params.insert(5, polariton::operation::Typed::Str(self.sender_name.as_raw_ref().into()));
+        params.insert(30, polariton::operation::Typed::Str(self.sender_display_name.as_raw_ref().into()));
         params.insert(2, polariton::operation::Typed::Str(self.text.clone().into()));
         params.insert(6, polariton::operation::Typed::Bool(self.is_dev));
         params.insert(12, polariton::operation::Typed::Bool(self.is_mod));

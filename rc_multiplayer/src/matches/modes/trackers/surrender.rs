@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 #[repr(u8)]
 #[derive(Copy, Clone)]
 enum VoteStatus {
@@ -30,13 +32,13 @@ struct CurrentVoteInfo {
 
 struct SurrenderTracker {
     ends_at: chrono::DateTime<chrono::Utc>,
-    players: std::collections::HashMap<u8, std::sync::atomic::AtomicU8>,
+    players: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicU8>,
 }
 
 impl SurrenderTracker {
     const DURATION: std::time::Duration = std::time::Duration::from_secs(30);
 
-    fn new(players: impl std::iter::Iterator<Item=u8>, initiator: u8) -> Self {
+    fn new(players: impl std::iter::Iterator<Item=oj_rc_core::types::PlayerId>, initiator: oj_rc_core::types::PlayerId) -> Self {
         let now = chrono::Utc::now();
         Self {
             ends_at: now + Self::DURATION,
@@ -50,7 +52,7 @@ impl SurrenderTracker {
         }
     }
 
-    fn current_votes(&self, player_id: Option<u8>, game_time_elapsed: f32) -> CurrentVoteInfo {
+    fn current_votes(&self, player_id: Option<oj_rc_core::types::PlayerId>, game_time_elapsed: f32) -> CurrentVoteInfo {
         let mut votes = Vec::with_capacity(self.players.len());
         let mut total_no_votes = 0;
         let mut total_yes_votes = 0;
@@ -71,7 +73,9 @@ impl SurrenderTracker {
         let threshold = self.players.len() / 2;
         let declined = if total_no_votes > threshold {
             Some(rlnl::events::ingame::SurrenderDeclined {
-                surrendering_player_id: player_id.or_else(|| self.players.keys().next().copied()).unwrap_or(0) as i32,
+                surrendering_player_id: player_id.or_else(|| self.players.keys().next().copied())
+                    .map(|x| x.as_raw())
+                    .unwrap_or(0) as i32,
                 game_time_elapsed,
             })
         } else {
@@ -88,7 +92,7 @@ impl SurrenderTracker {
         }
     }
 
-    fn vote(&self, player_id: u8, is_surrender: bool, game_time_elapsed: f32) -> Option<CurrentVoteInfo> {
+    fn vote(&self, player_id: oj_rc_core::types::PlayerId, is_surrender: bool, game_time_elapsed: f32) -> Option<CurrentVoteInfo> {
         if let Some(voter) = self.players.get(&player_id) {
             let vote = if is_surrender { VoteStatus::Yes } else { VoteStatus::No };
             voter.store(vote.to_u8(), std::sync::atomic::Ordering::Relaxed);
@@ -112,7 +116,7 @@ impl SurrenderTracker {
 }
 
 pub struct SurrenderGameTracker {
-    surrenders: tokio::sync::RwLock<std::collections::HashMap<u8, SurrenderTracker>>,
+    surrenders: tokio::sync::RwLock<std::collections::HashMap<crate::types::Team, SurrenderTracker>>,
     ticker: super::TickTracker<250>,
 }
 
@@ -130,7 +134,7 @@ impl SurrenderGameTracker {
         }
     }
 
-    pub async fn vote<L: crate::matches::CustomGameLogic>(&self, team: u8, player_id: u8, is_surrender: bool, generic: &crate::matches::GenericGamemodeEngine<L>) -> SurrenderVoteResult {
+    pub async fn vote<L: crate::matches::CustomGameLogic>(&self, team: crate::types::Team, player_id: oj_rc_core::types::PlayerId, is_surrender: bool, generic: &crate::matches::GenericGamemodeEngine<L>) -> SurrenderVoteResult {
         let mut result = SurrenderVoteResult::NoChange;
         if let Some(tracker) = self.surrenders.read().await.get(&team) {
             if let Some(vote_info) = tracker.vote(player_id, is_surrender, generic.elapsed_game_time()) {
@@ -151,7 +155,7 @@ impl SurrenderGameTracker {
         result
     }
 
-    pub async fn request_new<L: crate::matches::CustomGameLogic>(&self, team: u8, initiator: u8, players: impl std::iter::Iterator<Item=u8>, generic: &crate::matches::GenericGamemodeEngine<L>) -> SurrenderVoteResult {
+    pub async fn request_new<L: crate::matches::CustomGameLogic>(&self, team: crate::types::Team, initiator: oj_rc_core::types::PlayerId, players: impl std::iter::Iterator<Item=oj_rc_core::types::PlayerId>, generic: &crate::matches::GenericGamemodeEngine<L>) -> SurrenderVoteResult {
         log::info!("Surrender vote for team {} initiated by player {} in game {}", team, initiator, generic.game_guid());
         let new_tracker = SurrenderTracker::new(players, initiator);
         let vote_info = new_tracker.current_votes(None, generic.elapsed_game_time());

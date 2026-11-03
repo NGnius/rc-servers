@@ -36,7 +36,7 @@ impl ChatRoom {
     }
 
     pub fn send_public_message(&self, message: crate::events::chat_message::PublicMessage) {
-        let user_id = &message.sender_display_name;
+        let user_id = &message.sender_name;
         let event = polariton::operation::Event {
             code: 1,
             params: message.as_event_params(),
@@ -86,7 +86,7 @@ impl ChatRoom {
         }
     }
 
-    pub fn remove_user(&mut self, name: &str) -> bool {
+    pub fn remove_user(&mut self, name: &oj_rc_core::types::PublicId) -> bool {
         if let Some(user_index) = self.online_users.iter().position(|x| name == x.name()) {
             self.online_users.swap_remove(user_index);
             true

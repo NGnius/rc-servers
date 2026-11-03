@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use crate::types::RawType;
+
 use super::account_json::UserData;
 
 fn fake_impl_to_db(client_emu: &crate::persist::config::ClientEmulator) -> oj_rc_database::schema::multiplayer_game_player::ClientType {
@@ -32,11 +34,6 @@ impl super::LobbyUser for UserData {
         missing_players: usize,
     ) -> Result<super::FakePlayers, polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
-        let guid = crate::persist::user::str_to_i64(&game.guid)
-            .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
-                crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16, "Invalid GUID".to_owned()
-            )
-        )?;
         let variant = if game.is_ranked {
             oj_rc_database::schema::multiplayer_game::GameType::Ranked
         } else if game.is_custom {
@@ -54,7 +51,7 @@ impl super::LobbyUser for UserData {
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,
             creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
-            guid: oj_rc_database::sea_orm::ActiveValue::Set(guid),
+            guid: oj_rc_database::sea_orm::ActiveValue::Set(game.guid.as_raw()),
             map: oj_rc_database::sea_orm::ActiveValue::Set(game.map),
             mode: oj_rc_database::sea_orm::ActiveValue::Set(game.mode.to_db()),
             visibility: oj_rc_database::sea_orm::ActiveValue::Set(game.visibility.to_db()),
@@ -90,7 +87,7 @@ impl super::LobbyUser for UserData {
             .map(|(i, (player, data))| {
                 oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id.as_raw())),
                     game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
@@ -164,15 +161,15 @@ impl super::LobbyUser for UserData {
             .map(|(i, (player, _))| {
                 oj_rc_database::schema::multiplayer_game_player::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id.as_raw())),
                     game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
-                    team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
+                    team: oj_rc_database::sea_orm::ActiveValue::Set(player.team.as_raw()),
                     group: oj_rc_database::sea_orm::ActiveValue::Set(player.group.as_ref().and_then(|x| group_map.get(x)).copied()),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
-                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.clone()),
-                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.clone()),
+                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.as_raw()),
+                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.as_raw()),
                     variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
@@ -185,11 +182,11 @@ impl super::LobbyUser for UserData {
                         game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                         creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                         player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len) as u8) as _),
-                        team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team),
+                        team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team.as_raw()),
                         group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                         is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(true),
-                        public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.clone()),
-                        display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.clone()),
+                        public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.as_raw()),
+                        display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.as_raw()),
                         variant: oj_rc_database::sea_orm::ActiveValue::Set(fake_impl_to_db(variant)),
                     }
                 })
@@ -203,11 +200,11 @@ impl super::LobbyUser for UserData {
                         game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                         creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                         player_id: oj_rc_database::sea_orm::ActiveValue::Set(((i + players_len + forced_fake_players_len) as u8) as _),
-                        team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team),
+                        team: oj_rc_database::sea_orm::ActiveValue::Set(fake.team.as_raw()),
                         group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                         is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(true),
-                        public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.clone()),
-                        display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.clone()),
+                        public_id: oj_rc_database::sea_orm::ActiveValue::Set(fake.name.as_raw()),
+                        display_name: oj_rc_database::sea_orm::ActiveValue::Set(fake.display_name.as_raw()),
                         variant: oj_rc_database::sea_orm::ActiveValue::Set(fake_impl_to_db(variant)),
                     }
                 })
@@ -228,11 +225,6 @@ impl super::LobbyUser for UserData {
 
     async fn start_custom_game(&self, game: super::GameDescriptor, players: &[(super::PlayerLobbyDescriptor, crate::data::player_data::PlayerData)]) -> Result<(), polariton_server::operations::SimpleOpError> {
         let now = chrono::Utc::now().timestamp();
-        let guid = crate::persist::user::str_to_i64(&game.guid)
-            .ok_or_else(|| polariton_server::operations::SimpleOpError::with_message(
-                crate::data::error_codes::LobbyReasonCode::UnexpectedError as i16, "Invalid GUID".to_owned()
-            )
-        )?;
         let variant = if game.is_ranked {
             oj_rc_database::schema::multiplayer_game::GameType::Ranked
         } else if game.is_custom {
@@ -250,7 +242,7 @@ impl super::LobbyUser for UserData {
         let game_dbo = oj_rc_database::schema::multiplayer_game::ActiveModel {
             id: oj_rc_database::sea_orm::ActiveValue::NotSet,
             creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
-            guid: oj_rc_database::sea_orm::ActiveValue::Set(guid),
+            guid: oj_rc_database::sea_orm::ActiveValue::Set(game.guid.as_raw()),
             map: oj_rc_database::sea_orm::ActiveValue::Set(game.map),
             mode: oj_rc_database::sea_orm::ActiveValue::Set(game.mode.to_db()),
             visibility: oj_rc_database::sea_orm::ActiveValue::Set(game.visibility.to_db()),
@@ -272,7 +264,7 @@ impl super::LobbyUser for UserData {
             .map(|(i, (player, data))| {
                 oj_rc_database::schema::multiplayer_game_vehicle::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id.as_raw())),
                     game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
@@ -302,15 +294,15 @@ impl super::LobbyUser for UserData {
             .map(|(i, (player, _))| {
                 oj_rc_database::schema::multiplayer_game_player::ActiveModel {
                     id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id)),
+                    user_id: oj_rc_database::sea_orm::ActiveValue::Set(Some(player.user_id.as_raw())),
                     game_id: oj_rc_database::sea_orm::ActiveValue::Set(game_dbo.id),
                     creation_time: oj_rc_database::sea_orm::ActiveValue::Set(now),
                     player_id: oj_rc_database::sea_orm::ActiveValue::Set((i as u8) as _),
-                    team: oj_rc_database::sea_orm::ActiveValue::Set(player.team),
+                    team: oj_rc_database::sea_orm::ActiveValue::Set(player.team.as_raw()),
                     group: oj_rc_database::sea_orm::ActiveValue::Set(None),
                     is_claimed: oj_rc_database::sea_orm::ActiveValue::Set(false),
-                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.clone()),
-                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.clone()),
+                    public_id: oj_rc_database::sea_orm::ActiveValue::Set(player.public_id.as_raw()),
+                    display_name: oj_rc_database::sea_orm::ActiveValue::Set(player.display_name.as_raw()),
                     variant: oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::multiplayer_game_player::ClientType::Client),
                 }
             })
@@ -380,14 +372,14 @@ impl super::LobbyUser for UserData {
                 let player_datas = players.into_iter().map(|(player, user)| {
                     let garage = garage_map.get(&player.player_id);
                     crate::data::player_data::PlayerData {
-                        name: user.public_id,
-                        display_name: user.display_name,
+                        name: crate::types::PublicId::from_raw(user.public_id),
+                        display_name: crate::types::DisplayName::from_raw(user.display_name),
                         mastery: garage.map(|g| g.mastery_level).unwrap_or_default(),
                         tier: garage.map(|g| g.tier).unwrap_or(1),
                         robot_name: garage.map(|g| g.name.to_owned()).unwrap_or_default(),
                         robot_map: garage.map(|g| g.robot_data.to_owned()).unwrap_or_default(),
                         group: player.group.map(|g| g.to_string()),
-                        team: player.team,
+                        team: crate::types::TeamId::from_raw(player.team),
                         has_premium: true,
                         robot_uuid: garage.map(|g| super::i64_as_uuid_str(g.uuid)).unwrap_or_else(uuid_gen),
                         cpu: garage.map(|g| g.cpu).unwrap_or_default(),
@@ -406,7 +398,7 @@ impl super::LobbyUser for UserData {
                 Ok(Some(crate::persist::user::MatchInfo {
                     map: current_game.map,
                     mode: crate::data::game_mode::GameMode::from_db(current_game.mode),
-                    guid: super::i64_as_uuid_str(current_game.guid),
+                    guid: crate::types::GameGuid::from_raw(current_game.guid),
                     is_ranked: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
                     is_custom: matches!(current_game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
                     visibility: crate::data::game_mode::MapVisibility::from_db(current_game.visibility),

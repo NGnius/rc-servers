@@ -1,5 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web::{Data, Form}};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
@@ -25,8 +26,8 @@ enum FormData {
 async fn render_page(handlebars_ref: &handlebars::Handlebars<'_>, user: Box<dyn oj_rc_core::persist::user::WebUser>, req: HttpRequest, message: Option<String>) -> HttpResponse {
     let html = render_ok(
         RenderData {
-            display_name: user.display_name().to_owned(),
-            public_id: user.public_id().to_owned(),
+            display_name: user.display_name().as_raw(),
+            public_id: user.public_id().as_raw(),
             success_message: message,
         },
         handlebars_ref,
@@ -69,8 +70,8 @@ async fn name_change_impl(old_name: &str, new_name: &str, handlebars: &handlebar
     let resp = if new_name == old_name {
         render_err(
             RenderData {
-                display_name: user.display_name().to_owned(),
-                public_id: user.public_id().to_owned(),
+                display_name: user.display_name().as_raw(),
+                public_id: user.public_id().as_raw(),
                 success_message: None,
             },
             "Display name is already set to that".to_owned(),
@@ -79,11 +80,11 @@ async fn name_change_impl(old_name: &str, new_name: &str, handlebars: &handlebar
         )
             .respond_to(&req)
             .map_into_boxed_body()
-    } else if old_name != user.display_name() {
+    } else if old_name != user.display_name().as_raw_ref() {
         render_err(
             RenderData {
-                display_name: user.display_name().to_owned(),
-                public_id: user.public_id().to_owned(),
+                display_name: user.display_name().as_raw(),
+                public_id: user.public_id().as_raw(),
                 success_message: None,
             },
             "Display name is out of sync with this page".to_owned(),
@@ -98,7 +99,7 @@ async fn name_change_impl(old_name: &str, new_name: &str, handlebars: &handlebar
                 render_ok(
                     RenderData {
                         display_name: new_name.to_owned(),
-                        public_id: user.public_id().to_owned(),
+                        public_id: user.public_id().as_raw(),
                         success_message: Some(format!("Successfully changed display name from {} to {}", user.display_name(), new_name)),
                     },
                     handlebars,
@@ -108,8 +109,8 @@ async fn name_change_impl(old_name: &str, new_name: &str, handlebars: &handlebar
             Err(e) => {
                 render_err(
                     RenderData {
-                        display_name: user.display_name().to_owned(),
-                        public_id: user.public_id().to_owned(),
+                        display_name: user.display_name().as_raw(),
+                        public_id: user.public_id().as_raw(),
                         success_message: None,
                     },
                     format!("Name change failed: {}", e),

@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -30,16 +31,22 @@ impl SimpleOperation<()> for OnlineChecker {
     type User = crate::UserTy;
     const CODE: u8 = CODE;
 
-    async fn handle(&self, params: ParameterTable<()>, _user: &Self::User) -> Result<ParameterTable<()>, SimpleOpError> {
+    async fn handle(&self, params: ParameterTable<()>, user: &Self::User) -> Result<ParameterTable<()>, SimpleOpError> {
         let mut params = params.to_dict();
         if let Some(Typed::Str(user_name)) = params.get(&USERNAME_PARAM_KEY) {
-            let username = user_name.string.clone();
-            params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(username.clone().into()));
-            if self.chat_system.system().await.is_user_online(&username) {
+            let user_pub_id = oj_rc_core::types::PublicId::from_raw(user_name.string.clone());
+            let user_info = user.user()?;
+            let soc_info = user_info.list_avatar_info(std::slice::from_ref(&user_pub_id)).await?;
+            if let Some(soc_info) = soc_info.first() {
+                params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(soc_info.display_name.as_raw_ref().into()));
+            } else {
+                params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(user_pub_id.as_raw_ref().into()));
+            }
+            if self.chat_system.system().await.is_user_online(&user_pub_id) {
                 params.insert(CAN_SEND_DM_PARAM_KEY, Typed::Int(CanSendMessageResult::Ok as _));
                 Ok(params.into())
             } else {
-                log::debug!("User {} is not online", username);
+                log::debug!("User {} is not online", user_pub_id);
                 params.insert(CAN_SEND_DM_PARAM_KEY, Typed::Int(CanSendMessageResult::UserOffline as _));
                 //params.insert(CAN_SEND_DM_PARAM_KEY, Typed::Int(CanSendMessageResult::Ok as _));
                 Ok(params.into())

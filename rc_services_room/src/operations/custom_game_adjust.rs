@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -22,7 +23,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameConfigChanger {
             if let Some(Typed::Str(value)) = params.remove(&VALUE_PARAM_KEY) {
                 let user_info = user.user()?;
                 let my_pub_id = user_info.public_id();
-                let (resp_code, session_opt) = self.games.set_config_field(my_pub_id, &field_name.string, &value.string).await;
+                let (resp_code, session_opt) = self.games.set_config_field(&my_pub_id, &field_name.string, &value.string).await;
                 if let Some(session) = session_opt {
                     let event = crate::events::CustomGameConfigRefresh {
                         field: field_name.string.clone(),
@@ -30,10 +31,10 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameConfigChanger {
                     };
                     let session_members_iter = session.users.iter()
                         .filter(|mem| !mem.is_invited && mem.public_id != my_pub_id)
-                        .map(|mem| &mem.public_id as &str);
+                        .map(|mem| &mem.public_id);
                     self.mesh.broadcast_event_to(session_members_iter, event).await;
                     user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                        session_id: session.session_id.clone(),
+                        session_id: session.session_id.as_raw(),
                         config: session.config_core,
                         users: session.users.iter()
                             .filter(|user| !user.is_invited)

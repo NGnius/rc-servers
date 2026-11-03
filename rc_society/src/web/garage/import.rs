@@ -1,5 +1,6 @@
 use actix_web::{get, post, web::{Data, Path}, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
@@ -32,8 +33,8 @@ async fn import_impl(id: Option<i32>, handlebars_ref: Data<handlebars::Handlebar
                     Ok(Some(garage)) => {
                         render_ok(
                             RenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 garage: Some(GarageData {
                                     garage_id: id,
                                     slot: garage.slot,
@@ -52,8 +53,8 @@ async fn import_impl(id: Option<i32>, handlebars_ref: Data<handlebars::Handlebar
                         log::error!("Failed to find vehicle {} for user {}", id, user.public_id());
                         render_err(
                             RenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 garage: Some(GarageData {
                                     garage_id: -1,
                                     slot: -1,
@@ -71,8 +72,8 @@ async fn import_impl(id: Option<i32>, handlebars_ref: Data<handlebars::Handlebar
                         log::error!("Failed to retrieve vehicle {} for user {}: {}", id, user.public_id(), e);
                         render_err(
                             RenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 garage: Some(GarageData {
                                     garage_id: -1,
                                     slot: -1,
@@ -90,8 +91,8 @@ async fn import_impl(id: Option<i32>, handlebars_ref: Data<handlebars::Handlebar
             } else {
                 render_ok(
                     RenderData {
-                        display_name: user.display_name().to_owned(),
-                        public_id: user.public_id().to_owned(),
+                        display_name: user.display_name().as_raw(),
+                        public_id: user.public_id().as_raw(),
                         garage: None,
                         importers: importer.plugin_names()
                             .map(|x| x.to_owned())
@@ -156,8 +157,8 @@ pub async fn post(form: actix_multipart::form::MultipartForm<ImportForm>, handle
                     Err(e) => {
                         let html = render_err(
                             RenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 garage: None,
                                 importers: importer.plugin_names()
                                     .map(|x| x.to_owned())
@@ -194,8 +195,8 @@ pub async fn post(form: actix_multipart::form::MultipartForm<ImportForm>, handle
             }
             let html = render_ok(
                 RenderData {
-                    display_name: user.display_name().to_owned(),
-                    public_id: user.public_id().to_owned(),
+                    display_name: user.display_name().as_raw(),
+                    public_id: user.public_id().as_raw(),
                     garage: None,
                     importers: importer.plugin_names()
                         .map(|x| x.to_owned())

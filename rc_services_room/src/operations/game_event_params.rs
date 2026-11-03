@@ -32,7 +32,7 @@ impl Operation<()> for GameEventsParamsProvider {
         match user.user() {
             Ok(user_info) => {
                 let mut params = params.to_dict();
-                let current_mode = self.sequence.lock().await.now(user_info.current_game_event_setter(), user_info.account_id());
+                let current_mode = self.sequence.lock().await.now(user_info.current_game_event_setter(), user_info.user_id());
                 params.insert(MAP_NAMES_PARAM_KEY, current_mode.maps);
                 params.insert(VISIBILITY_PARAM_KEY, current_mode.visibilities);
                 params.insert(MODE_PARAM_KEY, current_mode.modes);

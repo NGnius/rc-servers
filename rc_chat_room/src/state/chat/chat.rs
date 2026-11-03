@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use oj_rc_core::types::RawType;
+
 #[derive(Clone)]
 pub struct ChatProvider {
     chat_system: std::sync::Arc<tokio::sync::RwLock<crate::state::chat::ChatSystem>>,
@@ -28,7 +30,7 @@ impl ChatProvider {
 
 pub struct ChatSystem {
     chats: HashMap<String, super::ChatRoom>,
-    online_users: HashMap<String, super::UserHandle>,
+    online_users: HashMap<oj_rc_core::types::PublicId, super::UserHandle>,
     config: super::ChatSystemConfig,
     plugin: crate::PluginWrapper,
 }
@@ -46,7 +48,7 @@ impl ChatSystem {
         }
         let total_removed_users = to_be_removed.len();
 
-        to_be_removed.clear();
+        let mut to_be_removed = Vec::new();
         for (key, val) in self.chats.iter_mut() {
             if val.is_empty_mut() {
                 to_be_removed.push(key.to_owned());
@@ -63,10 +65,10 @@ impl ChatSystem {
         self.chats.get(&channel.to_lowercase())
     }
 
-    pub fn connect_user(&mut self, display_name: String, channels: Vec<String>, event_tx: tokio::sync::mpsc::UnboundedSender<polariton_server::ToSend>) {
+    pub fn connect_user(&mut self, public_id: oj_rc_core::types::PublicId, display_name: oj_rc_core::types::DisplayName, channels: Vec<String>, event_tx: tokio::sync::mpsc::UnboundedSender<polariton_server::ToSend>) {
         self.cleanup();
-        let handle = super::UserHandle::from_strong_sender(event_tx, display_name.clone());
-        self.online_users.insert(display_name, handle.clone());
+        let handle = super::UserHandle::from_strong_sender(event_tx, public_id.clone(), display_name.clone());
+        self.online_users.insert(public_id, handle.clone());
         for channel in channels {
             if let Some(chat) = self.chats.get_mut(&channel.to_uppercase()) {
                 chat.connect_user(handle.clone());
@@ -78,13 +80,13 @@ impl ChatSystem {
         }
     }
 
-    pub fn join_channel(&mut self, display_name: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
-        if let Some(user_handle) = self.online_users.get(&display_name) {
+    pub fn join_channel(&mut self, name: &oj_rc_core::types::PublicId, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
+        if let Some(user_handle) = self.online_users.get(name) {
             if let Some(chat_room) = self.chats.get_mut(&channel.to_lowercase()) {
-                log::debug!("Connecting {} to channel {} ({:?})", display_name, channel, channel_ty);
+                log::debug!("Connecting {} to channel {} ({:?})", name, channel, channel_ty);
                 chat_room.connect_user(user_handle.to_owned());
             } else {
-                log::debug!("Connecting {} to new channel {} ({:?})", display_name, channel, channel_ty);
+                log::debug!("Connecting {} to new channel {} ({:?})", name, channel, channel_ty);
                 let mut new_room = super::ChatRoom::new(channel.clone(), channel_ty);
                 new_room.connect_user(user_handle.to_owned());
                 self.chats.insert(channel.to_lowercase(), new_room);
@@ -93,21 +95,21 @@ impl ChatSystem {
         self.cleanup();
     }
 
-    pub fn leave_channel(&mut self, display_name: String, channel: String) {
+    pub fn leave_channel(&mut self, name: oj_rc_core::types::PublicId, channel: String) {
         if let Some(chat_room) = self.chats.get_mut(&channel.to_lowercase()) {
-            chat_room.remove_user(&display_name);
+            chat_room.remove_user(&name);
         }
     }
 
     pub async fn handle_public_message(&self, user: &dyn oj_rc_core::persist::user::User, text: String, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         if self.config.is_command_channel(&channel) {
-            if let Some(user_handle) = self.online_users.get(user.public_id()) {
+            if let Some(user_handle) = self.online_users.get(&user.public_id()) {
                 self.handle_public_command(user, text, user_handle, channel, channel_ty).await;
             }
         } else if let Some(room) = self.get_channel(&channel) {
             let event_params = crate::events::chat_message::PublicMessage {
-                sender_name: user.public_id().to_owned(),
-                sender_display_name: user.display_name().to_owned(),
+                sender_name: user.public_id(),
+                sender_display_name: user.display_name(),
                 text: text.clone(),
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),
@@ -116,7 +118,7 @@ impl ChatSystem {
                 channel_ty,
             };
             room.send_public_message(event_params);
-            self.plugin.on_message(&text, &room.canon_name(), user.display_name()).await;
+            self.plugin.on_message(&text, &room.canon_name(), &user.public_id().as_raw()).await;
         } else {
             log::warn!("Got message for non-existent chat room {} (variant: {:?})", channel, channel_ty);
         }
@@ -125,8 +127,8 @@ impl ChatSystem {
     pub async fn send_fake_message(&self, message: String, channel: String, username: String) -> bool {
         if let Some(room) = self.get_channel(&channel) {
             let event_params = crate::events::chat_message::PublicMessage {
-                sender_name: username.clone(),
-                sender_display_name: username.clone(),
+                sender_name: oj_rc_core::types::PublicId::from_raw(username.clone()),
+                sender_display_name: oj_rc_core::types::DisplayName::from_raw(username.clone()),
                 text: message.clone(),
                 is_dev: false,
                 is_mod: false,
@@ -144,8 +146,8 @@ impl ChatSystem {
 
     async fn handle_public_command(&self, user: &dyn oj_rc_core::persist::user::User, text: String, handle: &super::UserHandle, channel: String, channel_ty: crate::data::channel::ChatChannelType) {
         let event_params = crate::events::chat_message::PublicMessage {
-            sender_name: self.config.command_username().to_owned(),
-            sender_display_name: self.config.command_username().to_owned(),
+            sender_name: oj_rc_core::types::PublicId::from_raw(self.config.command_username().to_owned()),
+            sender_display_name: oj_rc_core::types::DisplayName::from_raw(self.config.command_username().to_owned()),
             text: self.config.perform_command(&text, self, user).await,
             is_dev: false,
             is_mod: false,
@@ -165,15 +167,15 @@ impl ChatSystem {
         handle.send(polariton_server::ToSend::Data { data: polariton::packet::Data::Event(event), encrypt: true, channel: 0, reliable: true });
     }
 
-    pub async fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User, text: String, recipient: String) {
-        if self.config.is_command_user(&recipient) {
-            if let Some(user_handle) = self.online_users.get(user.public_id()) {
+    pub async fn handle_private_message(&self, user: &dyn oj_rc_core::persist::user::User, text: String, recipient: &oj_rc_core::types::PublicId) {
+        if self.config.is_command_user(recipient.as_raw_ref()) {
+            if let Some(user_handle) = self.online_users.get(&user.public_id()) {
                 self.handle_private_command(user, text, user_handle).await;
             }
-        } else if let Some(recipient_handle) = self.online_users.get(&recipient) {
+        } else if let Some(recipient_handle) = self.online_users.get(recipient) {
             let private_msg = crate::events::chat_message::PrivateMessage {
-                sender_name: user.public_id().to_owned(),
-                sender_display_name: user.public_id().to_owned(),
+                sender_name: user.public_id(),
+                sender_display_name: user.display_name(),
                 text,
                 is_dev: user.is_dev(),
                 is_mod: user.is_mod(),
@@ -185,8 +187,8 @@ impl ChatSystem {
 
     async fn handle_private_command(&self, user: &dyn oj_rc_core::persist::user::User, text: String, handle: &super::UserHandle) {
         let event_params = crate::events::chat_message::PrivateMessage {
-            sender_name: self.config.command_username().to_owned(),
-            sender_display_name: self.config.command_username().to_owned(),
+            sender_name: oj_rc_core::types::PublicId::from_raw(self.config.command_username().to_owned()),
+            sender_display_name: oj_rc_core::types::DisplayName::from_raw(self.config.command_username().to_owned()),
             text: self.config.perform_command(&text, self, user).await,
             is_dev: false,
             is_mod: false,
@@ -213,8 +215,8 @@ impl ChatSystem {
         self.online_users.values().filter(|x| x.is_online()).count()
     }
 
-    pub fn is_user_online(&self, display_name: &str) -> bool {
-        self.config.is_command_user(display_name) || self.online_users.get(display_name).map(|x| x.is_online()).unwrap_or(false)
+    pub fn is_user_online(&self, name: &oj_rc_core::types::PublicId) -> bool {
+        self.config.is_command_user(name.as_raw_ref()) || self.online_users.get(name).map(|x| x.is_online()).unwrap_or(false)
     }
 
     pub fn chat_config(&self) -> &'_ super::ChatSystemConfig {

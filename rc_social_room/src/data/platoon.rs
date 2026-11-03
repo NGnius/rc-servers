@@ -1,7 +1,9 @@
+use oj_rc_core::types::RawType;
+
 #[derive(Debug, Clone)]
 pub struct PlatoonMemberInfo {
-    pub public_id: String,
-    pub display_name: String,
+    pub public_id: oj_rc_core::types::PublicId,
+    pub display_name: oj_rc_core::types::DisplayName,
     pub status: MemberStatus,
     pub added: i64, // timestamp
     pub avatar_id: i32,
@@ -11,8 +13,8 @@ pub struct PlatoonMemberInfo {
 impl PlatoonMemberInfo {
     pub(super) fn dump(&self, w: &mut dyn std::io::Write) -> std::io::Result<usize> {
         let mut total = 1 + 8 + 4 + 1;
-        total += oj_rc_core::data::write_str_for_binreader(&self.public_id, w)?;
-        total += oj_rc_core::data::write_str_for_binreader(&self.display_name, w)?;
+        total += oj_rc_core::data::write_str_for_binreader(self.public_id.as_raw_ref(), w)?;
+        total += oj_rc_core::data::write_str_for_binreader(self.display_name.as_raw_ref(), w)?;
         w.write_all(&[self.status.as_u8()])?;
         w.write_all(&self.added.to_be_bytes())?;
         w.write_all(&self.avatar_id.to_be_bytes())?;
@@ -34,8 +36,8 @@ impl PlatoonMemberInfo {
         ]);
         let use_custom_avatar = buf[13] != 0;
         Ok(Self {
-            public_id,
-            display_name,
+            public_id: oj_rc_core::types::PublicId::from_raw(public_id),
+            display_name: oj_rc_core::types::DisplayName::from_raw(display_name),
             status,
             added,
             avatar_id,

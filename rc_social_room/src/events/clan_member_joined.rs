@@ -1,7 +1,7 @@
 #[derive(Clone)]
 pub struct ClanMemberJoined {
-    pub joiner_public_id: String,
-    pub joiner_display_name: String,
+    pub joiner_public_id: oj_rc_core::types::PublicId,
+    pub joiner_display_name: oj_rc_core::types::DisplayName,
     pub avatar_id: Option<i32>,
     pub state: crate::data::clan::ClanMemberState,
     pub season_xp: i32,
@@ -11,9 +11,10 @@ impl ClanMemberJoined {
     pub const CODE: u8 = 22;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(6);
-        params.insert(1, polariton::operation::Typed::Str(self.joiner_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.joiner_display_name.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.joiner_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.joiner_display_name.as_raw_ref().into()));
         params.insert(13, polariton::operation::Typed::Bool(self.avatar_id.is_none()));
         params.insert(14, polariton::operation::Typed::Int(self.avatar_id.unwrap_or_default()));
         params.insert(37, polariton::operation::Typed::Int(self.state as _));

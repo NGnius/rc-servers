@@ -1,8 +1,9 @@
 use polariton::operation::Typed;
+use oj_rc_core::types::RawType;
 
 //#[derive(Clone)]
 pub struct CustomGameKick {
-    pub session: String,
+    pub session: crate::custom_game_tracker::CustomGameKey,
     pub was_invited: bool,
 }
 
@@ -14,7 +15,7 @@ impl <C: Send + Sync + 'static> polariton_server::events::IntoEvent<C> for Custo
     fn into_event(self) -> polariton::operation::Event<C> {
         let mut params = polariton::operation::ParameterTable::with_capacity(2);
         params.insert(184, polariton::operation::Typed::HashMap(vec![
-            (Typed::Str("Session".into()), Typed::Str(self.session.into())),
+            (Typed::Str("Session".into()), Typed::Str(self.session.as_raw_ref().into())),
             (Typed::Str("WasInvited".into()), Typed::Bool(self.was_invited)),
         ].into()));
         polariton::operation::Event {

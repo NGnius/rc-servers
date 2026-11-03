@@ -1,6 +1,6 @@
 #[derive(Clone)]
 pub struct PlatoonMemberAvatarChanged {
-    pub member_public_id: String,
+    pub member_public_id: oj_rc_core::types::PublicId,
     pub avatar_id: Option<i32>,
 }
 
@@ -8,8 +8,9 @@ impl PlatoonMemberAvatarChanged {
     pub const CODE: u8 = 14;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(2);
-        params.insert(1, polariton::operation::Typed::Str(self.member_public_id.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.member_public_id.as_raw_ref().into()));
         params.insert(13, polariton::operation::Typed::Bool(self.avatar_id.is_none()));
         params.insert(14, polariton::operation::Typed::Int(self.avatar_id.unwrap_or_default()));
         params.into()

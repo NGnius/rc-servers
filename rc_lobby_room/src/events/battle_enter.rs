@@ -15,7 +15,7 @@ pub struct BattleEnter {
     pub port: u16,
     pub map: String,
     pub mode: oj_rc_core::data::game_mode::GameMode,
-    pub guid: String,
+    pub guid: oj_rc_core::types::GameGuid,
     pub is_ranked: bool,
     pub is_custom: bool,
     pub visibility: Option<oj_rc_core::data::game_mode::MapVisibility>,
@@ -38,7 +38,7 @@ impl BattleEnter {
         vec.push((HOST_PORT_PARAM_KEY, polariton::operation::Typed::Int(self.port as _)));
         vec.push((MAP_NAME_PARAM_KEY, polariton::operation::Typed::Str(self.map.clone().into())));
         vec.push((GAME_MODE_PARAM_KEY, polariton::operation::Typed::Int(self.mode as i32)));
-        vec.push((GAME_GUID_PARAM_KEY, polariton::operation::Typed::Str(self.guid.clone().into())));
+        vec.push((GAME_GUID_PARAM_KEY, polariton::operation::Typed::Str(self.guid.as_guid_str().into())));
         vec.push((IS_RANKED_PARAM_KEY, polariton::operation::Typed::Bool(self.is_ranked)));
         vec.push((IS_CUSTOM_GAME_PARAM_KEY, polariton::operation::Typed::Bool(self.is_custom)));
         if let Some(visibility) = self.visibility {

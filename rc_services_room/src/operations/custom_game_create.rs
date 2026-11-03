@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -17,24 +18,24 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameCreator {
 
     async fn handle(&self, mut params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let user_info = user.user()?;
-        let result = self.games.create_game(user_info.public_id()).await;
+        let result = self.games.create_game(user_info.public_id(), user_info.display_name()).await;
         match result {
             Err(e) => {
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(e as _));
             },
             Ok(session) => {
                 user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                    session_id: session.session_id.clone(),
+                    session_id: session.session_id.as_raw(),
                     config: session.config_core,
                     users: vec![
                         oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameUserData {
                             public_id: user_info.public_id().to_owned(),
-                            team: 0,
+                            team: oj_rc_core::types::TeamId::from_raw(0),
                         }
                     ],
                 }).await;
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::SessionCreateResponseCode::SessionCreated as _));
-                params.insert(IDK_PARAM_KEY, Typed::Str(session.session_id.into()));
+                params.insert(IDK_PARAM_KEY, Typed::Str(session.session_id.as_raw_ref().into()));
             }
         }
         Ok(params)

@@ -2,7 +2,7 @@ use argon2::PasswordVerifier;
 use oj_rc_database::sea_orm::IntoActiveModel;
 use sha2::Digest;
 
-use crate::persist::config::ConfigProvider;
+use crate::{persist::config::ConfigProvider, types::RawType};
 
 pub struct AccountProvider {
     cubes: std::sync::Arc<Vec<u32>>,
@@ -492,7 +492,7 @@ impl UserData {
             log::error!("Failed to find selected vehicle for user_id {} (user_player_data)", self.account.id);
             polariton_server::operations::SimpleOpError::with_message(INVALID_ROBOT_ERR, "No selected garage".to_owned())
         })?;
-        let user_uuid = self.account.public_id.clone();
+        let user_uuid = crate::types::PublicId::from_raw(self.account.public_id.clone());
         let weapon_orders = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| x as i32).collect::<Vec<_>>();
         let weapon_ranks = oj_rc_database::schema::parse_int_csv(&current_slot.weapon_order).into_iter().map(|x| (x as i32, if x == 0 { 0 } else { 1 })).collect();
         let user_avatar_aux = self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::AvatarId).await.map_err(|e| {
@@ -516,13 +516,13 @@ impl UserData {
 
         Ok(crate::data::player_data::PlayerData {
             name: user_uuid,
-            display_name: self.account.display_name.clone(),
+            display_name: crate::types::DisplayName::from_raw(self.account.display_name.clone()),
             mastery: current_slot.mastery_level as i32,
             tier: 1, // FIXME
             robot_name: current_slot.name,
             robot_map: current_slot.robot_data,
             group: None, // no platoon
-            team: 0,
+            team: crate::types::TeamId::from_raw(0),
             has_premium: false, // FIXME
             robot_uuid: super::i64_as_uuid_str(current_slot.uuid),
             cpu: cpu_count,
@@ -539,7 +539,7 @@ impl UserData {
     }
 
     pub(super) async fn resolve_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<super::ResolvedVehicle, polariton_server::operations::SimpleOpError> {
-        let sha_bytes = sha2::Sha256::digest(vehicle.username.as_bytes());
+        let sha_bytes = sha2::Sha256::digest(vehicle.username.as_raw_ref().as_bytes());
         let u32_bytes = [
             sha_bytes[0],
             sha_bytes[1],
@@ -682,7 +682,7 @@ impl UserData {
         use rand::seq::IndexedRandom;
         let mut players = Vec::with_capacity((singleplayer_config.max_enemies + singleplayer_config.max_teammates + 1) as usize);
         let mut next_id = 0;
-        let mut seen_usernames = std::collections::HashSet::<String>::new();
+        let mut seen_usernames = std::collections::HashSet::<crate::types::PublicId>::new();
         #[allow(clippy::explicit_counter_loop)] // this is really bad to read with this suggested refactor
         for i in 0..(singleplayer_config.max_enemies + singleplayer_config.max_teammates) {
             let vehicle = singleplayer_config.vehicles.choose(&mut rand::rng())
@@ -693,7 +693,7 @@ impl UserData {
             let username = if seen_usernames.contains(&vehicle.username) {
                 let mut username = vehicle.username.clone();
                 while seen_usernames.contains(&username) {
-                    username = format!("{}{}", username, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].choose(&mut rand::rng()).unwrap());
+                    username = crate::types::PublicId::from_raw(format!("{}{}", username, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].choose(&mut rand::rng()).unwrap()));
                 }
                 username
             } else {
@@ -706,13 +706,13 @@ impl UserData {
             let weapon_ranks = weapons.iter().map(|&x| (x, if x == 0 { 0 } else { 1 })).collect();
             let enemy = crate::data::player_data::PlayerData {
                 name: username.clone(),
-                display_name: username.clone(),
+                display_name: crate::types::DisplayName::from_raw(username.as_raw()),
                 mastery: enemy_vehicle.mastery,
                 tier: enemy_vehicle.tier,
                 robot_name: enemy_vehicle.robot_name,
                 robot_map: enemy_vehicle.robot_map,
                 group: None,
-                team: team_num,
+                team: crate::types::TeamId::from_raw(team_num),
                 has_premium: false,
                 robot_uuid: uuid_str,
                 cpu: enemy_vehicle.cpu,
@@ -760,7 +760,7 @@ impl UserData {
         }
     }
 
-    pub(super) async fn currency_op(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, oj_rc_database::sea_orm::DbErr> {
+    pub(super) async fn currency_op(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<crate::types::Currency<u64>, oj_rc_database::sea_orm::DbErr> {
         let desc = Self::currency_ty_to_db(ty);
         let model_opt = match op {
             super::CurrencyOp::Get => {
@@ -775,7 +775,7 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        let new_currency = model.data.parse::<u64>().unwrap_or_default() + to_add;
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default().saturating_add(to_add.as_raw());
                         let mut am = model.to_owned().into_active_model();
                         am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
                         Some(am)
@@ -787,7 +787,7 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        let new_currency = model.data.parse::<u64>().unwrap_or_default().saturating_sub(to_sub);
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default().saturating_sub(to_sub.as_raw());
                         let mut am = model.to_owned().into_active_model();
                         am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.to_string());
                         Some(am)
@@ -799,21 +799,21 @@ impl UserData {
                     self.account.id,
                     desc.clone(),
                     move |model| {
-                        let new_currency = (model.data.parse::<u64>().unwrap_or_default() as i64) + to_addsub;
+                        let new_currency = model.data.parse::<u64>().unwrap_or_default().saturating_add_signed(to_addsub.as_raw());
                         let mut am = model.to_owned().into_active_model();
-                        am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.clamp(0, i64::MAX).to_string());
+                        am.data = oj_rc_database::sea_orm::ActiveValue::Set(new_currency.clamp(0, i64::MAX as u64).to_string());
                         Some(am)
                     }
                 ).await?
             },
         };
-        let num: u64 = if let Some(model) = model_opt {
-            model.data.parse().unwrap_or_default()
+        let currency: crate::types::Currency<u64> = if let Some(model) = model_opt {
+            crate::types::Currency::from_raw(model.data.parse().unwrap_or_default())
         } else {
             log::warn!("No {:?} user_aux found for user {}", desc, self.account.id);
-            0
+            crate::types::Currency::from_raw(0)
         };
-        Ok(num)
+        Ok(currency)
     }
 }
 
@@ -1212,8 +1212,8 @@ impl super::User for UserData {
         Ok(())
     }
 
-    async fn list_avatar_info(&self, public_ids: &[String]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
-        let users = self.db.users_by_public_id(public_ids.iter()).await
+    async fn list_avatar_info(&self, public_ids: &[crate::types::PublicId]) -> Result<Vec<super::SocialInfo>, polariton_server::operations::SimpleOpError> {
+        let users = self.db.users_by_public_id(public_ids.iter().map(|p| p.as_raw_ref())).await
             .map_err(|e| {
                 log::error!("Failed to retrieve friend avatars for user {} : {}", self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(
@@ -1235,8 +1235,8 @@ impl super::User for UserData {
             .collect();
         Ok(users.iter()
             .map(|user| super::SocialInfo {
-                public_id: user.public_id.clone(),
-                display_name: user.display_name.clone(),
+                public_id: crate::types::PublicId::from_raw(user.public_id.clone()),
+                display_name: crate::types::DisplayName::from_raw(user.display_name.clone()),
                 avatar_id: avatar_map.get(&user.id).and_then(|&avatar_id| if avatar_id == u32::MAX { None } else { Some(avatar_id as i32) }),
             })
             .collect()
@@ -1294,7 +1294,7 @@ impl super::User for UserData {
                 crate::persist::config::ShopGain::Experience(xp) => {
                     self.currency_op(
                         crate::persist::user::CurrencyType::Experience,
-                        crate::persist::user::CurrencyOp::AddSub(*xp as _),
+                        crate::persist::user::CurrencyOp::AddSub(crate::types::Currency::from_raw(*xp as _)),
                     ).await
                     .map_err(|e| {
                         log::error!("Failed to apply experience for purchase: {}", e);
@@ -1307,7 +1307,7 @@ impl super::User for UserData {
                 crate::persist::config::ShopGain::FreeCurrency(c) => {
                     self.currency_op(
                         crate::persist::user::CurrencyType::Free,
-                        crate::persist::user::CurrencyOp::AddSub(*c as _),
+                        crate::persist::user::CurrencyOp::AddSub(crate::types::Currency::from_raw(*c as _)),
                     ).await
                     .map_err(|e| {
                         log::error!("Failed to apply free currency for purchase: {}", e);
@@ -1320,7 +1320,7 @@ impl super::User for UserData {
                 crate::persist::config::ShopGain::PaidCurrency(c) => {
                     self.currency_op(
                         crate::persist::user::CurrencyType::Paid,
-                        crate::persist::user::CurrencyOp::AddSub(*c as _),
+                        crate::persist::user::CurrencyOp::AddSub(crate::types::Currency::from_raw(*c as _)),
                     ).await
                     .map_err(|e| {
                         log::error!("Failed to apply paid currency for purchase: {}", e);
@@ -1334,7 +1334,7 @@ impl super::User for UserData {
                 crate::persist::config::ShopGain::TechPoints(tp) => {
                     self.currency_op(
                         crate::persist::user::CurrencyType::TechPoints,
-                        crate::persist::user::CurrencyOp::AddSub(*tp as _),
+                        crate::persist::user::CurrencyOp::AddSub(crate::types::Currency::from_raw(*tp as _)),
                     ).await
                     .map_err(|e| {
                         log::error!("Failed to apply tech point for purchase: {}", e);

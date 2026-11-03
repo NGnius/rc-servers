@@ -1,5 +1,6 @@
 use actix_web::{get, web::Data, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 pub const FORM_NAME: &str = "index";
@@ -90,7 +91,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                 Ok(super::render_ok(
                     RenderData {
                         is_logged_in: true,
-                        display_name: Some(user.display_name().to_owned()),
+                        display_name: Some(user.display_name().as_raw()),
                         server: server_info,
                         links: links_info,
                         fediverse: federation_info,

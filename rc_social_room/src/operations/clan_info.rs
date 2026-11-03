@@ -84,7 +84,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanInfoGetter {
             user_info.my_clan_info(true).await?
         };
         if let Some((clan_info, members_info)) = clan_info {
-            let mut online_clan_members: std::collections::HashSet<String> = members_info.iter()
+            let mut online_clan_members: std::collections::HashSet<oj_rc_core::types::PublicId> = members_info.iter()
                 .map(|mem| mem.public_id.clone())
                 .collect();
             self.social.filter_online_only(&mut online_clan_members).await;

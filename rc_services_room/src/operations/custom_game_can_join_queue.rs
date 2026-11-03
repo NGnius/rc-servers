@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -18,12 +19,12 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameCanJoinQueue {
     async fn handle(&self, mut params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         let user_info = user.user()?;
         let my_pub_id = user_info.public_id();
-        let resp_code = if let Some(session) = self.games.get_user_game(my_pub_id).await {
+        let resp_code = if let Some(session) = self.games.get_user_game(&my_pub_id).await {
             let vehicle = user_info.selected_vehicle_data().await?;
             match self.validator.validate(&vehicle.robot_data, &vehicle.colour_data) {
                 oj_rc_plugins::vehicle_validation::ValidationResultCode::Ok => crate::data::custom_games::CheckCanJoinQueueResponseCode::Ok,
                 err_code => {
-                    log::debug!("Failed to validate user {} vehicle for custom game {}: {:?}", my_pub_id, session.session_id, err_code);
+                    log::debug!("Failed to validate user {} vehicle for custom game {}: {:?}", my_pub_id, session.session_id.as_raw_ref(), err_code);
                     crate::data::custom_games::CheckCanJoinQueueResponseCode::Unbalanced
                 }
             }

@@ -1,32 +1,54 @@
+use oj_rc_core::types::RawType;
+
 use crate::data::custom_games::*;
 
-fn custom_game_key(creator: &str) -> String {
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CustomGameKey(String);
+
+impl oj_rc_core::types::RawType for CustomGameKey {
+    type Raw = String;
+
+    fn as_raw(&self) -> Self::Raw {
+        self.0.clone()
+    }
+
+    fn as_raw_ref(&self) -> &'_ Self::Raw {
+        &self.0
+    }
+
+    fn from_raw(value: Self::Raw) -> Self {
+        Self(value)
+    }
+}
+
+fn custom_game_key(creator: &oj_rc_core::types::PublicId) -> CustomGameKey {
     let now = chrono::Utc::now().timestamp();
-    format!("{}_{}_cg", creator, now)
+    CustomGameKey(format!("{}_{}_cg", creator.as_raw_ref(), now))
 }
 
 pub struct UserInfo {
-    pub public_id: String,
+    pub public_id: oj_rc_core::types::PublicId,
+    pub display_name: oj_rc_core::types::DisplayName,
     pub is_invited: bool,
-    pub team: u8,
+    pub team: oj_rc_core::types::TeamId,
     pub state: PlayerSessionStatus,
 }
 
 pub struct SessionInfo {
-    pub session_id: String,
+    pub session_id: CustomGameKey,
     pub config: std::collections::HashMap<String, String>,
     pub config_core: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig,
     pub users: Vec<UserInfo>,
 }
 
 pub struct KickInfo {
-    pub session_id: String,
+    pub session_id: CustomGameKey,
     pub was_invited: bool,
 }
 
 pub struct CustomGameMesh {
-    games: tokio::sync::RwLock<std::collections::HashMap<String, GameHandle>>,
-    user_to_game: tokio::sync::RwLock<std::collections::HashMap<String, String>>,
+    games: tokio::sync::RwLock<std::collections::HashMap<CustomGameKey, GameHandle>>,
+    user_to_game: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::PublicId, CustomGameKey>>,
 }
 
 struct GameHandle {
@@ -35,7 +57,8 @@ struct GameHandle {
 }
 
 struct UserHandle {
-    public_id: String,
+    public_id: oj_rc_core::types::PublicId,
+    display_name: oj_rc_core::types::DisplayName,
     is_invited: std::sync::atomic::AtomicBool,
     team: std::sync::atomic::AtomicU8,
     status: std::sync::atomic::AtomicU8,
@@ -49,15 +72,16 @@ impl CustomGameMesh {
         }
     }
 
-    pub async fn create_game(&self, public_id: &str) -> Result<SessionInfo, SessionCreateResponseCode> {
+    pub async fn create_game(&self, public_id: oj_rc_core::types::PublicId, display_name: oj_rc_core::types::DisplayName) -> Result<SessionInfo, SessionCreateResponseCode> {
         let mut user_lock = self.user_to_game.write().await;
-        if user_lock.contains_key(public_id) {
-            log::debug!("Rejected custom game session create; user {} is already in a session", public_id);
+        if user_lock.contains_key(&public_id) {
+            log::debug!("Rejected custom game session create; {} is already in a session", public_id);
             return Err(SessionCreateResponseCode::AlreadyInSession);
         }
-        let game_id = custom_game_key(public_id);
+        let game_id = custom_game_key(&public_id);
         let owner_handle = UserHandle {
-            public_id: public_id.to_owned(),
+            public_id: public_id.clone(),
+            display_name,
             is_invited: std::sync::atomic::AtomicBool::new(false),
             team: std::sync::atomic::AtomicU8::new(0),
             status: std::sync::atomic::AtomicU8::new(PlayerSessionStatus::Ready.to_u8()),
@@ -68,31 +92,31 @@ impl CustomGameMesh {
         };
         let session = Self::session_from_game(&game_id, &game_handle);
         let mut games_lock = self.games.write().await;
-        user_lock.insert(public_id.to_owned(), game_id.clone());
+        user_lock.insert(public_id, game_id.clone());
         games_lock.insert(game_id.clone(), game_handle);
-        log::debug!("Custom game session {} created", game_id);
+        log::debug!("Custom game session {} created", game_id.0);
         Ok(session)
     }
 
-    pub async fn leave_game(&self, public_id: &str) -> (SessionLeaveResponseCode, Option<SessionInfo>) {
-        if let Some(game_id) = { self.user_to_game.write().await.remove(public_id) } {
+    pub async fn leave_game(&self, public_id: oj_rc_core::types::PublicId) -> (SessionLeaveResponseCode, Option<SessionInfo>) {
+        if let Some(game_id) = { self.user_to_game.write().await.remove(&public_id) } {
             let mut games_lock = self.games.write().await;
             if let Some(game) = games_lock.get_mut(&game_id) {
                 let session = if game.users.len() == 1 || game.users.iter().all(|u| u.public_id == public_id || u.is_invited.load(std::sync::atomic::Ordering::Relaxed)) {
-                    log::debug!("User {} has disbanded custom game {}", public_id, game_id);
+                    log::debug!("User {} has disbanded custom game {}", public_id, game_id.0);
                     if game.users.len() != 1 {
                         let mut user_lock = self.user_to_game.write().await;
                         for user in game.users.iter() {
                             user_lock.remove(&user.public_id);
                         }
-                        log::debug!("Removed {} invited stragglers from custom game {}", game.users.len() - 1, game_id);
+                        log::debug!("Removed {} invited stragglers from custom game {}", game.users.len() - 1, game_id.0);
                     }
                     game.users.clear();
                     let session = Self::session_from_game(&game_id, game);
                     games_lock.remove(&game_id);
                     session
                 } else {
-                    log::debug!("User {} has left custom game {}", public_id, game_id);
+                    log::debug!("User {} has left custom game {}", public_id, game_id.0);
                     game.users.retain(|user| user.public_id != public_id);
                     Self::session_from_game(&game_id, game)
                 };
@@ -102,8 +126,8 @@ impl CustomGameMesh {
         (SessionLeaveResponseCode::NotInSession, None)
     }
 
-    pub async fn kick_from_game(&self, kicker: &str, kickee: &str) -> (KickResponseCode, Option<(KickInfo, SessionInfo)>) {
-        if let Some(game_id) = { self.user_to_game.write().await.remove(kickee) } {
+    pub async fn kick_from_game(&self, kicker: oj_rc_core::types::PublicId, kickee: oj_rc_core::types::PublicId) -> (KickResponseCode, Option<(KickInfo, SessionInfo)>) {
+        if let Some(game_id) = { self.user_to_game.write().await.remove(&kickee) } {
             let mut games_lock = self.games.write().await;
             if let Some(game) = games_lock.get_mut(&game_id) {
                 let leader = game.users.first().unwrap();
@@ -123,7 +147,7 @@ impl CustomGameMesh {
         (KickResponseCode::KickTargetIsNotInsession, None)
     }
 
-    pub async fn get_user_game(&self, public_id: &str) -> Option<SessionInfo> {
+    pub async fn get_user_game(&self, public_id: &oj_rc_core::types::PublicId) -> Option<SessionInfo> {
         if let Some(game_id) = self.user_to_game.read().await.get(public_id) {
             if let Some(game) = self.games.read().await.get(game_id) {
                 return Some(Self::session_from_game(game_id, game));
@@ -132,9 +156,9 @@ impl CustomGameMesh {
         None
     }
 
-    pub async fn invite_user(&self, inviter: &str, invitee: &str, is_team_a: bool) -> (InviteToCustomGameResponseCode, Option<SessionInfo>) {
-        let invitee_already_in_game = { self.user_to_game.read().await.get(invitee).is_some() };
-        if let Some(game_id) = { self.user_to_game.read().await.get(inviter).cloned() } {
+    pub async fn invite_user(&self, inviter: oj_rc_core::types::PublicId, invitee: oj_rc_core::types::PublicId, invitee_name: oj_rc_core::types::DisplayName, is_team_a: bool) -> (InviteToCustomGameResponseCode, Option<SessionInfo>) {
+        let invitee_already_in_game = { self.user_to_game.read().await.get(&invitee).is_some() };
+        if let Some(game_id) = { self.user_to_game.read().await.get(&inviter).cloned() } {
             if let Some(game) = self.games.write().await.get_mut(&game_id) {
                 if game.users.iter().any(|x| x.public_id == invitee) {
                     let session = Self::session_from_game(&game_id, game);
@@ -144,6 +168,7 @@ impl CustomGameMesh {
                 } else {
                     let invitee_handle = UserHandle {
                         public_id: invitee.to_owned(),
+                        display_name: invitee_name,
                         is_invited: std::sync::atomic::AtomicBool::new(true),
                         team: std::sync::atomic::AtomicU8::new(if is_team_a { 0 } else { 1 }),
                         status: std::sync::atomic::AtomicU8::new(PlayerSessionStatus::Unknown.to_u8())
@@ -162,8 +187,8 @@ impl CustomGameMesh {
         }
     }
 
-    pub async fn update_invite_user(&self, invitee: &str, is_accept: bool) -> (InviteReplyCustomGameResponseCode, Option<SessionInfo>) {
-        if let Some(game_id) = { self.user_to_game.read().await.get(invitee).cloned() } {
+    pub async fn update_invite_user(&self, invitee: oj_rc_core::types::PublicId, is_accept: bool) -> (InviteReplyCustomGameResponseCode, Option<SessionInfo>) {
+        if let Some(game_id) = { self.user_to_game.read().await.get(&invitee).cloned() } {
             if is_accept {
                 // fully join custom game
                 if let Some(game) = self.games.read().await.get(&game_id) {
@@ -183,7 +208,7 @@ impl CustomGameMesh {
                 // leave custom game
                 if let Some(game) = self.games.write().await.get_mut(&game_id) {
                     game.users.retain(|user| user.public_id != invitee);
-                    self.user_to_game.write().await.remove(invitee);
+                    self.user_to_game.write().await.remove(&invitee);
                     let session = Self::session_from_game(&game_id, game);
                     (InviteReplyCustomGameResponseCode::Success, Some(session))
                 } else {
@@ -196,8 +221,8 @@ impl CustomGameMesh {
         }
     }
 
-    pub async fn update_user_status(&self, public_id: &str, status: PlayerSessionStatus) -> Option<SessionInfo> {
-        if let Some(game_id) = self.user_to_game.read().await.get(public_id) {
+    pub async fn update_user_status(&self, public_id: oj_rc_core::types::PublicId, status: PlayerSessionStatus) -> Option<SessionInfo> {
+        if let Some(game_id) = self.user_to_game.read().await.get(&public_id) {
             if let Some(game) = self.games.read().await.get(game_id) {
                 let target = game.users.iter()
                     .find(|mem| mem.public_id == public_id)
@@ -210,8 +235,8 @@ impl CustomGameMesh {
         None
     }
 
-    pub async fn update_user_team(&self, updater: &str, updatee: &str, is_team_b: bool) -> (ChangeTeamResponseCode, Option<SessionInfo>) {
-        if let Some(game_id) = self.user_to_game.read().await.get(updatee) {
+    pub async fn update_user_team(&self, updater: oj_rc_core::types::PublicId, updatee: oj_rc_core::types::PublicId, is_team_b: bool) -> (ChangeTeamResponseCode, Option<SessionInfo>) {
+        if let Some(game_id) = self.user_to_game.read().await.get(&updatee) {
             if let Some(game) = self.games.read().await.get(game_id) {
                 let leader = game.users.first().unwrap();
                 if leader.public_id != updater {
@@ -229,10 +254,10 @@ impl CustomGameMesh {
         (ChangeTeamResponseCode::UnknownFail0, None)
     }
 
-    pub async fn set_config_field(&self, public_id: &str, field: &str, value: &str) -> (AdjustCustomGameConfigResponseCode, Option<SessionInfo>) {
+    pub async fn set_config_field(&self, public_id: &oj_rc_core::types::PublicId, field: &str, value: &str) -> (AdjustCustomGameConfigResponseCode, Option<SessionInfo>) {
         if let Some(game_id) = self.user_to_game.read().await.get(public_id) {
             if let Some(game) = self.games.write().await.get_mut(game_id) {
-                if game.users[0].public_id != public_id {
+                if &game.users[0].public_id != public_id {
                     // the first time a user joins/creates a custom game, the game client
                     // automatically tries to set these fields (regardless if the user is not the leader)
                     const STUPID_FIELDS: &[&str] = &[
@@ -242,16 +267,16 @@ impl CustomGameMesh {
                         "GameTime",
                     ];
                     if STUPID_FIELDS.contains(&field /* &&str lol */) {
-                        log::debug!("Update custom game session {} config ignored (not leader; client bug with field {})", game_id, field);
+                        log::debug!("Update custom game session {} config ignored (not leader; client bug with field {})", game_id.0, field);
                         return (AdjustCustomGameConfigResponseCode::Success, None);
                     } else {
-                        log::debug!("Update custom game session {} config rejected (not leader) {} = {}", game_id, field, value);
+                        log::debug!("Update custom game session {} config rejected (not leader) {} = {}", game_id.0, field, value);
                         return (AdjustCustomGameConfigResponseCode::AdjustmentRejected, None);
                     }
 
                 }
                 if game.config.set_field(field, value).is_ok() {
-                    log::debug!("Update custom game session {} config {} to {}", game_id, field, value);
+                    log::debug!("Update custom game session {} config {} to {}", game_id.0, field, value);
                     let session = Self::session_from_game(game_id, game);
                     return (AdjustCustomGameConfigResponseCode::Success, Some(session));
                 }
@@ -262,7 +287,7 @@ impl CustomGameMesh {
         }
     }
 
-    fn session_from_game(game_id: &str, game: &GameHandle) -> SessionInfo {
+    fn session_from_game(game_id: &CustomGameKey, game: &GameHandle) -> SessionInfo {
         SessionInfo {
             session_id: game_id.to_owned(),
             config: game.config.as_map(),
@@ -270,8 +295,9 @@ impl CustomGameMesh {
             users: game.users.iter()
                 .map(|user| UserInfo {
                     public_id: user.public_id.clone(),
+                    display_name: user.display_name.clone(),
                     is_invited: user.is_invited.load(std::sync::atomic::Ordering::Relaxed),
-                    team: user.team.load(std::sync::atomic::Ordering::Relaxed),
+                    team: oj_rc_core::types::TeamId::from_raw(user.team.load(std::sync::atomic::Ordering::Relaxed) as _),
                     state: PlayerSessionStatus::from_u8(user.status.load(std::sync::atomic::Ordering::Relaxed))
                         .unwrap_or(PlayerSessionStatus::Unknown),
                 })

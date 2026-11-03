@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::{StatusCode, header::AUTHORIZATION}, post, web::{Data, Path, Bytes}};
 
-use oj_rc_core::persist::user::federation::{Activity, ActivityType};
+use oj_rc_core::{persist::user::federation::{Activity, ActivityType}, types::RawType};
 
 #[get("/api/v1/activitypub/user/{name}/inbox")]
 pub async fn get(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, req: HttpRequest) -> impl Responder {
@@ -13,7 +13,7 @@ pub async fn post(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, par
     if let Some(auth_token) = req.headers().get(AUTHORIZATION) {
         match super::auth_user(auth, auth_token).await {
             Ok(user) => {
-                if user.public_id() != name {
+                if user.public_id().as_raw_ref() != name {
                     log::error!("Wrong authenticated user: requested {}, token for {}", name, user.public_id());
                     Err(InboxError {
                         message: "Forbidden Authorization token".to_owned(),

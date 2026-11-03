@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -18,14 +19,15 @@ impl SimpleOperation<crate::data::custom::CustomType> for UserCanBeInvitedToCust
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
             let _user_info = user.user()?; // just to validate request is authenticated
+            let user_pub_id = oj_rc_core::types::PublicId::from_raw(username.string);
             let mut set = std::collections::HashSet::with_capacity(1);
-            set.insert(username.string.clone());
+            set.insert(user_pub_id.clone());
             self.social.filter_online_only(&mut set).await;
             if set.is_empty() {
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Bool(false));
                 return Ok(params);
             }
-            if self.social.platoon_of_user(&username.string).await.is_some() {
+            if self.social.platoon_of_user(&user_pub_id).await.is_some() {
                 params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Bool(false));
                 return Ok(params);
             }

@@ -73,8 +73,8 @@ impl SimpleOperation<crate::data::custom::CustomType> for FriendsLister {
                 .map(|friend| (
                     friend.public_id.clone(),
                     crate::events::friend_status::FriendStatus {
-                        friend_public_id: user_info.public_id().to_owned(),
-                        friend_display_name: user_info.display_name().to_owned(),
+                        friend_public_id: user_info.public_id(),
+                        friend_display_name: user_info.display_name(),
                         is_online: true,
                         invite_status: crate::data::friend::InviteStatus::from_core(&friend.state).reciprocal(),
                     }
@@ -86,7 +86,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for FriendsLister {
     }
 }
 
-async fn send_online_event_to_friends(events: Vec<(String, crate::events::friend_status::FriendStatus)>, social: std::sync::Arc<crate::SocialMesh>) {
+async fn send_online_event_to_friends(events: Vec<(oj_rc_core::types::PublicId, crate::events::friend_status::FriendStatus)>, social: std::sync::Arc<crate::SocialMesh>) {
     for (public_id, event) in events {
         social.send_event_to(&public_id, event).await;
     }

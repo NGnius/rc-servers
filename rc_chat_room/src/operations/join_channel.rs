@@ -32,8 +32,8 @@ impl SimpleOperation<()> for JoinChannelProvider {
                 let user_info = user.user()?;
                 //let chat_user = super::get_chat_user(user_info.as_ref().as_ref());
                 let ty = crate::data::channel::ChatChannelType::from_u8(chann_ty as _)?;
-                log::info!("User {} wants to join channel {} ({:?})", user_info.display_name().to_owned(), chann_name.string, ty);
-                self.chat_system.system_mut().await.join_channel(user_info.display_name().to_owned(), chann_name.string.clone(), ty);
+                log::info!("User {} wants to join channel {} ({:?})", user_info.public_id(), chann_name.string, ty);
+                self.chat_system.system_mut().await.join_channel(&user_info.public_id(), chann_name.string.clone(), ty);
                 let response = user_info.add_subscribed_channel(chann_name.string, ty).await?;
                 params.insert(CHANNEL_INFO_PARAM_KEY, response);
             }
@@ -61,7 +61,7 @@ impl SimpleOperation<()> for LeaveChannelProvider {
             if let Some(Typed::Int(chann_ty)) = params.remove(&CHANNEL_TYPE_PARAM_KEY) {
                 let user_info = user.user()?;
                 //let chat_user = super::get_chat_user(user_info.as_ref().as_ref());
-                self.chat_system.system_mut().await.leave_channel(user_info.public_id().to_owned(), chann_name.string.clone());
+                self.chat_system.system_mut().await.leave_channel(user_info.public_id(), chann_name.string.clone());
                 user_info.remove_subscribed_channel(chann_name.string, crate::data::channel::ChatChannelType::from_u8(chann_ty as _)?).await?;
             }
         }

@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use rand::RngExt;
 
 use crate::matches::CustomGameLogic;
@@ -15,17 +16,17 @@ impl WinTracker {
         }
     }
 
-    async fn do_win(generic: &crate::matches::GenericGamemodeEngine<PitLogic>, game: &PitLogic, winning_team: u8) {
+    async fn do_win(generic: &crate::matches::GenericGamemodeEngine<PitLogic>, game: &PitLogic, winning_team: crate::types::Team) {
         generic.game_done();
         game.abort_timer_sync().await;
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team,
+            winning_team: winning_team.as_raw(),
             end_reason: rlnl::types::GameEndReason::PitMaxKillsAchieved,
         };
-        let winning_team_i32 = winning_team as i32;
+        let winning_team_id = winning_team.into_id();
         for (player_id, player_info) in generic.user_descriptors().iter() {
             if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let event = if player_info.descriptor.team == winning_team_i32 {
+            let event = if player_info.descriptor.team == winning_team_id {
                 rlnl::event_code::NetworkEvent::GameWon
             } else {
                 rlnl::event_code::NetworkEvent::GameLost
@@ -48,7 +49,7 @@ impl WinTracker {
                         if player_streak >= *streak_threshold {
                             if let Some(conn) = generic.user_descriptor(*player_id) {
                                 log::info!("Player {} has reached the streak win condition in game {}", player_id, generic.game_guid());
-                                Self::do_win(generic, game, conn.descriptor.team as u8).await;
+                                Self::do_win(generic, game, crate::types::Team::from_id(conn.descriptor.team)).await;
                                 break;
                             } else {
                                 log::warn!("Player {} has a winning kill streak but is not in game {}", player_id, generic.game_guid());
@@ -60,7 +61,7 @@ impl WinTracker {
                     for (player_id, player_info) in generic.user_descriptors() {
                         if player_info.counters.kills.load(std::sync::atomic::Ordering::Relaxed) >= *kills_threshold {
                             log::info!("Player {} has reached the total kills win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
+                            Self::do_win(generic, game, crate::types::Team::from_id(player_info.descriptor.team)).await;
                             break;
                         }
                     }
@@ -69,7 +70,7 @@ impl WinTracker {
                     for (player_id, player_info) in generic.user_descriptors() {
                         if player_info.counters.generic_score() >= *score_threshold {
                             log::info!("Player {} has reached the total score win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
+                            Self::do_win(generic, game, crate::types::Team::from_id(player_info.descriptor.team)).await;
                             break;
                         }
                     }
@@ -78,7 +79,7 @@ impl WinTracker {
                     for (player_id, player_info) in generic.user_descriptors() {
                         if player_info.counters.cubes.load(std::sync::atomic::Ordering::Relaxed) >= *dmg_threshold {
                             log::info!("Player {} has reached the total damage win condition in game {}", player_id, generic.game_guid());
-                            Self::do_win(generic, game, player_info.descriptor.team as u8).await;
+                            Self::do_win(generic, game, crate::types::Team::from_id(player_info.descriptor.team)).await;
                             break;
                         }
                     }
@@ -96,9 +97,9 @@ impl WinTracker {
 }
 
 struct PlayerTracker {
-    streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
-    best_streaks: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>,
-    respawns: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>,
+    streaks: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicU32>,
+    best_streaks: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicU32>,
+    respawns: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicI64>,
 }
 
 impl PlayerTracker {
@@ -110,7 +111,7 @@ impl PlayerTracker {
         }
     }
 
-    fn streak_leader(&self) -> Option<u8> {
+    fn streak_leader(&self) -> Option<oj_rc_core::types::PlayerId> {
         let mut max = None;
         for (player_id, streak) in self.streaks.iter() {
             if let Some((_, cur_max_streak)) = max {
@@ -133,12 +134,12 @@ impl PlayerTracker {
         }
     }
 
-    fn pit_stats(&self, users: &std::collections::HashMap<u8, crate::matches::generic::UserDescriptor>) -> rlnl::events::ingame::PitModeState {
+    fn pit_stats(&self, users: &std::collections::HashMap<oj_rc_core::types::PlayerId, crate::matches::generic::UserDescriptor>) -> rlnl::events::ingame::PitModeState {
         let mut player_stats = Vec::with_capacity(self.streaks.len());
         for (player_id, streak) in self.streaks.iter() {
             if let Some(user) = users.get(player_id) {
                 player_stats.push(rlnl::types::PitPlayerStats {
-                    player_id: *player_id,
+                    player_id: player_id.as_raw(),
                     score: user.counters.kills.load(std::sync::atomic::Ordering::Relaxed),
                     streak: streak.load(std::sync::atomic::Ordering::Relaxed),
                 });
@@ -147,7 +148,7 @@ impl PlayerTracker {
         rlnl::events::ingame::PitModeState {
             num_scores: player_stats.len() as u8,
             scores: player_stats,
-            leader_id: self.streak_leader().map(|x| x as i32).unwrap_or(-1),
+            leader_id: self.streak_leader().map(|x| x.as_raw() as i32).unwrap_or(-1),
         }
     }
 }
@@ -159,7 +160,7 @@ pub struct PitLogic {
     win_tracking: WinTracker,
     settings: std::sync::Arc<oj_rc_core::persist::config::PitSettings>,
     timer_task: tokio::sync::Mutex<Option<crate::matches::timer::MatchTimerHandle>>,
-    initial_spawns: Vec<(u8, oj_rc_core::persist::config::Point)>, // (player_id, spawn_point)
+    initial_spawns: Vec<(oj_rc_core::types::PlayerId, oj_rc_core::persist::config::Point)>, // (player_id, spawn_point)
     map_center: oj_rc_core::persist::config::Point,
 }
 
@@ -186,7 +187,7 @@ impl PitLogic {
         *lock = None;
     }
 
-    async fn do_leader_update(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) {
+    async fn do_leader_update(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: oj_rc_core::types::PlayerId, victim: oj_rc_core::types::PlayerId) {
         let leader = if let Some(leader_id) = self.player_tracking.streak_leader() {
             leader_id
         } else {
@@ -206,11 +207,11 @@ impl PitLogic {
             return;
         };
         let payload = rlnl::events::ingame::UpdatePitScore {
-            player_id: killer,
+            player_id: killer.as_raw(),
             score: killer_score,
             streak: killer_streak,
-            destroyed_id: victim,
-            leader_id: leader,
+            destroyed_id: victim.as_raw(),
+            leader_id: leader.as_raw(),
         };
         generic.broadcast(
             rlnl::event_code::NetworkEvent::PitLeaderBoardUpdate,
@@ -230,14 +231,14 @@ impl PitLogic {
         ).await;
     }
 
-    async fn do_selfdestruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+    async fn do_selfdestruct_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: oj_rc_core::types::PlayerId) {
         if let Some(player_streak) = self.player_tracking.streaks.get(&player_id) {
             player_streak.store(0, std::sync::atomic::Ordering::Relaxed);
         }
         self.do_leader_update(generic, player_id, player_id).await;
     }
 
-    async fn do_kill_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) {
+    async fn do_kill_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: oj_rc_core::types::PlayerId, victim: oj_rc_core::types::PlayerId) {
         if let Some(player_streak) = self.player_tracking.streaks.get(&victim) {
             player_streak.store(0, std::sync::atomic::Ordering::Relaxed);
         }
@@ -251,7 +252,7 @@ impl PitLogic {
                         let old_best_streak = player_best_streak.fetch_max(old_streak + 1, std::sync::atomic::Ordering::Relaxed);
                         if old_best_streak == old_streak {
                             let data = rlnl::events::ingame::UpdateGameStats {
-                                player_id: killer,
+                                player_id: killer.as_raw(),
                                 stat_id: rlnl::types::IngameStatId::BestKillStreak,
                                 amount: old_streak + 1,
                                 score: killer_score,
@@ -266,7 +267,7 @@ impl PitLogic {
                         }
                     }
                     let data = rlnl::events::ingame::UpdateGameStats {
-                        player_id: killer,
+                        player_id: killer.as_raw(),
                         stat_id: rlnl::types::IngameStatId::CurrentKillStreak,
                         amount: old_streak + 1,
                         score: killer_score,
@@ -284,10 +285,10 @@ impl PitLogic {
         self.do_leader_update(generic, killer, victim).await;
     }
 
-    fn choose_spawn_point(map_config: &oj_rc_core::persist::config::MapConfig, player_id: u8) -> (Option<usize>, oj_rc_core::persist::config::Point) {
+    fn choose_spawn_point(map_config: &oj_rc_core::persist::config::MapConfig, player_id: oj_rc_core::types::PlayerId) -> (Option<usize>, oj_rc_core::persist::config::Point) {
         if map_config.pit_spawns.is_empty() {
             (None, oj_rc_core::persist::config::Point {
-                x: 10.0 * (player_id as f32),
+                x: 10.0 * (player_id.as_raw() as f32),
                 y: 100.0,
                 z: 10.0,
             })
@@ -299,7 +300,7 @@ impl PitLogic {
         }
     }
 
-    fn generate_first_spawns(map_config: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Vec<(u8, oj_rc_core::persist::config::Point)> {
+    fn generate_first_spawns(map_config: &oj_rc_core::persist::config::MapConfig, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Vec<(oj_rc_core::types::PlayerId, oj_rc_core::persist::config::Point)> {
         if map_config.pit_spawns.is_empty() {
             log::warn!("Map is missing pit spawn points, spawn points will be (poorly) generated");
         }
@@ -342,12 +343,12 @@ impl PitLogic {
                     pos: rlnl::types::CompressedVec3::from((spawn_point.x, spawn_point.y, spawn_point.z)),
                     rot: super::looking_at_point(spawn_point, &self.map_center),
                 },
-                owner: *player_id,
+                owner: player_id.as_raw(),
             })
         }).collect()
     }
 
-    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: oj_rc_core::types::PlayerId) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
         let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds);
         let now = chrono::Utc::now();
@@ -357,7 +358,7 @@ impl PitLogic {
         }
         if let Some(player_desc) = generic.user_descriptor(player_id) {
             let respawn_payload = rlnl::events::ingame::RespawnTime {
-                owner: player_id,
+                owner: player_id.as_raw(),
                 waiting_time: self.settings.respawn_time_seconds as i16,
             };
             generic.broadcast(
@@ -388,11 +389,21 @@ impl PitLogic {
 
 #[async_trait::async_trait]
 impl CustomGameLogic for PitLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _conn: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_join(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _conn: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         true
     }
 
-    async fn on_player_end(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_end(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         if generic.is_game_done() {
             return true;
         }
@@ -406,7 +417,7 @@ impl CustomGameLogic for PitLogic {
             // nobody to play against, automatically end the game
             let player_id = read_lock.keys().next().unwrap();
             let user_info = generic.user_descriptor(*player_id).unwrap();
-            WinTracker::do_win(generic, self, user_info.descriptor.team as u8).await;
+            WinTracker::do_win(generic, self, crate::types::Team::from_id(user_info.descriptor.team)).await;
         } else {
             let mut single_client = None;
             for conn in read_lock.values() {
@@ -420,28 +431,43 @@ impl CustomGameLogic for PitLogic {
                 }
             }
             if single_client.is_some() {
-                let user_id = read_lock.values().next().unwrap().user.account_id();
+                let user_id = read_lock.values().next().unwrap().user.user_id();
                 let player_id = generic.user_key_by_user_id(user_id).unwrap();
                 let user_info = generic.user_descriptor(player_id).unwrap();
-                WinTracker::do_win(generic, self, user_info.descriptor.team as u8).await;
+                WinTracker::do_win(generic, self, crate::types::Team::from_id(user_info.descriptor.team)).await;
             }
         }
         true
     }
 
-    async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+    async fn on_vehicle_destroyed(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         self.do_kill_tasks(generic, killer, victim).await;
         self.do_respawn_tasks(generic, victim).await;
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user: oj_rc_core::types::PlayerId,
+        _is_classic: bool,
+    ) -> bool {
         self.do_selfdestruct_tasks(generic, user).await;
         self.do_respawn_tasks(generic, user).await;
         true
     }
 
-    async fn on_kill_bonus(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+    async fn on_kill_bonus(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         if let Some(to_reward) = generic.user_descriptor(killer) {
             to_reward.counters.kills.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             generic.send_to_player(
@@ -449,8 +475,8 @@ impl CustomGameLogic for PitLogic {
                 rlnl::event_code::NetworkEvent::ConfirmedKill,
                 literustlib::packet::Property::ReliableOrdered,
                 &rlnl::events::ingame::Kill {
-                    killee_player_id: victim,
-                    killer_player_id: killer,
+                    killee_player_id: victim.as_raw(),
+                    killer_player_id: killer.as_raw(),
                 },
             ).await;
             /*crate::events::log_lnl_send_failure(to_reward.connection.rlnl().send_data(
@@ -466,7 +492,7 @@ impl CustomGameLogic for PitLogic {
             // TODO make this a merged packet because this is a lot of network spam
             let generic_packet = to_reward.counters.get_generic_packet(killer, rlnl::types::IngameStatId::Kill, None);
             let data = rlnl::events::ingame::UpdateGameStats {
-                player_id: killer,
+                player_id: killer.as_raw(),
                 stat_id: rlnl::types::IngameStatId::Points,
                 amount: to_reward.counters.kills.load(std::sync::atomic::Ordering::Relaxed),
                 score: generic_packet.score,
@@ -488,7 +514,12 @@ impl CustomGameLogic for PitLogic {
         false
     }
 
-    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> Vec<crate::matches::RlnlPacket> {
         let mut initial_spawn_packets = self.initial_spawns_to_packets();
         initial_spawn_packets.push(
             crate::matches::RlnlPacket {
@@ -503,7 +534,11 @@ impl CustomGameLogic for PitLogic {
         initial_spawn_packets
     }
 
-    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+    async fn on_countdown_start(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        game_start: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         let read_lock = generic.users.read().await;
         let game_end = game_start + generic.game_duration;
         let mut senders = Vec::with_capacity(read_lock.len());
@@ -536,7 +571,11 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+    async fn on_player_reconnect_complete(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         // update players for timer task
         let mut player_info = None;
         let users_lock = generic.users.read().await;
@@ -567,11 +606,25 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+    async fn on_broadcast(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event_out: rlnl::event_code::NetworkEvent,
+        _event_in: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: &Option<Box<dyn crate::Broadcastable>>,
+        _skip_user: bool,
+    ) -> bool {
         true
     }
 
-    async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+    async fn on_motion(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _motion: &rlnl::machine_motion::MachineMotion,
+        _location: (f32, f32, f32),
+    ) -> bool {
         if generic.is_game_done() {
             self.abort_timer_sync().await;
             return true;
@@ -585,9 +638,21 @@ impl CustomGameLogic for PitLogic {
         true
     }
 
-    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+    async fn on_custom(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: Box<dyn crate::Broadcastable>,
+    ) {}
 
-    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+    async fn on_spot_vehicle(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _remote_player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         false
     }
 }

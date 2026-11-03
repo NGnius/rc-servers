@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -20,35 +21,36 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
 
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         if let Some(Typed::Str(username)) = params.remove(&USERNAME_PARAM_KEY) {
-            if let Some(platoon_id) = self.social.platoon_of_user(&username.string).await {
-                log::debug!("User {} is already in platoon {}", username.string, platoon_id);
+            let user_pub_id = oj_rc_core::types::PublicId::from_raw(username.string);
+            if let Some(platoon_id) = self.social.platoon_of_user(&user_pub_id).await {
+                log::debug!("User {} is already in platoon {}", user_pub_id, platoon_id.as_raw_ref());
                 return Err(SimpleOpError::with_message(
                     oj_rc_core::data::error_codes::SocialErrorCode::AlreadyInPlatoon as i16,
-                    format!("User is already in platoon {}", platoon_id),
+                    format!("User is already in platoon {}", platoon_id.as_raw_ref()),
                 ));
             }
             let user_info = user.user()?;
-            let (platoon_id, social_infos, timestamp) = if let Some(platoon_id) = self.social.platoon_of_user(user_info.public_id()).await {
+            let (platoon_id, social_infos, timestamp) = if let Some(platoon_id) = self.social.platoon_of_user(&user_info.public_id()).await {
                 // add to existing platoon
-                log::debug!("Inviting {} to platoon {} by user {}", username.string, platoon_id, user_info.public_id());
+                log::debug!("Inviting {} to platoon {} by user {}", user_pub_id, platoon_id.as_raw_ref(), user_info.public_id());
                 let members = self.social.users_of_platoon(&platoon_id).await;
-                let member_public_ids: Vec<String> = members.iter()
+                let member_public_ids: Vec<oj_rc_core::types::PublicId> = members.iter()
                     .map(|m| m.public_id.clone())
-                    .chain([username.string.clone()])
+                    .chain([user_pub_id.clone()])
                     .collect();
                 let social_infos = user_info.list_social_info(&member_public_ids).await?;
                 if social_infos.len() != members.len() + 1 {
-                    log::debug!("Platoon members info could not be retrieved while inviting {} to platoon {}", username.string, platoon_id);
+                    log::debug!("Platoon members info could not be retrieved while inviting {} to platoon {}", user_pub_id, platoon_id.as_raw_ref());
                     return Err(SimpleOpError::with_message(
                         oj_rc_core::data::error_codes::SocialErrorCode::UserDoesNotExist as i16,
                         "User's info could not be retrieved".to_owned(),
                     ));
                 }
-                if let Some(timestamp) = self.social.add_user_to_platoon(&username.string, &platoon_id, crate::data::platoon::MemberStatus::Invited).await {
+                if let Some(timestamp) = self.social.add_user_to_platoon(&user_pub_id, &platoon_id, crate::data::platoon::MemberStatus::Invited).await {
                     if social_infos.len() > 2 {
                         // send PlatoonMemberAdded event to other platoon members
                         let invitee_soc = social_infos.iter()
-                            .find(|soc| soc.public_id == username.string)
+                            .find(|soc| soc.public_id == user_pub_id)
                             .unwrap();
                         let event = crate::events::platoon_member_added::PlatoonNewMember {
                             new_member: crate::data::platoon::PlatoonMemberInfo {
@@ -62,7 +64,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                         };
                         // unlikely to be more than 3, so no need to run this in its own task
                         for social_info in social_infos.iter() {
-                            if social_info.public_id == username.string { continue; }
+                            if social_info.public_id == user_pub_id { continue; }
                             if social_info.public_id == user_info.public_id() { continue; }
                             self.social.send_event_to(&social_info.public_id, event.clone()).await;
                         }
@@ -88,7 +90,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                     }
                     (platoon_id, social_infos, timestamp)
                 } else {
-                    log::debug!("Failed to add user {} to platoon {} (did the platoon disband?)", username.string, platoon_id);
+                    log::debug!("Failed to add user {} to platoon {} (did the platoon disband?)", user_pub_id, platoon_id.as_raw_ref());
                     return Err(SimpleOpError::with_message(
                         oj_rc_core::data::error_codes::SocialErrorCode::UserNotPlatoonFound as i16,
                         "Failed to invite user to platoon".to_owned(),
@@ -97,18 +99,18 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
             } else {
                 // create new platoon
                 let social_infos = user_info.list_social_info(&[
-                    username.string.clone(),
-                    user_info.public_id().to_owned(),
+                    user_pub_id.clone(),
+                    user_info.public_id(),
                 ]).await?;
                 if social_infos.len() != 2 {
-                    log::debug!("User {} info could not be retrieved while creating new platoon", username.string);
+                    log::debug!("User {} info could not be retrieved while creating new platoon", user_pub_id);
                     return Err(SimpleOpError::with_message(
                         oj_rc_core::data::error_codes::SocialErrorCode::UserDoesNotExist as i16,
                         "User's info could not be retrieved".to_owned(),
                     ));
                 }
-                let platoon_id = if let Some((_, platoon_key)) = self.social.create_platoon(user_info.public_id()).await {
-                    log::debug!("Created new platoon {} for user {} to invite {}", platoon_key, user_info.public_id(), username.string);
+                let platoon_id = if let Some((_, platoon_key)) = self.social.create_platoon(&user_info.public_id()).await {
+                    log::debug!("Created new platoon {} for user {} to invite {}", platoon_key.as_raw_ref(), user_info.public_id(), user_pub_id);
                     platoon_key
                 } else {
                     return Err(SimpleOpError::with_message(
@@ -116,7 +118,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                         "Failed to create platoon".to_owned(),
                     ));
                 };
-                if let Some(timestamp) = self.social.add_user_to_platoon(&username.string, &platoon_id, crate::data::platoon::MemberStatus::Invited).await {
+                if let Some(timestamp) = self.social.add_user_to_platoon(&user_pub_id, &platoon_id, crate::data::platoon::MemberStatus::Invited).await {
                     (platoon_id, social_infos, timestamp)
                 } else {
                     return Err(SimpleOpError::with_message(
@@ -126,7 +128,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                 }
             };
             let invitee = social_infos.iter()
-                .find(|soc| soc.public_id == username.string)
+                .find(|soc| soc.public_id == user_pub_id)
                 .unwrap();
             let inviter = social_infos.iter()
                 .find(|soc| soc.public_id == user_info.public_id())
@@ -136,7 +138,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonInviter {
                 inviter_display_name: user_info.display_name().to_owned(),
                 avatar_id: inviter.avatar_id,
             }).await;
-            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.into()));
+            params.insert(PLATOON_ID_PARAM_KEY, Typed::Str(platoon_id.as_raw_ref().into()));
             params.insert(PLATOON_INVITEE_PARAM_KEY, Typed::Custom(crate::data::custom::CustomType::PlatoonMember(crate::data::platoon::PlatoonMemberInfo {
                 public_id: invitee.public_id.clone(),
                 display_name: invitee.display_name.clone(),

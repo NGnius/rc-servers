@@ -1,6 +1,6 @@
 pub struct GameMatches {
-    matches: std::collections::HashMap<String, tokio::sync::mpsc::Sender<super::GameMessage>>,
-    routing: std::collections::HashMap<i32, String>, // user id to game guid
+    matches: std::collections::HashMap<oj_rc_core::types::GameGuid, tokio::sync::mpsc::Sender<super::GameMessage>>,
+    routing: std::collections::HashMap<oj_rc_core::types::UserId, oj_rc_core::types::GameGuid>, // user id to game guid
     mode_configs: oj_rc_core::data::game_mode::GameModeConfigs,
     map_configs: std::collections::HashMap<String, oj_rc_core::persist::config::MapConfig>,
     cube_health_configs: std::sync::Arc<std::collections::HashMap<u32, u32>>,
@@ -83,7 +83,7 @@ impl GameMatches {
         }
     }
 
-    fn build_fake_players(&self, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<u8, Box<dyn super::fake::FakeUser>> {
+    fn build_fake_players(&self, players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<oj_rc_core::types::PlayerId, Box<dyn super::fake::FakeUser>> {
         let mut fakes = std::collections::HashMap::new();
         for player in players.iter() {
             //if player.user_id.is_some() { continue; }
@@ -95,7 +95,7 @@ impl GameMatches {
         fakes
     }
 
-    async fn start_new_match_engine(&self, user: &(dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static), guid: &str) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
+    async fn start_new_match_engine(&self, user: &(dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static), guid: &oj_rc_core::types::GameGuid) -> Result<tokio::sync::mpsc::Sender<super::GameMessage>, oj_rc_core::persist::user::MultiplayerError> {
         let game_info = user.game_info(guid).await?
         .ok_or_else(|| oj_rc_core::persist::user::MultiplayerError {
             code: oj_rc_core::persist::user::MultiplayerErrorCode::CustomString,
@@ -258,7 +258,7 @@ impl GameMatches {
     // create a new match
     async fn create_new_game(&mut self,
         user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>>,
-        game_guid: String,
+        game_guid: oj_rc_core::types::GameGuid,
         connection: std::sync::Arc<literustlib_server::Connection<crate::PacketData>>,
         response: tokio::sync::oneshot::Sender<Option<super::messages::ErrorMessage>>,
         sender: std::sync::Arc<literustlib_server::DataSender<crate::PacketData>>,
@@ -276,8 +276,8 @@ impl GameMatches {
                 return;
             }
         };
-        self.matches.insert(game_guid.clone(), tx.clone());
-        self.routing.insert(user.account_id(), game_guid.clone());
+        self.matches.insert(game_guid, tx.clone());
+        self.routing.insert(user.user_id(), game_guid);
         if !self.is_crystal_regen_running.swap(true, std::sync::atomic::Ordering::SeqCst) {
             tokio::task::spawn(Self::regenerate_crystal_order_task(
                 self.ba_sorted_crystals.clone(),
@@ -304,7 +304,7 @@ impl GameMatches {
         self.routing.retain(|_, val| !games_to_remove.contains(val));
     }*/
 
-    fn do_game_cleanup(&mut self, game_guid: &String) {
+    fn do_game_cleanup(&mut self, game_guid: &oj_rc_core::types::GameGuid) {
         self.routing.retain(|_, game_guid2| game_guid2 != game_guid);
         self.matches.remove(game_guid);
     }
@@ -321,7 +321,7 @@ impl GameMatches {
                                 self.do_game_cleanup(&game_guid);
                                 self.create_new_game(user.clone(), game_guid, connection, response, sender).await;
                             } else {
-                                self.routing.insert(user.account_id(), game_guid.clone());
+                                self.routing.insert(user.user_id(), game_guid);
                                 if tx.send(super::GameMessage::NewConnection { user: user.clone(), game_guid, connection, response, sender }).await.is_err() {
                                     log::error!("Failed to send NewConnection game message to existing match");
                                 }

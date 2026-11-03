@@ -1,5 +1,6 @@
 use actix_web::{get, web::Data, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
@@ -35,8 +36,8 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                 Err(e) => {
                     let html = render_err(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             instances: Vec::default(),
                         },
                         e.to_string(),
@@ -52,8 +53,8 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
             };
             let html = render_ok(
                 RenderData {
-                    display_name: user.display_name().to_owned(),
-                    public_id: user.public_id().to_owned(),
+                    display_name: user.display_name().as_raw(),
+                    public_id: user.public_id().as_raw(),
                     instances: fedi_info,
                 },
                 handlebars_ref.as_ref(),

@@ -1,6 +1,6 @@
 pub struct RoomJoined {
     pub channel_name: String,
-    pub player_name: String,
+    pub player_name: oj_rc_core::types::PublicId,
     pub player_state: oj_rc_core::data::channel::ChatPlayerState,
     pub use_custom_avatar: bool,
     pub custom_avatar: Vec<u8>,
@@ -12,9 +12,10 @@ impl RoomJoined {
     pub const CHANNEL: u8 = 0;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(8);
         params.insert(3, polariton::operation::Typed::Str(self.channel_name.clone().into()));
-        params.insert(22, polariton::operation::Typed::Str(self.player_name.clone().into()));
+        params.insert(22, polariton::operation::Typed::Str(self.player_name.as_raw_ref().into()));
         params.insert(23, polariton::operation::Typed::Int(self.player_state as _));
         params.insert(24, polariton::operation::Typed::Bool(self.use_custom_avatar));
         if self.use_custom_avatar {

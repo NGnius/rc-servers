@@ -1,5 +1,6 @@
 use actix_web::{get, web::{Data, Path}, Responder, HttpRequest};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 use serde::{Serialize, Deserialize};
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
@@ -31,8 +32,8 @@ pub async fn get(id: Path<i32>, handlebars_ref: Data<handlebars::Handlebars<'_>>
                 Ok(Some(garage)) => {
                     render_ok(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             garage: GarageData {
                                 garage_id: *id,
                                 slot: garage.slot,
@@ -50,8 +51,8 @@ pub async fn get(id: Path<i32>, handlebars_ref: Data<handlebars::Handlebars<'_>>
                     log::error!("Failed to find vehicle {} for user {}", id, user.public_id());
                     render_err(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             garage: GarageData {
                                 garage_id: -1,
                                 slot: -1,
@@ -68,8 +69,8 @@ pub async fn get(id: Path<i32>, handlebars_ref: Data<handlebars::Handlebars<'_>>
                     log::error!("Failed to retrieve vehicle {} for user {}: {}", id, user.public_id(), e);
                     render_err(
                         RenderData {
-                            display_name: user.display_name().to_owned(),
-                            public_id: user.public_id().to_owned(),
+                            display_name: user.display_name().as_raw(),
+                            public_id: user.public_id().as_raw(),
                             garage: GarageData {
                                 garage_id: -1,
                                 slot: -1,

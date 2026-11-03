@@ -2,20 +2,22 @@ use actix_web::{rt, web::{Payload, Data, Path, Json}, Error, HttpRequest, HttpRe
 //use actix_ws::AggregatedMessage;
 //use futures::StreamExt as _;
 
+use oj_rc_core::types::RawType;
+
 #[get("/intercom/.oj_services/{name}")]
 pub async fn services_ws(req: HttpRequest, stream: Payload, auth: Data<super::IntercomAuth>, reg: Data<super::Users>, name: Path<String>) -> Result<HttpResponse, Error> {
     auth.validate(&req, &format!(".oj_services/{}", urlencoding::encode(&name)))?;
     let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
-
+    let name = oj_rc_core::types::PublicId::from_raw(name.to_owned());
     let mut stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20)); // aggregate continuation frames up to 1MiB
 
     let (tx, mut rx) = tokio::sync::mpsc::channel(16);
     reg.register_web_service(name.clone(), tx.clone()).await;
-    log::debug!("Registered web services intercom websocket for user {}", name);
+    log::debug!("Registered web services intercom websocket for {}", name);
 
-    let name_rx: String = name.clone();
+    let name_rx = name.clone();
     let mut session_rx = session.clone();
     // start receiver task but don't wait for it
     rt::spawn(async move {

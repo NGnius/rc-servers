@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -20,22 +21,23 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameMemberKicker {
         if let Some(Typed::Str(user_to_kick)) = params.remove(&TO_KICK_PARAM_KEY) {
             let user_info = user.user()?;
             let my_pub_id = user_info.public_id();
-            let (resp_code, session_opt) = self.games.kick_from_game(my_pub_id, &user_to_kick.string).await;
+            let target_user = oj_rc_core::types::PublicId::from_raw(user_to_kick.string);
+            let (resp_code, session_opt) = self.games.kick_from_game(my_pub_id.clone(), target_user.clone()).await;
             if let Some((kick_info, session)) = session_opt {
-                log::debug!("User {} kicked {} from custom game {}", my_pub_id, user_to_kick.string, session.session_id);
+                log::debug!("User {} kicked {} from custom game {}", my_pub_id, target_user, session.session_id.as_raw_ref());
                 let kick_event = crate::events::CustomGameKick {
                     session: kick_info.session_id,
                     was_invited: kick_info.was_invited,
                 };
-                self.mesh.send_event_to(&user_to_kick.string, kick_event).await;
+                self.mesh.send_event_to(&target_user, kick_event).await;
                 let update_event = crate::events::CustomGameRefresh {
                     session: session.session_id.clone(),
                 };
                 let members_iter = session.users.iter()
-                    .map(|mem| &mem.public_id as &str);
+                    .map(|mem| &mem.public_id);
                 self.mesh.broadcast_event_to(members_iter, update_event).await;
                 user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                    session_id: session.session_id,
+                    session_id: session.session_id.as_raw(),
                     config: session.config_core,
                     users: session.users.iter()
                         .filter(|user| !user.is_invited)

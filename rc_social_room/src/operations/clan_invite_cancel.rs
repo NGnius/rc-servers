@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -17,9 +18,10 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanInviteCanceller {
     async fn handle(&self, mut params: ParameterTable<crate::data::custom::CustomType>, user: &Self::User) -> Result<ParameterTable<crate::data::custom::CustomType>, SimpleOpError> {
         if let Some(Typed::Str(invitee)) = params.remove(&PUBLIC_ID_PARAM_KEY) {
             let user_info = user.user()?;
-            log::debug!("User {} wants to cancel invite to user {}", user_info.public_id(), invitee.string);
-            let (clan_info, members_info) = user_info.cancel_invite_to_clan(&invitee.string).await?;
-            let mut online_clan_members: std::collections::HashSet<String> = members_info.iter()
+            let invitee_pub_id = oj_rc_core::types::PublicId::from_raw(invitee.string);
+            log::debug!("User {} wants to cancel invite to user {}", user_info.public_id(), invitee_pub_id);
+            let (clan_info, members_info) = user_info.cancel_invite_to_clan(&invitee_pub_id).await?;
+            let mut online_clan_members: std::collections::HashSet<oj_rc_core::types::PublicId> = members_info.iter()
                 .map(|mem| mem.public_id.clone())
                 .collect();
             self.social.filter_online_only(&mut online_clan_members).await;
@@ -27,7 +29,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanInviteCanceller {
             let event = crate::events::clan_invite_cancelled::ClanInviteCancelled {
                 clan_name: clan_info.name,
             };
-            self.social.send_event_to(&invitee.string, event).await;
+            self.social.send_event_to(&invitee_pub_id, event).await;
 
             let my_pub_id = user_info.public_id();
             let event = crate::events::clan_member_left::ClanMemberLeft {
@@ -35,7 +37,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanInviteCanceller {
                 new_leader_public_id: None,
             };
             for online_member in online_clan_members.iter() {
-                if online_member == my_pub_id { continue; }
+                if online_member == &my_pub_id { continue; }
                 self.social.send_event_to(online_member, event.clone()).await;
             }
         }

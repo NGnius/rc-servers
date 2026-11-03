@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -20,17 +21,17 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
         let user_info = user.user()?;
         let my_pub_id = user_info.public_id();
         let mut is_workaround = false;
-        let game_opt = if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
+        let game_opt = if let Some(session) = self.keylock_workaround.get_user(user_info.user_id(), &my_pub_id, &user_info.display_name()).await {
             is_workaround = true;
             Some(session)
         } else {
-            self.games.get_user_game(my_pub_id).await
+            self.games.get_user_game(&my_pub_id).await
         };
         if let Some(game) = game_opt {
-            log::debug!("User {} retrieved their custom game session {} info", my_pub_id, game.session_id);
+            log::debug!("User {} retrieved their custom game session {} info", my_pub_id, game.session_id.as_raw_ref());
             if !is_workaround {
                 user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                    session_id: game.session_id.clone(),
+                    session_id: game.session_id.as_raw(),
                     config: game.config_core,
                     users: game.users.iter()
                         .filter(|user| !user.is_invited)
@@ -42,7 +43,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
                 }).await;
             }
             params.insert(RESPONSE_CODE_PARAM_KEY, Typed::Int(crate::data::custom_games::SessionRetrieveResponse::SessionRetrieved as _));
-            let pub_ids: Vec<String> = game.users.iter()
+            let pub_ids: Vec<_> = game.users.iter()
                 .map(|member| member.public_id.clone())
                 .collect();
             let avatars = user_info.list_avatar_info(&pub_ids).await?;
@@ -52,13 +53,13 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
                 let leader = game.users.first().unwrap();
                 avatar_map.insert(leader.public_id.clone(), oj_rc_core::persist::user::SocialInfo {
                     public_id: leader.public_id.clone(),
-                    display_name: leader.public_id.clone(),
+                    display_name: leader.display_name.clone(),
                     avatar_id: Some(6),
                 });
             }
             let avatar_map = avatar_map;
             let resp = crate::data::custom_games::Session {
-                leader: game.users.first().map(|leader| leader.public_id.clone()).unwrap_or_default(),
+                leader: game.users.first().map(|leader| leader.public_id.clone()).unwrap_or_else(|| oj_rc_core::types::PublicId::from_raw(String::default())),
                 session: game.session_id,
                 members: game.users.iter().map(|mem| mem.public_id.clone()).collect(),
                 members_display_name: game.users.iter()
@@ -70,7 +71,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameRetriever {
                     .map(|mem| mem.public_id.clone())
                     .collect(),
                 team_b_members: game.users.iter()
-                    .filter(|mem| mem.team == 1)
+                    .filter(|mem| mem.team == oj_rc_core::types::TeamId::from_raw(1))
                     .map(|mem| mem.public_id.clone())
                     .collect(),
                 config: game.config,

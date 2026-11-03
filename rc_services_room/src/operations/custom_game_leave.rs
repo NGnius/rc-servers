@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -23,10 +24,10 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameLeaver {
                 session: session.session_id.clone(),
             };
             let session_members = session.users.iter()
-                .map(|mem| &mem.public_id as &str);
+                .map(|mem| &mem.public_id);
             self.mesh.broadcast_event_to(session_members, event).await;
             user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                session_id: session.session_id,
+                session_id: session.session_id.as_raw(),
                 config: session.config_core,
                 users: session.users.iter()
                     .filter(|user| !user.is_invited)

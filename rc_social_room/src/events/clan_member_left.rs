@@ -1,6 +1,8 @@
+use oj_rc_core::types::RawType;
+
 #[derive(Clone)]
 pub struct ClanMemberLeft {
-    pub leaver_public_id: String,
+    pub leaver_public_id: oj_rc_core::types::PublicId,
     pub new_leader_public_id: Option<String>,
 }
 
@@ -9,7 +11,7 @@ impl ClanMemberLeft {
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
         let mut params = std::collections::HashMap::with_capacity(2);
-        params.insert(1, polariton::operation::Typed::Str(self.leaver_public_id.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.leaver_public_id.as_raw().into()));
         if let Some(new_leader) = &self.new_leader_public_id {
             params.insert(45, polariton::operation::Typed::Str(new_leader.into()));
         }

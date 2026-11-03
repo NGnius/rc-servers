@@ -5,53 +5,120 @@ pub struct NoOpLogic;
 
 #[async_trait::async_trait]
 impl CustomGameLogic for NoOpLogic {
-    async fn on_player_join(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_join(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         true
     }
 
-    async fn on_player_end(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> bool {
+    async fn on_player_end(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> bool {
         true
     }
 
-    async fn on_vehicle_destroyed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+    async fn on_vehicle_destroyed(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        _victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user: u8, _is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user: oj_rc_core::types::PlayerId,
+        _is_classic: bool,
+    ) -> bool {
         true
     }
 
-    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _killer: u8, _victim: u8) -> bool {
+    async fn on_kill_bonus(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _killer: oj_rc_core::types::PlayerId,
+        _victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 
-    async fn extra_sync_events(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> Vec<crate::matches::RlnlPacket> {
         Vec::default()
     }
 
-    async fn on_countdown_start(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _game_start: chrono::DateTime<chrono::Utc>) -> bool {
+    async fn on_countdown_start(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _game_start: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user: u8) -> bool {
+    async fn on_player_reconnect_complete(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 
-    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+    async fn on_game_completed(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+    ) -> bool {
         true
     }
 
-    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+    async fn on_broadcast(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event_out: rlnl::event_code::NetworkEvent,
+        _event_in: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: &Option<Box<dyn crate::Broadcastable>>,
+        _skip_user: bool,
+    ) -> bool {
         true
     }
 
-    async fn on_motion(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+    async fn on_motion(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _motion: &rlnl::machine_motion::MachineMotion,
+        _location: (f32, f32, f32),
+    ) -> bool {
         true
     }
 
-    async fn on_custom(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: Box<dyn crate::Broadcastable>) {}
+    async fn on_custom(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: Box<dyn crate::Broadcastable>,
+    ) {}
 
-    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+    async fn on_spot_vehicle(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _remote_player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 }

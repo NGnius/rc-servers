@@ -1,15 +1,16 @@
 pub struct FriendRemoved {
-    pub friend_public_id: String,
-    pub friend_display_name: String,
+    pub friend_public_id: oj_rc_core::types::PublicId,
+    pub friend_display_name: oj_rc_core::types::DisplayName,
 }
 
 impl FriendRemoved {
     pub const CODE: u8 = 3;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(2);
-        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.friend_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.friend_display_name.as_raw_ref().into()));
         params.into()
     }
 }

@@ -1,14 +1,15 @@
 #[derive(Clone)]
 pub struct PlatoonDisbanded {
-    pub platoon_id: String,
+    pub platoon_id: crate::social_services::PlatoonId,
 }
 
 impl PlatoonDisbanded {
     pub const CODE: u8 = 13;
 
     pub fn as_event_params(&self) -> polariton::operation::ParameterTable<crate::data::custom::CustomType> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(1);
-        params.insert(16, polariton::operation::Typed::Str(self.platoon_id.clone().into()));
+        params.insert(16, polariton::operation::Typed::Str(self.platoon_id.as_raw_ref().into()));
         params.into()
     }
 }

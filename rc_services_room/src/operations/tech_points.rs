@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::SimpleFunc;
 use polariton::operation::{ParameterTable, Typed};
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
@@ -19,7 +20,7 @@ impl <C: Send + 'static> SimpleOperation<C> for CurrentTechPointers {
             oj_rc_core::persist::user::CurrencyType::TechPoints,
             oj_rc_core::persist::user::CurrencyOp::Get,
         ).await?;
-        table.insert(CURRENT_PARAM_KEY, Typed::Int(exp as _));
+        table.insert(CURRENT_PARAM_KEY, Typed::Int(exp.as_raw() as _));
         Ok(table)
     }
 }

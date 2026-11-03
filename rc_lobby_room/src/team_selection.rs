@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 pub struct InitedTeamChoosers {
     pub battle_arena: oj_rc_core::persist::user::StandardTeamChooser,
     pub elimination: oj_rc_core::persist::user::StandardTeamChooser,
@@ -41,7 +43,7 @@ impl <T: oj_rc_plugins::team_selection::TeamSelector> oj_rc_core::persist::user:
         self.0.select_team(
             game,
             index,
-            if player.user_id >= 0 { Some(player.user_id) } else { None },
+            if *player.user_id.as_raw_ref() >= 0 { Some(player.user_id.as_raw()) } else { None },
             player.group.clone(),
         ) as i32
     }

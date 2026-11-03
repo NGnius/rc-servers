@@ -1,3 +1,5 @@
+use crate::types::RawType;
+
 use super::account_json::UserData;
 use rand::seq::SliceRandom;
 
@@ -13,7 +15,7 @@ impl UserData {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_fake_players_data(
         &self,
-        guid_str: &str,
+        guid: &crate::types::GameGuid,
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
@@ -25,22 +27,22 @@ impl UserData {
         for (i, fake) in fake_players.iter().enumerate() {
             let vehicle = self.resolve_vehicle(&fake.vehicle, factory, weapon_lister, cpu_counter).await?;
             let fake_lobby_desc = super::PlayerLobbyDescriptor {
-                user_id: -1,
-                team: -1,
+                user_id: crate::types::UserId::from_raw(-1),
+                team: crate::types::TeamId::from_raw(-1),
                 public_id: fake.vehicle.username.clone(),
-                display_name: fake.vehicle.username.clone(),
+                display_name: crate::types::DisplayName::from_raw(fake.vehicle.username.as_raw()),
                 group: None,
             };
             let out = (
                 crate::data::player_data::PlayerData {
                     name: fake.vehicle.username.clone(),
-                    display_name: fake.vehicle.username.clone(),
+                    display_name: crate::types::DisplayName::from_raw(fake.vehicle.username.as_raw()),
                     mastery: vehicle.mastery,
                     tier: vehicle.mastery,
                     robot_name: vehicle.robot_name,
                     robot_map: vehicle.robot_map,
                     group: None,
-                    team: chooser.choose_team(guid_str, total_offset + i, &fake_lobby_desc),
+                    team: crate::types::TeamId::from_raw(chooser.choose_team(&guid.as_guid_str(), total_offset + i, &fake_lobby_desc)),
                     has_premium: true,
                     robot_uuid: vehicle.robot_uuid,
                     cpu: vehicle.cpu,
@@ -64,7 +66,7 @@ impl UserData {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_forced_fake_players_data(
         &self,
-        guid_str: &str,
+        guid: &crate::types::GameGuid,
         real_players: &[super::PlayerLobbyDescriptor],
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
@@ -75,7 +77,7 @@ impl UserData {
         let mut fakes = (*self.fake_players).clone();
         fakes.shuffle(&mut rand::rng());
         self.generate_fake_players_data(
-            guid_str,
+            guid,
             factory,
             cpu_counter,
             weapon_lister,
@@ -88,7 +90,7 @@ impl UserData {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn generate_filler_players_data(
         &self,
-        guid_str: &str,
+        guid: &crate::types::GameGuid,
         factory: &dyn oj_rc_factory::VehicleFactoryAdapter,
         cpu_counter: &crate::cubes::CpuListParser,
         weapon_lister: &crate::cubes::WeaponListParser,
@@ -99,7 +101,7 @@ impl UserData {
         let mut fillers = (*self.filler_players).clone();
         fillers.shuffle(&mut rand::rng());
         self.generate_fake_players_data(
-            guid_str,
+            guid,
             factory,
             cpu_counter,
             weapon_lister,
@@ -122,7 +124,7 @@ impl super::MultiplayerUser for UserData {
                 }
             })?
             .map(|game| super::GameDescriptor {
-                guid: crate::persist::user::i64_as_uuid_str(game.guid),
+                guid: crate::types::GameGuid::from_raw(game.guid),
                 map: game.map,
                 mode: crate::data::game_mode::GameMode::from_db(game.mode),
                 visibility: crate::data::game_mode::MapVisibility::from_db(game.visibility),
@@ -142,150 +144,155 @@ impl super::MultiplayerUser for UserData {
             }))
     }
 
-    async fn game_players(&self, guid: &str) -> Result<Vec<super::PlayerDescriptor>, super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            let players = self.db.players_by_game_guid_and_completion(guid, false).await
+    async fn game_players(&self, guid: &crate::types::GameGuid) -> Result<Vec<super::PlayerDescriptor>, super::MultiplayerError> {
+        let players = self.db.players_by_game_guid_and_completion(guid.as_raw(), false).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve players for game {} for user {}: {}", guid, self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to retrieve players for game {}: {}", guid, e),
+                }
+            })?;
+        Ok(players.into_iter()
+            .map(|player| super::PlayerDescriptor {
+                user_id: player.user_id.map(crate::types::UserId::from_raw),
+                player_id: crate::types::PlayerId::from_raw(player.player_id as u8),
+                team: crate::types::TeamId::from_raw(player.team),
+                group: player.group,
+                is_rewards_claimed: player.is_claimed,
+                display_name: crate::types::DisplayName::from_raw(player.display_name),
+                public_id: crate::types::PublicId::from_raw(player.public_id),
+                mode: db_to_impl(&player.variant),
+            })
+            .collect())
+    }
+
+    async fn game_vehicles(&self, guid: &crate::types::GameGuid) -> Result<Vec<super::GameVehicleDescriptor>, super::MultiplayerError> {
+        let vehicles = self.db.game_vehicles_by_game_guid_and_completion(guid.as_raw(), false).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve vehicles for game {} for user {}: {}", guid, self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to retrieve vehicles for game {}: {}", guid, e),
+                }
+            })?;
+        Ok(vehicles.into_iter()
+            .map(|vehicle| super::GameVehicleDescriptor {
+                player_id: crate::types::PlayerId::from_raw(vehicle.player_id as u8),
+                name: vehicle.name,
+                robot_data: vehicle.robot_data,
+                colour_data: vehicle.colour_data,
+            })
+            .collect())
+    }
+
+    async fn complete_game(&self, guid: &crate::types::GameGuid) -> Result<(), super::MultiplayerError> {
+        let game_opt = self.db.game_by_guid(guid.as_raw()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve ongoing game with user {}: {}", self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to complete ongoing game: {}", e),
+                }
+            })?;
+        if let Some(game) = game_opt {
+            self.db.update_complete_game_by_game_id(game.id).await
                 .map_err(|e| {
-                    log::error!("Failed to retrieve players for game {} for user {}: {}", guid, self.account.id, e);
+                log::error!("Failed to complete ongoing game with user {}: {}", self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to complete ongoing game: {}", e),
+                }
+            })?;
+            self.db.delete_game_vehicles_by_game_id(game.id).await
+                .map_err(|e| {
+                    log::error!("Failed to delete game vehicles with user {}: {}", self.account.id, e);
                     super::MultiplayerError {
                         code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to retrieve players for game {}: {}", guid, e),
+                        message: format!("Failed to delete game game vehicles: {}", e),
                     }
                 })?;
-            Ok(players.into_iter()
-                .map(|player| super::PlayerDescriptor {
-                    user_id: player.user_id,
-                    player_id: player.player_id as u8,
-                    team: player.team,
-                    group: player.group,
-                    is_rewards_claimed: player.is_claimed,
-                    display_name: player.display_name,
-                    public_id: player.public_id,
-                    mode: db_to_impl(&player.variant),
-                })
-                .collect())
+            Ok(())
         } else {
             Err(super::MultiplayerError {
                 code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {} for player retrieval", guid),
+                message: format!("Failed to find game with GUID {}", guid),
             })
         }
     }
 
-    async fn game_vehicles(&self, guid: &str) -> Result<Vec<super::GameVehicleDescriptor>, super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            let vehicles = self.db.game_vehicles_by_game_guid_and_completion(guid, false).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve vehicles for game {} for user {}: {}", guid, self.account.id, e);
-                    super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to retrieve vehicles for game {}: {}", guid, e),
+    async fn game_info(&self, guid: &crate::types::GameGuid) -> Result<Option<super::GameDescriptor>, super::MultiplayerError> {
+        let game_opt = self.db.game_by_guid(guid.as_raw()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve game {} with user {}: {}", guid, self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to retrieve game {}: {}", guid, e),
+                }
+            })?;
+        Ok(game_opt.map(|game| super::GameDescriptor {
+            guid: crate::types::GameGuid::from_raw(game.guid),
+            map: game.map,
+            mode: crate::data::game_mode::GameMode::from_db(game.mode),
+            visibility: crate::data::game_mode::MapVisibility::from_db(game.visibility),
+            auto_heal: game.auto_heal,
+            is_ranked: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
+            is_custom: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
+            is_complete: game.is_complete,
+            overrides: if game.overrides.is_empty() { None } else {
+                match serde_json::from_str::<super::lobby::CustomGameOverrides>(&game.overrides) {
+                    Ok(x) => Some(x.to_user()),
+                    Err(e) => {
+                        log::warn!("Failed to parse overrides JSON: {}\n{}", e, game.overrides);
+                        None
                     }
-                })?;
-            Ok(vehicles.into_iter()
-                .map(|vehicle| super::GameVehicleDescriptor {
-                    player_id: vehicle.player_id as u8,
-                    name: vehicle.name,
-                    robot_data: vehicle.robot_data,
-                    colour_data: vehicle.colour_data,
-                })
-                .collect())
-        } else {
-            Err(super::MultiplayerError {
-                code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {} for vehicle retrieval", guid),
-            })
-        }
-    }
-
-    async fn complete_game(&self, guid: &str) -> Result<(), super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            let game_opt = self.db.game_by_guid(guid).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve ongoing game with user {}: {}", self.account.id, e);
-                    super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to complete ongoing game: {}", e),
-                    }
-                })?;
-            if let Some(game) = game_opt {
-                self.db.update_complete_game_by_game_id(game.id).await
-                    .map_err(|e| {
-                    log::error!("Failed to complete ongoing game with user {}: {}", self.account.id, e);
-                    super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to complete ongoing game: {}", e),
-                    }
-                })?;
-                self.db.delete_game_vehicles_by_game_id(game.id).await
-                    .map_err(|e| {
-                        log::error!("Failed to delete game vehicles with user {}: {}", self.account.id, e);
-                        super::MultiplayerError {
-                            code: super::MultiplayerErrorCode::CustomString,
-                            message: format!("Failed to delete game game vehicles: {}", e),
-                        }
-                    })?;
-                Ok(())
-            } else {
-                Err(super::MultiplayerError {
-                    code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                    message: format!("Failed to find game with GUID {}", guid),
-                })
+                }
             }
-        } else {
-            Err(super::MultiplayerError {
-                code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {}", guid),
-            })
-        }
+        }))
     }
 
-    async fn game_info(&self, guid_str: &str) -> Result<Option<super::GameDescriptor>, super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid_str) {
-            log::info!("Game GUID {} <-> {}", guid, guid_str);
-            let game_opt = self.db.game_by_guid(guid.to_owned()).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve game {} with user {}: {}", guid, self.account.id, e);
-                    super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to retrieve game {}: {}", guid, e),
-                    }
-                })?;
-            Ok(game_opt.map(|game| super::GameDescriptor {
-                guid: crate::persist::user::i64_as_uuid_str(game.guid),
-                map: game.map,
-                mode: crate::data::game_mode::GameMode::from_db(game.mode),
-                visibility: crate::data::game_mode::MapVisibility::from_db(game.visibility),
-                auto_heal: game.auto_heal,
-                is_ranked: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Ranked),
-                is_custom: matches!(game.variant, oj_rc_database::schema::multiplayer_game::GameType::Custom),
-                is_complete: game.is_complete,
-                overrides: if game.overrides.is_empty() { None } else {
-                    match serde_json::from_str::<super::lobby::CustomGameOverrides>(&game.overrides) {
-                        Ok(x) => Some(x.to_user()),
-                        Err(e) => {
-                            log::warn!("Failed to parse overrides JSON: {}\n{}", e, game.overrides);
-                            None
-                        }
-                    }
+    async fn update_game_score(&self, guid: &crate::types::GameGuid, score: super::PlayerScore) -> Result<i32, super::MultiplayerError> {
+        if let Some(score_id) = score.id {
+            let model = oj_rc_database::schema::multiplayer_game_score::ActiveModel {
+                id: oj_rc_database::sea_orm::Set(score_id),
+                player_id: oj_rc_database::sea_orm::NotSet,
+                creation_time: oj_rc_database::sea_orm::NotSet,
+                is_claimed: oj_rc_database::sea_orm::NotSet,
+                kills: oj_rc_database::sea_orm::Set(score.kills as i32),
+                deaths: oj_rc_database::sea_orm::Set(score.deaths as i32),
+                assists: oj_rc_database::sea_orm::Set(score.assists as i32),
+                heal_assists: oj_rc_database::sea_orm::Set(score.heal_assists as i32),
+                healed: oj_rc_database::sea_orm::Set(score.healed as i32),
+                received_healed: oj_rc_database::sea_orm::Set(score.received_healed as i32),
+                damaged: oj_rc_database::sea_orm::Set(score.damaged as i32),
+                received_damaged: oj_rc_database::sea_orm::Set(score.received_damaged as i32),
+                crystals: oj_rc_database::sea_orm::Set(score.crystals as i32),
+                total: oj_rc_database::sea_orm::Set(score.total as i32),
+            };
+            let persisted_model = self.db.update_score(model).await
+            .map_err(|e| {
+                log::error!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e),
                 }
-            }))
+            })?;
+            Ok(persisted_model.id)
         } else {
-            Err(super::MultiplayerError {
-                code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {}", guid_str),
-            })
-        }
-    }
-
-    async fn update_game_score(&self, guid: &str, score: super::PlayerScore) -> Result<i32, super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            if let Some(score_id) = score.id {
+            let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid.as_raw()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e),
+                }
+            })?;
+            if let Some(player) = player_opt {
                 let model = oj_rc_database::schema::multiplayer_game_score::ActiveModel {
-                    id: oj_rc_database::sea_orm::Set(score_id),
-                    player_id: oj_rc_database::sea_orm::NotSet,
-                    creation_time: oj_rc_database::sea_orm::NotSet,
-                    is_claimed: oj_rc_database::sea_orm::NotSet,
+                    id: oj_rc_database::sea_orm::NotSet,
+                    player_id: oj_rc_database::sea_orm::Set(player.id),
+                    creation_time: oj_rc_database::sea_orm::Set(chrono::Utc::now().timestamp()),
+                    is_claimed: oj_rc_database::sea_orm::Set(false),
                     kills: oj_rc_database::sea_orm::Set(score.kills as i32),
                     deaths: oj_rc_database::sea_orm::Set(score.deaths as i32),
                     assists: oj_rc_database::sea_orm::Set(score.assists as i32),
@@ -297,97 +304,53 @@ impl super::MultiplayerUser for UserData {
                     crystals: oj_rc_database::sea_orm::Set(score.crystals as i32),
                     total: oj_rc_database::sea_orm::Set(score.total as i32),
                 };
-                let persisted_model = self.db.update_score(model).await
+                let persisted_model = self.db.insert_score(model).await
                 .map_err(|e| {
-                    log::error!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e);
+                    log::error!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e);
                     super::MultiplayerError {
                         code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to update player score for user {} in game {}: {}", self.account.id, guid, e),
+                        message: format!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e),
                     }
                 })?;
                 Ok(persisted_model.id)
             } else {
-                let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid).await
-                .map_err(|e| {
-                    log::error!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e);
-                    super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to retrieve player for user {} in game {}: {}", self.account.id, guid, e),
-                    }
-                })?;
-                if let Some(player) = player_opt {
-                    let model = oj_rc_database::schema::multiplayer_game_score::ActiveModel {
-                        id: oj_rc_database::sea_orm::NotSet,
-                        player_id: oj_rc_database::sea_orm::Set(player.id),
-                        creation_time: oj_rc_database::sea_orm::Set(chrono::Utc::now().timestamp()),
-                        is_claimed: oj_rc_database::sea_orm::Set(false),
-                        kills: oj_rc_database::sea_orm::Set(score.kills as i32),
-                        deaths: oj_rc_database::sea_orm::Set(score.deaths as i32),
-                        assists: oj_rc_database::sea_orm::Set(score.assists as i32),
-                        heal_assists: oj_rc_database::sea_orm::Set(score.heal_assists as i32),
-                        healed: oj_rc_database::sea_orm::Set(score.healed as i32),
-                        received_healed: oj_rc_database::sea_orm::Set(score.received_healed as i32),
-                        damaged: oj_rc_database::sea_orm::Set(score.damaged as i32),
-                        received_damaged: oj_rc_database::sea_orm::Set(score.received_damaged as i32),
-                        crystals: oj_rc_database::sea_orm::Set(score.crystals as i32),
-                        total: oj_rc_database::sea_orm::Set(score.total as i32),
-                    };
-                    let persisted_model = self.db.insert_score(model).await
-                    .map_err(|e| {
-                        log::error!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e);
-                        super::MultiplayerError {
-                            code: super::MultiplayerErrorCode::CustomString,
-                            message: format!("Failed to insert player score for user {} in game {}: {}", self.account.id, guid, e),
-                        }
-                    })?;
-                    Ok(persisted_model.id)
-                } else {
-                    Err(super::MultiplayerError {
-                        code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                        message: format!("Failed to find user {} in game {}", self.account.id, guid),
-                    })
-                }
+                Err(super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::IncorrectGameGuid,
+                    message: format!("Failed to find user {} in game {}", self.account.id, guid),
+                })
             }
-        } else {
-            Err(super::MultiplayerError {
-                code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {}", guid),
-            })
         }
     }
 
-    async fn save_player_connected_status(&self, guid: &str, is_connected: bool) -> Result<(), super::MultiplayerError> {
-        if let Some(guid) = crate::persist::user::str_to_i64(guid) {
-            let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid).await
+    async fn save_player_connected_status(&self, guid: &crate::types::GameGuid, is_connected: bool) -> Result<(), super::MultiplayerError> {
+        let player_opt = self.db.player_by_user_id_and_game_guid(self.account.id, guid.as_raw()).await
+            .map_err(|e| {
+                log::error!("Failed to retrieve player for game {} and user {}: {}", guid, self.account.id, e);
+                super::MultiplayerError {
+                    code: super::MultiplayerErrorCode::CustomString,
+                    message: format!("Failed to retrieve user's player for game {}: {}", guid, e),
+                }
+            })?;
+        if let Some(player) = player_opt {
+            self.db.player_claim(player.id, is_connected).await
                 .map_err(|e| {
-                    log::error!("Failed to retrieve player for game {} and user {}: {}", guid, self.account.id, e);
+                    log::error!("Failed to claim player for game {} and user {}: {}", guid, self.account.id, e);
                     super::MultiplayerError {
                         code: super::MultiplayerErrorCode::CustomString,
-                        message: format!("Failed to retrieve user's player for game {}: {}", guid, e),
+                        message: format!("Failed to claim user's player for game {}: {}", guid, e),
                     }
                 })?;
-            if let Some(player) = player_opt {
-                self.db.player_claim(player.id, is_connected).await
-                    .map_err(|e| {
-                        log::error!("Failed to claim player for game {} and user {}: {}", guid, self.account.id, e);
-                        super::MultiplayerError {
-                            code: super::MultiplayerErrorCode::CustomString,
-                            message: format!("Failed to claim user's player for game {}: {}", guid, e),
-                        }
-                    })?;
-                Ok(())
-            } else {
-                log::warn!("Failed to find to-be-claimed player for user {} in game {}", self.account.id, guid);
-                Err(super::MultiplayerError {
-                    code: super::MultiplayerErrorCode::CustomString,
-                    message: "Failed to find user's player to update connected status".to_string(),
-                })
-            }
+            Ok(())
         } else {
+            log::warn!("Failed to find to-be-claimed player for user {} in game {}", self.account.id, guid);
             Err(super::MultiplayerError {
-                code: super::MultiplayerErrorCode::IncorrectGameGuid,
-                message: format!("Failed to parse game GUID {}", guid),
+                code: super::MultiplayerErrorCode::CustomString,
+                message: "Failed to find user's player to update connected status".to_string(),
             })
         }
+        /*Err(super::MultiplayerError {
+            code: super::MultiplayerErrorCode::IncorrectGameGuid,
+            message: format!("Failed to parse game GUID {}", guid),
+        })*/
     }
 }

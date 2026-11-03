@@ -42,7 +42,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanCreator {
                     };
                     let user_info = user.user()?;
                     let new_members = user_info.create_clan(new_clan, clavatar).await?;
-                    let mut online_clan_members: std::collections::HashSet<String> = new_members.iter()
+                    let mut online_clan_members: std::collections::HashSet<oj_rc_core::types::PublicId> = new_members.iter()
                         .map(|mem| mem.public_id.clone())
                         .collect();
                     self.social.filter_online_only(&mut online_clan_members).await;

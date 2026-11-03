@@ -176,11 +176,11 @@ pub struct GameEventSequence {
     pub index: usize,
     pub started: i64,
     pub(crate) needs_to_be_saved: bool,
-    pub(crate) lockouts: std::collections::HashMap<i32, GameEvent>,
+    pub(crate) lockouts: std::collections::HashMap<crate::types::UserId, GameEvent>,
 }
 
 impl GameEventSequence {
-    pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>, user: i32) -> GameEventTransmissible {
+    pub fn now(&mut self, updater: Box<dyn crate::persist::user::GameEventSetter>, user: crate::types::UserId) -> GameEventTransmissible {
         let time_now = chrono::Utc::now().timestamp();
         let mut item_now = &self.modes[self.index];
         let needs_refresh = time_now >= (item_now.duration.as_secs() as i64) + self.started;
@@ -290,12 +290,12 @@ impl GameEventSequence {
     }
 
     /// Returns true if replacing existing entry for user
-    pub fn add_lockout(&mut self, user: i32, event: GameEvent) -> bool {
+    pub fn add_lockout(&mut self, user: crate::types::UserId, event: GameEvent) -> bool {
         self.lockouts.insert(user, event).is_some()
     }
 
     /// Returns true if entry for user existed
-    pub fn remove_lockout(&mut self, user: i32) -> bool {
+    pub fn remove_lockout(&mut self, user: crate::types::UserId) -> bool {
         self.lockouts.remove(&user).is_some()
     }
 }
@@ -385,7 +385,7 @@ pub struct SingleplayerConfig {
 #[derive(Clone, Debug)]
 pub struct VehicleInfo {
     pub name: Option<String>,
-    pub username: String,
+    pub username: crate::types::PublicId,
     pub id: VehicleDescriptor,
 }
 
@@ -419,9 +419,9 @@ pub struct Sphere {
 
 #[derive(Clone, Debug)]
 pub struct MapConfig {
-    pub spawns: std::collections::HashMap<u8, Vec<Point>>, // team -> points
+    pub spawns: std::collections::HashMap<crate::types::TeamId, Vec<Point>>, // team -> points
     pub pit_spawns: Vec<Point>,
-    pub bases: std::collections::HashMap<u8, (Sphere, f32)>, // team -> (base, capture speed)
+    pub bases: std::collections::HashMap<crate::types::TeamId, (Sphere, f32)>, // team -> (base, capture speed)
     pub capture_points: Vec<(Sphere, f32)>, // (capture point, capture speed)
     pub equalizer: Point,
 }

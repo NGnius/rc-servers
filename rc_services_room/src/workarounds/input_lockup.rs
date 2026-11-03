@@ -4,6 +4,8 @@
 //
 // This implementation sends a game invite since it's on the same server
 
+use oj_rc_core::types::RawType;
+
 use crate::custom_game_tracker::{SessionInfo, UserInfo};
 
 const WORKAROUND_SESSION_ID: &str = "sys_0_cg|workaround";
@@ -33,7 +35,7 @@ impl InviteState {
 }
 
 pub struct EditModeInputLockupWorkaround {
-    active_users: tokio::sync::RwLock<std::collections::HashMap<i32, std::sync::atomic::AtomicU8>>,
+    active_users: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::UserId, std::sync::atomic::AtomicU8>>,
     default_config_map: std::collections::HashMap<String, String>,
     default_config_core: oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameConfig,
 }
@@ -47,48 +49,52 @@ impl EditModeInputLockupWorkaround {
         }
     }
 
-    pub async fn add_user(&self, id: i32, public_id: String) -> SessionInfo {
+    pub async fn add_user(&self, id: oj_rc_core::types::UserId, public_id: oj_rc_core::types::PublicId, display_name: oj_rc_core::types::DisplayName) -> SessionInfo {
         self.active_users.write().await.insert(id, std::sync::atomic::AtomicU8::new(InviteState::Invited.to_u8()));
         SessionInfo {
-            session_id: WORKAROUND_SESSION_ID.to_owned(),
+            session_id: crate::custom_game_tracker::CustomGameKey::from_raw(WORKAROUND_SESSION_ID.to_owned()),
             config: self.default_config_map.clone(),
             config_core: self.default_config_core.clone(),
             users: vec![
                 UserInfo {
-                    public_id: WORKAROUND_PUBLIC_ID.to_owned(),
+                    public_id: oj_rc_core::types::PublicId::from_raw(WORKAROUND_PUBLIC_ID.to_owned()),
+                    display_name: oj_rc_core::types::DisplayName::from_raw(WORKAROUND_PUBLIC_ID.to_owned()),
                     is_invited: false,
-                    team: 1,
+                    team: oj_rc_core::types::TeamId::from_raw(1),
                     state: crate::data::custom_games::PlayerSessionStatus::Ready,
                 },
                 UserInfo {
                     public_id,
+                    display_name,
                     is_invited: true,
-                    team: 0,
+                    team: oj_rc_core::types::TeamId::from_raw(0),
                     state: crate::data::custom_games::PlayerSessionStatus::Ready,
                 }
             ],
         }
     }
 
-    pub async fn get_user(&self, id: i32, public_id: &str) -> Option<SessionInfo> {
+    pub async fn get_user(&self, id: oj_rc_core::types::UserId, public_id: &oj_rc_core::types::PublicId, display_name: &oj_rc_core::types::DisplayName) -> Option<SessionInfo> {
         if let Some(state) = self.active_users.read().await.get(&id) {
             let state = InviteState::from_u8(state.load(std::sync::atomic::Ordering::Relaxed));
             let is_invited = matches!(state, InviteState::Invited);
             Some(SessionInfo {
-                session_id: WORKAROUND_SESSION_ID.to_owned(),
+                session_id: crate::custom_game_tracker::CustomGameKey::from_raw(WORKAROUND_SESSION_ID.to_owned()),
                 config: self.default_config_map.clone(),
                 config_core: self.default_config_core.clone(),
                 users: vec![
                     UserInfo {
-                        public_id: WORKAROUND_PUBLIC_ID.to_owned(),
+                        public_id: oj_rc_core::types::PublicId::from_raw(WORKAROUND_PUBLIC_ID.to_owned()),
+                        display_name: oj_rc_core::types::DisplayName::from_raw(WORKAROUND_PUBLIC_ID.to_owned()),
                         is_invited: false,
-                        team: 1,
+                        team: oj_rc_core::types::TeamId::from_raw(1),
                         state: crate::data::custom_games::PlayerSessionStatus::Ready,
                     },
                     UserInfo {
                         public_id: public_id.to_owned(),
+                        display_name: display_name.to_owned(),
                         is_invited,
-                        team: 0,
+                        team: oj_rc_core::types::TeamId::from_raw(0),
                         state: crate::data::custom_games::PlayerSessionStatus::Ready,
                     }
                 ],
@@ -98,7 +104,7 @@ impl EditModeInputLockupWorkaround {
         }
     }
 
-    pub async fn accept_invite(&self, id: i32) {
+    pub async fn accept_invite(&self, id: oj_rc_core::types::UserId) {
         let lock = self.active_users.read().await;
         if let Some(state) = lock.get(&id) {
             state.store(InviteState::Accepted.to_u8(), std::sync::atomic::Ordering::Relaxed);
@@ -107,7 +113,7 @@ impl EditModeInputLockupWorkaround {
         }
     }
 
-    pub async fn remove_user(&self, id: i32) {
+    pub async fn remove_user(&self, id: oj_rc_core::types::UserId) {
         self.active_users.write().await.remove(&id);
     }
 }

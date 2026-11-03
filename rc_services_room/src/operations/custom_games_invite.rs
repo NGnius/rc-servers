@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -22,24 +23,24 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
         let user_info = user.user()?;
         let my_pub_id = user_info.public_id();
         let mut is_workaround = false;
-        let session = if let Some(session) = self.keylock_workaround.get_user(user_info.account_id(), my_pub_id).await {
-            log::debug!("User {} is in keylock workaround mode ({})", my_pub_id, session.session_id);
+        let session = if let Some(session) = self.keylock_workaround.get_user(user_info.user_id(), &my_pub_id, &user_info.display_name()).await {
+            log::debug!("User {} is in keylock workaround mode ({})", my_pub_id, session.session_id.as_raw_ref());
             is_workaround = true;
             Some(session)
         } else {
-            self.games.get_user_game(my_pub_id).await
+            self.games.get_user_game(&my_pub_id).await
         };
         if let Some(session) = session {
             let myself = session.users.iter().find(|u| u.public_id == my_pub_id).unwrap();
             if myself.is_invited {
-                log::debug!("User {} has checked and is invited to custom game {}", my_pub_id, session.session_id);
+                log::debug!("User {} has checked and is invited to custom game {}", my_pub_id, session.session_id.as_raw_ref());
                 params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(CustomGameInviteCode::PendingInvite as _));
                 // build invite data
                 let leader = session.users.first().unwrap();
                 let leader_avatar = if is_workaround {
                     vec![oj_rc_core::persist::user::SocialInfo {
                         public_id: leader.public_id.clone(),
-                        display_name: leader.public_id.clone(),
+                        display_name: leader.display_name.clone(),
                         avatar_id: Some(6),
                     }]
                 } else {
@@ -51,11 +52,11 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGamePendingInvites {
                     inviter_display_name: leader_avatar[0].display_name.clone(),
                     session: session.session_id,
                     avatar_id: leader_avatar[0].avatar_id,
-                    invited_to_team_b: myself.team == 1,
+                    invited_to_team_b: myself.team == oj_rc_core::types::TeamId::from_raw(1),
                 };
                 params.insert(INVITE_PARAM_KEY, resp.as_transmissible());
             } else {
-                log::debug!("User {} has already accepted invite to custom game {}", my_pub_id, session.session_id);
+                log::debug!("User {} has already accepted invite to custom game {}", my_pub_id, session.session_id.as_raw_ref());
                 params.insert(RESULT_CODE_PARAM_KEY, Typed::Int(CustomGameInviteCode::NoInvite as _));
             }
         } else {

@@ -23,11 +23,12 @@ impl SimpleOperation<crate::data::custom::CustomType> for PlatoonPendingInviter 
         let user_info = user.user()?;
         let my_public_id = user_info.public_id();
         log::debug!("Checking for pending platoon invite of user {}", my_public_id);
-        if let Some(platoon_id) = self.social.platoon_invite_of_user(my_public_id).await {
+        if let Some(platoon_id) = self.social.platoon_invite_of_user(&my_public_id).await {
+            use oj_rc_core::types::RawType;
             let members = self.social.users_of_platoon(&platoon_id).await;
             let social_infos = user_info.list_social_info(&[members[0].public_id.clone()]).await?;
-            params.insert(INVITER_NAME_PARAM_KEY, Typed::Str(social_infos[0].public_id.clone().into()));
-            params.insert(INVITER_DISPLAY_NAME_PARAM_KEY, Typed::Str(social_infos[0].display_name.clone().into()));
+            params.insert(INVITER_NAME_PARAM_KEY, Typed::Str(social_infos[0].public_id.as_raw_ref().into()));
+            params.insert(INVITER_DISPLAY_NAME_PARAM_KEY, Typed::Str(social_infos[0].display_name.as_raw_ref().into()));
             params.insert(INVITER_CUSTOM_AVATAR_NAME_PARAM_KEY, Typed::Bool(social_infos[0].avatar_id.is_none()));
             params.insert(INVITER_AVATAR_ID_NAME_PARAM_KEY, Typed::Int(social_infos[0].avatar_id.unwrap_or_default()));
         }

@@ -1,5 +1,5 @@
 pub struct UserMesh {
-    online_users: tokio::sync::RwLock<std::collections::HashMap<String, UserHandle>>,
+    online_users: tokio::sync::RwLock<std::collections::HashMap<oj_rc_core::types::PublicId, UserHandle>>,
 }
 
 struct UserHandle {
@@ -23,7 +23,7 @@ impl UserMesh {
     /// returns whether the user was replaced (true) or new (false)
     pub async fn add_user(
         &self,
-        public_id: String,
+        public_id: oj_rc_core::types::PublicId,
         emitter: polariton_server::events::WeakEventEmitter,
     ) -> bool {
         let handle = UserHandle {
@@ -38,14 +38,14 @@ impl UserMesh {
     /// returns whether the user existing (true) or not (false)
     pub async fn remove_user(
         &self,
-        public_id: String,
+        public_id: oj_rc_core::types::PublicId,
     ) -> bool {
         self.online_users.write().await
             .remove(&public_id)
             .is_some()
     }
 
-    pub async fn broadcast_event_to(&self, public_ids: impl std::iter::Iterator<Item = &str>, event: impl polariton_server::events::IntoEvent<()> + Clone) -> bool {
+    pub async fn broadcast_event_to(&self, public_ids: impl std::iter::Iterator<Item = &oj_rc_core::types::PublicId>, event: impl polariton_server::events::IntoEvent<()> + Clone) -> bool {
         let user_lock = self.online_users.read().await;
         let mut total_success = true;
         for public_id in public_ids {
@@ -61,7 +61,7 @@ impl UserMesh {
         total_success
     }
 
-    pub async fn send_event_to(&self, public_id: &str, event: impl polariton_server::events::IntoEvent<()>) -> bool {
+    pub async fn send_event_to(&self, public_id: &oj_rc_core::types::PublicId, event: impl polariton_server::events::IntoEvent<()>) -> bool {
         let user_lock = self.online_users.read().await;
         if let Some(user_handle) = user_lock.get(public_id) {
             let is_success = user_handle.emitter.emit(event);
@@ -72,7 +72,7 @@ impl UserMesh {
         }
     }
 
-    pub async fn is_user_online(&self, public_id: &str) -> bool {
+    pub async fn is_user_online(&self, public_id: &oj_rc_core::types::PublicId) -> bool {
         if let Some(user) = self.online_users.read().await.get(public_id) {
             user.is_alive.load(std::sync::atomic::Ordering::Relaxed)
         } else {

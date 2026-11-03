@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse, Responder, get, http::header::{ContentType, AUTHORIZATION}, web::{Data, Path}};
 
-use oj_rc_core::persist::user::federation::{Outbox, ItemType};
+use oj_rc_core::{persist::user::federation::{ItemType, Outbox}, types::RawType};
 
 #[get("/api/v1/activitypub/user/{name}/outbox")]
 pub async fn get(name: Path<String>, auth: Data<Box<oj_rc_core::UserImpl>>, req: HttpRequest) -> impl Responder {
@@ -11,7 +11,7 @@ pub async fn get_impl(name: String, auth: Data<Box<oj_rc_core::UserImpl>>, req: 
     let json = if let Some(auth_token) = req.headers().get(AUTHORIZATION) {
         match super::auth_user(auth, auth_token).await {
             Ok(user) => {
-                if user.public_id() != name {
+                if user.public_id().as_raw_ref() != &name {
                     log::error!("Wrong authenticated user: requested {}, token for {}", name, user.public_id());
                     empty_outbox(&name)
                 } else {

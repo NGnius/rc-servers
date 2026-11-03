@@ -1,3 +1,5 @@
+use oj_rc_core::types::RawType;
+
 pub struct ClientAIPlayer {
     me: oj_rc_core::persist::user::PlayerDescriptor,
     is_complete: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -13,23 +15,23 @@ impl ClientAIPlayer {
         }
     }
 
-    fn assigned_to_player_id(&self) -> Option<u8> {
+    fn assigned_to_player_id(&self) -> Option<oj_rc_core::types::PlayerId> {
         let id = self.assigned_to.load(std::sync::atomic::Ordering::Relaxed);
         if id > u8::MAX as u16 {
             None
         } else {
-            Some(id as u8)
+            Some(oj_rc_core::types::PlayerId::from_raw(id as u8))
         }
     }
 
-    fn set_assigned_to(&self, player_id: Option<u8>) {
-        self.assigned_to.store(player_id.map(|x| x as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
+    fn set_assigned_to(&self, player_id: Option<oj_rc_core::types::PlayerId>) {
+        self.assigned_to.store(player_id.map(|x| x.as_raw() as u16).unwrap_or(u16::MAX), std::sync::atomic::Ordering::Relaxed);
     }
 }
 
 #[async_trait::async_trait]
 impl super::FakeUser for ClientAIPlayer {
-    async fn on_init(&self, descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], player_id: u8) {
+    async fn on_init(&self, descriptors: &[oj_rc_core::persist::user::PlayerDescriptor], player_id: oj_rc_core::types::PlayerId) {
         let real_teammates_count = descriptors.iter()
             .filter(|x| x.team == self.me.team && x.mode.is_none())
             .count();
@@ -83,7 +85,7 @@ impl super::FakeUser for ClientAIPlayer {
         }
     }
 
-    async fn on_ready(&self, _real_players: &std::collections::HashMap<u8, crate::matches::generic::UserSender>) {
+    async fn on_ready(&self, _real_players: &std::collections::HashMap<oj_rc_core::types::PlayerId, crate::matches::generic::UserSender>) {
 
     }
 
@@ -91,7 +93,7 @@ impl super::FakeUser for ClientAIPlayer {
         self.is_complete.store(true, std::sync::atomic::Ordering::Relaxed);
     }
 
-    async fn running_on(&self) -> Option<u8> {
+    async fn running_on(&self) -> Option<oj_rc_core::types::PlayerId> {
         self.assigned_to_player_id()
     }
 }

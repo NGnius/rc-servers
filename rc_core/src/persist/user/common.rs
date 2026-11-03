@@ -1,4 +1,5 @@
 use super::account_json::UserData;
+use crate::types::RawType;
 
 fn u64_negative_on_err<E>(result: Result<u64, E>) -> i64 {
     result.map(|x| x as i64).unwrap_or(-1)
@@ -6,20 +7,20 @@ fn u64_negative_on_err<E>(result: Result<u64, E>) -> i64 {
 
 #[async_trait::async_trait]
 impl super::CommonUser for UserData {
-    fn account_id(&self) -> i32 {
-        self.account.id
+    fn user_id(&self) -> crate::types::UserId {
+        crate::types::UserId::from_raw(self.account.id)
     }
 
-    fn public_id(&self) -> &'_ str {
-        &self.account.public_id
+    fn public_id(&self) -> crate::types::PublicId {
+        crate::types::PublicId::from_raw(self.account.public_id.clone())
     }
 
-    fn display_name(&self) -> &'_ str {
-        &self.account.display_name
+    fn display_name(&self) -> crate::types::DisplayName {
+        crate::types::DisplayName::from_raw(self.account.display_name.clone())
     }
 
-    fn creation(&self) -> i64 {
-        self.account.creation_time
+    fn creation(&self) -> chrono::DateTime<chrono::Utc> {
+        chrono::DateTime::from_timestamp(self.account.creation_time, 0).unwrap_or_default()
     }
 
     fn is_mod(&self) -> bool {
@@ -58,7 +59,7 @@ impl super::CommonUser for UserData {
         count_map
     }
 
-    async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<u64, polariton_server::operations::SimpleOpError> {
+    async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError> {
         self.currency_op(ty, op).await.map_err(|e| polariton_server::operations::SimpleOpError::with_message(
             crate::data::error_codes::WebServicesError::DatabaseError as i16,
             format!("Currency operation failed for user {}: {}", self.account.id, e),

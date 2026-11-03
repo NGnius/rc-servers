@@ -1,6 +1,8 @@
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
+use oj_rc_core::types::RawType;
+
 const CODE: u8 = 0;
 
 const USERNAME_PARAM_KEY: u8 = 1; // str; in & out
@@ -28,8 +30,8 @@ impl SimpleOperation<crate::data::custom::CustomType> for FriendRequestMaker {
                 is_online: true,
                 avatar_id: resp.my_avatar_id,
             }).await;
-            params.insert(USERNAME_PARAM_KEY, Typed::Str(resp.target_public_id.into()));
-            params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(resp.target_display_name.into()));
+            params.insert(USERNAME_PARAM_KEY, Typed::Str(resp.target_public_id.as_raw_ref().into()));
+            params.insert(DISPLAY_NAME_PARAM_KEY, Typed::Str(resp.target_display_name.as_raw_ref().into()));
             if let Some(clan_name) = resp.target_clan_name {
                 params.insert(CLAN_NAME_PARAM_KEY, Typed::Str(clan_name.into()));
             }

@@ -1,9 +1,11 @@
+use oj_rc_core::types::RawType;
+
 use crate::matches::CustomGameLogic;
 
 struct ScoreTracker {
     ticker: super::trackers::TickTracker<{Self::TICK_MS}>,
-    scores: std::collections::HashMap<u8, std::sync::atomic::AtomicU32>, // team -> score
-    teams: std::collections::HashMap<u8, u8>, // player_id -> team,
+    scores: std::collections::HashMap<crate::types::Team, std::sync::atomic::AtomicU32>, // team -> score
+    teams: std::collections::HashMap<oj_rc_core::types::PlayerId, crate::types::Team>, // player_id -> team,
     self_destruct_is_kill: bool,
     is_sudden_death: std::sync::atomic::AtomicBool, // triggered if time runs out and both sides are tied
 }
@@ -13,17 +15,17 @@ impl ScoreTracker {
 
     fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor], self_destruct_is_kill: bool) -> Self {
         let mut seen_teams = std::collections::HashSet::new();
-        players.iter().for_each(|p| { seen_teams.insert(p.team as u8); });
+        players.iter().for_each(|p| { seen_teams.insert(crate::types::Team::from_id(p.team)); });
         Self {
             ticker: super::trackers::TickTracker::new(),
             scores: seen_teams.iter().map(|t| (*t, std::sync::atomic::AtomicU32::new(0))).collect(),
-            teams: players.iter().map(|p| (p.player_id, p.team as u8)).collect(),
+            teams: players.iter().map(|p| (p.player_id, crate::types::Team::from_id(p.team))).collect(),
             self_destruct_is_kill,
             is_sudden_death: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
-    fn on_destruction(&self, killer: u8, victim: u8) {
+    fn on_destruction(&self, killer: oj_rc_core::types::PlayerId, victim: oj_rc_core::types::PlayerId) {
         if killer == victim {
             self.on_self_destruct(killer);
         } else {
@@ -34,10 +36,10 @@ impl ScoreTracker {
         }
     }
 
-    fn on_self_destruct(&self, player: u8) {
+    fn on_self_destruct(&self, player: oj_rc_core::types::PlayerId) {
         if !self.self_destruct_is_kill { return; }
         if let Some(player_team) = self.teams.get(&player) {
-            let other_teams: Vec<u8> = self.scores.keys().copied().filter(|x| x != player_team).collect();
+            let other_teams: Vec<crate::types::Team> = self.scores.keys().copied().filter(|x| x != player_team).collect();
             let team_to_award = if other_teams.is_empty() {
                 log::warn!("Only one team in team death match, cannot award self-destruct point to other team");
                 return;
@@ -53,7 +55,7 @@ impl ScoreTracker {
         }
     }
 
-    fn leading_team(&self) -> Option<u8> {
+    fn leading_team(&self) -> Option<crate::types::Team> {
         let mut max = None;
         for (team, score) in self.scores.iter() {
             let score = score.load(std::sync::atomic::Ordering::Relaxed);
@@ -72,7 +74,7 @@ impl ScoreTracker {
         rlnl::events::sync::UpdateTeamDeathMatch {
             num_teams: self.scores.len() as i32,
             team_scores: self.scores.iter().map(|(team, score)| rlnl::events::sync::TeamScore {
-                team_id: *team as i32,
+                team_id: team.into_id().as_raw(),
                 score: score.load(std::sync::atomic::Ordering::Relaxed) as i32,
             }).collect(),
             time_expired: if generic.is_game_done() { 1 } else { 0 },
@@ -94,13 +96,13 @@ impl ScoreTracker {
             generic.game_done();
             let was_sudden_death = self.is_sudden_death.load(std::sync::atomic::Ordering::Relaxed);
             let data = rlnl::events::ingame::GameLoseWin {
-                winning_team,
+                winning_team: winning_team.as_raw(),
                 end_reason: if was_sudden_death { rlnl::types::GameEndReason::TeamDeathMatchTimeExpiredSuddenDeath } else { rlnl::types::GameEndReason::TeamDeathMatchTimeExpiredMostKills },
             };
-            let winning_team_i32 = winning_team as i32;
+            let winning_team_id = winning_team.into_id();
             for (player_id, player_info) in generic.user_descriptors().iter() {
                 if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-                let event = if player_info.descriptor.team == winning_team_i32 {
+                let event = if player_info.descriptor.team == winning_team_id {
                     rlnl::event_code::NetworkEvent::GameWonBaseDestroyed
                 } else {
                     rlnl::event_code::NetworkEvent::GameLostBaseDestroyed
@@ -117,16 +119,16 @@ impl ScoreTracker {
         }
     }
 
-    async fn do_objective_win(&self, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>, winning_team: u8) {
+    async fn do_objective_win(&self, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>, winning_team: crate::types::Team) {
         generic.game_done();
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team,
+            winning_team: winning_team.as_raw(),
             end_reason: rlnl::types::GameEndReason::TeamDeathMatchMaxKillsAchieved,
         };
-        let winning_team_i32 = winning_team as i32;
+        let winning_team_id = winning_team.into_id();
         for (player_id, player_info) in generic.user_descriptors().iter() {
             if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let event = if player_info.descriptor.team == winning_team_i32 {
+            let event = if player_info.descriptor.team == winning_team_id {
                 rlnl::event_code::NetworkEvent::GameWonBaseDestroyed
             } else {
                 rlnl::event_code::NetworkEvent::GameLostBaseDestroyed
@@ -158,44 +160,44 @@ impl ScoreTracker {
 }
 
 struct PlayerTracker {
-    respawns: std::collections::HashMap<u8, std::sync::atomic::AtomicI64>,
-    teams: std::collections::HashMap<u8, u8>, // player_id -> team,
-    team_members: std::collections::HashMap<u8, Vec<u8>>, // team -> set of player_id,
+    respawns: std::collections::HashMap<oj_rc_core::types::PlayerId, std::sync::atomic::AtomicI64>,
+    teams: std::collections::HashMap<oj_rc_core::types::PlayerId, crate::types::Team>, // player_id -> team,
+    team_members: std::collections::HashMap<crate::types::Team, Vec<oj_rc_core::types::PlayerId>>, // team -> set of player_id,
 }
 
 impl PlayerTracker {
     fn new(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> Self {
         Self {
             respawns: players.iter().map(|p| (p.player_id, std::sync::atomic::AtomicI64::new(i64::MIN))).collect(),
-            teams: players.iter().map(|p| (p.player_id, p.team as u8)).collect(),
+            teams: players.iter().map(|p| (p.player_id, crate::types::Team::from_id(p.team))).collect(),
             team_members: Self::generate_team_members(players),
         }
     }
 
-    fn generate_team_members(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<u8, Vec<u8>> {
-        let mut team_map = std::collections::HashMap::<u8, Vec<u8>>::new();
+    fn generate_team_members(players: &[oj_rc_core::persist::user::PlayerDescriptor]) -> std::collections::HashMap<crate::types::Team, Vec<oj_rc_core::types::PlayerId>> {
+        let mut team_map = std::collections::HashMap::<crate::types::Team, Vec<oj_rc_core::types::PlayerId>>::new();
         for user in players.iter() {
-            if let Some(member_set) = team_map.get_mut(&(user.team as u8)) {
+            if let Some(member_set) = team_map.get_mut(&crate::types::Team::from_id(user.team)) {
                 member_set.push(user.player_id);
             } else {
                 let member_set = vec![user.player_id];
-                team_map.insert(user.team as u8, member_set);
+                team_map.insert(crate::types::Team::from_id(user.team), member_set);
             }
         }
         team_map
     }
 
-    async fn single_remaining_team(generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>) -> Option<u8> {
+    async fn single_remaining_team(generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>) -> Option<crate::types::Team> {
         let mut first_remaining_team = None;
         for conn in generic.user_descriptors().values() {
             let mode = crate::matches::generic::ConnectionMode::from_u8(conn.state.mode.load(std::sync::atomic::Ordering::Relaxed));
             if matches!(mode, crate::matches::generic::ConnectionMode::InGame) {
                 if let Some(first_remaining_team) = first_remaining_team {
-                    if first_remaining_team != (conn.descriptor.team as u8) {
+                    if first_remaining_team != crate::types::Team::from_id(conn.descriptor.team) {
                         return None;
                     }
                 } else {
-                    first_remaining_team = Some(conn.descriptor.team as u8);
+                    first_remaining_team = Some(crate::types::Team::from_id(conn.descriptor.team));
                 }
             }
         }
@@ -246,20 +248,20 @@ impl TeamDeathMatchLogic {
         *lock = None;
     }
 
-    async fn do_win(&self, reason: WinReason, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>, winning_team: u8) {
+    async fn do_win(&self, reason: WinReason, generic: &crate::matches::GenericGamemodeEngine<TeamDeathMatchLogic>, winning_team: crate::types::Team) {
         generic.game_done();
         let end_reason = match reason {
             WinReason::OutOfPlayers => rlnl::types::GameEndReason::OneTeamRemaining,
             WinReason::Surrender => rlnl::types::GameEndReason::Surrendered,
         };
         let data = rlnl::events::ingame::GameLoseWin {
-            winning_team,
+            winning_team: winning_team.as_raw(),
             end_reason,
         };
-        let winning_team_i32 = winning_team as i32;
+        let winning_team_id = winning_team.into_id();
         for (player_id, player_info) in generic.user_descriptors().iter() {
             if player_info.descriptor.user_id.is_none() { continue; } // skip non-user players
-            let event = if player_info.descriptor.team == winning_team_i32 {
+            let event = if player_info.descriptor.team == winning_team_id {
                 rlnl::event_code::NetworkEvent::GameWonBaseDestroyed
             } else {
                 rlnl::event_code::NetworkEvent::GameLostBaseDestroyed
@@ -273,7 +275,7 @@ impl TeamDeathMatchLogic {
         }
     }
 
-    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: u8) {
+    async fn do_respawn_tasks(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player_id: oj_rc_core::types::PlayerId) {
         log::info!("Handling respawn player {} in game {}", player_id, generic.game_guid());
         let respawn_time = std::time::Duration::from_secs(self.settings.respawn_time_seconds);
         let now = chrono::Utc::now();
@@ -282,7 +284,7 @@ impl TeamDeathMatchLogic {
             player_respawn.store(respawn_timestamp.timestamp(), std::sync::atomic::Ordering::Relaxed);
         }
         let respawn_payload = rlnl::events::ingame::RespawnTime {
-            owner: player_id,
+            owner: player_id.as_raw(),
             waiting_time: self.settings.respawn_time_seconds as i16,
         };
         generic.broadcast(
@@ -292,23 +294,22 @@ impl TeamDeathMatchLogic {
             true
         ).await;
         if let Some(user) = generic.user_descriptor(player_id) {
-            let player_team = user.descriptor.team as u8;
-            let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&player_team) {
+            let spawn_point = if let Some(team_spawns) = generic.map_config.spawns.get(&user.descriptor.team) {
                 if team_spawns.is_empty() {
                     oj_rc_core::persist::config::Point {
-                        x: 10.0 * (player_id as f32),
+                        x: 10.0 * (player_id.as_raw() as f32),
                         y: 100.0,
-                        z: 10.0 * (player_team as f32) + 10.0,
+                        z: 10.0 * (user.descriptor.team.as_raw() as f32) + 10.0,
                     }
                 } else {
-                    let index = (player_id as usize) % team_spawns.len();
+                    let index = (player_id.as_raw() as usize) % team_spawns.len();
                     team_spawns[index].clone()
                 }
             } else {
                 oj_rc_core::persist::config::Point {
-                    x: 10.0 * (player_id as f32),
+                    x: 10.0 * (player_id.as_raw() as f32),
                     y: 100.0,
-                    z: 10.0 * (player_team as f32) + 10.0,
+                    z: 10.0 * (user.descriptor.team.as_raw() as f32) + 10.0,
                 }
             };
             if let Some(player_desc) = generic.user_descriptor(player_id) {
@@ -358,7 +359,12 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_vehicle_destroyed(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+    async fn on_vehicle_destroyed(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         self.do_respawn_tasks(generic, victim).await;
         if killer == victim {
             self.score_tracking.on_self_destruct(killer);
@@ -366,18 +372,33 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_vehicle_self_destruct(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user: u8, _is_classic: bool) -> bool {
+    async fn on_vehicle_self_destruct(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user: oj_rc_core::types::PlayerId,
+        _is_classic: bool,
+    ) -> bool {
         self.do_respawn_tasks(generic, user).await;
         self.score_tracking.on_self_destruct(user);
         true
     }
 
-    async fn on_kill_bonus(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, killer: u8, victim: u8) -> bool {
+    async fn on_kill_bonus(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        killer: oj_rc_core::types::PlayerId,
+        victim: oj_rc_core::types::PlayerId,
+    ) -> bool {
         self.score_tracking.on_destruction(killer, victim);
         true
     }
 
-    async fn extra_sync_events(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _connection: &crate::matches::generic::UserConnection, _player: &crate::matches::generic::UserDescriptor) -> Vec<crate::matches::RlnlPacket> {
+    async fn extra_sync_events(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _connection: &crate::matches::generic::UserConnection,
+        _player: &crate::matches::generic::UserDescriptor,
+    ) -> Vec<crate::matches::RlnlPacket> {
         vec![
             crate::matches::RlnlPacket {
                 event: rlnl::event_code::NetworkEvent::GameModeSettings,
@@ -404,7 +425,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         ]
     }
 
-    async fn on_countdown_start(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, game_start: chrono::DateTime<chrono::Utc>) -> bool {
+    async fn on_countdown_start(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        game_start: chrono::DateTime<chrono::Utc>,
+    ) -> bool {
         let read_lock = generic.users.read().await;
         let game_end = game_start + generic.game_duration;
         let mut senders = Vec::with_capacity(read_lock.len());
@@ -438,7 +463,11 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_player_reconnect_complete(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, player: u8) -> bool {
+    async fn on_player_reconnect_complete(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         // init surrender info for new player
         generic.send_to_player(
             player,
@@ -470,16 +499,33 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_game_completed(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>) -> bool {
+    async fn on_game_completed(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+    ) -> bool {
         self.abort_timer_sync().await;
         true
     }
 
-    async fn on_broadcast(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _event_out: rlnl::event_code::NetworkEvent, _event_in: rlnl::event_code::NetworkEvent, _property: literustlib::packet::Property, _data: &Option<Box<dyn crate::Broadcastable>>, _skip_user: bool) -> bool {
+    async fn on_broadcast(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _event_out: rlnl::event_code::NetworkEvent,
+        _event_in: rlnl::event_code::NetworkEvent,
+        _property: literustlib::packet::Property,
+        _data: &Option<Box<dyn crate::Broadcastable>>,
+        _skip_user: bool,
+    ) -> bool {
         true
     }
 
-    async fn on_motion(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, _motion: &rlnl::machine_motion::MachineMotion, _location: (f32, f32, f32)) -> bool {
+    async fn on_motion(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _motion: &rlnl::machine_motion::MachineMotion,
+        _location: (f32, f32, f32),
+    ) -> bool {
         if generic.is_game_done() {
             self.abort_timer_sync().await;
             return true;
@@ -495,16 +541,24 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         true
     }
 
-    async fn on_custom(&self, generic: &crate::matches::GenericGamemodeEngine<Self>, user_id: i32, event: rlnl::event_code::NetworkEvent, property: literustlib::packet::Property, data: Box<dyn crate::Broadcastable>) {
+    async fn on_custom(
+        &self,
+        generic: &crate::matches::GenericGamemodeEngine<Self>,
+        user_id: oj_rc_core::types::UserId,
+        event: rlnl::event_code::NetworkEvent,
+        property: literustlib::packet::Property,
+        data: Box<dyn crate::Broadcastable>,
+    ) {
         match (event, property) {
             (rlnl::event_code::NetworkEvent::SurrenderRequest, literustlib::packet::Property::ReliableOrdered) => {
                 let maybe_init_surr = <dyn core::any::Any>::downcast_ref::<rlnl::events::ingame::InitiateSurrender>(data.as_ref());
                 if let Some(init_surr) = maybe_init_surr {
-                    if let Some(&team) = self.player_tracking.teams.get(&init_surr.player_id) {
+                    let player_id = oj_rc_core::types::PlayerId::from_raw(init_surr.player_id);
+                    if let Some(&team) = self.player_tracking.teams.get(&player_id) {
                         let team_members = self.player_tracking.team_members[&team].clone();
-                        let result = self.surrender_tracking.request_new(team, init_surr.player_id, team_members.into_iter(), generic).await;
+                        let result = self.surrender_tracking.request_new(team, player_id, team_members.into_iter(), generic).await;
                         if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
-                            let winning_team = if team == 0 { 1 } else { 0 };
+                            let winning_team = crate::types::Team::from_raw(if team == crate::types::Team::from_raw(0) { 1 } else { 0 });
                             self.do_win(WinReason::Surrender, generic, winning_team).await;
                         }
                     }
@@ -519,7 +573,7 @@ impl CustomGameLogic for TeamDeathMatchLogic {
                         if let Some(vote) = maybe_vote {
                             let result = self.surrender_tracking.vote(team, player_id, vote.surrender != 0, generic).await;
                             if matches!(result, super::trackers::SurrenderVoteResult::Succeeded) {
-                                let winning_team = if team == 0 { 1 } else { 0 };
+                                let winning_team = crate::types::Team::from_raw(if team == crate::types::Team::from_raw(0) { 1 } else { 0 });
                                 self.do_win(WinReason::Surrender, generic, winning_team).await;
                             }
                         } else {
@@ -532,7 +586,12 @@ impl CustomGameLogic for TeamDeathMatchLogic {
         }
     }
 
-    async fn on_spot_vehicle(&self, _generic: &crate::matches::GenericGamemodeEngine<Self>, _user_id: i32, _remote_player: u8) -> bool {
+    async fn on_spot_vehicle(
+        &self,
+        _generic: &crate::matches::GenericGamemodeEngine<Self>,
+        _user_id: oj_rc_core::types::UserId,
+        _remote_player: oj_rc_core::types::PlayerId,
+    ) -> bool {
         true
     }
 }

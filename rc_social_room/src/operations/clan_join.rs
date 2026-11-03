@@ -25,7 +25,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanJoiner {
             let user_info = user.user()?;
             log::debug!("User {} wants to join clan {}", user_info.public_id(), clan_name.string);
             let (clan_info, members_info) = user_info.join_clan(&clan_name.string).await?;
-            let mut online_clan_members: std::collections::HashSet<String> = members_info.iter()
+            let mut online_clan_members: std::collections::HashSet<oj_rc_core::types::PublicId> = members_info.iter()
                 .map(|mem| mem.public_id.clone())
                 .collect();
             self.social.filter_online_only(&mut online_clan_members).await;
@@ -43,7 +43,7 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanJoiner {
                 season_xp: 0,
             };
             for online_member in online_clan_members.iter() {
-                if online_member == my_pub_id { continue; }
+                if online_member == &my_pub_id { continue; }
                 self.social.send_event_to(online_member, event.clone()).await;
             }
 

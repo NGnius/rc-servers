@@ -203,7 +203,7 @@ impl super::IntercomUser for super::account_json::UserData {
             ))
     }
 
-    async fn show_dev_message(&self, msg: IntercomDevMessage, to: Vec<String>) {
+    async fn show_dev_message(&self, msg: IntercomDevMessage, to: Vec<crate::types::PublicId>) {
         let send_to_everyone = to.is_empty();
         let data = IntercomWebServiceMessage {
             public_ids: to,
@@ -215,7 +215,7 @@ impl super::IntercomUser for super::account_json::UserData {
         }
     }
 
-    async fn enter_maintenance(&self, msg: IntercomMaintenanceMessage, to: Vec<String>) {
+    async fn enter_maintenance(&self, msg: IntercomMaintenanceMessage, to: Vec<crate::types::PublicId>) {
         let send_to_everyone = to.is_empty();
         let data = IntercomWebServiceMessage {
             public_ids: to,
@@ -227,7 +227,7 @@ impl super::IntercomUser for super::account_json::UserData {
         }
     }
 
-    async fn trigger_workaround(&self, msg: IntercomWorkaroundMessage, to: Vec<String>) {
+    async fn trigger_workaround(&self, msg: IntercomWorkaroundMessage, to: Vec<crate::types::PublicId>) {
         let send_to_everyone = to.is_empty();
         match msg {
             IntercomWorkaroundMessage::Lobby(_lobby) => todo!(),
@@ -441,13 +441,13 @@ impl IntercomLobbyCustomGameConfig {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IntercomLobbyCustomGameUserData {
-    pub public_id: String,
-    pub team: u8,
+    pub public_id: crate::types::PublicId,
+    pub team: crate::types::TeamId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IntercomWebServiceMessage {
-    pub public_ids: Vec<String>,
+    pub public_ids: Vec<crate::types::PublicId>,
     pub data: IntercomWebServiceUserMessage,
     pub everyone: bool,
 }

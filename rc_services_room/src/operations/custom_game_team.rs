@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -23,17 +24,18 @@ impl <C: Send + 'static> SimpleOperation<C> for CustomGameTeamChanger {
             if let Some(Typed::Bool(is_team_b)) = params.remove(&IS_TEAM_B_PARAM_KEY) {
                 let user_info = user.user()?;
                 let my_pub_id = user_info.public_id();
-                let (resp_code, session_opt) = self.games.update_user_team(my_pub_id, &username.string, is_team_b).await;
+                let username_id = oj_rc_core::types::PublicId::from_raw(username.string);
+                let (resp_code, session_opt) = self.games.update_user_team(my_pub_id, username_id, is_team_b).await;
                 if let Some(session) = session_opt {
                     let event = crate::events::CustomGameRefresh {
                         session: session.session_id.clone(),
                     };
                     let session_members_iter = session.users.iter()
                         .filter(|mem| !mem.is_invited)
-                        .map(|mem| &mem.public_id as &str);
+                        .map(|mem| &mem.public_id);
                     self.mesh.broadcast_event_to(session_members_iter, event).await;
                     user_info.update_custom_game(oj_rc_core::persist::user::intercom::IntercomLobbyCustomGameDataMessage {
-                        session_id: session.session_id,
+                        session_id: session.session_id.as_raw(),
                         config: session.config_core,
                         users: session.users.iter()
                             .filter(|user| !user.is_invited)

@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -24,8 +25,8 @@ impl <C: Send + 'static> SimpleOperation<C> for WalletBallancer {
             oj_rc_core::persist::user::CurrencyType::Paid,
             oj_rc_core::persist::user::CurrencyOp::Get,
         ).await?;
-        params.insert(FREE_BALANCE_PARAM_KEY, Typed::Long(free as _));
-        params.insert(PAID_BALANCE_PARAM_KEY, Typed::Long(paid as _));
+        params.insert(FREE_BALANCE_PARAM_KEY, Typed::Long(free.as_raw() as _));
+        params.insert(PAID_BALANCE_PARAM_KEY, Typed::Long(paid.as_raw() as _));
         Ok(params)
     }
 }

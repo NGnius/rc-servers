@@ -9,6 +9,7 @@ mod user;
 mod matches;
 mod vehicle_motion;
 mod disconnect;
+mod types;
 
 use oj_rc_core::ConfigProvider;
 

@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 use oj_rc_factory::VehicleFactoryAdapter;
@@ -19,8 +20,8 @@ impl <C: Send + 'static> SimpleOperation<C> for FactoryRemoveVehicle {
     async fn handle(&self, mut params: ParameterTable<C>, user: &Self::User) -> Result<ParameterTable<C>, SimpleOpError> {
         if let Some(Typed::Int(factory_id)) = params.remove(&ID_PARAM_KEY) {
             let user_info = user.user()?;
-            let user_id = user_info.account_id();
-            self.factory.remove_vehicle(factory_id, user_id).await.map_err(|e| {
+            let user_id = user_info.user_id();
+            self.factory.remove_vehicle(factory_id, user_id.as_raw()).await.map_err(|e| {
                 log::error!("Failed to remove vehicle {} by user {} from factory: {}", factory_id, user_id, e);
                 SimpleOpError::with_message(
                     oj_rc_core::data::error_codes::WebServicesError::DatabaseError as i16,

@@ -1,5 +1,6 @@
 use actix_web::{HttpRequest, Responder, get, post, web::{Data, Form, Redirect}};
 use actix_identity::Identity;
+use oj_rc_core::types::RawType;
 
 use crate::web::{LoginReturn, try_auth_user, render_ok, render_err};
 
@@ -11,8 +12,8 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
         LoginReturn::Success(user) => {
             let html = render_ok(
                 crate::web::ConfirmRenderData {
-                    display_name: user.display_name().to_owned(),
-                    public_id: user.public_id().to_owned(),
+                    display_name: user.display_name().as_raw(),
+                    public_id: user.public_id().as_raw(),
                     question: "Are you sure you want to delete your account?".to_owned(),
                     yes_url: URL.to_owned(),
                     no_url: "/user/manage".to_owned(),
@@ -40,14 +41,14 @@ pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<B
                     let html = if let Err(e) = user.delete_account().await {
                         render_err(
                             crate::web::ConfirmRenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 question: "Are you sure you want to delete your account?".to_owned(),
                                 yes_url: URL.to_owned(),
                                 no_url: "/user/manage".to_owned(),
                                 message: None,
                             },
-                            format!("Failed to delete user #{} ({}): {}", user.account_id(), user.display_name(), e),
+                            format!("Failed to delete user #{} ({}): {}", user.user_id(), user.display_name(), e),
                             handlebars_ref.as_ref(),
                             crate::web::CONFIRM_FORM_NAME,
                         )
@@ -55,12 +56,12 @@ pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<B
                         user_opt.expect("Must be authenticated by this point").logout();
                         render_ok(
                             crate::web::ConfirmRenderData {
-                                display_name: user.display_name().to_owned(),
-                                public_id: user.public_id().to_owned(),
+                                display_name: user.display_name().as_raw(),
+                                public_id: user.public_id().as_raw(),
                                 question: "Are you sure you want to delete your account?".to_owned(),
                                 yes_url: "/".to_owned(),
                                 no_url: "/".to_owned(),
-                                message: Some(format!("User #{} ({}) deleted successfully", user.account_id(), user.display_name())),
+                                message: Some(format!("User #{} ({}) deleted successfully", user.user_id(), user.display_name())),
                             },
                             handlebars_ref.as_ref(),
                             crate::web::CONFIRM_FORM_NAME,

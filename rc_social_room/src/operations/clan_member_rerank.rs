@@ -1,3 +1,4 @@
+use oj_rc_core::types::RawType;
 use polariton_server::operations::{SimpleOpError, SimpleOperation, SimpleOpImpl};
 use polariton::operation::{ParameterTable, Typed};
 
@@ -26,13 +27,14 @@ impl SimpleOperation<crate::data::custom::CustomType> for ClanMemberRankChanger 
                 let user_info = user.user()?;
                 let my_pub_id = user_info.public_id();
                 log::debug!("User {} wants to update user {} to clan member rank {:?}", my_pub_id, member.string, new_rank);
-                let members_info = user_info.update_clan_member(&member.string, new_rank.to_core()).await?;
-                let mut online_clan_members: std::collections::HashSet<String> = members_info.iter()
+                let member_pub_id = oj_rc_core::types::PublicId::from_raw(member.string);
+                let members_info = user_info.update_clan_member(&member_pub_id, new_rank.to_core()).await?;
+                let mut online_clan_members: std::collections::HashSet<oj_rc_core::types::PublicId> = members_info.iter()
                     .map(|mem| mem.public_id.clone())
                     .collect();
                 self.social.filter_online_only(&mut online_clan_members).await;
                 let target_member_opt = members_info.iter()
-                    .find(|mem| mem.public_id == member.string);
+                    .find(|mem| mem.public_id == member_pub_id);
                 if let Some(target_member) = target_member_opt {
                     let event = crate::events::clan_member_data_changed::ClanMemberDataUpdated {
                         member_public_id: target_member.public_id.clone(),

@@ -1,7 +1,7 @@
 #[derive(Clone)]
 pub struct ClanMemberDataUpdated {
-    pub member_public_id: String,
-    pub member_display_name: String,
+    pub member_public_id: oj_rc_core::types::PublicId,
+    pub member_display_name: oj_rc_core::types::DisplayName,
     pub avatar_id: Option<i32>,
     pub state: Option<crate::data::clan::ClanMemberState>,
     pub rank: Option<crate::data::clan::ClanMemberRank>,
@@ -12,9 +12,10 @@ impl ClanMemberDataUpdated {
     pub const CODE: u8 = 26;
 
     pub fn as_event_params<C>(&self) -> polariton::operation::ParameterTable<C> {
+        use oj_rc_core::types::RawType;
         let mut params = std::collections::HashMap::with_capacity(8);
-        params.insert(1, polariton::operation::Typed::Str(self.member_public_id.clone().into()));
-        params.insert(75, polariton::operation::Typed::Str(self.member_display_name.clone().into()));
+        params.insert(1, polariton::operation::Typed::Str(self.member_public_id.as_raw_ref().into()));
+        params.insert(75, polariton::operation::Typed::Str(self.member_display_name.as_raw_ref().into()));
         params.insert(13, polariton::operation::Typed::Bool(self.avatar_id.is_none()));
         params.insert(14, polariton::operation::Typed::Int(self.avatar_id.unwrap_or_default()));
         if let Some(state) = self.state {
