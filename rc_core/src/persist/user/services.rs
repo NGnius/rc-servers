@@ -101,6 +101,11 @@ impl super::ServiceUser for UserData {
                 polariton_server::operations::SimpleOpError::with_code(crate::data::error_codes::WebServicesError::DatabaseError as i16)
             })?
         };
+        self.db.update_garage_selected_by_user_id_and_slot(self.account.id, model.slot).await
+            .map_err(|e| {
+                log::error!("Failed to select new vehicle slot {} for user_id {}: {}", model.slot, self.account.id, e);
+                polariton_server::operations::SimpleOpError::with_code(crate::data::error_codes::WebServicesError::DatabaseError as i16)
+            })?;
         let split_uuid = super::i64_split(model.uuid);
         Ok(super::NewSlotData {
             name: polariton::operation::Typed::Str(model.name.into()),

@@ -117,6 +117,7 @@ mod custom_game_kick;
 mod custom_game_player_state;
 mod custom_game_can_join_queue;
 mod custom_game_team;
+mod garage_slot_prebuilt_add;
 
 use polariton_server::operations::OperationsHandler;
 
@@ -260,4 +261,5 @@ pub fn handler(init_ctx: &crate::InitConfig) -> OperationsHandler<crate::UserTy>
         .add(custom_game_can_join_queue::game_can_queue_provider(init_ctx))
         .add(custom_game_team::game_team_change_provider(init_ctx))
         .add(owned_cosmetics::save_selected_cosmetics_provider())
+        .add(garage_slot_prebuilt_add::garage_slot_prebuilt_add_provider(&init_ctx.parsers))
 }
