@@ -219,7 +219,7 @@ pub async fn form_load(handlebars_ref: Data<handlebars::Handlebars<'_>>, server_
 
 async fn favicon_impl(config: Data<super::RcConfig>) -> impl Responder {
     let path = config.assets.join("favicon.jpg");
-    actix_files::NamedFile::open_async(path).await
+    actix_files::NamedFile::open(path)
 }
 
 #[get("/robocraft/favicon")]

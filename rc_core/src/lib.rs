@@ -16,5 +16,6 @@ pub mod factory;
 pub mod cubes;
 
 mod auth;
+pub use auth::user_agent;
 
 pub mod types;

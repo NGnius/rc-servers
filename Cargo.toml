@@ -8,7 +8,7 @@ readme = "README.md"
 
 [workspace]
 members = [
-    "cdn",
+    "rc_cdn",
     "rc_auth",
     "polariton_auth",
     "rc_services", "rc_services_room",
@@ -27,8 +27,8 @@ resolver = "3"
 
 [workspace.dependencies]
 actix-web = { version = "4", default-features = false, features = [ "macros", "compress-brotli", "compress-gzip", "compress-zstd", "ws"] }
-actix-files = "0.6"
-openidconnect = { version = "4.0", default-features = false, features = [ "reqwest" ] }
+actix-files = "0.7"
+openidconnect = { version = "4.1", default-features = false, features = [ "reqwest" ] }
 urlencoding = "2.1"
 #libfj = { version = "0.10", path = "../libfj" }
 libfj = { version = "0.10" }
@@ -48,9 +48,9 @@ git-version = "0.3"
 rand = { version = "0.10", features = [ "thread_rng" ] }
 num-quaternion = "1.0"
 hex = "0.4"
-base64 = "0.22"
-oj_serdes = { version = "0.5.0", path = "../oj_core/serdes" }
-#oj_serdes = "0.4.0"
+base64 = "0.23"
+#oj_serdes = { version = "0.5.0", path = "../oj_core/serdes" }
+oj_serdes = "0.5.0"
 #oj_convert = { version = "0.4.0", path = "../oj_core/convert" }
-oj_convert = "0.4.0"
+oj_convert = "0.5.0"
 url = "2.5"

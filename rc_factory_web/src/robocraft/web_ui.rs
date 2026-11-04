@@ -45,7 +45,7 @@ pub async fn app_js(hb: Data<Handlebars<'_>>) -> HttpResponse {
 
 async fn favicon_impl(assets_root: Data<std::path::PathBuf>) -> impl actix_web::Responder {
     let path = assets_root.join("favicon.jpg");
-    actix_files::NamedFile::open_async(path).await
+    actix_files::NamedFile::open(path)
 }
 
 #[get("/robocraft/favicon")]

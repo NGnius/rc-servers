@@ -44,6 +44,7 @@ impl AccountProvider {
             intercom_http_client: std::sync::Arc::new(
                 reqwest::ClientBuilder::new()
                     .redirect(reqwest::redirect::Policy::none())
+                    .user_agent(crate::user_agent())
                     .build()
                     .expect("HTTP client did not init")
             ),
@@ -136,7 +137,11 @@ impl AccountProvider {
             cdn: self.cdn.clone(),
             auth: self.auth.clone(),
             intercom: self.intercom.clone(),
-            http_client: std::sync::Arc::new(reqwest::Client::new()),
+            http_client: std::sync::Arc::new(reqwest::ClientBuilder::new()
+                    .user_agent(crate::user_agent())
+                    .build()
+                    .expect("HTTP client did not init")
+            ),
             db: self.db.clone(),
             secret: self.secret.clone(),
             token: Some(std::sync::Arc::new(token_data.claims)),
@@ -351,7 +356,11 @@ impl super::UserProvider for AccountProvider {
             cdn: self.cdn.clone(),
             auth: self.auth.clone(),
             intercom: self.intercom.clone(),
-            http_client: std::sync::Arc::new(reqwest::Client::new()),
+            http_client: std::sync::Arc::new(reqwest::ClientBuilder::new()
+                    .user_agent(crate::user_agent())
+                    .build()
+                    .expect("HTTP client did not init")
+            ),
             db: self.db.clone(),
             secret: self.secret.clone(),
             token: None,

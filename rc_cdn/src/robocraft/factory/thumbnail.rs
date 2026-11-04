@@ -5,10 +5,10 @@ pub async fn get(cli: Data<crate::cli::CliArgs>, id: Path<u32>) -> impl Responde
     let path = std::path::PathBuf::from(&cli.data_robocraft).join(super::THUMBNAIL_DIR).join(format!("{}.jpg", id));
     log::debug!("RC asset at {} (exists? {})", path.display(), path.exists());
     if path.exists() {
-        actix_files::NamedFile::open_async(path).await
+        actix_files::NamedFile::open(path)
     } else {
         log::info!("Not found /roboshop/Live/{} -> {}, using default image", id, path.display());
-        actix_files::NamedFile::open_async(std::path::PathBuf::from(&cli.assets_robocraft).join(super::super::DEFAULT_IMAGE)).await
+        actix_files::NamedFile::open(std::path::PathBuf::from(&cli.assets_robocraft).join(super::super::DEFAULT_IMAGE))
     }
 }
 

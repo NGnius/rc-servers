@@ -30,7 +30,7 @@ exec ./{binary_name} --ip "0.0.0.0" --redirect "domain_or_ip_address:{port}"
 BINARIES_TO_INCLUDE = {
     #"oj_auth": generate_plain_script,
     "oj_rc_auth": generate_ip_script,
-    "oj_cdn": generate_ip_script,
+    "oj_rc_cdn": generate_ip_script,
     "oj_rc_chat": lambda name: generate_ip_redirect_script(name, 4537), "oj_rc_chat_room": generate_ip_script,
     "oj_rc_microtransactions": generate_ip_script,
     "oj_rc_services": lambda name: generate_ip_redirect_script(name, 4533), "oj_rc_services_room": generate_ip_script,

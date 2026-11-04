@@ -94,7 +94,11 @@ fn get_file_in_thumbnails(dir: std::path::PathBuf, id: u32) -> std::io::Result<V
 }
 
 fn read_file_with_prefix(prefix: &str, archive: &mut zip::read::ZipArchive<std::io::BufReader<std::fs::File>>) -> zip::result::ZipResult<Vec<u8>> {
-    let index = if let Some((index, _)) = archive.file_names().enumerate().find(|(_, name)| name.starts_with(prefix)) {
+    let index_opt = archive.file_names()
+        .enumerate()
+        .filter_map(|(i, result)| result.ok().map(|name| (i, name)))
+        .find(|(_, name)| name.starts_with(prefix));
+    let index = if let Some((index, _)) = index_opt {
         index
     } else {
         return Err(zip::result::ZipError::FileNotFound);

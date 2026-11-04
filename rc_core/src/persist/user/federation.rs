@@ -217,6 +217,7 @@ impl super::AccountProvider {
             let oauth_http_client = openidconnect::reqwest::ClientBuilder::new()
                 // Following redirects opens the client up to SSRF vulnerabilities.
                 .redirect(openidconnect::reqwest::redirect::Policy::none())
+                .user_agent(crate::user_agent())
                 .build()
                 .expect("Client should build");
             // access openid discovery endpoint to self-configure
