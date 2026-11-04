@@ -9,7 +9,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
     SimpleFunc::new(|params, _| {
         let mut params = params.to_dict();
         params.insert(PARAM_KEY, Typed::HashMap(vec![
-            (Typed::Str("maxPower".into()), Typed::Int(2)),
+            (Typed::Str("maxPower".into()), Typed::Int(1)),
             (Typed::Str("powerLevelsPerTier".into()), Typed::Dict(Dict {
                 key_ty: TypePrefix::Int, // int
                 val_ty: TypePrefix::ObjArr, // obj arr
@@ -22,7 +22,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -31,7 +31,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
@@ -42,7 +42,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -51,7 +51,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
@@ -62,7 +62,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -71,7 +71,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
@@ -82,7 +82,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -91,7 +91,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
@@ -102,7 +102,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -111,7 +111,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
@@ -122,7 +122,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(1_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(1_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.1)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                         Typed::Dict(Dict {
@@ -131,7 +131,7 @@ pub(super) fn weapon_xp_provider() -> SimpleFunc<129, crate::UserTy, impl (Fn(Pa
                             items: vec![
                                 (Typed::Str("xp".into()), Typed::Int(2_000)),
                                 (Typed::Str("costRobits".into()), Typed::Int(2_000)),
-                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.2)),
+                                (Typed::Str("damageMultiplier".into()), Typed::Float(1.0)),
                             ],
                         }),
                     ].into())),
