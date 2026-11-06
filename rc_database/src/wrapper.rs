@@ -29,6 +29,12 @@ impl Database {
             .await
     }
 
+    pub async fn user_by_id(&self, user_id: i32) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
+        crate::schema::user::Entity::find_by_id(user_id)
+            .one(self.orm.as_ref())
+            .await
+    }
+
     pub async fn user_by_display_name(&self, public_id: String) -> Result<Option<crate::schema::user::Model>, sea_orm::DbErr> {
         crate::schema::user::Entity::find()
             .filter(sea_orm::sea_query::Expr::expr(

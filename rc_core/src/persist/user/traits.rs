@@ -757,6 +757,7 @@ pub trait WebUser: CommonUser {
     /// Delete own account in the database, nuclear!
     async fn delete_account(&self) -> Result<(), Box<dyn std::error::Error>>;
     async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>>;
+    async fn set_password(&self, old_password: PasswordVerificationMethod, new_password: &str) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 pub struct GarageWebInfo {
@@ -816,6 +817,10 @@ pub struct FederationWebDetails {
     pub society: String,
     pub last_used: i64,
     pub first_used: i64,
+}
+
+pub enum PasswordVerificationMethod {
+    OldPassword(String),
 }
 
 #[async_trait::async_trait]

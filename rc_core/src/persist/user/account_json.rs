@@ -1,4 +1,3 @@
-use argon2::PasswordVerifier;
 use oj_rc_database::sea_orm::IntoActiveModel;
 use sha2::Digest;
 
@@ -209,7 +208,7 @@ impl AccountProvider {
             },
             super::UserAuthInfo::Email { password, .. }
             | super::UserAuthInfo::Username { password, .. } => {
-                use argon2::password_hash::PasswordHasher;
+                use argon2::password_hash::{PasswordHasher, PasswordVerifier};
                 let argon2_algo = argon2::Argon2::default();
                 if override_password {
                     let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);

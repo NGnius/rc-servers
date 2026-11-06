@@ -59,6 +59,26 @@
                 <input class="form-submit-button" style="width:50%;" type="submit" value="Change username" />
             </div>
         </form>
+        <form method="post" class="inline-form">
+            <div class="access-box access-box-input">
+                <input type="hidden" id="action" name="action" value="PasswordChange"/>
+                <div class="box-details">
+                    <div class="box-details-key">Old Password</div>
+                    <div class="box-details-value" style="padding-left:0;padding-bottom:2px;">
+                        <input type="password" id="old_password" name="old_password" class="form-input-box" value="{{form.old_password}}" required />
+                    </div>
+                    <div class="box-details-key">New Password</div>
+                    <div class="box-details-value" style="padding-left:0;padding-bottom:2px;">
+                        <input type="password" id="new_password" name="new_password" class="form-input-box" value="{{form.new_password}}" required />
+                    </div>
+                    <div class="box-details-key">Confirm Password</div>
+                    <div class="box-details-value" style="padding-left:0;padding-bottom:2px;">
+                        <input type="password" id="new_password_c" name="new_password_c" class="form-input-box" value="{{form.new_password_c}}" required />
+                    </div>
+                </div>
+                <input class="form-submit-button" style="width:50%;" type="submit" value="Change password" />
+            </div>
+        </form>
         <div class="access-box">
             <a href="/user/delete">
                 <div class="access-box-banner access-box-danger">

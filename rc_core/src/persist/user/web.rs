@@ -414,4 +414,30 @@ impl super::WebUser for super::account_json::UserData {
         log::info!("Renamed account {} display from {} to {}", self.account.id, self.account.display_name, new_name);
         Ok(())
     }
+
+    async fn set_password(&self, old_password: super::PasswordVerificationMethod, new_password: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // validate old_password
+        if let Some(my_user) = self.db.user_by_id(self.account.id).await? {
+            use argon2::password_hash::{PasswordHasher, PasswordVerifier};
+            let argon2_algo = argon2::Argon2::default();
+            match old_password {
+                super::PasswordVerificationMethod::OldPassword(old_password) => {
+                    let expected = argon2::password_hash::PasswordHash::new(&my_user.password)?;
+                    if let Err(_e) = argon2_algo.verify_password(old_password.as_bytes(), &expected) {
+                        return Err("Invalid old password".into());
+                    }
+                }
+            }
+            let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+            let password_hash = argon2_algo.hash_password(new_password.as_bytes(), &salt)?.to_string();
+            self.db.update_user(oj_rc_database::schema::user::ActiveModel {
+                id: oj_rc_database::sea_orm::ActiveValue::Set(self.account.id),
+                password: oj_rc_database::sea_orm::ActiveValue::Set(password_hash),
+                ..Default::default()
+            }).await?;
+            Ok(())
+        } else {
+            Err("User does not exist".into())
+        }
+    }
 }
