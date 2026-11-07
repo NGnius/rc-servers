@@ -102,30 +102,26 @@ impl AccountProvider {
             code: crate::data::error_codes::AuthErrorCode::BadCredentials,
         })?;
         let public_id = token_data.claims.client_details.public_id.clone();
-        let user_info = if let Some(user_info) = self.db.user_by_public_id(public_id.clone()).await.map_err(|e| super::AuthError {
+        let user_info = self.db.user_by_public_id(public_id.clone()).await
+        .map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
-        })? {
-            user_info
-        } else {
-            return Err(super::AuthError {
-                message: "User not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
-        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+        })?.ok_or_else(||super::AuthError {
+            message: "User not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
+        let user_perms = self.db.perms_by_user_id(user_info.id).await
+            .map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown
-        })? {
-            user_perms
-        } else {
-            return Err(super::AuthError {
-                message: "User permissions not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
+        })?.ok_or_else(|| super::AuthError {
+            message: "User permissions not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
         #[cfg(debug_assertions)]
         log::info!("Authenticated user {} with flags {:?}", public_id, token_data.claims.client_details.flags.as_slice());
+        let mut user_info = user_info;
+        user_info.password.clear();
         Ok(UserData {
             account: user_info,
             perms: user_perms,
@@ -323,28 +319,22 @@ impl <C: Clone + Send> super::UserProviderC<C> for AccountProvider {
 #[async_trait::async_trait]
 impl super::UserProvider for AccountProvider {
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn super::MultiplayerUser>, super::AuthError> {
-        let user_info = if let Some(user_info) = self.db.user_by_display_name(user).await.map_err(|e| super::AuthError {
+        let user_info = self.db.user_by_display_name(user).await
+        .map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
-        })? {
-            user_info
-        } else {
-            return Err(super::AuthError {
-                message: "User not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
-        let user_perms = if let Some(user_perms) = self.db.perms_by_user_id(user_info.id).await.map_err(|e| super::AuthError {
+        })?.ok_or_else(|| super::AuthError {
+            message: "User not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
+        let user_perms = self.db.perms_by_user_id(user_info.id).await
+        .map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
-        })? {
-            user_perms
-        } else {
-            return Err(super::AuthError {
-                message: "User permissions not found".to_owned(),
-                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
-            });
-        };
+        })?.ok_or_else(||super::AuthError {
+            message: "User permissions not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
         Ok(Box::new(UserData {
             account: user_info,
             perms: user_perms,
@@ -367,7 +357,59 @@ impl super::UserProvider for AccountProvider {
     }
 
     async fn web_authenticate(&self, token: String) -> Result<Box<dyn super::WebUser>, super::AuthError> {
-        Ok(Box::new(self.auth_internal(&token).await?))
+        let user = self.auth_internal(&token).await?;
+        if user.perms.banned {
+            return Err(super::AuthError {
+                message: "User is banned".to_owned(),
+                code: crate::data::error_codes::AuthErrorCode::AccountBlocked202,
+            });
+        }
+        Ok(Box::new(user))
+    }
+
+    async fn web_password_secret_authenticate(&self, id: crate::types::UserId, key: String) -> Result<Box<dyn super::WebPasswordUser>, super::AuthError> {
+        let user_info = self.db.user_by_id(id.as_raw()).await
+        .map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?.ok_or_else(|| super::AuthError {
+            message: "User not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?;
+        let user_perms = self.db.perms_by_user_id(user_info.id).await
+        .map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?.ok_or_else(|| super::AuthError {
+            message: "User permissions not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
+        let user = UserData {
+            account: user_info,
+            perms: user_perms,
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            fake_players: self.fake_players.clone(),
+            filler_players: self.filler_players.clone(),
+            cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: std::sync::Arc::new(reqwest::ClientBuilder::new()
+                    .user_agent(crate::user_agent())
+                    .build()
+                    .expect("HTTP client did not init")
+            ),
+            db: self.db.clone(),
+            secret: self.secret.clone(),
+            token: None,
+        };
+        if let Err(e) = user.validate_password_key(&key).await {
+            return Err(super::AuthError {
+                message: format!("User key invalid: {}", e),
+                code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+            });
+        }
+        Ok(Box::new(user))
     }
 }
 
@@ -445,7 +487,7 @@ impl UserData {
         self.db.garages_by_user_id(self.account.id).await
     }
 
-    async fn double_check_permissions(&self) -> Result<oj_rc_database::schema::permissions::Model, oj_rc_database::sea_orm::DbErr> {
+    pub(super) async fn double_check_permissions(&self) -> Result<oj_rc_database::schema::permissions::Model, oj_rc_database::sea_orm::DbErr> {
         Ok(self.db.perms_by_user_id(self.account.id).await?.unwrap())
     }
 
@@ -822,6 +864,14 @@ impl UserData {
             crate::types::Currency::from_raw(0)
         };
         Ok(currency)
+    }
+
+    pub(super) async fn find_user(db: &oj_rc_database::Database, user: &crate::types::AccountId) -> Result<Option<oj_rc_database::schema::user::Model>, oj_rc_database::sea_orm::DbErr> {
+        match user {
+            crate::types::AccountId::UserId(id) => db.user_by_id(id.as_raw()).await,
+            crate::types::AccountId::PublicId(pub_id) => db.user_by_public_id(pub_id.as_raw()).await,
+            crate::types::AccountId::AnyString(some_id) => db.user_by_some_social_id(some_id.to_owned()).await,
+        }
     }
 }
 

@@ -1,3 +1,155 @@
+use crate::persist::user::CommonReadUser;
+
+impl super::account_json::UserData {
+    fn build_user_from(&self, user_model: oj_rc_database::schema::user::Model, perms_model: oj_rc_database::schema::permissions::Model) -> super::account_json::UserData {
+        super::account_json::UserData {
+            account: user_model,
+            perms: perms_model,
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            fake_players: self.fake_players.clone(),
+            filler_players: self.filler_players.clone(),
+            cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: self.http_client.clone(),
+            db: self.db.clone(),
+            secret: self.secret.clone(),
+            token: None,
+        }
+    }
+
+    fn personal_key_as(account: &oj_rc_database::schema::user::Model, secret: &[u8]) -> ring::aead::UnboundKey {
+        use sha2::Digest;
+        use ring::aead::{UnboundKey, AES_256_GCM};
+        let gen_key_arr = sha2::Sha512::new()
+            .chain_update(secret)
+            .chain_update(account.public_id.as_bytes())
+            .finalize();
+        let mut key = [0u8; 32];
+        for i in 0..32 {
+            key[i] = gen_key_arr[i*2];
+        }
+        UnboundKey::new(&AES_256_GCM, &key).unwrap()
+    }
+
+    fn nonce_gen_as(account: &oj_rc_database::schema::user::Model) -> impl ring::aead::NonceSequence {
+        struct NonceGenInternal {
+            data: Option<[u8; ring::aead::NONCE_LEN]>
+        }
+
+        impl ring::aead::NonceSequence for NonceGenInternal {
+            fn advance(&mut self) -> Result<ring::aead::Nonce, ring::error::Unspecified> {
+                if let Some(data) = self.data.take() {
+                    Ok(ring::aead::Nonce::assume_unique_for_key(data))
+                } else {
+                    Err(ring::error::Unspecified)
+                }
+            }
+        }
+
+        let data = {
+            use sha2::Digest;
+            let gen_key_arr = sha2::Sha512::new()
+                .chain_update(if account.password.is_empty() {
+                    b"THIS_IS_LONGER_THAN_THE_MAX_PASSWORD_LENGTH_SO_WE_GET_MORE_HASHABLE_DATA_THAN_JUST_THE_EMPTY_SLICE_WHILE_ALSO_MAKING_THIS_PASSWORD_IMPOSSIBLE_TO_HAVE_THROUGH_LEGITIMATE_MEANS_THOUGH_THAT_IS_ALREADY_GUARANTEED_BY_NOT_HAVING_THE_ARGON2_PREFIX_DATA"
+                } else {
+                    account.password.as_bytes()
+                })
+                .chain_update(account.creation_time.to_le_bytes())
+                .finalize();
+            let mut key = [0u8; ring::aead::NONCE_LEN];
+            for i in 0..key.len() {
+                key[i] = gen_key_arr[i*2];
+            }
+            key
+        };
+        NonceGenInternal {
+            data: Some(data),
+        }
+    }
+
+    async fn secret_password_key(&self) -> Result<String, Box<dyn core::error::Error>> {
+        let my_account = self.db.user_by_id(self.account.id).await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.account.clone());
+        Self::secret_password_key_as(&my_account, self.secret.as_slice())
+    }
+
+    const MAX_SECRET_AGE_S: i64 = 60 * 60 * 24; // 1 day
+
+    fn secret_password_key_as(account: &oj_rc_database::schema::user::Model, secret: &[u8]) -> Result<String, Box<dyn core::error::Error>> {
+        use ring::aead::{SealingKey, BoundKey, Aad};
+        let mut key = SealingKey::new(
+            Self::personal_key_as(account, secret),
+            Self::nonce_gen_as(account),
+        );
+        let key_time = chrono::Utc::now().timestamp().to_le_bytes();
+        let user_id = account.id.to_le_bytes();
+        let to_encrypt = [
+            key_time[0],
+            key_time[1],
+            key_time[2],
+            key_time[3],
+            key_time[4],
+            key_time[5],
+            key_time[6],
+            key_time[7],
+            user_id[0],
+            user_id[1],
+            user_id[2],
+            user_id[3],
+        ];
+        let mut secret = Vec::from(to_encrypt);
+        key.seal_in_place_append_tag(Aad::empty(), &mut secret)
+            .map_err(|e| Box::<dyn core::error::Error>::from(format!("Failed to encrypt password key: {}", e)))?;
+        Ok(hex::encode(secret))
+    }
+
+    pub(super) async fn validate_password_key(&self, password_key: &str) -> Result<(), Box<dyn core::error::Error>> {
+        let my_account = self.db.user_by_id(self.account.id).await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| self.account.clone());
+        Self::validate_password_key_as(password_key, &my_account, self.secret.as_slice())
+    }
+
+    fn validate_password_key_as(password_key: &str, account: &oj_rc_database::schema::user::Model, secret: &[u8]) -> Result<(), Box<dyn core::error::Error>> {
+        use ring::aead::{OpeningKey, BoundKey, Aad};
+        let now = chrono::Utc::now().timestamp();
+        let mut key = OpeningKey::new(Self::personal_key_as(account, secret), Self::nonce_gen_as(account));
+        let mut password_key = hex::decode(password_key)
+            .map_err(|e| Box::<dyn core::error::Error>::from(format!("Failed to decode password key: {}", e)))?;
+        key.open_in_place(Aad::empty(), &mut password_key)
+            .map_err(|e| Box::<dyn core::error::Error>::from(format!("Failed to decrypt password key: {}", e)))?;
+        let key_time = i64::from_le_bytes([
+            password_key[0],
+            password_key[1],
+            password_key[2],
+            password_key[3],
+            password_key[4],
+            password_key[5],
+            password_key[6],
+            password_key[7],
+        ]);
+        let user_id = i32::from_le_bytes([
+            password_key[8],
+            password_key[9],
+            password_key[10],
+            password_key[11],
+        ]);
+        if user_id != account.id {
+            return Err("Incorrect user ID".into());
+        }
+        if (now - key_time) > Self::MAX_SECRET_AGE_S {
+            Err("Password key expired".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl super::WebUser for super::account_json::UserData {
     async fn garages(&self) -> Result<Vec<super::GarageWebInfo>, Box<dyn std::error::Error>> {
@@ -415,6 +567,35 @@ impl super::WebUser for super::account_json::UserData {
         Ok(())
     }
 
+    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.secret_password_key().await
+    }
+
+    fn password(&self) -> &'_ dyn super::WebPasswordUser {
+        self
+    }
+
+    async fn do_as(&self, user: crate::types::AccountId) -> Result<Box<dyn super::WebUser>, Box<dyn std::error::Error>> {
+        let perms = self.double_check_permissions().await?;
+        if !perms.banned && (perms.developer || perms.royalty) {
+            if let Some(as_user) = super::account_json::UserData::find_user(self.db.as_ref(), &user).await? {
+                if let Some(perms) = self.db.perms_by_user_id(as_user.id).await? {
+                    let new_user = self.build_user_from(as_user, perms);
+                    Ok(Box::new(new_user))
+                } else {
+                    Err(format!("No user permissions for {}", user).into())
+                }
+            } else {
+                Err(format!("No user found matching {}", user).into())
+            }
+        } else {
+            Err("Missing permissions to impersonate user".into())
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl super::WebPasswordUser for super::account_json::UserData {
     async fn set_password(&self, old_password: super::PasswordVerificationMethod, new_password: &str) -> Result<(), Box<dyn std::error::Error>> {
         // validate old_password
         if let Some(my_user) = self.db.user_by_id(self.account.id).await? {
@@ -426,7 +607,12 @@ impl super::WebUser for super::account_json::UserData {
                     if let Err(_e) = argon2_algo.verify_password(old_password.as_bytes(), &expected) {
                         return Err("Invalid old password".into());
                     }
-                }
+                    log::debug!("Old password validation succeeded for {}", self.user_id());
+                },
+                super::PasswordVerificationMethod::SecretKey(key) => {
+                    self.validate_password_key(&key).await?;
+                    log::debug!("Password key validation succeeded for {}", self.user_id());
+                },
             }
             let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
             let password_hash = argon2_algo.hash_password(new_password.as_bytes(), &salt)?.to_string();

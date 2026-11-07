@@ -65,7 +65,7 @@ pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<B
                     resp
                 },
                 FormData::PasswordChange { old_password, new_password, new_password_c } => {
-                    let resp = password_change_impl(old_password, new_password, new_password_c, handlebars_ref.as_ref(), user, req).await?;
+                    let resp = password_change_impl(old_password, new_password, new_password_c, handlebars_ref.as_ref(), user.password(), req).await?;
                     user_opt.expect("Must be authenticated by this point").logout();
                     resp
                 }
@@ -136,7 +136,7 @@ async fn name_change_impl(old_name: &str, new_name: &str, handlebars: &handlebar
     Ok(resp)
 }
 
-async fn password_change_impl(old_passwd: &str, new_passwd: &str, new_passwd_c: &str, handlebars: &handlebars::Handlebars<'_>, user: Box<dyn oj_rc_core::persist::user::WebUser>, req: HttpRequest) -> Result<HttpResponse, actix_web::error::Error> {
+async fn password_change_impl(old_passwd: &str, new_passwd: &str, new_passwd_c: &str, handlebars: &handlebars::Handlebars<'_>, user: &dyn oj_rc_core::persist::user::WebPasswordUser, req: HttpRequest) -> Result<HttpResponse, actix_web::error::Error> {
     let resp = if new_passwd != new_passwd_c {
         render_err(
             RenderData {

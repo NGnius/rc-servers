@@ -118,3 +118,20 @@ impl super::RawType for Currency<i64> {
         Self(value)
     }
 }
+
+#[derive(Clone, Debug)]
+pub enum AccountId {
+    UserId(UserId),
+    PublicId(PublicId),
+    AnyString(String),
+}
+
+impl core::fmt::Display for AccountId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UserId(id) => write!(f, "{}", id),
+            Self::PublicId(id) => write!(f, "{}", id),
+            Self::AnyString(id) => write!(f, "AnyId({})", id),
+        }
+    }
+}

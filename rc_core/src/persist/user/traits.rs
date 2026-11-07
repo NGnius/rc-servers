@@ -74,6 +74,7 @@ pub trait UserProviderC<C> {
 pub trait UserProvider {
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn MultiplayerUser>, AuthError>;
     async fn web_authenticate(&self, token: String) -> Result<Box<dyn WebUser>, AuthError>;
+    async fn web_password_secret_authenticate(&self, id: crate::types::UserId, key: String) -> Result<Box<dyn WebPasswordUser>, AuthError>;
 }
 
 #[async_trait::async_trait]
@@ -515,7 +516,13 @@ pub struct ResolvedVehicle {
 }
 
 #[async_trait::async_trait]
-pub trait CommonUser: Send + Sync {
+pub trait CommonUser: CommonReadUser {
+    async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError>;
+    async fn fedi_set(&self, fedi: super::Federation) -> bool;
+}
+
+#[async_trait::async_trait]
+pub trait CommonReadUser: Send + Sync {
     fn user_id(&self) -> crate::types::UserId;
     async fn resolve_config_vehicle(&self, vehicle: &crate::persist::config::VehicleInfo, factory: &dyn oj_rc_factory::VehicleFactoryAdapter, weapon_order: &crate::cubes::WeaponListParser, cpu_counter: &crate::cubes::CpuListParser) -> Result<ResolvedVehicle, polariton_server::operations::SimpleOpError>;
     fn public_id(&self) -> crate::types::PublicId;
@@ -529,9 +536,7 @@ pub trait CommonUser: Send + Sync {
     fn is_banned(&self) -> bool;
     async fn db_metrics(&self) -> oj_rc_database::DatabaseMetrics;
     async fn db_counters(&self) -> Vec<(&'static str, i64)>;
-    async fn currency(&self, ty: CurrencyType, op: CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError>;
     async fn fedi_get(&self) -> super::Federation;
-    async fn fedi_set(&self, fedi: super::Federation) -> bool;
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
@@ -757,6 +762,13 @@ pub trait WebUser: CommonUser {
     /// Delete own account in the database, nuclear!
     async fn delete_account(&self) -> Result<(), Box<dyn std::error::Error>>;
     async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>>;
+    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>>;
+    fn password(&self) -> &'_ dyn WebPasswordUser;
+    async fn do_as(&self, user: crate::types::AccountId) -> Result<Box<dyn WebUser>, Box<dyn std::error::Error>>;
+}
+
+#[async_trait::async_trait]
+pub trait WebPasswordUser: CommonReadUser {
     async fn set_password(&self, old_password: PasswordVerificationMethod, new_password: &str) -> Result<(), Box<dyn std::error::Error>>;
 }
 
@@ -821,6 +833,7 @@ pub struct FederationWebDetails {
 
 pub enum PasswordVerificationMethod {
     OldPassword(String),
+    SecretKey(String),
 }
 
 #[async_trait::async_trait]

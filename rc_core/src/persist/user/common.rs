@@ -7,6 +7,48 @@ fn u64_negative_on_err<E>(result: Result<u64, E>) -> i64 {
 
 #[async_trait::async_trait]
 impl super::CommonUser for UserData {
+    async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError> {
+        self.currency_op(ty, op).await.map_err(|e| polariton_server::operations::SimpleOpError::with_message(
+            crate::data::error_codes::WebServicesError::DatabaseError as i16,
+            format!("Currency operation failed for user {}: {}", self.account.id, e),
+        ))
+    }
+
+    async fn fedi_set(&self, fedi: super::Federation) -> bool {
+        let data_str = serde_json::to_string_pretty(&fedi).expect("Failed to serialize user_aux Federation data (fedi_set)");
+        let model = oj_rc_database::schema::user_aux::ActiveModel {
+            id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            descriptor: oj_rc_database::sea_orm::ActiveValue::NotSet,
+            data: oj_rc_database::sea_orm::ActiveValue::Set(data_str),
+        };
+        match self.db.update_user_aux_by_user_id_and_descriptor(model.clone(), self.account.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await {
+            Ok(Some(_fed)) => true,
+            Ok(None) => {
+                // DB upgrade path; insert it into database instead
+                let mut model = model;
+                model.user_id = oj_rc_database::sea_orm::ActiveValue::Set(self.account.id);
+                model.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp());
+                model.descriptor = oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::Federation);
+                match self.db.insert_user_aux(vec![model]).await {
+                    Ok(_) => true,
+                    Err(e) => {
+                        log::error!("Failed to insert user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                        false
+                    }
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to update user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
+                false
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl super::CommonReadUser for UserData {
     fn user_id(&self) -> crate::types::UserId {
         crate::types::UserId::from_raw(self.account.id)
     }
@@ -59,13 +101,6 @@ impl super::CommonUser for UserData {
         count_map
     }
 
-    async fn currency(&self, ty: super::CurrencyType, op: super::CurrencyOp) -> Result<crate::types::Currency<u64>, polariton_server::operations::SimpleOpError> {
-        self.currency_op(ty, op).await.map_err(|e| polariton_server::operations::SimpleOpError::with_message(
-            crate::data::error_codes::WebServicesError::DatabaseError as i16,
-            format!("Currency operation failed for user {}: {}", self.account.id, e),
-        ))
-    }
-
     async fn fedi_get(&self) -> super::Federation {
         match self.db.user_aux_by_user_id_and_descriptor(self.account.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await {
             Ok(Some(fed)) => {
@@ -96,38 +131,6 @@ impl super::CommonUser for UserData {
             Err(e) => {
                 log::error!("Failed to retrieve user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
                 super::Federation::default()
-            }
-        }
-    }
-
-    async fn fedi_set(&self, fedi: super::Federation) -> bool {
-        let data_str = serde_json::to_string_pretty(&fedi).expect("Failed to serialize user_aux Federation data (fedi_set)");
-        let model = oj_rc_database::schema::user_aux::ActiveModel {
-            id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-            user_id: oj_rc_database::sea_orm::ActiveValue::NotSet,
-            creation_time: oj_rc_database::sea_orm::ActiveValue::NotSet,
-            descriptor: oj_rc_database::sea_orm::ActiveValue::NotSet,
-            data: oj_rc_database::sea_orm::ActiveValue::Set(data_str),
-        };
-        match self.db.update_user_aux_by_user_id_and_descriptor(model.clone(), self.account.id, oj_rc_database::schema::user_aux::Descriptor::Federation).await {
-            Ok(Some(_fed)) => true,
-            Ok(None) => {
-                // DB upgrade path; insert it into database instead
-                let mut model = model;
-                model.user_id = oj_rc_database::sea_orm::ActiveValue::Set(self.account.id);
-                model.creation_time = oj_rc_database::sea_orm::ActiveValue::Set(chrono::Utc::now().timestamp());
-                model.descriptor = oj_rc_database::sea_orm::ActiveValue::Set(oj_rc_database::schema::user_aux::Descriptor::Federation);
-                match self.db.insert_user_aux(vec![model]).await {
-                    Ok(_) => true,
-                    Err(e) => {
-                        log::error!("Failed to insert user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
-                        false
-                    }
-                }
-            },
-            Err(e) => {
-                log::error!("Failed to update user_aux Federation for user {}: {} (fedi_get)", self.account.id, e);
-                false
             }
         }
     }
