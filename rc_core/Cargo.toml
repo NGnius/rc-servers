@@ -38,5 +38,8 @@ reqwest = { version = "0.13", default-features = false, features = [ "rustls", "
 reqwest-websocket = { version = "0.6", default-features = false, features = [ "json" ] }
 oj_serdes.workspace = true
 
+# email
+lettre = { version = "0.11", default-features = false, features = [ "builder", "smtp-transport", "tokio1", "ring", "tokio1-rustls", "ring", "rustls-platform-verifier" ] }
+
 oj_rc_database = { version = "*", path = "../rc_database" }
 oj_rc_factory = { version = "*", path = "../rc_factory" }

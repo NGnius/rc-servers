@@ -46,6 +46,15 @@ enum ConfirmFormData {
     No,
 }
 
+const MESSAGE_FORM_NAME: &str = "user_message";
+
+#[derive(Serialize)]
+struct MessageRenderData {
+    pub display_name: Option<String>,
+    pub public_id: Option<String>,
+    pub message: Option<String>,
+}
+
 fn render_ok<T: Serialize>(form: T, renderer: &handlebars::Handlebars<'_>, form_name: &str) -> Html {
     let rendered = renderer.render(form_name, &Context {
         form,

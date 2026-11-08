@@ -57,6 +57,10 @@ impl AccountProvider {
         self.db.vehicle_factory(self.cdn.clone())
     }
 
+    pub(crate) fn db_impl(&self) -> std::sync::Arc<oj_rc_database::Database> {
+        self.db.clone()
+    }
+
     pub async fn multiplayer_init(&self) -> Result<(), oj_rc_database::sea_orm::DbErr> {
         self.db.complete_all_games().await?;
         self.db.delete_all_game_vehicles().await?;
@@ -367,8 +371,8 @@ impl super::UserProvider for AccountProvider {
         Ok(Box::new(user))
     }
 
-    async fn web_password_secret_authenticate(&self, id: crate::types::UserId, key: String) -> Result<Box<dyn super::WebPasswordUser>, super::AuthError> {
-        let user_info = self.db.user_by_id(id.as_raw()).await
+    async fn web_password_secret_authenticate(&self, id: crate::types::AccountId, key: String) -> Result<Box<dyn super::WebPasswordUser>, super::AuthError> {
+        let user_info = super::find_user(self.db.as_ref(), &id).await
         .map_err(|e| super::AuthError {
             message: e.to_string(),
             code: crate::data::error_codes::AuthErrorCode::Unknown,
@@ -410,6 +414,44 @@ impl super::UserProvider for AccountProvider {
             });
         }
         Ok(Box::new(user))
+    }
+
+    async fn web_password_reset_authenticate(&self, id: crate::types::AccountId) -> Result<Box<dyn super::WebPasswordResetUser>, super::AuthError> {
+        let user_info = super::find_user(self.db.as_ref(), &id).await
+        .map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?.ok_or_else(|| super::AuthError {
+            message: "User not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?;
+        let user_perms = self.db.perms_by_user_id(user_info.id).await
+        .map_err(|e| super::AuthError {
+            message: e.to_string(),
+            code: crate::data::error_codes::AuthErrorCode::Unknown,
+        })?.ok_or_else(|| super::AuthError {
+            message: "User permissions not found".to_owned(),
+            code: crate::data::error_codes::AuthErrorCode::BadCredentials,
+        })?;
+        Ok(Box::new(UserData {
+            account: user_info,
+            perms: user_perms,
+            cubes: self.cubes.clone(),
+            garage_upgrades: self.garage_upgrades.clone(),
+            fake_players: self.fake_players.clone(),
+            filler_players: self.filler_players.clone(),
+            cdn: self.cdn.clone(),
+            auth: self.auth.clone(),
+            intercom: self.intercom.clone(),
+            http_client: std::sync::Arc::new(reqwest::ClientBuilder::new()
+                    .user_agent(crate::user_agent())
+                    .build()
+                    .expect("HTTP client did not init")
+            ),
+            db: self.db.clone(),
+            secret: self.secret.clone(),
+            token: None,
+        }))
     }
 }
 
@@ -864,14 +906,6 @@ impl UserData {
             crate::types::Currency::from_raw(0)
         };
         Ok(currency)
-    }
-
-    pub(super) async fn find_user(db: &oj_rc_database::Database, user: &crate::types::AccountId) -> Result<Option<oj_rc_database::schema::user::Model>, oj_rc_database::sea_orm::DbErr> {
-        match user {
-            crate::types::AccountId::UserId(id) => db.user_by_id(id.as_raw()).await,
-            crate::types::AccountId::PublicId(pub_id) => db.user_by_public_id(pub_id.as_raw()).await,
-            crate::types::AccountId::AnyString(some_id) => db.user_by_some_social_id(some_id.to_owned()).await,
-        }
     }
 }
 

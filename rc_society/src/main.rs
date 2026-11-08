@@ -42,6 +42,7 @@ async fn main() -> std::io::Result<()> {
     let users = oj_rc_core::UserImpl::load(&cli_args.data_robocraft, &config).await.expect("Bad user data");
     let factory = config.factory(&|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config");
     let factory_ref = actix_web::web::Data::new(factory);
+    let email_ref = actix_web::web::Data::new(oj_rc_core::email::EmailSender::new(&config, &users));
     let auth_ref = actix_web::web::Data::new(Box::new(users));
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
@@ -87,6 +88,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(importers_ref.clone())
             .app_data(parsers_ref.clone())
             .app_data(factory_ref.clone())
+            .app_data(email_ref.clone())
             .service(version_info)
             .service(web::login::form_submit)
             .service(web::login::form_load)
@@ -116,6 +118,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::account::password::get)
             .service(web::account::password::post)
             .service(web::account::password_reset_as::get)
+            .service(web::account::password_reset_email::get)
+            .service(web::account::password_reset_email::post)
             .service(api::config::get)
             .service(api::urls::get)
             .service(api::user::federation::get)

@@ -10,7 +10,7 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
         LoginReturn::Success(user) => {
             match user.do_as(oj_rc_core::types::AccountId::UserId(oj_rc_core::types::UserId::from_raw(*path))).await {
                 Ok(new_user) => {
-                    match new_user.generate_password_reset_key().await {
+                    match new_user.password_reset().generate_password_reset_key().await {
                         Ok(secret) => {
                             let user_id = new_user.user_id();
                             let url = format!("/user/{}/password_reset/{}", user_id.as_raw(), secret);
@@ -22,17 +22,14 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                         Err(e) => {
                             log::error!("Failed to generate password secret for {} as {}: {}", user.user_id(), new_user.user_id(), e);
                             let html = render_err(
-                                crate::web::ConfirmRenderData {
-                                    display_name: user.display_name().as_raw(),
-                                    public_id: user.public_id().as_raw(),
-                                    question: "What is the answer to life, the universe, everything?".to_owned(),
-                                    yes_url: "/user/manage".to_owned(),
-                                    no_url: "/user/manage".to_owned(),
+                                crate::web::MessageRenderData {
+                                    display_name: Some(user.display_name().as_raw()),
+                                    public_id: Some(user.public_id().as_raw()),
                                     message: None,
                                 },
                                 format!("Failed to generate password reset URL: {}", e),
                                 handlebars_ref.as_ref(),
-                                crate::web::CONFIRM_FORM_NAME,
+                                crate::web::MESSAGE_FORM_NAME,
                             );
                             html
                                 .respond_to(&req)
@@ -42,17 +39,14 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
                 },
                 Err(e) => {
                     let html = render_err(
-                        crate::web::ConfirmRenderData {
-                            display_name: user.display_name().as_raw(),
-                            public_id: user.public_id().as_raw(),
-                            question: "What is the answer to life, the universe, everything?".to_owned(),
-                            yes_url: "/user/manage".to_owned(),
-                            no_url: "/user/manage".to_owned(),
+                        crate::web::MessageRenderData {
+                            display_name: Some(user.display_name().as_raw()),
+                            public_id: Some(user.public_id().as_raw()),
                             message: None,
                         },
                         format!("Failed to generate password reset URL: {}", e),
                         handlebars_ref.as_ref(),
-                        crate::web::CONFIRM_FORM_NAME,
+                        crate::web::MESSAGE_FORM_NAME,
                     );
                     html
                         .respond_to(&req)

@@ -74,7 +74,8 @@ pub trait UserProviderC<C> {
 pub trait UserProvider {
     async fn multiplayer_authenticate(&self, user: String) -> Result<Box<dyn MultiplayerUser>, AuthError>;
     async fn web_authenticate(&self, token: String) -> Result<Box<dyn WebUser>, AuthError>;
-    async fn web_password_secret_authenticate(&self, id: crate::types::UserId, key: String) -> Result<Box<dyn WebPasswordUser>, AuthError>;
+    async fn web_password_secret_authenticate(&self, id: crate::types::AccountId, key: String) -> Result<Box<dyn WebPasswordUser>, AuthError>;
+    async fn web_password_reset_authenticate(&self, id: crate::types::AccountId) -> Result<Box<dyn WebPasswordResetUser>, AuthError>;
 }
 
 #[async_trait::async_trait]
@@ -762,14 +763,19 @@ pub trait WebUser: CommonUser {
     /// Delete own account in the database, nuclear!
     async fn delete_account(&self) -> Result<(), Box<dyn std::error::Error>>;
     async fn set_display_name(&self, new_name: &str) -> Result<(), Box<dyn std::error::Error>>;
-    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>>;
     fn password(&self) -> &'_ dyn WebPasswordUser;
+    fn password_reset(&self) -> &'_ dyn WebPasswordResetUser;
     async fn do_as(&self, user: crate::types::AccountId) -> Result<Box<dyn WebUser>, Box<dyn std::error::Error>>;
 }
 
 #[async_trait::async_trait]
 pub trait WebPasswordUser: CommonReadUser {
     async fn set_password(&self, old_password: PasswordVerificationMethod, new_password: &str) -> Result<(), Box<dyn std::error::Error>>;
+}
+
+#[async_trait::async_trait]
+pub trait WebPasswordResetUser: CommonReadUser {
+    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>>;
 }
 
 pub struct GarageWebInfo {

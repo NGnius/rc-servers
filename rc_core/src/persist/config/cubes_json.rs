@@ -46,6 +46,10 @@ impl CubeConfig {
         Ok(result)
     }
 
+    pub(crate) fn email_conf(&self) -> &'_ crate::persist::EmailConfig {
+        &self.settings.email
+    }
+
     /// Populate more of the config for parts of it which need more context for choosing default values
     fn expand_with_context(mut self) -> Self {
         // TODO

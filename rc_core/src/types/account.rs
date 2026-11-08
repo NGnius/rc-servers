@@ -123,6 +123,7 @@ impl super::RawType for Currency<i64> {
 pub enum AccountId {
     UserId(UserId),
     PublicId(PublicId),
+    Email(String),
     AnyString(String),
 }
 
@@ -131,6 +132,7 @@ impl core::fmt::Display for AccountId {
         match self {
             Self::UserId(id) => write!(f, "{}", id),
             Self::PublicId(id) => write!(f, "{}", id),
+            Self::Email(id) => write!(f, "Email({})", id),
             Self::AnyString(id) => write!(f, "AnyId({})", id),
         }
     }

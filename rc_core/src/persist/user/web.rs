@@ -79,7 +79,7 @@ impl super::account_json::UserData {
 
     const MAX_SECRET_AGE_S: i64 = 60 * 60 * 24; // 1 day
 
-    fn secret_password_key_as(account: &oj_rc_database::schema::user::Model, secret: &[u8]) -> Result<String, Box<dyn core::error::Error>> {
+    pub(super) fn secret_password_key_as(account: &oj_rc_database::schema::user::Model, secret: &[u8]) -> Result<String, Box<dyn core::error::Error>> {
         use ring::aead::{SealingKey, BoundKey, Aad};
         let mut key = SealingKey::new(
             Self::personal_key_as(account, secret),
@@ -567,18 +567,18 @@ impl super::WebUser for super::account_json::UserData {
         Ok(())
     }
 
-    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.secret_password_key().await
+    fn password(&self) -> &'_ dyn super::WebPasswordUser {
+        self
     }
 
-    fn password(&self) -> &'_ dyn super::WebPasswordUser {
+    fn password_reset(&self) -> &'_ dyn super::WebPasswordResetUser {
         self
     }
 
     async fn do_as(&self, user: crate::types::AccountId) -> Result<Box<dyn super::WebUser>, Box<dyn std::error::Error>> {
         let perms = self.double_check_permissions().await?;
         if !perms.banned && (perms.developer || perms.royalty) {
-            if let Some(as_user) = super::account_json::UserData::find_user(self.db.as_ref(), &user).await? {
+            if let Some(as_user) = super::find_user(self.db.as_ref(), &user).await? {
                 if let Some(perms) = self.db.perms_by_user_id(as_user.id).await? {
                     let new_user = self.build_user_from(as_user, perms);
                     Ok(Box::new(new_user))
@@ -625,5 +625,12 @@ impl super::WebPasswordUser for super::account_json::UserData {
         } else {
             Err("User does not exist".into())
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl super::WebPasswordResetUser for super::account_json::UserData {
+    async fn generate_password_reset_key(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.secret_password_key().await
     }
 }

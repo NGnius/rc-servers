@@ -58,6 +58,10 @@ mod federation;
 pub use federation::FederationConfig;
 pub(crate) use federation::default_federation;
 
+mod email;
+pub use email::EmailConfig;
+pub(crate) use email::default_email;
+
  const VALID_ROBOT: &[u8] = &[64,
     0,
     0,

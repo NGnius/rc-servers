@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Primary Meta Tags -->
+  <title>Message - Openjam</title>
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  {{> stylesheet}}
+</head>
+<body>
+  <div class="form-stripe">
+    <div class="form-header-right">
+      {{#if form.display_name}}
+      Welcome {{form.display_name}}! |
+      {{/if}}
+      <a href="/">Home</a>
+      {{#if form.display_name}}
+      |
+      <a href="/dashboard">Dashboard</a> |
+      <a href="/logout">Sign Out</a>
+      {{/if}}
+    </div>
+    {{#if error}}
+      <div class="form-error">
+        <p class="form-error-message">{{error}}</p>
+      </div>
+    {{/if}}
+    {{#if form.message}}
+      <div class="form-success">
+        <p class="form-success-message">{{form.message}}</p>
+      </div>
+    {{/if}}
+
+    <footer>
+      <div class="footer">
+        {{version}}
+        | <a href="{{source_url}}#readme">About</a>
+        | <a href="https://liberapay.com/NGram">Support Me</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

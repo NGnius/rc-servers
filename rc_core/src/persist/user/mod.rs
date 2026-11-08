@@ -11,7 +11,7 @@ mod inventory;
 pub use inventory::{UnlockedParts, UnlockOverride};
 
 mod traits;
-pub use traits::{UserProvider, UserProviderC, User, UserC, ServiceUser, UserToken, UserSlots, UserSlotData, VehicleData, FullVehicleData, UserAuthInfo, FederatedAuthInfo, UserLoginInfo, UserAuthenticator, FederatedAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameVehicleDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, CommonReadUser, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, WebPasswordUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats, FederationWebData, FederationWebDetails, MatchInfo, PasswordVerificationMethod};
+pub use traits::{UserProvider, UserProviderC, User, UserC, ServiceUser, UserToken, UserSlots, UserSlotData, VehicleData, FullVehicleData, UserAuthInfo, FederatedAuthInfo, UserLoginInfo, UserAuthenticator, FederatedAuthenticator, NewSlotData, UserId, RegistrationInfo, VehicleUploadData, ChatUser, AvatarInfo, GetAvatarInfo, ControlData, ControlType, CustomisationData, GetCustomisationData, SetSanction, SanctionType, LobbyUser, GameDescriptor, PlayerLobbyDescriptor, MultiplayerUser, PlayerScore, MultiplayerError, MultiplayerErrorCode, PlayerDescriptor, GameVehicleDescriptor, GameEventSetter, CurrentGameEvent, AuthError, IntercomUser, FakePlayers, ResolvedVehicle, CommonUser, CommonReadUser, UserRole, SocialUser, SocialUserC, CurrencyType, CurrencyOp, MatchRewards, SingleplayerUser, PurchaseResult, FactoryUser, FriendInviteReturn, FriendData, FriendInviteStatus, SocialInfo, ClanData, ClanMember, ClanMemberRank, ClanType, ClanSearchQuery, ClanInviteData, Userless, GameOverrides, WebUser, WebPasswordUser, WebPasswordResetUser, GarageWebInfo, GarageWebStats, SanctionWebStats, AccountWebStats, SocialWebStats, FederationWebData, FederationWebDetails, MatchInfo, PasswordVerificationMethod};
 
 pub mod intercom;
 pub use intercom::generate_token as generate_intercom_token;
@@ -109,4 +109,14 @@ pub fn i64_join(uuid: (u32, u32)) -> i64 {
 
 pub fn str_to_i64(s :&str) -> Option<i64> {
     str_to_uuid(s).map(i64_join)
+}
+
+pub(crate) async fn find_user(db: &oj_rc_database::Database, user: &crate::types::AccountId) -> Result<Option<oj_rc_database::schema::user::Model>, oj_rc_database::sea_orm::DbErr> {
+    use crate::types::RawType;
+    match user {
+        crate::types::AccountId::UserId(id) => db.user_by_id(id.as_raw()).await,
+        crate::types::AccountId::PublicId(pub_id) => db.user_by_public_id(pub_id.as_raw()).await,
+        crate::types::AccountId::Email(email) => db.user_by_email(email.to_owned()).await,
+        crate::types::AccountId::AnyString(some_id) => db.user_by_some_social_id(some_id.to_owned()).await,
+    }
 }

@@ -19,3 +19,5 @@ mod auth;
 pub use auth::user_agent;
 
 pub mod types;
+
+pub mod email;

@@ -21,7 +21,8 @@ struct RenderData {
 
 #[get("/user/{id}/password_reset/{secret}")]
 pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, path: Path<(i32, String)>) -> Result<impl Responder, actix_web::error::Error> {
-    match auth.web_password_secret_authenticate(oj_rc_core::types::UserId::from_raw(path.0), path.1.clone()).await {
+    let account_id = oj_rc_core::types::AccountId::UserId(oj_rc_core::types::UserId::from_raw(path.0));
+    match auth.web_password_secret_authenticate(account_id, path.1.clone()).await {
         Ok(user) => {
             Ok(crate::web::render_ok(
                 RenderData {
@@ -44,7 +45,8 @@ pub async fn get(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Bo
 
 #[post("/user/{id}/password_reset/{secret}")]
 pub async fn post(handlebars_ref: Data<handlebars::Handlebars<'_>>, auth: Data<Box<oj_rc_core::UserImpl>>, form: Form<FormData>, path: Path<(i32, String)>) -> Result<impl Responder, actix_web::error::Error> {
-    match auth.web_password_secret_authenticate(oj_rc_core::types::UserId::from_raw(path.0), path.1.clone()).await {
+    let account_id = oj_rc_core::types::AccountId::UserId(oj_rc_core::types::UserId::from_raw(path.0));
+    match auth.web_password_secret_authenticate(account_id, path.1.clone()).await {
         Ok(user) => {
             if form.password != form.password_c {
                 return Ok(crate::web::render_err(

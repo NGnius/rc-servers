@@ -14,6 +14,8 @@ pub struct Settings {
     pub polariton: PolaritonSettings,
     #[serde(default = "default_lnl_conf", alias = "lnl")]
     pub lrl: LiteRustLibSettings,
+    #[serde(default = "super::default_email")]
+    pub email: super::EmailConfig,
 }
 
 impl super::config::SelfValidator for Settings {
@@ -33,6 +35,7 @@ impl super::config::RedactedClone for Settings {
             server: self.server.redacted_clone(),
             polariton: self.polariton.clone(),
             lrl: self.lrl.clone(),
+            email: self.email.redacted_clone(),
         }
     }
 }
