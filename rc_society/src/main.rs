@@ -43,6 +43,11 @@ async fn main() -> std::io::Result<()> {
     let factory = config.factory(&|| users.factory_impl()).await.expect("Bad vehicle factory (CRF) config");
     let factory_ref = actix_web::web::Data::new(factory);
     let email_ref = actix_web::web::Data::new(oj_rc_core::email::EmailSender::new(&config, &users));
+    match email_ref.test().await {
+        Ok(true) => log::info!("Email self-test succeeded"),
+        Ok(false) => log::warn!("Email self-test failed (no errors)"),
+        Err(e) => log::warn!("Email self-test failed: {}", e),
+    }
     let auth_ref = actix_web::web::Data::new(Box::new(users));
 
     let cli_args2 = actix_web::web::Data::new(cli_args.clone());
@@ -62,6 +67,8 @@ async fn main() -> std::io::Result<()> {
     let handlebars_ref = actix_web::web::Data::new(handlebars_conf);
 
     START_TIME.store(chrono::Utc::now().timestamp(), std::sync::atomic::Ordering::SeqCst);
+
+    log::info!("{} starting at http://{}:{}", env!("CARGO_PKG_NAME"), cli_args.ip, cli_args.port);
 
     HttpServer::new(move || {
         App::new()

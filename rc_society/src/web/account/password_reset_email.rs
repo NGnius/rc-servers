@@ -51,8 +51,8 @@ pub async fn post(form: Form<PasswordResetForm>, email_sender: Data<oj_rc_core::
             let full_url = format!("{}/user/{}/password_reset/{}", base_url, reset_user.user_id().as_raw(), secret);
             match email_sender.send_email(
                 account_id,
-                format!("<a href={}>Reset password here!</a><p>aka {}</p><p>If you did not try to reset your password, you can ignore this email.</p>", full_url, full_url),
                 "OpenJam Password Reset".to_owned(),
+                format!("<a href=\"{}\">Reset password here!</a><p>aka {}</p><p>If you did not try to reset your password, you can ignore this email.</p>", full_url, full_url),
             ).await {
                 Ok(_) => Ok(crate::web::render_ok(
                     crate::web::MessageRenderData {

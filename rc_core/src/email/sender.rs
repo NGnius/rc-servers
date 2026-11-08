@@ -12,7 +12,7 @@ impl EmailSender {
         let db = user_impl.db_impl();
         let variant = match config {
             crate::persist::EmailConfig::None => EmailSenderImpl::Noop,
-            crate::persist::EmailConfig::SMTP { from, uri } => EmailSenderImpl::Smtp(SmtpImpl::new(from, uri)),
+            crate::persist::EmailConfig::SMTP { from, uri } => EmailSenderImpl::Smtp(Box::new(SmtpImpl::new(from, uri))),
         };
         Self {
             db,
@@ -21,9 +21,9 @@ impl EmailSender {
     }
 
     pub async fn send_email(&self, to: crate::types::AccountId, subject: String, message: String) -> Result<(), Box<dyn core::error::Error>> {
-        if let Some(Some(account)) = crate::persist::user::find_user(self.db.as_ref(), &to).await.ok() {
+        if let Ok(Some(account)) = crate::persist::user::find_user(self.db.as_ref(), &to).await {
             if account.email.contains('@') {
-                self.implementor.send_email_to(account.email, subject, message).await
+                self.implementor.send_email_to(account.display_name, account.email, subject, message).await
             } else {
                 Ok(())
             }
@@ -39,20 +39,23 @@ impl EmailSender {
 
 enum EmailSenderImpl {
     Noop,
-    Smtp(SmtpImpl)
+    Smtp(Box<SmtpImpl>)
 }
 
 impl EmailSenderImpl {
-    async fn send_email_to(&self, address: String, subject: String, message: String) -> Result<(), Box<dyn core::error::Error>> {
+    async fn send_email_to(&self, display_name: String, address: String, subject: String, message: String) -> Result<(), Box<dyn core::error::Error>> {
         match self {
             Self::Noop => Err("Email is not configured".into()),
-            Self::Smtp(smtp) => smtp.send_email_to(address, subject, message).await
+            Self::Smtp(smtp) => smtp.send_email_to(display_name, address, subject, message).await
         }
     }
 
     async fn test(&self) -> Result<bool, Box<dyn core::error::Error>> {
         match self {
-            Self::Noop => Ok(true),
+            Self::Noop => {
+                log::info!("Email self-test is a no-op (email not configured)");
+                Ok(true)
+            },
             Self::Smtp(smtp) => smtp.test().await
         }
     }
@@ -66,7 +69,9 @@ struct SmtpImpl {
 impl SmtpImpl {
     /// This will panic on bad config
     pub(crate) fn new(from: &str, uri: &str) -> Self {
-        let sender = lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::from_url(uri).expect("Bad email uri").build();
+        let sender = lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::from_url(uri)
+            .expect("Bad email uri")
+            .build();
         let from_addr = from.parse().expect("Bad email from address");
         Self {
             from: from_addr,
@@ -74,10 +79,14 @@ impl SmtpImpl {
         }
     }
 
-    async fn send_email_to(&self, address: String, subject: String, message: String) -> Result<(), Box<dyn core::error::Error>> {
+    async fn send_email_to(&self, display_name: String, address: String, subject: String, message: String) -> Result<(), Box<dyn core::error::Error>> {
+        let address: lettre::message::Mailbox = address.parse()?;
         let message = lettre::message::MessageBuilder::new()
             .from(self.from.clone())
-            .to(address.parse()?)
+            .to(lettre::message::Mailbox {
+                name: Some(display_name),
+                email: address.email,
+            })
             .subject(subject)
             .header(lettre::message::header::ContentType::TEXT_HTML)
             .body(message)?;
