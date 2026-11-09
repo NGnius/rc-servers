@@ -86,10 +86,10 @@ services:
     working_dir: /app/rc_society
     command: ./oj_rc_society --ip "0.0.0.0"
 
-  cdn:
+  rc_cdn:
     <<: *shared-release
-    working_dir: /app/cdn
-    command: ./oj_cdn --ip "0.0.0.0"
+    working_dir: /app/rc_cdn
+    command: ./oj_rc_cdn --ip "0.0.0.0"
 
 volumes:
   cargo:
