@@ -151,11 +151,11 @@ services:
     working_dir: /app/rc_society
     profiles: ["debug"]
 
-  cdn_debug:
+  rc_cdn_debug:
     <<: 
       - *shared-debug
       - *web-services
-    working_dir: /app/cdn
+    working_dir: /app/rc_cdn
     profiles: ["debug"]
 
   rc_services_release:
@@ -234,14 +234,14 @@ services:
     working_dir: /app/rc_microtransactions
     profiles: ["release"]
 
-  rc_society:
+  rc_society_release:
     <<: *shared-release
     working_dir: /app/rc_society
     profiles: ["release"]
 
-  cdn_release:
+  rc_cdn_release:
     <<: *shared-release
-    working_dir: /app/cdn
+    working_dir: /app/rc_cdn
     profiles: ["release"]
 
 volumes:
