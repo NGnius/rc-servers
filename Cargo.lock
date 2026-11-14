@@ -293,7 +293,7 @@ dependencies = [
  "bytes",
  "bytestring",
  "cfg-if",
- "cookie 0.16.2",
+ "cookie",
  "derive_more 2.1.1",
  "encoding_rs",
  "foldhash 0.2.0",
@@ -1176,16 +1176,6 @@ dependencies = [
  "rand 0.8.8",
  "sha2 0.10.9",
  "subtle",
- "time",
- "version_check",
-]
-
-[[package]]
-name = "cookie"
-version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
-dependencies = [
  "time",
  "version_check",
 ]
@@ -3744,7 +3734,6 @@ dependencies = [
  "clap",
  "env_logger",
  "git-version",
- "libfj",
  "log",
  "serde",
  "serde_json",
@@ -3895,7 +3884,6 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "clap",
- "cookie 0.18.2",
  "env_logger",
  "git-version",
  "handlebars",
