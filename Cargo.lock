@@ -3085,6 +3085,8 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 [[package]]
 name = "literustlib"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df2787d46394668932319ce57e934750d1eb09bd5ba664dbd6f110b5effea3aa"
 dependencies = [
  "bytes",
  "num_enum 0.7.6",
@@ -3093,6 +3095,8 @@ dependencies = [
 [[package]]
 name = "literustlib_server"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c0db022995be9c59a4a22dce9d46fecc04f87d394e5813f3d81766ab35a1c8c"
 dependencies = [
  "async-recursion",
  "async-trait",
