@@ -480,7 +480,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Earth1,
                     visibility: GameVisibility::Good,
-                    mode: GameType::TeamDeathmatch,
+                    mode: GameType::BattleArena,
                     auto_heal: false,
                 },
                 duration_s: 30,
@@ -495,7 +495,7 @@ fn default_rotation() -> GameEventSequence {
                 multiplayer: GameEvent {
                     map: GameMap::Earth2,
                     visibility: GameVisibility::Good,
-                    mode: GameType::TeamDeathmatch,
+                    mode: GameType::BattleArena,
                     auto_heal: false,
                 },
                 duration_s: 30,

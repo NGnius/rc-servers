@@ -43,7 +43,7 @@ impl NetworkConfigData {
             max_sent_message_queue_size: conf.max_sent_message_queue_size,
             is_acks_long: conf.is_acks_long,
             network_drop_threshold: conf.network_drop_threshold,
-            packet_size: conf.packet_size,
+            packet_size: conf.max_packet_size,
             max_combined_reliable_message_count: conf.max_combined_reliable_message_count,
             max_combined_reliable_message_size: conf.max_combined_reliable_message_size,
             min_update_timeout: conf.min_update_timeout,
