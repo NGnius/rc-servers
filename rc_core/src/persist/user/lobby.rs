@@ -318,7 +318,7 @@ impl super::LobbyUser for UserData {
     }
 
     async fn reconnect_info(&self, allowed_modes: &[crate::persist::config::GameType]) -> Result<Option<crate::persist::user::MatchInfo>, polariton_server::operations::SimpleOpError> {
-        let current_game_opt = self.db.game_by_user_id_and_completion(self.account.id, false).await
+        let current_game_opt = self.db.game_by_user_id_and_completion_and_claim(self.account.id, false, false).await
             .map_err(|e| {
                 log::error!("Failed to retrieve ongoing game for user {}: {}", self.account.id, e);
                 polariton_server::operations::SimpleOpError::with_message(

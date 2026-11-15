@@ -538,6 +538,20 @@ impl Database {
             .map(|(x, _)| x))
     }
 
+    pub async fn game_by_user_id_and_completion_and_claim(&self, user_id: i32, is_complete: bool, is_claimed: bool) -> Result<Option<crate::schema::multiplayer_game::Model>, sea_orm::DbErr> {
+        Ok(crate::schema::multiplayer_game::Entity::find()
+            .find_also_related(crate::schema::multiplayer_game_player::Entity)
+            //.join(sea_orm::JoinType::InnerJoin, crate::schema::multiplayer_game_player::Relation::Game.def())
+            .filter(crate::schema::multiplayer_game::Column::IsComplete.eq(is_complete))
+            .filter(crate::schema::multiplayer_game_player::Column::UserId.eq(user_id))
+            .filter(crate::schema::multiplayer_game_player::Column::IsClaimed.eq(is_claimed))
+            .order_by_desc(crate::schema::multiplayer_game::Column::CreationTime)
+            //.into_model()
+            .one(self.orm.as_ref())
+            .await?
+            .map(|(x, _)| x))
+    }
+
     pub async fn game_and_player_by_user_id_and_completion(&self, user_id: i32, is_complete: bool) -> Result<Option<(crate::schema::multiplayer_game::Model, crate::schema::multiplayer_game_player::Model)>, sea_orm::DbErr> {
         Ok(crate::schema::multiplayer_game::Entity::find()
             .find_also_related(crate::schema::multiplayer_game_player::Entity)

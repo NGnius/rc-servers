@@ -606,6 +606,16 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
+    async fn check_reconnect_abort(&self, connection: &UserSender) {
+        if self.is_game_done() {
+            crate::events::log_lnl_send_failure(connection.rlnl().send_empty(
+                rlnl::event_code::NetworkEvent::GameAborted,
+                literustlib::packet::Property::ReliableOrdered,
+                &connection.connection
+            ).await);
+        }
+    }
+
     async fn on_new_connection(&self,
         user: std::sync::Arc<Box<dyn oj_rc_core::persist::user::MultiplayerUser + Send + Sync + 'static>>,
         game_guid: oj_rc_core::types::GameGuid,
@@ -680,6 +690,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         &new_user.connection.connection
                     ).await);
                     log::debug!("User {} is validated to play game {}", new_user.user.user_id(), game_guid);
+                    self.check_reconnect_abort(&new_user.connection).await;
                     let new_user = std::sync::Arc::new(new_user);
                     if let Err(e) = new_user.user.save_player_connected_status(self.game_guid(), true).await {
                         log::error!("Failed to mark player {} (user {}) as connected to game {}: {}", id, user_id, self.game_guid(), e);
@@ -774,8 +785,10 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             }
                         }
                     }
-                    if let Err(e) = conn.user.save_player_connected_status(self.game_guid(), false).await {
-                        log::error!("Failed to mark player {} (user {}) as disconnected in game {}: {}", player_id, user_id, self.game_guid(), e);
+                    if !is_game_complete {
+                        if let Err(e) = conn.user.save_player_connected_status(self.game_guid(), false).await {
+                            log::error!("Failed to mark player {} (user {}) as disconnected in game {}: {}", player_id, user_id, self.game_guid(), e);
+                        }
                     }
                     if !is_unregister || conn.connection.connection.is_connected() {
                         conn.connection.connection.goodbye(&conn.connection.sender).await;
@@ -971,6 +984,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                     if user.aliases.contains(&user_key) { return; }
                     user_desc.state.mode.store(ConnectionMode::WaitingForSync.to_u8(), std::sync::atomic::Ordering::Relaxed);
                     self.start_sync_for_player(user_key, user).await;
+                    self.check_reconnect_abort(&user.connection).await;
                 }
             } else {
                 log::warn!("Unknown reconnecting user id {} for game {}", user_id, self.game_guid());
@@ -1124,6 +1138,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                 ).await;
                             }
                         }
+                        self.check_reconnect_abort(&conn.connection).await;
                     }
                     return;
                 }
