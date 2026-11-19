@@ -120,27 +120,33 @@ impl PointInfo {
     }
 
     async fn owners_on_point(&self) -> u8 {
-        let team = self.team.load(std::sync::atomic::Ordering::SeqCst);
-        if team < 0 {
-            0
-        } else if let Some(counter) = self.on_point.read().await.get(&crate::types::Team::from_raw(team as u8)) {
-            counter.load(std::sync::atomic::Ordering::SeqCst)
+        let maybe_team = self.owners_team();
+        if let Some(team) = maybe_team.as_team() {
+            if let Some(counter) = self.on_point.read().await.get(&team) {
+                counter.load(std::sync::atomic::Ordering::SeqCst)
+            } else {
+                0
+            }
         } else {
             0
         }
     }
 
+    #[inline]
+    fn owners_team(&self) -> crate::types::MaybeTeam {
+        crate::types::MaybeTeam::from_raw(self.team.load(std::sync::atomic::Ordering::SeqCst))
+    }
+
     async fn stealers_on_point(&self) -> u8 {
-        let owning_team = self.team.load(std::sync::atomic::Ordering::SeqCst);
+        let owning_team = self.owners_team();
         let mut total = 0;
-        if owning_team < 0 {
-            for counter in self.on_point.read().await.values() {
+        if let Some(owning_team) = owning_team.as_team() {
+            for (team, counter) in self.on_point.read().await.iter() {
+                if owning_team == *team { continue; }
                 total += counter.load(std::sync::atomic::Ordering::SeqCst);
             }
         } else {
-            let owning_team = crate::types::Team::from_raw(owning_team as u8);
-            for (team, counter) in self.on_point.read().await.iter() {
-                if owning_team == *team { continue; }
+            for counter in self.on_point.read().await.values() {
                 total += counter.load(std::sync::atomic::Ordering::SeqCst);
             }
         }
@@ -148,10 +154,11 @@ impl PointInfo {
     }
 
     async fn stealers_team(&self) -> crate::types::MaybeTeam {
-        let owning_team = self.team.load(std::sync::atomic::Ordering::SeqCst);
+        let owning_team = self.owners_team();
         let mut stealing_team = crate::types::MaybeTeam::unset();
-        if owning_team < 0 {
+        if let Some(owning_team) = owning_team.as_team() {
             for (team, counter) in self.on_point.read().await.iter() {
+                if owning_team == *team { continue; }
                 let count = counter.load(std::sync::atomic::Ordering::SeqCst);
                 if count != 0 {
                     if stealing_team.is_team() {
@@ -162,9 +169,7 @@ impl PointInfo {
                 }
             }
         } else {
-            let owning_team = crate::types::Team::from_raw(owning_team as u8);
             for (team, counter) in self.on_point.read().await.iter() {
-                if owning_team == *team { continue; }
                 let count = counter.load(std::sync::atomic::Ordering::SeqCst);
                 if count != 0 {
                     if stealing_team.is_team() {
@@ -1749,6 +1754,21 @@ impl CustomGameLogic for BattleArenaLogic {
                 &self.crystals,
                 player,
             ).await;
+
+            let team_maybe = team.team().maybe();
+            let has_any_capture_point = self.capture_tracking.points.iter()
+                        .any(|p| p.owners_team() == team_maybe);
+            if has_any_capture_point {
+                generic.send_to_player(
+                    player,
+                    rlnl::event_code::NetworkEvent::SetShieldState,
+                    literustlib::packet::Property::ReliableOrdered,
+                    &rlnl::events::sync::FusionShieldState {
+                        team_id: team_maybe.as_raw(),
+                        full_power: 1,
+                    },
+                ).await;
+            }
         }
 
         // init surrender info for new player
