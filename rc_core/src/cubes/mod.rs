@@ -27,6 +27,7 @@ pub use conversion::CubeConversionParser;
 
 mod vehicle_graph;
 pub use vehicle_graph::CubeGraph as VehicleCubeGraph;
+pub use vehicle_graph::CubeChange;
 
 pub const CRYSTAL_ID: u32 = 3950293873;
 pub const CLASP_ID: u32 = 606866102;

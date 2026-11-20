@@ -1091,7 +1091,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         for (player_id, desc) in self.descriptors.iter() {
                             let is_alive = desc.machine.is_alive.load(std::sync::atomic::Ordering::Relaxed);
                             if is_alive {
-                                let cubes_to_update = desc.machine.cubes.all_changed_cubes();
+                                let cubes_to_update = desc.machine.cubes.all_changed_cubes().await;
                                 if !cubes_to_update.is_empty() {
                                     let cubes_destroyed: Vec<rlnl::types::CubeState> = cubes_to_update.iter()
                                         .map(|c| rlnl::types::CubeState {
@@ -1100,29 +1100,36 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                                 y: c.location.y,
                                                 z: c.location.z,
                                             },
-                                            status: if c.current_health == 0 {
-                                                rlnl::types::CubeStatus {
-                                                    ty: rlnl::types::CubeHistoryEventType::Destroy,
-                                                    damage: None
-                                                }
-                                            } else {
-                                                rlnl::types::CubeStatus {
-                                                    ty: rlnl::types::CubeHistoryEventType::Damage,
-                                                    damage: Some((c.max_health.saturating_sub(c.current_health)) as i32),
-                                                }
+                                            status: match c.op {
+                                                oj_rc_core::cubes::CubeChange::Damage(dmg) => {
+                                                    rlnl::types::CubeStatus {
+                                                        ty: rlnl::types::CubeHistoryEventType::Damage,
+                                                        damage: Some(dmg as _),
+                                                    }
+                                                },
+                                                oj_rc_core::cubes::CubeChange::Destroy => {
+                                                    rlnl::types::CubeStatus {
+                                                        ty: rlnl::types::CubeHistoryEventType::Destroy,
+                                                        damage: None,
+                                                    }
+                                                },
+                                                oj_rc_core::cubes::CubeChange::Heal(heal) => {
+                                                    rlnl::types::CubeStatus {
+                                                        ty: rlnl::types::CubeHistoryEventType::Heal,
+                                                        damage: Some(heal as _),
+                                                    }
+                                                },
                                             },
                                         })
                                         .collect();
                                     self.send_to_player(
                                         user_key,
-                                        rlnl::event_code::NetworkEvent::DestroyCubeNoEffect,
+                                        rlnl::event_code::NetworkEvent::SyncMachineCubes,
                                         literustlib::packet::Property::ReliableOrdered,
-                                        &rlnl::events::ingame::DestroyCubeNoEffect {
-                                            shooting_machine_id: -1,
-                                            hit_machine_id: player_id.as_raw() as _,
-                                            target_type: rlnl::types::TargetType::Player,
-                                            num_hits: cubes_destroyed.len() as _,
-                                            hit_cubes: cubes_destroyed,
+                                        &rlnl::events::sync::SyncMachineCubes {
+                                            machine_id: player_id.as_raw() as _,
+                                            num_cubes: cubes_destroyed.len() as _,
+                                            events: cubes_destroyed,
                                         },
                                     ).await;
                                 }
@@ -1244,6 +1251,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                         true,
                     ).await;
                     //self.unclaimed.debounce_kill(KillAttribution { killer: killer_player, victim: remote_player }).await;
+                    killed.machine.cubes.full_heal().await;
                 }
             }
         }
@@ -1293,7 +1301,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                             &data,
                             true,
                         ).await;
-                        user_desc.machine.cubes.full_heal();
+                        user_desc.machine.cubes.full_heal().await;
                     }
                 }
             }
@@ -1490,7 +1498,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                 } else {
                     self.broadcast(event, property, &*data, true).await;
                 }
-                self.handle_damage_tracking(user_id, event, &*data);
+                self.handle_damage_tracking(user_id, event, &*data).await;
             } else {
                 if skip_user {
                     self.rebroadcast_dataless(user_id, event, property, true).await;
@@ -1501,7 +1509,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    fn handle_damage_tracking(
+    async fn handle_damage_tracking(
         &self,
         user_id: oj_rc_core::types::UserId,
         event: rlnl::event_code::NetworkEvent,
@@ -1523,7 +1531,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         z: c.loc.z,
                                     }, c.status.damage.map(|d| d as u32))
                                 ),
-                        );
+                        ).await;
                     }
                 } else {
                     log::warn!("Got strange DestroyCubesFull message data");
@@ -1544,7 +1552,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         z: c.loc.z,
                                     }, c.status.damage.map(|d| d as u32))
                                 ),
-                        );
+                        ).await;
                     }
                 } else {
                     log::warn!("Got strange DestroyCubeNoEffect message data");
@@ -1571,7 +1579,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         z: c.pos.z,
                                     }, c.damage as u32)
                                 ),
-                        );
+                        ).await;
                     }
                 } else {
                     log::warn!("Got strange HealSelfResponse message data");
@@ -1591,7 +1599,7 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
                                         z: c.cube_info.pos.z,
                                     }, c.cube_info.damage as u32)
                                 ),
-                        );
+                        ).await;
                     }
                 } else {
                     log::warn!("Got strange HealAllyResponse message data");
@@ -1601,24 +1609,26 @@ impl <L: super::CustomGameLogic> GenericGamemodeEngine<L> {
         }
     }
 
-    fn damage_cubes(
+    async fn damage_cubes(
         graph: &oj_rc_core::cubes::VehicleCubeGraph,
         cubes: impl std::iter::Iterator<Item=(oj_rc_core::cubes::CellPoint, Option<u32>)>,
     ) {
-        cubes.for_each(|(location, damage_opt)| {
+        for (location, damage_opt) in cubes {
             if let Some(damage) = damage_opt {
-                graph.damage_cube(&location, damage);
+                graph.damage_cube(&location, damage).await;
             } else {
-                graph.destroy_cube(&location);
+                graph.destroy_cube(&location).await;
             }
-        });
+        }
     }
 
-    fn heal_cubes(
+    async fn heal_cubes(
         graph: &oj_rc_core::cubes::VehicleCubeGraph,
         cubes: impl std::iter::Iterator<Item=(oj_rc_core::cubes::CellPoint, u32)>,
     ) {
-        cubes.for_each(|(location, damage)| graph.heal_cube(&location, damage));
+        for (location, damage) in cubes {
+            graph.heal_cube(&location, damage).await;
+        }
     }
 
     async fn on_player_input_changed(&self, user_id: oj_rc_core::types::UserId, input: rlnl::events::ingame::PlayerIdAndInputData) {
